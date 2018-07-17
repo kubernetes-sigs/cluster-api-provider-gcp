@@ -21,8 +21,8 @@ import (
 	"os/exec"
 
 	"github.com/golang/glog"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	gceconfigv1 "sigs.k8s.io/cluster-api/cloud/google/gceproviderconfig/v1alpha1"
+	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/util"
 )
 
@@ -63,7 +63,7 @@ var (
 )
 
 type ServiceAccountService struct {
-	gceProviderConfigCodec   *gceconfigv1.GCEProviderConfigCodec
+	gceProviderConfigCodec *gceconfigv1.GCEProviderConfigCodec
 }
 
 func NewServiceAccountService(codec *gceconfigv1.GCEProviderConfigCodec) *ServiceAccountService {

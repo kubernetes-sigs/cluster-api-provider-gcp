@@ -25,6 +25,7 @@ import (
 
 	compute "google.golang.org/api/compute/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cluster-api/cloud/google"
 	gceconfigv1 "sigs.k8s.io/cluster-api/cloud/google/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api/cloud/google/machinesetup"
@@ -32,7 +33,6 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/cert"
 	"sigs.k8s.io/cluster-api/pkg/kubeadm"
 	"sigs.k8s.io/cluster-api/pkg/test-cmd-runner"
-	"k8s.io/client-go/tools/record"
 )
 
 func init() {
@@ -80,7 +80,7 @@ func TestKubeadmTokenShouldBeInStartupScript(t *testing.T) {
 	config := newGCEMachineProviderConfigFixture()
 	receivedInstance, computeServiceMock := newInsertInstanceCapturingMock()
 	kubeadm := kubeadm.NewWithCmdRunner(test_cmd_runner.NewTestRunnerFailOnErr(t, tokenCreateCommandCallback))
-	config.Roles = []gceconfigv1.MachineRole{ gceconfigv1.NodeRole }
+	config.Roles = []gceconfigv1.MachineRole{gceconfigv1.NodeRole}
 	machine := newMachine(t, config)
 	err := createCluster(t, machine, computeServiceMock, nil, kubeadm)
 	if err != nil {
@@ -105,7 +105,7 @@ func TestTokenCreateCommandError(t *testing.T) {
 	config := newGCEMachineProviderConfigFixture()
 	_, computeServiceMock := newInsertInstanceCapturingMock()
 	kubeadm := kubeadm.NewWithCmdRunner(test_cmd_runner.NewTestRunnerFailOnErr(t, tokenCreateErrorCommandCallback))
-	config.Roles = []gceconfigv1.MachineRole{ gceconfigv1.NodeRole }
+	config.Roles = []gceconfigv1.MachineRole{gceconfigv1.NodeRole}
 	machine := newMachine(t, config)
 	err := createCluster(t, machine, computeServiceMock, nil, kubeadm)
 	if err == nil {

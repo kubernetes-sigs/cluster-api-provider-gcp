@@ -19,10 +19,10 @@ package google_test
 import (
 	"testing"
 
-	"sigs.k8s.io/cluster-api/cloud/google"
-	"sigs.k8s.io/cluster-api/pkg/controller/cluster"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
+	"sigs.k8s.io/cluster-api/cloud/google"
+	"sigs.k8s.io/cluster-api/pkg/controller/cluster"
 )
 
 func TestDelete(t *testing.T) {

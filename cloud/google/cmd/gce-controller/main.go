@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	"k8s.io/apiserver/pkg/util/logs"
@@ -25,7 +26,6 @@ import (
 	"sigs.k8s.io/cluster-api/cloud/google/cmd/gce-controller/machine-controller-app"
 	machineoptions "sigs.k8s.io/cluster-api/cloud/google/cmd/gce-controller/machine-controller-app/options"
 	"sigs.k8s.io/cluster-api/pkg/controller/config"
-	"flag"
 )
 
 func main() {

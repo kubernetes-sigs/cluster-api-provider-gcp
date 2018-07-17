@@ -27,7 +27,7 @@ type MachineControllerServer struct {
 
 func NewMachineControllerServer(machineSetupConfigsPath string) *MachineControllerServer {
 	s := MachineControllerServer{
-		CommonConfig: &config.ControllerConfig,
+		CommonConfig:            &config.ControllerConfig,
 		MachineSetupConfigsPath: machineSetupConfigsPath,
 	}
 	return &s

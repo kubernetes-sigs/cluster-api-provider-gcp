@@ -74,5 +74,5 @@ type DiskInitializeParams struct {
 type GCEClusterProviderConfig struct {
 	metav1.TypeMeta `json:",inline"`
 
-	Project     string `json:"project"`
+	Project string `json:"project"`
 }

@@ -136,7 +136,7 @@ func TestWaitForOperationSuccess(t *testing.T) {
 	_, server, client := createMuxServerAndComputeClient(t)
 	defer server.Close()
 	op := &compute.Operation{
-		Id: 3001,
+		Id:     3001,
 		Status: "DONE",
 	}
 	err := client.WaitForOperation("projectName", op)
@@ -156,7 +156,7 @@ func TestWaitForOperationError(t *testing.T) {
 	op := &compute.Operation{
 		Id: 3001,
 		Error: &compute.OperationError{
-			Errors:responseErrors,
+			Errors: responseErrors,
 		},
 	}
 	err := client.WaitForOperation("projectName", op)

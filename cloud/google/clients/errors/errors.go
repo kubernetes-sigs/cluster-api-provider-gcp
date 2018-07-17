@@ -1,8 +1,8 @@
 package errors
 
 import (
-	"net/http"
 	"google.golang.org/api/googleapi"
+	"net/http"
 )
 
 // IsNotFound reports whether err is the result of the server replying with http.StatusNotFound.

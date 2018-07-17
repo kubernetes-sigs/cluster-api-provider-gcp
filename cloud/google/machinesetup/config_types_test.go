@@ -175,16 +175,16 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.3",
-					ControlPlane:     "1.9.3",
+					Kubelet:      "1.9.3",
+					ControlPlane: "1.9.3",
 				},
 			},
 			{
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.4",
-					ControlPlane:     "1.9.4",
+					Kubelet:      "1.9.4",
+					ControlPlane: "1.9.4",
 				},
 			},
 		},
@@ -199,14 +199,14 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.NodeRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.3",
+					Kubelet: "1.9.3",
 				},
 			},
 			{
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.NodeRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.4",
+					Kubelet: "1.9.4",
 				},
 			},
 		},
@@ -221,8 +221,8 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole, gceconfigv1.NodeRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.5",
-					ControlPlane:     "1.9.5",
+					Kubelet:      "1.9.5",
+					ControlPlane: "1.9.5",
 				},
 			},
 		},
@@ -237,16 +237,16 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.3",
-					ControlPlane:     "1.9.3",
+					Kubelet:      "1.9.3",
+					ControlPlane: "1.9.3",
 				},
 			},
 			{
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.4",
-					ControlPlane:     "1.9.4",
+					Kubelet:      "1.9.4",
+					ControlPlane: "1.9.4",
 				},
 			},
 		},
@@ -268,8 +268,8 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.4",
-					ControlPlane:     "1.9.4",
+					Kubelet:      "1.9.4",
+					ControlPlane: "1.9.4",
 				},
 			},
 			expectedMatch: &masterMachineSetupConfig,
@@ -281,7 +281,7 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.NodeRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.4",
+					Kubelet: "1.9.4",
 				},
 			},
 			expectedMatch: &nodeMachineSetupConfig,
@@ -293,8 +293,8 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole, gceconfigv1.NodeRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.5",
-					ControlPlane:     "1.9.5",
+					Kubelet:      "1.9.5",
+					ControlPlane: "1.9.5",
 				},
 			},
 			expectedMatch: &multiRoleSetupConfig,
@@ -306,8 +306,8 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.5",
-					ControlPlane:     "1.9.5",
+					Kubelet:      "1.9.5",
+					ControlPlane: "1.9.5",
 				},
 			},
 			expectedMatch: nil,
@@ -319,7 +319,7 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole, gceconfigv1.NodeRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.3",
+					Kubelet: "1.9.3",
 				},
 			},
 			expectedMatch: nil,
@@ -331,8 +331,8 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole, gceconfigv1.MasterRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.5",
-					ControlPlane:     "1.9.5",
+					Kubelet:      "1.9.5",
+					ControlPlane: "1.9.5",
 				},
 			},
 			expectedMatch: nil,
@@ -344,8 +344,8 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 				OS:    "ubuntu-1710",
 				Roles: []gceconfigv1.MachineRole{gceconfigv1.MasterRole},
 				Versions: clusterv1.MachineVersionInfo{
-					Kubelet:          "1.9.4",
-					ControlPlane:     "1.9.4",
+					Kubelet:      "1.9.4",
+					ControlPlane: "1.9.4",
 				},
 			},
 			expectedMatch: nil,
