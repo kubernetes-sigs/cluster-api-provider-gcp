@@ -28,26 +28,32 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 1. Install a [driver](https://github.com/kubernetes/minikube/blob/master/docs/drivers.md) for minikube. For Linux, we recommend kvm2. For MacOS, we recommend VirtualBox.
 1. Build the `clusterctl` tool
 
-```bash
-$ git clone https://github.com/kubernetes-sigs/cluster-api-provider-gcp $GOPATH/src/sigs.k8s.io/cluster-api-provider-gcp
-$ cd $GOPATH/src/sigs.k8s.io/cluster-api-provider-gcp/vendor/sigs.k8s.io/cluster-api/clusterctl
-$ go build
-```
+   ```bash
+   git clone https://github.com/kubernetes-sigs/cluster-api-provider-gcp $GOPATH/src/sigs.k8s.io/cluster-api-provider-gcp
+   cd $GOPATH/src/sigs.k8s.io/cluster-api-provider-gcp/clusterctl
+   go build
+   ```
 
 ### Cluster Creation
 
-1. Create the `cluster.yaml`, `machines.yaml`, `provider-components.yaml`, and `addons.yaml` files by running `generate-yaml.sh`.
+1. Create the `cluster.yaml`, `machines.yaml`, `provider-components.yaml`, and `addons.yaml` files:
+
+   ```bash
+   cd examples/google
+   ./generate-yaml.sh
+   cd ../..
+   ```
 1. Create a cluster:
 
-```bash
-clusterctl create cluster --provider google -c cluster.yaml -m machines.yaml -p provider-components.yaml -a addons.yaml
-```
+   ```bash
+   clusterctl create cluster --provider google -c examples/google/out/cluster.yaml -m examples/google/out/machines.yaml -p examples/google/out/provider-components.yaml -a examples/google/out/addons.yaml
+   ```
 
 To choose a specific minikube driver, please use the `--vm-driver` command line parameter. For example to use the kvm2 driver with clusterctl you woud add `--vm-driver kvm2`
 
 Additional advanced flags can be found via help.
 
-```shell
+```bash
 clusterctl create cluster --help
 ```
 
@@ -56,10 +62,10 @@ clusterctl create cluster --help
 Once you have created a cluster, you can interact with the cluster and machine
 resources using kubectl:
 
-```
-$ kubectl --kubeconfig kubeconfig get clusters
-$ kubectl --kubeconfig kubeconfig get machines
-$ kubectl --kubeconfig kubeconfig get machines -o yaml
+```bash
+kubectl --kubeconfig kubeconfig get clusters
+kubectl --kubeconfig kubeconfig get machines
+kubectl --kubeconfig kubeconfig get machines -o yaml
 ```
 
 ### Cluster Deletion
