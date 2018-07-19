@@ -22,8 +22,6 @@ items:
     versions:
       kubelet: 1.9.4
       controlPlane: 1.9.4
-    roles:
-    - Master
 - apiVersion: "cluster.k8s.io/v1alpha1"
   kind: Machine
   metadata:
@@ -46,5 +44,3 @@ items:
             diskType: "pd-standard"
     versions:
       kubelet: 1.9.4
-    roles:
-    - Node
