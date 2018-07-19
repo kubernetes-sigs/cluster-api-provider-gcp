@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"sigs.k8s.io/cluster-api/cloud/google/gceproviderconfig"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/gceproviderconfig"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
