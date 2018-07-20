@@ -850,17 +850,10 @@
   branch = "master"
   name = "sigs.k8s.io/cluster-api"
   packages = [
-    "cloud/google",
-    "cloud/google/clients",
-    "cloud/google/clients/errors",
-    "cloud/google/cmd/gce-controller/cluster-controller-app",
-    "cloud/google/cmd/gce-controller/cluster-controller-app/options",
-    "cloud/google/cmd/gce-controller/machine-controller-app",
-    "cloud/google/cmd/gce-controller/machine-controller-app/options",
-    "cloud/google/config",
-    "cloud/google/gceproviderconfig",
-    "cloud/google/gceproviderconfig/v1alpha1",
-    "cloud/google/machinesetup",
+    "clusterctl/clusterdeployer",
+    "clusterctl/clusterdeployer/minikube",
+    "clusterctl/cmd",
+    "clusterctl/providercomponents",
     "pkg/apis/cluster",
     "pkg/apis/cluster/common",
     "pkg/apis/cluster/v1alpha1",
@@ -873,6 +866,7 @@
     "pkg/client/informers_generated/externalversions/cluster/v1alpha1",
     "pkg/client/informers_generated/externalversions/internalinterfaces",
     "pkg/client/listers_generated/cluster/v1alpha1",
+    "pkg/clientcmd",
     "pkg/cmd-runner",
     "pkg/controller/cluster",
     "pkg/controller/config",
@@ -889,6 +883,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "89cd9aaa91195ba6b37a13cf3b40b8ed9654fb6a6f704774fa205a424cb6be24"
+  inputs-digest = "a38bdad58d21a2068f86776d8bcdf75da61321c94cdf6bd4b8fb2d6e5db93c2b"
   solver-name = "gps-cdcl"
   solver-version = 1
