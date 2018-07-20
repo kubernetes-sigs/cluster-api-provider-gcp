@@ -21,10 +21,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 	"k8s.io/apiserver/pkg/util/logs"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/cmd/gce-controller/cluster-controller-app"
-	clusteroptions "sigs.k8s.io/cluster-api-provider-gcp/cloud/google/cmd/gce-controller/cluster-controller-app/options"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/cmd/gce-controller/machine-controller-app"
-	machineoptions "sigs.k8s.io/cluster-api-provider-gcp/cloud/google/cmd/gce-controller/machine-controller-app/options"
+	"sigs.k8s.io/cluster-api-provider-gcp/cmd/gce-controller/cluster-controller-app"
+	clusteroptions "sigs.k8s.io/cluster-api-provider-gcp/cmd/gce-controller/cluster-controller-app/options"
+	"sigs.k8s.io/cluster-api-provider-gcp/cmd/gce-controller/machine-controller-app"
+	machineoptions "sigs.k8s.io/cluster-api-provider-gcp/cmd/gce-controller/machine-controller-app/options"
 	"sigs.k8s.io/cluster-api/pkg/controller/config"
 )
 

@@ -157,7 +157,7 @@ func (gce *GCEClusterClient) createFirewallRuleIfNotExists(cluster *clusterv1.Cl
 	cluster.ObjectMeta.Annotations[firewallRuleAnnotationPrefix+firewallRule.Name] = "true"
 	_, err = gce.clusterClient.Update(cluster)
 	if err != nil {
-		fmt.Errorf("error updating cluster annotations %v", err)
+		return fmt.Errorf("error updating cluster annotations %v", err)
 	}
 	return nil
 }

@@ -28,26 +28,23 @@ generate: gendeepcopy
 gendeepcopy:
 	go build -o $$GOPATH/bin/deepcopy-gen sigs.k8s.io/cluster-api-provider-gcp/vendor/k8s.io/code-generator/cmd/deepcopy-gen
 	deepcopy-gen \
-	  -i ./cloud/google/providerconfig,./cloud/google/providerconfig/v1alpha1 \
+	  -i ./cloud/google/gceproviderconfig,./cloud/google/gceproviderconfig/v1alpha1 \
 	  -O zz_generated.deepcopy \
 	  -h boilerplate.go.txt
 
 build: depend
-	CGO_ENABLED=0 go install -a -ldflags '-extldflags "-static"' sigs.k8s.io/cluster-api-provider-gcp/cmd/cluster-controller
-	CGO_ENABLED=0 go install -a -ldflags '-extldflags "-static"' sigs.k8s.io/cluster-api-provider-gcp/cmd/machine-controller
+	CGO_ENABLED=0 go install -a -ldflags '-extldflags "-static"' sigs.k8s.io/cluster-api-provider-gcp/cmd/gce-controller
 
 images: depend
-	$(MAKE) -C cmd/cluster-controller image
-	$(MAKE) -C cmd/machine-controller image
+	$(MAKE) -C cmd/gce-controller image
 
 push: depend
-	$(MAKE) -C cmd/cluster-controller push
-	$(MAKE) -C cmd/machine-controller push
+	$(MAKE) -C cmd/gce-controller push
 
 check: depend fmt vet
 
 test:
-	go test -race -cover ./cmd/... ./cloud/...
+	go test -race -cover ./cmd/... ./clusterctl/... ./cloud/...
 
 fmt:
 	hack/verify-gofmt.sh
