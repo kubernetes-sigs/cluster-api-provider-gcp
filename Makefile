@@ -28,13 +28,13 @@ generate: gendeepcopy
 gendeepcopy:
 	go build -o $$GOPATH/bin/deepcopy-gen sigs.k8s.io/cluster-api-provider-gcp/vendor/k8s.io/code-generator/cmd/deepcopy-gen
 	deepcopy-gen \
-	  -i ./cloud/google/providerconfig,./cloud/google/providerconfig/v1alpha1 \
+	  -i ./cloud/google/gceproviderconfig,./cloud/google/gceproviderconfig/v1alpha1 \
 	  -O zz_generated.deepcopy \
 	  -h boilerplate.go.txt
 
 build: depend
-	CGO_ENABLED=0 go install -a -ldflags '-extldflags "-static"' sigs.k8s.io/cluster-api-provider-gcp/cmd/cluster-controller
-	CGO_ENABLED=0 go install -a -ldflags '-extldflags "-static"' sigs.k8s.io/cluster-api-provider-gcp/cmd/machine-controller
+	CGO_ENABLED=0 go install -a -ldflags '-extldflags "-static"' sigs.k8s.io/cluster-api-provider-gcp/cloud/google/cmd/gce-controller/cluster-controller-app
+	CGO_ENABLED=0 go install -a -ldflags '-extldflags "-static"' sigs.k8s.io/cluster-api-provider-gcp/cloud/google/cmd/gce-controller/machine-controller-app
 
 images: depend
 	$(MAKE) -C cmd/cluster-controller image
