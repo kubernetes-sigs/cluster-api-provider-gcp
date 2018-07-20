@@ -126,7 +126,7 @@ behalf, make sure to run these commands for each namespace that you created:
 1. Delete the roles and service accounts that were created for your cluster
 
    ```bash
-   ./delete-service-accounts.sh
+   ./scripts/delete-service-accounts.sh
    ```
 
 1. Delete the Firewall rules that were created for the cluster
