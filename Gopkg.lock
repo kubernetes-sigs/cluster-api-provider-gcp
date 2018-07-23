@@ -878,7 +878,7 @@
     "pkg/test-cmd-runner",
     "pkg/util"
   ]
-  revision = "012aa2d0bafe135676ba931b61f32cbbe571d1c7"
+  revision = "83ca2bcd9e9141b907a7817fe74e78e310526a88"
 
 [solve-meta]
   analyzer-name = "dep"
