@@ -854,6 +854,7 @@
     "clusterctl/clusterdeployer/minikube",
     "clusterctl/cmd",
     "clusterctl/providercomponents",
+    "clusterctl/validation",
     "pkg/apis/cluster",
     "pkg/apis/cluster/common",
     "pkg/apis/cluster/v1alpha1",
@@ -878,7 +879,7 @@
     "pkg/test-cmd-runner",
     "pkg/util"
   ]
-  revision = "83ca2bcd9e9141b907a7817fe74e78e310526a88"
+  revision = "4d5326bd92ec2e88ecfff7488deb27492f99fb74"
 
 [solve-meta]
   analyzer-name = "dep"
