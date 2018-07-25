@@ -12,3 +12,11 @@
 *.out
 
 .idea
+
+# bazel files
+bazel-bin
+bazel-cluster-api-provider-gcp
+bazel-genfiles
+bazel-out
+bazel-testlogs
+		     
