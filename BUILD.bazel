@@ -1,0 +1,7 @@
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+gazelle(
+    name = "gazelle",
+    external = "vendored",
+    prefix = "sigs.k8s.io/cluster-api-provider-gcp",
+)
