@@ -580,7 +580,6 @@ func (gce *GCEClient) requiresUpdate(a *clusterv1.Machine, b *clusterv1.Machine)
 	// Do not want status changes. Do want changes that impact machine provisioning
 	return !reflect.DeepEqual(a.Spec.ObjectMeta, b.Spec.ObjectMeta) ||
 		!reflect.DeepEqual(a.Spec.ProviderConfig, b.Spec.ProviderConfig) ||
-		!reflect.DeepEqual(a.Spec.Roles, b.Spec.Roles) ||
 		!reflect.DeepEqual(a.Spec.Versions, b.Spec.Versions) ||
 		a.ObjectMeta.Name != b.ObjectMeta.Name
 }
