@@ -18,7 +18,9 @@ package main
 
 import (
 	"flag"
-	"github.com/golang/glog"
+	"fmt"
+	"os"
+
 	"github.com/spf13/pflag"
 	"k8s.io/apiserver/pkg/util/logs"
 	"sigs.k8s.io/cluster-api-provider-gcp/cmd/gce-controller/cluster-controller-app"
@@ -45,14 +47,17 @@ func main() {
 	if controllerType == "machine" {
 		machineServer := machineoptions.NewMachineControllerServer(machineSetupConfigsPath)
 		if err := machine_controller_app.RunMachineController(machineServer); err != nil {
-			glog.Errorf("Failed to start machine controller. Err: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to start machine controller. Err: %v\n", err)
+			os.Exit(1)
 		}
 	} else if controllerType == "cluster" {
 		clusterServer := clusteroptions.NewClusterControllerServer()
 		if err := cluster_controller_app.RunClusterController(clusterServer); err != nil {
-			glog.Errorf("Failed to start cluster controller. Err: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to start cluster controller. Err: %v\n", err)
+			os.Exit(1)
 		}
 	} else {
-		glog.Errorf("Failed to start controller, `controller` flag must be either `machine` or `cluster` but was %v.", controllerType)
+		fmt.Fprintf(os.Stderr, "Failed to start controller, `controller` flag must be either `machine` or `cluster` but was %v.\n", controllerType)
+		os.Exit(1)
 	}
 }
