@@ -847,7 +847,6 @@
   revision = "0cf8f7e6ed1d2e3d47d02e3b6e559369af24d803"
 
 [[projects]]
-  branch = "master"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "clusterctl/clusterdeployer",
@@ -879,11 +878,11 @@
     "pkg/test-cmd-runner",
     "pkg/util"
   ]
-  revision = "4d5326bd92ec2e88ecfff7488deb27492f99fb74"
+  revision = "28cf28fe792e1c7d101c0565fe8c0f526e573215"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a38bdad58d21a2068f86776d8bcdf75da61321c94cdf6bd4b8fb2d6e5db93c2b"
+  inputs-digest = "29b80bfb103a1638d61bf66ab60ef9e2365485fa7db221a3057405a39d347ef2"
   solver-name = "gps-cdcl"
   solver-version = 1
