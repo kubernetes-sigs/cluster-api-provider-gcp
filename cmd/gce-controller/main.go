@@ -39,6 +39,10 @@ func main() {
 	config.ControllerConfig.AddFlags(pflag.CommandLine)
 	// the following line exists to make glog happy, for more information, see: https://github.com/kubernetes/kubernetes/issues/17162
 	flag.CommandLine.Parse([]string{})
+
+	// Map go flags to pflag
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
 	pflag.Parse()
 
 	logs.InitLogs()
