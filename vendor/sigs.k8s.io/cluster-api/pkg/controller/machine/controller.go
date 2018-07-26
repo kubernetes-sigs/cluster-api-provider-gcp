@@ -133,9 +133,7 @@ func (c *MachineControllerImpl) Reconcile(machine *clusterv1.Machine) error {
 	// Machine resource created. Machine does not yet exist.
 	glog.Infof("Reconciling machine object %v triggers idempotent create.", m.ObjectMeta.Name)
 	err = c.create(m)
-	if err != nil {
-		glog.Warningf("unable to create machine %v: %v", name, err)
-	}
+	glog.Warningf("Unable to create machine %v: %v", name, err)
 	return err
 }
 
