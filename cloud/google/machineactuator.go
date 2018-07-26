@@ -742,7 +742,7 @@ func newDisks(config *gceconfigv1.GCEMachineProviderConfig, zone string, imagePa
 			d.InitializeParams.SourceImage = imagePath
 			d.Boot = true
 			if diskSizeGb < minDiskSizeGb {
-				glog.Info("increasing disk size to %v gb, the supplied disk size of %v gb is below the minimum", minDiskSizeGb, diskSizeGb)
+				glog.Infof("increasing disk size to %v gb, the supplied disk size of %v gb is below the minimum", minDiskSizeGb, diskSizeGb)
 				d.InitializeParams.DiskSizeGb = minDiskSizeGb
 			}
 		}
