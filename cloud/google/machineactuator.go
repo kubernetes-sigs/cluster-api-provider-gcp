@@ -58,7 +58,7 @@ const (
 	ZoneAnnotationKey    = "gcp-zone"
 	NameAnnotationKey    = "gcp-name"
 
-	BootstrapLabelKey = "boostrap"
+	BootstrapLabelKey = "bootstrap"
 
 	// This file is a yaml that will be used to create the machine-setup configmap on the machine controller.
 	// It contains the supported machine configurations along with the startup scripts and OS image paths that correspond to each supported configuration.
@@ -440,7 +440,7 @@ func (gce *GCEClient) Update(cluster *clusterv1.Cluster, goalMachine *clusterv1.
 			return err
 		}
 		if instance != nil && instance.Labels[BootstrapLabelKey] != "" {
-			glog.Infof("Populating current state for boostrap machine %v", goalMachine.ObjectMeta.Name)
+			glog.Infof("Populating current state for bootstrap machine %v", goalMachine.ObjectMeta.Name)
 			return gce.updateAnnotations(cluster, goalMachine)
 		} else {
 			return fmt.Errorf("Cannot retrieve current state to update machine %v", goalMachine.ObjectMeta.Name)
