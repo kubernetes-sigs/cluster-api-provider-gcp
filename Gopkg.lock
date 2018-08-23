@@ -850,7 +850,8 @@
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "clusterctl/clusterdeployer",
-    "clusterctl/clusterdeployer/minikube",
+    "clusterctl/clusterdeployer/bootstrap/existing",
+    "clusterctl/clusterdeployer/bootstrap/minikube",
     "clusterctl/cmd",
     "clusterctl/providercomponents",
     "clusterctl/validation",
@@ -873,16 +874,17 @@
     "pkg/controller/machine",
     "pkg/controller/noderefutil",
     "pkg/controller/sharedinformers",
+    "pkg/deployer",
     "pkg/errors",
     "pkg/kubeadm",
     "pkg/test-cmd-runner",
     "pkg/util"
   ]
-  revision = "977b11a0e9006feac85090aa8ee32481f46e94e8"
+  revision = "3603557f635f6d0da0b96a035d618d2ecfcdf70f"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ed0fa8f4e3448a10cc6150c14d6062a6552a8c666d709f7e203d0a5dd66e4790"
+  inputs-digest = "4a87b531a49ecbb62c629a50efff6d8de84de9bd40c326160b4979ecfb8a8e76"
   solver-name = "gps-cdcl"
   solver-version = 1

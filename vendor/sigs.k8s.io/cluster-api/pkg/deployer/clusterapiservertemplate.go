@@ -14,8 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package clusterdeployer
+package deployer
 
+// ClusterAPIAPIServerConfigTemplate specifies the manifests for the clusterapi-apiserver
 const ClusterAPIAPIServerConfigTemplate = `
 apiVersion: apiregistration.k8s.io/v1beta1
 kind: APIService
@@ -70,6 +71,7 @@ spec:
     spec:
       nodeSelector:
         node-role.kubernetes.io/master: ""
+      serviceAccountName: apiserver
       tolerations:
       - effect: NoSchedule
         key: node-role.kubernetes.io/master
@@ -121,6 +123,25 @@ spec:
         hostPath:
           path: /etc/ssl/certs
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: apiserver
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: default:system:auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: apiserver
+  namespace: default
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -132,7 +153,7 @@ roleRef:
   name: extension-apiserver-authentication-reader
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: apiserver
   namespace: default
 ---
 apiVersion: apps/v1beta1

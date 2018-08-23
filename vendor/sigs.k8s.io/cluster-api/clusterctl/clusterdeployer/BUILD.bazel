@@ -4,8 +4,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "clientfactory.go",
-        "clusterapiserver.go",
-        "clusterapiservertemplate.go",
         "clusterclient.go",
         "clusterdeployer.go",
         "providercomponentsstorefactory.go",
@@ -19,12 +17,11 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/client-go/tools/clientcmd:go_default_library",
-        "//vendor/k8s.io/client-go/util/cert:go_default_library",
-        "//vendor/k8s.io/client-go/util/cert/triple:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/clusterctl/providercomponents:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/clientcmd:go_default_library",
+        "//vendor/sigs.k8s.io/cluster-api/pkg/deployer:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/util:go_default_library",
     ],
 )
