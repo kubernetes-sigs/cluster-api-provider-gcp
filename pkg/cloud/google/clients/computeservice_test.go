@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	compute "google.golang.org/api/compute/v1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/clients"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 )
 
 func TestImagesGet(t *testing.T) {

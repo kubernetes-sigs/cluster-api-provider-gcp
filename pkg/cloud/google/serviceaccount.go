@@ -21,7 +21,7 @@ import (
 	"os/exec"
 
 	"github.com/golang/glog"
-	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/cloud/google/gceproviderconfig/v1alpha1"
+	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/util"
 )

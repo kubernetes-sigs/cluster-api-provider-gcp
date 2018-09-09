@@ -21,7 +21,7 @@ import (
 	"text/template"
 
 	"fmt"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/machinesetup"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 

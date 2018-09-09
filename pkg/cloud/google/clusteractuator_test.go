@@ -21,7 +21,7 @@ import (
 
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
 	"sigs.k8s.io/cluster-api/pkg/controller/cluster"
 )
 

@@ -41,9 +41,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/clients"
-	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/cloud/google/gceproviderconfig/v1alpha1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/machinesetup"
+	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
 	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/cert"

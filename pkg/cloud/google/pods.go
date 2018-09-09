@@ -29,7 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/cert/triple"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/config"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/config"
 )
 
 var apiServerImage = "gcr.io/k8s-cluster-api/cluster-apiserver:0.0.5"

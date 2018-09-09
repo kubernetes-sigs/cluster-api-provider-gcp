@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/clients"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"testing"
 )
 

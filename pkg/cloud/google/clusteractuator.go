@@ -22,9 +22,9 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/clients"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/clients/errors"
-	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/cloud/google/gceproviderconfig/v1alpha1"
+	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	client "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1"
 )

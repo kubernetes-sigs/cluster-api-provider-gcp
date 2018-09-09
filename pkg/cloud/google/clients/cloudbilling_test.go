@@ -20,7 +20,7 @@ import (
 	"google.golang.org/api/cloudbilling/v1"
 	"net/http"
 	"net/http/httptest"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/google/clients"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"testing"
 )
 

@@ -15,6 +15,11 @@ required = [
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     ]
 
+[[constraint]]
+  name="sigs.k8s.io/cluster-api"
+  revision="68900e9e854738f794beb6abfaaf2e9cc5fb1b96"
+  source="https://github.com/pwittrock/cluster-api"
+
 [prune]
   go-tests = true
 
