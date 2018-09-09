@@ -19,10 +19,10 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"k8s.io/apiserver/pkg/util/logs"
-	"os"
 )
 
 var RootCmd = &cobra.Command{
@@ -54,5 +54,5 @@ func init() {
 	// Honor glog flags for verbosity control
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	logs.InitLogs()
+	InitLogs()
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2018 The Kubernetes authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,28 +17,22 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"log"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apiserver/pkg/endpoints/request"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apimachinery/pkg/runtime"
 
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster"
-	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 )
 
 // Finalizer is set on PreareForCreate callback
-const MachineFinalizer string = "machine.cluster.k8s.io"
+const MachineFinalizer = "machine.cluster.k8s.io"
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Machine
+// Machine is the Schema for the machines API
 // +k8s:openapi-gen=true
-// +resource:path=machines,strategy=MachineStrategy
+// +kubebuilder:subresource:status
 type Machine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -103,7 +97,7 @@ type MachineStatus struct {
 	//    so that if the structure of Node.Status.NodeInfo changes, only
 	//    machine controllers need to be updated, rather than every client
 	//    of the Machines API.
-	// 3) There is no other way simple way to check the ControlPlane
+	// 3) There is no other simple way to check the ControlPlane
 	//    version. A client would have to connect directly to the apiserver
 	//    running on the target node in order to find out its version.
 	// +optional
@@ -128,7 +122,7 @@ type MachineStatus struct {
 	// can be added as events to the Machine object and/or logged in the
 	// controller's output.
 	// +optional
-	ErrorReason *clustercommon.MachineStatusError `json:"errorReason,omitempty"`
+	ErrorReason *common.MachineStatusError `json:"errorReason,omitempty"`
 	// +optional
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 
@@ -141,6 +135,14 @@ type MachineStatus struct {
 	// Addresses is a list of addresses assigned to the machine. Queried from cloud provider, if available.
 	// +optional
 	Addresses []corev1.NodeAddress `json:"addresses,omitempty"`
+
+	// List of conditions synced from the node conditions of the corresponding node-object.
+	// Machine-controller is responsible for keeping conditions up-to-date.
+	// MachineSet controller will be taking these conditions as a signal to decide if
+	// machine is healthy or needs to be replaced.
+	// Refer: https://kubernetes.io/docs/concepts/architecture/nodes/#condition
+	// +optional
+	Conditions []corev1.NodeCondition `json:"conditions,omitempty"`
 }
 
 type MachineVersionInfo struct {
@@ -154,28 +156,15 @@ type MachineVersionInfo struct {
 	ControlPlane string `json:"controlPlane,omitempty"`
 }
 
-// Validate checks that an instance of Machine is well formed
-func (MachineStrategy) Validate(ctx request.Context, obj runtime.Object) field.ErrorList {
-	machine := obj.(*cluster.Machine)
-	log.Printf("Validating fields for Machine %s\n", machine.Name)
-	errors := field.ErrorList{}
-	// perform validation here and add to errors using field.Invalid
-	return errors
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// MachineList contains a list of Machine
+type MachineList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Machine `json:"items"`
 }
 
-// PrepareForCreate clears fields that are not allowed to be set by end users on creation.
-func (m MachineStrategy) PrepareForCreate(ctx request.Context, obj runtime.Object) {
-	// Invoke the parent implementation to strip the Status
-	m.DefaultStorageStrategy.PrepareForCreate(ctx, obj)
-
-	// Cast the element and set finalizer
-	o := obj.(*cluster.Machine)
-	o.ObjectMeta.Finalizers = append(o.ObjectMeta.Finalizers, MachineFinalizer)
-}
-
-// DefaultingFunction sets default Machine field values
-func (MachineSchemeFns) DefaultingFunction(o interface{}) {
-	obj := o.(*Machine)
-	// set default field values here
-	log.Printf("Defaulting fields for Machine %s\n", obj.Name)
+func init() {
+	SchemeBuilder.Register(&Machine{}, &MachineList{})
 }

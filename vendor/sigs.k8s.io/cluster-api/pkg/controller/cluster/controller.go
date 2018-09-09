@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2018 The Kubernetes authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,84 +17,104 @@ limitations under the License.
 package cluster
 
 import (
-	"github.com/kubernetes-incubator/apiserver-builder/pkg/builders"
+	"context"
 
 	"github.com/golang/glog"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
-	listers "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/controller/sharedinformers"
 	"sigs.k8s.io/cluster-api/pkg/util"
 )
 
-// +controller:group=cluster,version=v1alpha1,kind=Cluster,resource=clusters
-type ClusterControllerImpl struct {
-	builders.DefaultControllerFns
+var DefaultActuator Actuator
 
-	actuator Actuator
-
-	// clusterLister holds a lister that knows how to list Cluster from a cache
-	clusterLister listers.ClusterLister
-
-	kubernetesClientSet *kubernetes.Clientset
-	clientSet           clientset.Interface
+func AddWithActuator(mgr manager.Manager, actuator Actuator) error {
+	return add(mgr, newReconciler(mgr, actuator))
 }
 
-// Init initializes the controller and is called by the generated code
-// Register watches for additional resource types here.
-func (c *ClusterControllerImpl) Init(arguments sharedinformers.ControllerInitArguments, actuator Actuator) {
-	cInformer := arguments.GetSharedInformers().Factory.Cluster().V1alpha1().Clusters()
-	c.clusterLister = cInformer.Lister()
-	c.actuator = actuator
-	cs, err := clientset.NewForConfig(arguments.GetRestConfig())
-	if err != nil {
-		glog.Fatalf("error creating cluster client: %v", err)
-	}
-	c.clientSet = cs
-	c.kubernetesClientSet = arguments.GetSharedInformers().KubernetesClientSet
-
-	c.actuator = actuator
+// newReconciler returns a new reconcile.Reconciler
+func newReconciler(mgr manager.Manager, actuator Actuator) reconcile.Reconciler {
+	return &ReconcileCluster{Client: mgr.GetClient(), scheme: mgr.GetScheme(), actuator: actuator}
 }
 
-// Reconcile handles enqueued messages. The delete will be handled by finalizer.
-func (c *ClusterControllerImpl) Reconcile(cluster *clusterv1.Cluster) error {
-	// Deep-copy otherwise we are mutating our cache.
-	clusterCopy := cluster.DeepCopy()
-	name := clusterCopy.Name
-	glog.Infof("Running reconcile Cluster for %s\n", name)
-
-	if !clusterCopy.ObjectMeta.DeletionTimestamp.IsZero() {
-		// no-op if finalizer has been removed.
-		if !util.Contains(clusterCopy.ObjectMeta.Finalizers, clusterv1.ClusterFinalizer) {
-			glog.Infof("reconciling cluster object %v causes a no-op as there is no finalizer.", name)
-			return nil
-		}
-
-		glog.Infof("reconciling cluster object %v triggers delete.", name)
-		if err := c.actuator.Delete(clusterCopy); err != nil {
-			glog.Errorf("Error deleting cluster object %v; %v", name, err)
-			return err
-		}
-		// Remove finalizer on successful deletion.
-		glog.Infof("cluster object %v deletion successful, removing finalizer.", name)
-		clusterCopy.ObjectMeta.Finalizers = util.Filter(clusterCopy.ObjectMeta.Finalizers, clusterv1.ClusterFinalizer)
-		if _, err := c.clientSet.ClusterV1alpha1().Clusters(clusterCopy.Namespace).Update(clusterCopy); err != nil {
-			glog.Errorf("Error removing finalizer from cluster object %v; %v", name, err)
-			return err
-		}
-		return nil
-	}
-
-	glog.Infof("reconciling cluster object %v triggers idempotent reconcile.", name)
-	err := c.actuator.Reconcile(clusterCopy)
+// add adds a new Controller to mgr with r as the reconcile.Reconciler
+func add(mgr manager.Manager, r reconcile.Reconciler) error {
+	// Create a new controller
+	c, err := controller.New("cluster-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		glog.Errorf("Error reconciling cluster object %v; %v", name, err)
 		return err
 	}
+
+	// Watch for changes to Cluster
+	err = c.Watch(&source.Kind{Type: &clusterv1alpha1.Cluster{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (c *ClusterControllerImpl) Get(namespace, name string) (*clusterv1.Cluster, error) {
-	return c.clusterLister.Clusters(namespace).Get(name)
+var _ reconcile.Reconciler = &ReconcileCluster{}
+
+// ReconcileCluster reconciles a Cluster object
+type ReconcileCluster struct {
+	client.Client
+	scheme   *runtime.Scheme
+	actuator Actuator
+}
+
+// +kubebuilder:rbac:groups=cluster.k8s.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
+func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	cluster := &clusterv1alpha1.Cluster{}
+	err := r.Get(context.Background(), request.NamespacedName, cluster)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Object not found, return.  Created objects are automatically garbage collected.
+			// For additional cleanup logic use finalizers.
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
+	name := cluster.Name
+	glog.Infof("Running reconcile Cluster for %s\n", name)
+
+	if !cluster.ObjectMeta.DeletionTimestamp.IsZero() {
+		// no-op if finalizer has been removed.
+		if !util.Contains(cluster.ObjectMeta.Finalizers, clusterv1.ClusterFinalizer) {
+			glog.Infof("reconciling cluster object %v causes a no-op as there is no finalizer.", name)
+			return reconcile.Result{}, nil
+		}
+
+		glog.Infof("reconciling cluster object %v triggers delete.", name)
+		if err := r.actuator.Delete(cluster); err != nil {
+			glog.Errorf("Error deleting cluster object %v; %v", name, err)
+			return reconcile.Result{}, err
+		}
+		// Remove finalizer on successful deletion.
+		glog.Infof("cluster object %v deletion successful, removing finalizer.", name)
+		cluster.ObjectMeta.Finalizers = util.Filter(cluster.ObjectMeta.Finalizers, clusterv1.ClusterFinalizer)
+		if err := r.Client.Update(context.Background(), cluster); err != nil {
+			glog.Errorf("Error removing finalizer from cluster object %v; %v", name, err)
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	glog.Infof("reconciling cluster object %v triggers idempotent reconcile.", name)
+	err = r.actuator.Reconcile(cluster)
+	if err != nil {
+		glog.Errorf("Error reconciling cluster object %v; %v", name, err)
+		return reconcile.Result{}, err
+	}
+	return reconcile.Result{}, nil
 }
