@@ -1,0 +1,60 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: gcemachineproviderconfigs.gceproviderconfig.k8s.io
+spec:
+  group: gceproviderconfig.k8s.io
+  names:
+    kind: GCEMachineProviderConfig
+    plural: gcemachineproviderconfigs
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        disks:
+          items:
+            properties:
+              initializeParams:
+                properties:
+                  diskSizeGb:
+                    format: int64
+                    type: integer
+                  diskType:
+                    type: string
+                required:
+                - diskSizeGb
+                - diskType
+                type: object
+            required:
+            - initializeParams
+            type: object
+          type: array
+        kind:
+          type: string
+        machineType:
+          type: string
+        metadata:
+          type: object
+        os:
+          type: string
+        roles:
+          items:
+            type: string
+          type: array
+        zone:
+          type: string
+      required:
+      - zone
+      - machineType
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null
+  storedVersions: null

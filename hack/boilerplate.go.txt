@@ -13,20 +13,3 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-package options
-
-import (
-	"sigs.k8s.io/cluster-api/pkg/controller/config"
-)
-
-type ClusterControllerServer struct {
-	CommonConfig *config.Configuration
-}
-
-func NewClusterControllerServer() *ClusterControllerServer {
-	s := ClusterControllerServer{
-		CommonConfig: &config.ControllerConfig,
-	}
-	return &s
-}

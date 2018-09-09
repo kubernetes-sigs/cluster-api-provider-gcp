@@ -1,61 +1,52 @@
-# Copyright 2018 The Kubernetes Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-.PHONY: gendeepcopy
+# Image URL to use all building/pushing image targets
+IMG ?= controller:latest
 
-all: generate build images
+all: test manager
 
-.PHONY: depend
-depend:
-	dep version || go get -u github.com/golang/dep/cmd/dep
-	dep ensure -v
+# Run tests
+test: generate fmt vet manifests
+	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
-	# go libraries often ship BUILD and BUILD.bazel files, but they often don't work.
-	# We delete them and regenerate them
-	find vendor -name "BUILD" -delete
-	find vendor -name "BUILD.bazel" -delete
+# Build manager binary
+manager: generate fmt vet
+	go build -o bin/manager sigs.k8s.io/cluster-api-provider-gcp/cmd/manager
 
-	bazel run //:gazelle
+# Run against the configured Kubernetes cluster in ~/.kube/config
+run: generate fmt vet
+	go run ./cmd/manager/main.go
 
-depend-update: work
-	dep ensure -update
+# Install CRDs into a cluster
+install: manifests
+	kubectl apply -f config/crds
 
-generate: gendeepcopy
+# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+deploy: manifests
+	kubectl apply -f config/crds
+	kustomize build config/default | kubectl apply -f -
 
-gendeepcopy:
-	go build -o $$GOPATH/bin/deepcopy-gen sigs.k8s.io/cluster-api-provider-gcp/vendor/k8s.io/code-generator/cmd/deepcopy-gen
-	deepcopy-gen \
-	  -i ./cloud/google/gceproviderconfig,./cloud/google/gceproviderconfig/v1alpha1 \
-	  -O zz_generated.deepcopy \
-	  -h boilerplate.go.txt
+# Generate manifests e.g. CRD, RBAC etc.
+manifests:
+	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 
-build: depend
-	CGO_ENABLED=0 go install -a -ldflags '-extldflags "-static"' sigs.k8s.io/cluster-api-provider-gcp/cmd/gce-controller
-
-images: depend
-	$(MAKE) -C cmd/gce-controller image
-
-push: depend
-	$(MAKE) -C cmd/gce-controller push
-
-check: depend fmt vet
-
-test:
-	go test -race -cover ./cmd/... ./clusterctl/... ./cloud/...
-
+# Run go fmt against code
 fmt:
-	hack/verify-gofmt.sh
+	go fmt ./pkg/... ./cmd/...
 
+# Run go vet against code
 vet:
-	go vet ./...
+	go vet ./pkg/... ./cmd/...
+
+# Generate code
+generate:
+	go generate ./pkg/... ./cmd/...
+
+# Build the docker image
+docker-build: test
+	docker build . -t ${IMG}
+	@echo "updating kustomize image patch file for manager resource"
+	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
+
+# Push the docker image
+docker-push:
+	docker push ${IMG}

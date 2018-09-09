@@ -14,21 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package options
-
-import (
-	"sigs.k8s.io/cluster-api/pkg/controller/config"
-)
-
-type MachineControllerServer struct {
-	CommonConfig            *config.Configuration
-	MachineSetupConfigsPath string
-}
-
-func NewMachineControllerServer(machineSetupConfigsPath string) *MachineControllerServer {
-	s := MachineControllerServer{
-		CommonConfig:            &config.ControllerConfig,
-		MachineSetupConfigsPath: machineSetupConfigsPath,
-	}
-	return &s
-}
+// Package gceproviderconfig contains gceproviderconfig API versions
+package gceproviderconfig
