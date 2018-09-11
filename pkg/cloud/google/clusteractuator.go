@@ -18,15 +18,17 @@ package google
 
 import (
 	"fmt"
+
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
-	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
+
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	client "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
@@ -36,30 +38,22 @@ const (
 )
 
 type GCEClusterClient struct {
-	computeService         GCEClientComputeService
-	clusterClient          client.ClusterInterface
-	gceProviderConfigCodec *gceconfigv1.GCEProviderConfigCodec
+	computeService GCEClientComputeService
+	client         client.Client
 }
 
 type ClusterActuatorParams struct {
 	ComputeService GCEClientComputeService
-	ClusterClient  client.ClusterInterface
 }
 
-func NewClusterActuator(params ClusterActuatorParams) (*GCEClusterClient, error) {
+func NewClusterActuator(m manager.Manager, params ClusterActuatorParams) (*GCEClusterClient, error) {
 	computeService, err := getOrNewComputeServiceForCluster(params)
 	if err != nil {
 		return nil, err
 	}
-	codec, err := gceconfigv1.NewCodec()
-	if err != nil {
-		return nil, err
-	}
-
 	return &GCEClusterClient{
-		computeService:         computeService,
-		clusterClient:          params.ClusterClient,
-		gceProviderConfigCodec: codec,
+		computeService: computeService,
+		client:         m.GetClient(),
 	}, nil
 }
 
@@ -131,7 +125,7 @@ func (gce *GCEClusterClient) createFirewallRuleIfNotExists(cluster *clusterv1.Cl
 		// The firewall rule was already created.
 		return nil
 	}
-	clusterConfig, err := gce.clusterproviderconfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("error parsing cluster provider config: %v", err)
 	}
@@ -155,8 +149,7 @@ func (gce *GCEClusterClient) createFirewallRuleIfNotExists(cluster *clusterv1.Cl
 		cluster.ObjectMeta.Annotations = make(map[string]string)
 	}
 	cluster.ObjectMeta.Annotations[firewallRuleAnnotationPrefix+firewallRule.Name] = "true"
-	_, err = gce.clusterClient.Update(cluster)
-	if err != nil {
+	if err := gce.client.Update(context.Background(), cluster); err != nil {
 		return fmt.Errorf("error updating cluster annotations %v", err)
 	}
 	return nil
@@ -172,7 +165,7 @@ func (gce *GCEClusterClient) containsFirewallRule(firewallRules *compute.Firewal
 }
 
 func (gce *GCEClusterClient) deleteFirewallRule(cluster *clusterv1.Cluster, ruleName string) error {
-	clusterConfig, err := gce.clusterproviderconfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("error parsing cluster provider config: %v", err)
 	}
@@ -184,13 +177,4 @@ func (gce *GCEClusterClient) deleteFirewallRule(cluster *clusterv1.Cluster, rule
 		return fmt.Errorf("error deleting firewall rule: %v", err)
 	}
 	return gce.computeService.WaitForOperation(clusterConfig.Project, op)
-}
-
-func (gce *GCEClusterClient) clusterproviderconfig(providerConfig clusterv1.ProviderConfig) (*gceconfigv1.GCEClusterProviderConfig, error) {
-	var config gceconfigv1.GCEClusterProviderConfig
-	err := gce.gceProviderConfigCodec.DecodeFromProviderConfig(providerConfig, &config)
-	if err != nil {
-		return nil, err
-	}
-	return &config, nil
 }

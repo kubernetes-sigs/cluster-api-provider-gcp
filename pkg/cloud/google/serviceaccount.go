@@ -21,7 +21,6 @@ import (
 	"os/exec"
 
 	"github.com/golang/glog"
-	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/util"
 )
@@ -63,13 +62,10 @@ var (
 )
 
 type ServiceAccountService struct {
-	gceProviderConfigCodec *gceconfigv1.GCEProviderConfigCodec
 }
 
-func NewServiceAccountService(codec *gceconfigv1.GCEProviderConfigCodec) *ServiceAccountService {
-	return &ServiceAccountService{
-		gceProviderConfigCodec: codec,
-	}
+func NewServiceAccountService() *ServiceAccountService {
+	return &ServiceAccountService{}
 }
 
 // Returns the email address of the service account that should be used
@@ -144,7 +140,7 @@ func (sas *ServiceAccountService) createSecretForServiceAccountKey(accountId str
 // of the created account and the project it belongs to.
 func (sas *ServiceAccountService) createServiceAccount(serviceAccountPrefix string, roles []string, cluster *clusterv1.Cluster) (string, string, error) {
 
-	config, err := sas.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	config, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return "", "", err
 	}
@@ -190,8 +186,7 @@ func (sas *ServiceAccountService) DeleteMachineControllerServiceAccount(cluster 
 }
 
 func (sas *ServiceAccountService) deleteServiceAccount(serviceAccountPrefix string, roles []string, cluster *clusterv1.Cluster) error {
-
-	config, err := sas.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	config, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		glog.Info("cannot parse cluster providerConfig field")
 		return nil

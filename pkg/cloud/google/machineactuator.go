@@ -37,20 +37,21 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/ghodss/yaml"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
 	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/cert"
-	client "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1"
+	clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1"
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
 	"sigs.k8s.io/cluster-api/pkg/kubeadm"
 	"sigs.k8s.io/cluster-api/pkg/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -72,12 +73,15 @@ const (
 	noEventAction     = ""
 )
 
+var MachineActuator *GCEClient
+
 func init() {
-	actuator, err := NewMachineActuator(MachineActuatorParams{})
+	var err error
+	MachineActuator, err = NewMachineActuator(MachineActuatorParams{})
 	if err != nil {
 		glog.Fatalf("Error creating cluster provisioner for google : %v", err)
 	}
-	clustercommon.RegisterClusterProvisioner(ProviderName, actuator)
+	clustercommon.RegisterClusterProvisioner(ProviderName, MachineActuator)
 }
 
 type SshCreds struct {
@@ -96,13 +100,11 @@ type GCEClientMachineSetupConfigGetter interface {
 type GCEClient struct {
 	certificateAuthority     *cert.CertificateAuthority
 	computeService           GCEClientComputeService
-	gceProviderConfigCodec   *gceconfigv1.GCEProviderConfigCodec
 	kubeadm                  GCEClientKubeadm
-	scheme                   *runtime.Scheme
-	codecFactory             *serializer.CodecFactory
 	serviceAccountService    *ServiceAccountService
 	sshCreds                 SshCreds
-	v1Alpha1Client           client.ClusterV1alpha1Interface
+	client                   client.Client
+	v1Alpha1Client           clientset.ClusterV1alpha1Interface
 	machineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	eventRecorder            record.EventRecorder
 }
@@ -111,7 +113,7 @@ type MachineActuatorParams struct {
 	CertificateAuthority     *cert.CertificateAuthority
 	ComputeService           GCEClientComputeService
 	Kubeadm                  GCEClientKubeadm
-	V1Alpha1Client           client.ClusterV1alpha1Interface
+	V1Alpha1Client           clientset.ClusterV1alpha1Interface
 	MachineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	EventRecorder            record.EventRecorder
 }
@@ -122,16 +124,7 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 		return nil, err
 	}
 
-	scheme, err := gceconfigv1.NewScheme()
-	if err != nil {
-		return nil, err
-	}
-	codec, err := gceconfigv1.NewCodec()
-	if err != nil {
-		return nil, err
-	}
-
-	serviceAccountService := NewServiceAccountService(codec)
+	serviceAccountService := NewServiceAccountService()
 
 	// Only applicable if it's running inside machine controller pod.
 	var privateKeyPath, user string
@@ -147,12 +140,10 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 	}
 
 	return &GCEClient{
-		certificateAuthority:   params.CertificateAuthority,
-		computeService:         computeService,
-		kubeadm:                getOrNewKubeadm(params),
-		scheme:                 scheme,
-		gceProviderConfigCodec: codec,
-		serviceAccountService:  serviceAccountService,
+		certificateAuthority:  params.CertificateAuthority,
+		computeService:        computeService,
+		kubeadm:               getOrNewKubeadm(params),
+		serviceAccountService: serviceAccountService,
 		sshCreds: SshCreds{
 			privateKeyPath: privateKeyPath,
 			user:           user,
@@ -160,6 +151,44 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 		v1Alpha1Client:           params.V1Alpha1Client,
 		machineSetupConfigGetter: params.MachineSetupConfigGetter,
 		eventRecorder:            params.EventRecorder,
+	}, nil
+}
+
+// TODO move the following four functions to a separate file?
+func clusterProviderFromProviderConfig(providerConfig clusterv1.ProviderConfig) (*gceconfigv1.GCEClusterProviderConfig, error) {
+	var config gceconfigv1.GCEClusterProviderConfig
+	if err := yaml.Unmarshal(providerConfig.Value.Raw, &config); err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
+func machineProviderFromProviderConfig(providerConfig clusterv1.ProviderConfig) (*gceconfigv1.GCEMachineProviderConfig, error) {
+	var config gceconfigv1.GCEMachineProviderConfig
+	if err := yaml.Unmarshal(providerConfig.Value.Raw, &config); err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
+// TODO these two funcs shouldn't be exported, but need to be for testing...
+func ProviderConfigFromCluster(in *gceconfigv1.GCEClusterProviderConfig) (*clusterv1.ProviderConfig, error) {
+	mpc, err := yaml.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	return &clusterv1.ProviderConfig{
+		Value: &runtime.RawExtension{Raw: mpc},
+	}, nil
+}
+
+func ProviderConfigFromMachine(in *gceconfigv1.GCEMachineProviderConfig) (*clusterv1.ProviderConfig, error) {
+	mpc, err := yaml.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	return &clusterv1.ProviderConfig{
+		Value: &runtime.RawExtension{Raw: mpc},
 	}, nil
 }
 
@@ -218,12 +247,12 @@ func (gce *GCEClient) Create(cluster *clusterv1.Cluster, machine *clusterv1.Mach
 	if gce.machineSetupConfigGetter == nil {
 		return errors.New("a valid machineSetupConfigGetter is required")
 	}
-	machineConfig, err := gce.machineproviderconfig(machine.Spec.ProviderConfig)
+	machineConfig, err := machineProviderFromProviderConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return gce.handleMachineError(machine, apierrors.InvalidMachineConfiguration(
 			"Cannot unmarshal machine's providerConfig field: %v", err), createEventAction)
 	}
-	clusterConfig, err := gce.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return gce.handleMachineError(machine, apierrors.InvalidMachineConfiguration(
 			"Cannot unmarshal cluster's providerConfig field: %v", err), createEventAction)
@@ -333,13 +362,13 @@ func (gce *GCEClient) Delete(cluster *clusterv1.Cluster, machine *clusterv1.Mach
 		return nil
 	}
 
-	machineConfig, err := gce.machineproviderconfig(machine.Spec.ProviderConfig)
+	machineConfig, err := machineProviderFromProviderConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return gce.handleMachineError(machine,
 			apierrors.InvalidMachineConfiguration("Cannot unmarshal machine's providerConfig field: %v", err), deleteEventAction)
 	}
 
-	clusterConfig, err := gce.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return gce.handleMachineError(machine,
 			apierrors.InvalidMachineConfiguration("Cannot unmarshal cluster's providerConfig field: %v", err), deleteEventAction)
@@ -389,7 +418,7 @@ func (gce *GCEClient) PostCreate(cluster *clusterv1.Cluster) error {
 		return fmt.Errorf("error creating service account for ingress controller: %v", err)
 	}
 
-	clusterConfig, err := gce.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("Cannot unmarshal cluster's providerConfig field: %v", err)
 	}
@@ -419,7 +448,7 @@ func (gce *GCEClient) PostDelete(cluster *clusterv1.Cluster) error {
 
 func (gce *GCEClient) Update(cluster *clusterv1.Cluster, goalMachine *clusterv1.Machine) error {
 	// Before updating, do some basic validation of the object first.
-	goalConfig, err := gce.machineproviderconfig(goalMachine.Spec.ProviderConfig)
+	goalConfig, err := machineProviderFromProviderConfig(goalMachine.Spec.ProviderConfig)
 	if err != nil {
 		return gce.handleMachineError(goalMachine,
 			apierrors.InvalidMachineConfiguration("Cannot unmarshal machine's providerConfig field: %v", err), noEventAction)
@@ -447,7 +476,7 @@ func (gce *GCEClient) Update(cluster *clusterv1.Cluster, goalMachine *clusterv1.
 		}
 	}
 
-	currentConfig, err := gce.machineproviderconfig(currentMachine.Spec.ProviderConfig)
+	currentConfig, err := machineProviderFromProviderConfig(currentMachine.Spec.ProviderConfig)
 	if err != nil {
 		return gce.handleMachineError(currentMachine, apierrors.InvalidMachineConfiguration(
 			"Cannot unmarshal machine's providerConfig field: %v", err), noEventAction)
@@ -491,12 +520,12 @@ func (gce *GCEClient) Exists(cluster *clusterv1.Cluster, machine *clusterv1.Mach
 }
 
 func (gce *GCEClient) GetIP(cluster *clusterv1.Cluster, machine *clusterv1.Machine) (string, error) {
-	machineConfig, err := gce.machineproviderconfig(machine.Spec.ProviderConfig)
+	machineConfig, err := machineProviderFromProviderConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return "", err
 	}
 
-	clusterConfig, err := gce.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return "", err
 	}
@@ -519,12 +548,12 @@ func (gce *GCEClient) GetIP(cluster *clusterv1.Cluster, machine *clusterv1.Machi
 }
 
 func (gce *GCEClient) GetKubeConfig(cluster *clusterv1.Cluster, master *clusterv1.Machine) (string, error) {
-	machineConfig, err := gce.machineproviderconfig(master.Spec.ProviderConfig)
+	machineConfig, err := machineProviderFromProviderConfig(master.Spec.ProviderConfig)
 	if err != nil {
 		return "", err
 	}
 
-	clusterConfig, err := gce.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return "", err
 	}
@@ -546,7 +575,7 @@ func isMaster(roles []gceconfigv1.MachineRole) bool {
 }
 
 func (gce *GCEClient) updateAnnotations(cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	machineConfig, err := gce.machineproviderconfig(machine.Spec.ProviderConfig)
+	machineConfig, err := machineProviderFromProviderConfig(machine.Spec.ProviderConfig)
 	name := machine.ObjectMeta.Name
 	zone := machineConfig.Zone
 	if err != nil {
@@ -554,7 +583,7 @@ func (gce *GCEClient) updateAnnotations(cluster *clusterv1.Cluster, machine *clu
 			apierrors.InvalidMachineConfiguration("Cannot unmarshal machine's providerConfig field: %v", err), noEventAction)
 	}
 
-	clusterConfig, err := gce.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	project := clusterConfig.Project
 	if err != nil {
 		return gce.handleMachineError(machine,
@@ -600,12 +629,12 @@ func (gce *GCEClient) instanceIfExists(cluster *clusterv1.Cluster, machine *clus
 	}
 
 	// Get the VM via specified location and name
-	machineConfig, err := gce.machineproviderconfig(identifyingMachine.Spec.ProviderConfig)
+	machineConfig, err := machineProviderFromProviderConfig(identifyingMachine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	clusterConfig, err := gce.gceProviderConfigCodec.ClusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -621,14 +650,11 @@ func (gce *GCEClient) instanceIfExists(cluster *clusterv1.Cluster, machine *clus
 	return instance, nil
 }
 
+/*
 func (gce *GCEClient) machineproviderconfig(providerConfig clusterv1.ProviderConfig) (*gceconfigv1.GCEMachineProviderConfig, error) {
-	var config gceconfigv1.GCEMachineProviderConfig
-	err := gce.gceProviderConfigCodec.DecodeFromProviderConfig(providerConfig, &config)
-	if err != nil {
-		return nil, err
-	}
-	return &config, nil
+	return machineProviderFromProviderConfig(providerConfig)
 }
+*/
 
 func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine *clusterv1.Machine, newMachine *clusterv1.Machine) error {
 	if oldMachine.Spec.Versions.ControlPlane != newMachine.Spec.Versions.ControlPlane {

@@ -20,9 +20,9 @@ import (
 	"bytes"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/util"
 )
@@ -40,7 +40,7 @@ func (gce *GCEClient) instanceStatus(machine *clusterv1.Machine) (instanceStatus
 	if gce.v1Alpha1Client == nil {
 		return nil, nil
 	}
-	currentMachine, err := util.GetMachineIfExists(gce.v1Alpha1Client.Machines(machine.Namespace), machine.ObjectMeta.Name)
+	currentMachine, err := util.GetMachineIfExists(gce.client, machine.ObjectMeta.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (gce *GCEClient) updateInstanceStatus(machine *clusterv1.Machine) error {
 		return nil
 	}
 	status := instanceStatus(machine)
-	currentMachine, err := util.GetMachineIfExists(gce.v1Alpha1Client.Machines(machine.Namespace), machine.ObjectMeta.Name)
+	currentMachine, err := util.GetMachineIfExists(gce.client, machine.ObjectMeta.Name)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,9 @@ func (gce *GCEClient) machineInstanceStatus(machine *clusterv1.Machine) (instanc
 		return nil, nil
 	}
 
-	serializer := json.NewSerializer(json.DefaultMetaFactory, gce.scheme, gce.scheme, false)
+	// TODO do we need to pass in the creater / typer args?
+	// See https://github.com/kubernetes/apimachinery/blob/master/pkg/runtime/serializer/json/json.go#L143-L150
+	serializer := json.NewSerializer(json.DefaultMetaFactory, nil, nil, false)
 	var status clusterv1.Machine
 	_, _, err := serializer.Decode([]byte(a), &schema.GroupVersionKind{Group: "", Version: "cluster.k8s.io/v1alpha1", Kind: "Machine"}, &status)
 	if err != nil {
@@ -105,7 +107,9 @@ func (gce *GCEClient) setMachineInstanceStatus(machine *clusterv1.Machine, statu
 	// Avoid status within status within status ...
 	status.ObjectMeta.Annotations[InstanceStatusAnnotationKey] = ""
 
-	serializer := json.NewSerializer(json.DefaultMetaFactory, gce.scheme, gce.scheme, false)
+	// TODO do we need to pass in the creater / typer args?
+	// See https://github.com/kubernetes/apimachinery/blob/master/pkg/runtime/serializer/json/json.go#L143-L150
+	serializer := json.NewSerializer(json.DefaultMetaFactory, nil, nil, false)
 	b := []byte{}
 	buff := bytes.NewBuffer(b)
 	err := serializer.Encode((*clusterv1.Machine)(status), buff)

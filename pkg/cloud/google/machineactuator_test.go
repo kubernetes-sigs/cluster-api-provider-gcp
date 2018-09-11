@@ -311,11 +311,7 @@ func (cw *TestMachineSetupConfigWatcher) GetMachineSetupConfig() (machinesetup.M
 }
 
 func newMachine(t *testing.T, gceProviderConfig gceconfigv1.GCEMachineProviderConfig) *v1alpha1.Machine {
-	gceProviderConfigCodec, err := gceconfigv1.NewCodec()
-	if err != nil {
-		t.Fatalf("unable to create GCE provider config codec: %v", err)
-	}
-	providerConfig, err := gceProviderConfigCodec.EncodeToProviderConfig(&gceProviderConfig)
+	providerConfig, err := google.ProviderConfigFromMachine(&gceProviderConfig)
 	if err != nil {
 		t.Fatalf("unable to encode provider config: %v", err)
 	}
@@ -357,12 +353,8 @@ func newGCEClusterProviderConfigFixture() gceconfigv1.GCEClusterProviderConfig {
 }
 
 func newDefaultClusterFixture(t *testing.T) *v1alpha1.Cluster {
-	gceProviderConfigCodec, err := gceconfigv1.NewCodec()
-	if err != nil {
-		t.Fatalf("unable to create GCE provider config codec: %v", err)
-	}
 	gceProviderConfig := newGCEClusterProviderConfigFixture()
-	providerConfig, err := gceProviderConfigCodec.EncodeToProviderConfig(&gceProviderConfig)
+	providerConfig, err := google.ProviderConfigFromCluster(&gceProviderConfig)
 	if err != nil {
 		t.Fatalf("unable to encode provider config: %v", err)
 	}
