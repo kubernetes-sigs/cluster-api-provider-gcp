@@ -103,7 +103,7 @@ type ReconcileMachineSet struct {
 func (r *ReconcileMachineSet) MachineSetToMachines(o handler.MapObject) []reconcile.Request {
 	result := []reconcile.Request{}
 	m := &clusterv1alpha1.Machine{}
-	key := client.ObjectKey{Namespace: o.Meta.GetNamespace(), Name: o.Meta.GetNamespace()}
+	key := client.ObjectKey{Namespace: o.Meta.GetNamespace(), Name: o.Meta.GetName()}
 	err := r.Client.Get(context.Background(), key, m)
 	if err != nil {
 		glog.Errorf("Unable to retrieve Machine %v from store: %v", key, err)
@@ -187,8 +187,10 @@ func (r *ReconcileMachineSet) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		return reconcile.Result{}, fmt.Errorf("failed to update machine set status. %v", err)
 	}
-	if updatedMS.Spec.Replicas == nil {
-		return reconcile.Result{}, fmt.Errorf("the Replicas field in Spec for machineset %v is nil, this should not be allowed.", ms.Name)
+
+	var replicas int32
+	if updatedMS.Spec.Replicas != nil {
+		replicas = *updatedMS.Spec.Replicas
 	}
 
 	// Resync the MachineSet after MinReadySeconds as a last line of defense to guard against clock-skew.
@@ -199,8 +201,8 @@ func (r *ReconcileMachineSet) Reconcile(request reconcile.Request) (reconcile.Re
 	// To avoid an available replica stuck in the ready state, we force a reconcile after MinReadySeconds,
 	// at which point it should confirm any available replica to be available.
 	if syncErr == nil && updatedMS.Spec.MinReadySeconds > 0 &&
-		updatedMS.Status.ReadyReplicas == *(updatedMS.Spec.Replicas) &&
-		updatedMS.Status.AvailableReplicas != *(updatedMS.Spec.Replicas) {
+		updatedMS.Status.ReadyReplicas == replicas &&
+		updatedMS.Status.AvailableReplicas != replicas {
 
 		return reconcile.Result{Requeue: true}, nil
 	}
@@ -287,6 +289,7 @@ func (c *ReconcileMachineSet) createMachine(machineSet *clusterv1alpha1.MachineS
 	}
 	machine.ObjectMeta.GenerateName = fmt.Sprintf("%s-", machineSet.Name)
 	machine.ObjectMeta.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machineSet, controllerKind)}
+	machine.Namespace = machineSet.Namespace
 
 	return machine
 }

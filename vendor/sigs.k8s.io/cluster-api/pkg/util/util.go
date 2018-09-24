@@ -96,7 +96,7 @@ func GetDefaultKubeConfigPath() string {
 	return fmt.Sprintf("%s/config", localDir)
 }
 
-func GetMachineIfExists(c client.Client, name string) (*clusterv1.Machine, error) {
+func GetMachineIfExists(c client.Client, namespace, name string) (*clusterv1.Machine, error) {
 	if c == nil {
 		// Being called before k8s is setup as part of master VM creation
 		return nil, nil
@@ -104,7 +104,7 @@ func GetMachineIfExists(c client.Client, name string) (*clusterv1.Machine, error
 
 	// Machines are identified by name
 	machine := &clusterv1.Machine{}
-	err := c.Get(context.Background(), client.ObjectKey{Namespace: "", Name: name}, machine)
+	err := c.Get(context.Background(), client.ObjectKey{Namespace: namespace, Name: name}, machine)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil

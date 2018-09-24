@@ -92,7 +92,6 @@ func updateMachineSetStatus(c client.Client, ms *v1alpha1.MachineSet, newStatus 
 	newStatus.ObservedGeneration = ms.Generation
 
 	var getErr, updateErr error
-	var updatedMS *v1alpha1.MachineSet
 	for i := 0; ; i++ {
 		glog.V(4).Infof(fmt.Sprintf("Updating status for %v: %s/%s, ", ms.Kind, ms.Namespace, ms.Name) +
 			fmt.Sprintf("replicas %d->%d (need %d), ", ms.Status.Replicas, newStatus.Replicas, *(ms.Spec.Replicas)) +
@@ -104,7 +103,7 @@ func updateMachineSetStatus(c client.Client, ms *v1alpha1.MachineSet, newStatus 
 		ms.Status = newStatus
 		updateErr = c.Status().Update(context.Background(), ms)
 		if updateErr == nil {
-			return updatedMS, nil
+			return ms, nil
 		}
 		// Stop retrying if we exceed statusUpdateRetries - the machineSet will be requeued with a rate limit.
 		if i >= statusUpdateRetries {
