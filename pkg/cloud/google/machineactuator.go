@@ -47,7 +47,6 @@ import (
 	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/cert"
-	clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1"
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
 	"sigs.k8s.io/cluster-api/pkg/kubeadm"
 	"sigs.k8s.io/cluster-api/pkg/util"
@@ -104,7 +103,6 @@ type GCEClient struct {
 	serviceAccountService    *ServiceAccountService
 	sshCreds                 SshCreds
 	client                   client.Client
-	v1Alpha1Client           clientset.ClusterV1alpha1Interface
 	machineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	eventRecorder            record.EventRecorder
 }
@@ -113,7 +111,7 @@ type MachineActuatorParams struct {
 	CertificateAuthority     *cert.CertificateAuthority
 	ComputeService           GCEClientComputeService
 	Kubeadm                  GCEClientKubeadm
-	V1Alpha1Client           clientset.ClusterV1alpha1Interface
+	client                   client.Client
 	MachineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	EventRecorder            record.EventRecorder
 }
@@ -148,7 +146,7 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 			privateKeyPath: privateKeyPath,
 			user:           user,
 		},
-		v1Alpha1Client:           params.V1Alpha1Client,
+		client: params.client,
 		machineSetupConfigGetter: params.MachineSetupConfigGetter,
 		eventRecorder:            params.EventRecorder,
 	}, nil
@@ -292,7 +290,7 @@ func (gce *GCEClient) Create(cluster *clusterv1.Cluster, machine *clusterv1.Mach
 
 	if instance == nil {
 		labels := map[string]string{}
-		if gce.v1Alpha1Client == nil {
+		if gce.client == nil {
 			labels[BootstrapLabelKey] = "true"
 		}
 
@@ -341,7 +339,7 @@ func (gce *GCEClient) Create(cluster *clusterv1.Cluster, machine *clusterv1.Mach
 		gce.eventRecorder.Eventf(machine, corev1.EventTypeNormal, "Created", "Created Machine %v", machine.Name)
 		// If we have a v1Alpha1Client, then annotate the machine so that we
 		// remember exactly what VM we created for it.
-		if gce.v1Alpha1Client != nil {
+		if gce.client != nil {
 			return gce.updateAnnotations(cluster, machine)
 		}
 	} else {
@@ -596,12 +594,10 @@ func (gce *GCEClient) updateAnnotations(cluster *clusterv1.Cluster, machine *clu
 	machine.ObjectMeta.Annotations[ProjectAnnotationKey] = project
 	machine.ObjectMeta.Annotations[ZoneAnnotationKey] = zone
 	machine.ObjectMeta.Annotations[NameAnnotationKey] = name
-	_, err = gce.v1Alpha1Client.Machines(machine.Namespace).Update(machine)
-	if err != nil {
+	if err := gce.client.Update(context.Background(), machine); err != nil {
 		return err
 	}
-	err = gce.updateInstanceStatus(machine)
-	return err
+	return gce.updateInstanceStatus(machine)
 }
 
 // The two machines differ in a way that requires an update
@@ -712,12 +708,12 @@ func (gce *GCEClient) validateMachine(machine *clusterv1.Machine, config *gcecon
 // cluster installation, it will operate as a no-op. It also returns the
 // original error for convenience, so callers can do "return handleMachineError(...)".
 func (gce *GCEClient) handleMachineError(machine *clusterv1.Machine, err *apierrors.MachineError, eventAction string) error {
-	if gce.v1Alpha1Client != nil {
+	if gce.client != nil {
 		reason := err.Reason
 		message := err.Message
 		machine.Status.ErrorReason = &reason
 		machine.Status.ErrorMessage = &message
-		gce.v1Alpha1Client.Machines(machine.Namespace).UpdateStatus(machine)
+		panic("UpdateStatus not implemented")
 	}
 
 	if eventAction != noEventAction {

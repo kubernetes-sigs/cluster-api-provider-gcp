@@ -40,6 +40,10 @@ type metadataParams struct {
 }
 
 func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *machinesetup.Metadata) (map[string]string, error) {
+	var master string
+	if len(cluster.Status.APIEndpoints) != 0 {
+		master = getEndpoint(cluster.Status.APIEndpoints[0])
+	}
 	params := metadataParams{
 		Token:          token,
 		Cluster:        cluster,
@@ -48,7 +52,7 @@ func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.M
 		Metadata:       metadata,
 		PodCIDR:        getSubnet(cluster.Spec.ClusterNetwork.Pods),
 		ServiceCIDR:    getSubnet(cluster.Spec.ClusterNetwork.Services),
-		MasterEndpoint: getEndpoint(cluster.Status.APIEndpoints[0]),
+		MasterEndpoint: master,
 	}
 
 	nodeMetadata := map[string]string{}

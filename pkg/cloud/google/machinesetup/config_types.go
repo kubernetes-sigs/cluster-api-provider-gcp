@@ -75,7 +75,7 @@ type ConfigParams struct {
 
 func NewConfigWatch(path string) (*ConfigWatch, error) {
 	if _, err := os.Stat(path); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading %s: %v", path, err)
 	}
 	return &ConfigWatch{path: path}, nil
 }

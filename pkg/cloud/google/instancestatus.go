@@ -19,6 +19,7 @@ package google
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/net/context"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
@@ -37,10 +38,10 @@ type instanceStatus *clusterv1.Machine
 
 // Get the status of the instance identified by the given machine
 func (gce *GCEClient) instanceStatus(machine *clusterv1.Machine) (instanceStatus, error) {
-	if gce.v1Alpha1Client == nil {
+	if gce.client == nil {
 		return nil, nil
 	}
-	currentMachine, err := util.GetMachineIfExists(gce.client, machine.ObjectMeta.Name)
+	currentMachine, err := util.GetMachineIfExists(gce.client, machine.ObjectMeta.Namespace, machine.ObjectMeta.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -54,11 +55,11 @@ func (gce *GCEClient) instanceStatus(machine *clusterv1.Machine) (instanceStatus
 
 // Sets the status of the instance identified by the given machine to the given machine
 func (gce *GCEClient) updateInstanceStatus(machine *clusterv1.Machine) error {
-	if gce.v1Alpha1Client == nil {
+	if gce.client == nil {
 		return nil
 	}
 	status := instanceStatus(machine)
-	currentMachine, err := util.GetMachineIfExists(gce.client, machine.ObjectMeta.Name)
+	currentMachine, err := util.GetMachineIfExists(gce.client, machine.ObjectMeta.Namespace, machine.ObjectMeta.Name)
 	if err != nil {
 		return err
 	}
@@ -73,8 +74,7 @@ func (gce *GCEClient) updateInstanceStatus(machine *clusterv1.Machine) error {
 		return err
 	}
 
-	_, err = gce.v1Alpha1Client.Machines(machine.Namespace).Update(m)
-	return err
+	return gce.client.Update(context.Background(), m)
 }
 
 // Gets the state of the instance stored on the given machine CRD
