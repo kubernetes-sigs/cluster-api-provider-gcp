@@ -41,10 +41,26 @@ spec:
         controller-tools.k8s.io: "1.0"
     spec:
       containers:
-      - command:
-        - /root/manager
-        image: controller:latest
-        name: manager
+      - name: manager
+        image: SET_BY_PATCH
+        command:
+        - "/root/manager"
+        args:
+        - "-logtostderr=true"
+        - "-stderrthreshold=INFO"
+#        - "--kubeconfig=/etc/kubernetes/admin.conf"
+#        - "--machinesetup=/etc/machinesetup/machine_setup_configs.yaml"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kubernetes
+        - name: certs
+          mountPath: /etc/ssl/certs
+        - name: credentials
+          mountPath: /etc/credentials
+        - name: sshkeys
+          mountPath: /etc/sshkeys
+        - name: machine-setup
+          mountPath: /etc/machinesetup
         resources:
           limits:
             cpu: 100m
@@ -52,4 +68,28 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
+        env:
+          - name: GOOGLE_APPLICATION_CREDENTIALS
+            value: /etc/credentials/service-account.json
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+      volumes:
+      - name: config
+        hostPath:
+          path: /etc/kubernetes
+      - name: certs
+        hostPath:
+          path: /etc/ssl/certs
+      - name: sshkeys
+        secret:
+          secretName: machine-controller-sshkeys
+          defaultMode: 256
+      - name: credentials
+        secret:
+          secretName: machine-controller-credential
+      - name: machine-setup
+        configMap:
+          name: machine-setup
       terminationGracePeriodSeconds: 10

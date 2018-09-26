@@ -1,12 +1,12 @@
 # Adds namespace to all resources.
-namespace: cluster-api-provider-gcp-system
+namespace: gcp-provider-system
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
-namePrefix: cluster-api-provider-gcp-
+namePrefix: gcp-provider-
 
 # Labels to add to all resources and selectors.
 #commonLabels:
@@ -18,8 +18,28 @@ namePrefix: cluster-api-provider-gcp-
 # YAML string, with resources separated by document
 # markers ("---").
 resources:
-- ../rbac/*.yaml
-- ../manager/*.yaml
+- ../crds/gceproviderconfig_v1alpha1_gceclusterproviderconfig.yaml
+- ../crds/gceproviderconfig_v1alpha1_gcemachineproviderconfig.yaml
+- ../rbac/rbac_role.yaml
+- ../rbac/rbac_role_binding.yaml
+- ../manager/manager.yaml
 
 patches:
-- manager_image_patch.yaml
+- gcp_manager_image_patch.yaml
+
+secretGenerator:
+- name: machine-controller-sshkeys
+  commands:
+    user: "cat ../out/user.txt"
+    private: "cat ../out/machine-controller-key"
+    public: "cat ../out/machine-controller-key.pub"
+  type: Opaque
+- name: machine-controller-credential
+  commands:
+    service-account.json: "cat ../out/machine-controller-serviceaccount.json"
+  type: Opaque
+
+configMapGenerator:
+- name: machine-setup
+  files:
+  - "../out/machine_setup_configs.yaml"
