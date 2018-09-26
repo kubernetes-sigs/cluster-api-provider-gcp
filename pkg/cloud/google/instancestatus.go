@@ -19,11 +19,10 @@ package google
 import (
 	"bytes"
 	"fmt"
+
 	"golang.org/x/net/context"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/util"
 )
@@ -90,11 +89,11 @@ func (gce *GCEClient) machineInstanceStatus(machine *clusterv1.Machine) (instanc
 		return nil, nil
 	}
 
-	// TODO do we need to pass in the creater / typer args?
 	// See https://github.com/kubernetes/apimachinery/blob/master/pkg/runtime/serializer/json/json.go#L143-L150
-	serializer := json.NewSerializer(json.DefaultMetaFactory, nil, nil, false)
+	serializer := json.NewSerializer(json.DefaultMetaFactory, gce.scheme, gce.scheme, false)
 	var status clusterv1.Machine
-	_, _, err := serializer.Decode([]byte(a), &schema.GroupVersionKind{Group: "", Version: "cluster.k8s.io/v1alpha1", Kind: "Machine"}, &status)
+	gvk := clusterv1.SchemeGroupVersion.WithKind("Machine")
+	_, _, err := serializer.Decode([]byte(a), &gvk, &status)
 	if err != nil {
 		return nil, fmt.Errorf("decoding failure: %v", err)
 	}
@@ -107,9 +106,8 @@ func (gce *GCEClient) setMachineInstanceStatus(machine *clusterv1.Machine, statu
 	// Avoid status within status within status ...
 	status.ObjectMeta.Annotations[InstanceStatusAnnotationKey] = ""
 
-	// TODO do we need to pass in the creater / typer args?
 	// See https://github.com/kubernetes/apimachinery/blob/master/pkg/runtime/serializer/json/json.go#L143-L150
-	serializer := json.NewSerializer(json.DefaultMetaFactory, nil, nil, false)
+	serializer := json.NewSerializer(json.DefaultMetaFactory, gce.scheme, gce.scheme, false)
 	b := []byte{}
 	buff := bytes.NewBuffer(b)
 	err := serializer.Encode((*clusterv1.Machine)(status), buff)

@@ -44,7 +44,6 @@ import (
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
-	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/cert"
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
@@ -75,12 +74,13 @@ const (
 var MachineActuator *GCEClient
 
 func init() {
-	var err error
-	MachineActuator, err = NewMachineActuator(MachineActuatorParams{})
-	if err != nil {
-		glog.Fatalf("Error creating cluster provisioner for google : %v", err)
-	}
-	clustercommon.RegisterClusterProvisioner(ProviderName, MachineActuator)
+	// For testing only.  Doesn't setup deps required for production. was registered twice
+	//var err error
+	//MachineActuator, err = NewMachineActuator(MachineActuatorParams{})
+	//if err != nil {
+	//	glog.Fatalf("Error creating cluster provisioner for google : %v", err)
+	//}
+	//clustercommon.RegisterClusterProvisioner(ProviderName, MachineActuator)
 }
 
 type SshCreds struct {
@@ -105,15 +105,17 @@ type GCEClient struct {
 	client                   client.Client
 	machineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	eventRecorder            record.EventRecorder
+	scheme                   *runtime.Scheme
 }
 
 type MachineActuatorParams struct {
 	CertificateAuthority     *cert.CertificateAuthority
 	ComputeService           GCEClientComputeService
 	Kubeadm                  GCEClientKubeadm
-	client                   client.Client
+	Client                   client.Client
 	MachineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	EventRecorder            record.EventRecorder
+	Scheme                   *runtime.Scheme
 }
 
 func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
@@ -130,11 +132,10 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 		privateKeyPath = "/etc/sshkeys/private"
 
 		b, err := ioutil.ReadFile("/etc/sshkeys/user")
-		if err == nil {
-			user = string(b)
-		} else {
+		if err != nil {
 			return nil, err
 		}
+		user = string(b)
 	}
 
 	return &GCEClient{
@@ -146,9 +147,10 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 			privateKeyPath: privateKeyPath,
 			user:           user,
 		},
-		client: params.client,
+		client: params.Client,
 		machineSetupConfigGetter: params.MachineSetupConfigGetter,
 		eventRecorder:            params.EventRecorder,
+		scheme:                   params.Scheme,
 	}, nil
 }
 
@@ -787,7 +789,7 @@ func (gce *GCEClient) getKubeadmToken() (string, error) {
 	}
 	output, err := gce.kubeadm.TokenCreate(tokenParams)
 	if err != nil {
-		glog.Errorf("unable to create token: %v", err)
+		glog.Errorf("unable to create token: %v [%s]", err, output)
 		return "", err
 	}
 	return strings.TrimSpace(output), err

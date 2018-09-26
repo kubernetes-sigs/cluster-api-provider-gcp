@@ -21,6 +21,7 @@ import (
 	"text/template"
 
 	"fmt"
+
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
@@ -40,9 +41,8 @@ type metadataParams struct {
 }
 
 func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *machinesetup.Metadata) (map[string]string, error) {
-	var master string
-	if len(cluster.Status.APIEndpoints) != 0 {
-		master = getEndpoint(cluster.Status.APIEndpoints[0])
+	if len(cluster.Status.APIEndpoints) == 0 {
+		return nil, fmt.Errorf("master endpoint not found in apiEndpoints for cluster %v", cluster)
 	}
 	params := metadataParams{
 		Token:          token,
@@ -52,7 +52,7 @@ func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.M
 		Metadata:       metadata,
 		PodCIDR:        getSubnet(cluster.Spec.ClusterNetwork.Pods),
 		ServiceCIDR:    getSubnet(cluster.Spec.ClusterNetwork.Services),
-		MasterEndpoint: master,
+		MasterEndpoint: getEndpoint(cluster.Status.APIEndpoints[0]),
 	}
 
 	nodeMetadata := map[string]string{}
