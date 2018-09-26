@@ -88,6 +88,17 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	name := cluster.Name
 	glog.Infof("Running reconcile Cluster for %s\n", name)
 
+	// If object hasn't been deleted and doesn't have a finalizer, add one
+	// Add a finalizer to newly created objects.
+	if cluster.ObjectMeta.DeletionTimestamp.IsZero() &&
+		!util.Contains(cluster.ObjectMeta.Finalizers, clusterv1.ClusterFinalizer) {
+		cluster.Finalizers = append(cluster.Finalizers, clusterv1.ClusterFinalizer)
+		if err = r.Update(context.Background(), cluster); err != nil {
+			glog.Infof("failed to add finalizer to cluster object %v due to error %v.", name, err)
+			return reconcile.Result{}, err
+		}
+	}
+
 	if !cluster.ObjectMeta.DeletionTimestamp.IsZero() {
 		// no-op if finalizer has been removed.
 		if !util.Contains(cluster.ObjectMeta.Finalizers, clusterv1.ClusterFinalizer) {

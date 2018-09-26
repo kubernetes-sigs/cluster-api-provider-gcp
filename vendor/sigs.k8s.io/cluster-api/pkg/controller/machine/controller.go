@@ -111,6 +111,17 @@ func (r *ReconcileMachine) Reconcile(request reconcile.Request) (reconcile.Resul
 	name := m.Name
 	glog.Infof("Running reconcile Machine for %s\n", name)
 
+	// If object hasn't been deleted and doesn't have a finalizer, add one
+	// Add a finalizer to newly created objects.
+	if m.ObjectMeta.DeletionTimestamp.IsZero() &&
+		!util.Contains(m.ObjectMeta.Finalizers, clusterv1.MachineFinalizer) {
+		m.Finalizers = append(m.Finalizers, clusterv1.MachineFinalizer)
+		if err = r.Update(context.Background(), m); err != nil {
+			glog.Infof("failed to add finalizer to machine object %v due to error %v.", name, err)
+			return reconcile.Result{}, err
+		}
+	}
+
 	if !m.ObjectMeta.DeletionTimestamp.IsZero() {
 		// no-op if finalizer has been removed.
 		if !util.Contains(m.ObjectMeta.Finalizers, clusterv1.MachineFinalizer) {

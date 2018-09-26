@@ -93,8 +93,12 @@ func updateMachineSetStatus(c client.Client, ms *v1alpha1.MachineSet, newStatus 
 
 	var getErr, updateErr error
 	for i := 0; ; i++ {
+		var replicas int32
+		if ms.Spec.Replicas != nil {
+			replicas = *ms.Spec.Replicas
+		}
 		glog.V(4).Infof(fmt.Sprintf("Updating status for %v: %s/%s, ", ms.Kind, ms.Namespace, ms.Name) +
-			fmt.Sprintf("replicas %d->%d (need %d), ", ms.Status.Replicas, newStatus.Replicas, *(ms.Spec.Replicas)) +
+			fmt.Sprintf("replicas %d->%d (need %d), ", ms.Status.Replicas, newStatus.Replicas, replicas) +
 			fmt.Sprintf("fullyLabeledReplicas %d->%d, ", ms.Status.FullyLabeledReplicas, newStatus.FullyLabeledReplicas) +
 			fmt.Sprintf("readyReplicas %d->%d, ", ms.Status.ReadyReplicas, newStatus.ReadyReplicas) +
 			fmt.Sprintf("availableReplicas %d->%d, ", ms.Status.AvailableReplicas, newStatus.AvailableReplicas) +

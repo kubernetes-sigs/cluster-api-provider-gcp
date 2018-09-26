@@ -85,7 +85,7 @@ type MachineStatus struct {
 
 	// When was this status last observed
 	// +optional
-	LastUpdated metav1.Time `json:"lastUpdated,omitempty"`
+	LastUpdated *metav1.Time `json:"lastUpdated,omitempty"`
 
 	// The current versions of software on the corresponding Node (if it
 	// exists). This is provided for a few reasons:
@@ -130,7 +130,8 @@ type MachineStatus struct {
 	// It is recommended that providers maintain their
 	// own versioned API types that should be
 	// serialized/deserialized from this field.
-	ProviderStatus *runtime.RawExtension `json:"providerStatus"`
+	// +optional
+	ProviderStatus *runtime.RawExtension `json:"providerStatus,omitempty"`
 
 	// Addresses is a list of addresses assigned to the machine. Queried from cloud provider, if available.
 	// +optional

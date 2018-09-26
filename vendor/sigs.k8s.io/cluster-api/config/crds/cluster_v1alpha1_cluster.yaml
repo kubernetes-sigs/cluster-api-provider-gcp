@@ -60,7 +60,6 @@ spec:
               type: object
           required:
           - clusterNetwork
-          - providerConfig
           type: object
         status:
           properties:
@@ -83,16 +82,11 @@ spec:
               type: string
             providerStatus:
               type: object
-          required:
-          - apiEndpoints
-          - errorReason
-          - errorMessage
-          - providerStatus
           type: object
-      type: object
   version: v1alpha1
 status:
   acceptedNames:
     kind: ""
     plural: ""
-  conditions: null
+  conditions: []
+  storedVersions: []

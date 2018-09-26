@@ -538,7 +538,10 @@ func (in *MachineStatus) DeepCopyInto(out *MachineStatus) {
 		*out = new(v1.ObjectReference)
 		**out = **in
 	}
-	in.LastUpdated.DeepCopyInto(&out.LastUpdated)
+	if in.LastUpdated != nil {
+		in, out := &in.LastUpdated, &out.LastUpdated
+		*out = (*in).DeepCopy()
+	}
 	if in.Versions != nil {
 		in, out := &in.Versions, &out.Versions
 		*out = new(MachineVersionInfo)

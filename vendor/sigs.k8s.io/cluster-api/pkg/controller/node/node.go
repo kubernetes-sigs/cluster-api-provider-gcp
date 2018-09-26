@@ -72,7 +72,8 @@ func (c *ReconcileNode) link(node *corev1.Node) error {
 		return err
 	}
 
-	machine.Status.LastUpdated = metav1.Now()
+	t := metav1.Now()
+	machine.Status.LastUpdated = &t
 	machine.Status.NodeRef = objectRef(node)
 	if err = c.Client.Status().Update(context.Background(), machine); err != nil {
 		glog.Errorf("Error updating machine to link to node: %v\n", err)
@@ -117,7 +118,8 @@ func (c *ReconcileNode) unlink(node *corev1.Node) error {
 		return nil
 	}
 
-	machine.Status.LastUpdated = metav1.Now()
+	t := metav1.Now()
+	machine.Status.LastUpdated = &t
 	machine.Status.NodeRef = nil
 	if err = c.Client.Status().Update(context.Background(), machine); err != nil {
 		glog.Errorf("Error updating machine %s to unlink node %s: %v\n",

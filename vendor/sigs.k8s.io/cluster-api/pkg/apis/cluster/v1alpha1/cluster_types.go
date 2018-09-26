@@ -50,7 +50,7 @@ type ClusterSpec struct {
 	// their own versioned API types that should be
 	// serialized/deserialized from this field.
 	// +optional
-	ProviderConfig ProviderConfig `json:"providerConfig"`
+	ProviderConfig ProviderConfig `json:"providerConfig,omitempty"`
 }
 
 // ClusterNetworkingConfig specifies the different networking
@@ -74,7 +74,8 @@ type NetworkRanges struct {
 // ClusterStatus defines the observed state of Cluster
 type ClusterStatus struct {
 	// APIEndpoint represents the endpoint to communicate with the IP.
-	APIEndpoints []APIEndpoint `json:"apiEndpoints"`
+	// +optional
+	APIEndpoints []APIEndpoint `json:"apiEndpoints,omitempty"`
 
 	// NB: Eventually we will redefine ErrorReason as ClusterStatusError once the
 	// following issue is fixed.
@@ -83,17 +84,20 @@ type ClusterStatus struct {
 	// If set, indicates that there is a problem reconciling the
 	// state, and will be set to a token value suitable for
 	// programmatic interpretation.
-	ErrorReason common.ClusterStatusError `json:"errorReason"`
+	// +optional
+	ErrorReason common.ClusterStatusError `json:"errorReason,omitempty"`
 
 	// If set, indicates that there is a problem reconciling the
 	// state, and will be set to a descriptive error message.
-	ErrorMessage string `json:"errorMessage"`
+	// +optional
+	ErrorMessage string `json:"errorMessage,omitempty"`
 
 	// Provider-specific status.
 	// It is recommended that providers maintain their
 	// own versioned API types that should be
 	// serialized/deserialized from this field.
-	ProviderStatus *runtime.RawExtension `json:"providerStatus"`
+	// +optional
+	ProviderStatus *runtime.RawExtension `json:"providerStatus,omitempty"`
 }
 
 // APIEndpoint represents a reachable Kubernetes API endpoint.
