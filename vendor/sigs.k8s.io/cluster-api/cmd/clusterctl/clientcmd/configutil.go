@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 )
 
-// This is a convienience method to prevent the need of importing both this version of clientcmd and the client-go version
+// This is a convenience method to prevent the need of importing both this version of clientcmd and the client-go version
 func NewConfigOverrides() clientcmd.ConfigOverrides {
 	return clientcmd.ConfigOverrides{}
 }
@@ -43,29 +43,11 @@ func NewCoreClientSetForDefaultSearchPath(kubeconfigPath string, overrides clien
 	return kubernetes.NewForConfig(config)
 }
 
-// NewCoreClientSetForKubeconfig creates a core kubernetes clientset for the given kubeconfig string.
-func NewCoreClientSetForKubeconfig(kubeconfig string) (*kubernetes.Clientset, error) {
-	config, err := newRestConfigForKubeconfig(kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-	return kubernetes.NewForConfig(config)
-}
-
 // NewClusterApiClientForDefaultSearchPath creates a Cluster API clientset. If the kubeconfigPath is specified then the configuration is loaded from that path.
 // Otherwise the default kubeconfig search path is used.
 // The overrides parameter is used to select a specific context of the config, for example, select the context with a given cluster name or namespace.
 func NewClusterApiClientForDefaultSearchPath(kubeconfigPath string, overrides clientcmd.ConfigOverrides) (*clientset.Clientset, error) {
 	config, err := newRestConfigForDefaultSearchPath(kubeconfigPath, overrides)
-	if err != nil {
-		return nil, err
-	}
-	return clientset.NewForConfig(config)
-}
-
-// NewClusterApiClientForKubeconfig creates a Cluster API clientset for the given kubeconfig string.
-func NewClusterApiClientForKubeconfig(kubeconfig string) (*clientset.Clientset, error) {
-	config, err := newRestConfigForKubeconfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}

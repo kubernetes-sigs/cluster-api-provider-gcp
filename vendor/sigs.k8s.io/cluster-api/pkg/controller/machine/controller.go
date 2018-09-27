@@ -22,18 +22,19 @@ import (
 	"os"
 
 	"github.com/golang/glog"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	controllerError "sigs.k8s.io/cluster-api/pkg/controller/error"
+	"sigs.k8s.io/cluster-api/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/util"
 )
 
 const NodeNameEnvVar = "NODE_NAME"
@@ -160,7 +161,13 @@ func (r *ReconcileMachine) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 	if exist {
 		glog.Infof("Reconciling machine object %v triggers idempotent update.", name)
-		return reconcile.Result{}, r.update(m)
+		err := r.update(m)
+		if err != nil {
+			if requeueErr, ok := err.(*controllerError.RequeueAfterError); ok {
+				glog.Infof("Actuator returned requeue after error: %v", requeueErr)
+				return reconcile.Result{Requeue: true, RequeueAfter: requeueErr.RequeueAfter}, nil
+			}
+		}
 	}
 	// Machine resource created. Machine does not yet exist.
 	glog.Infof("Reconciling machine object %v triggers idempotent create.", m.ObjectMeta.Name)

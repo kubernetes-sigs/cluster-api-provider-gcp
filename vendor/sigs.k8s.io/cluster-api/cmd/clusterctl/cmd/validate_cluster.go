@@ -19,15 +19,18 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sigs.k8s.io/cluster-api/pkg/apis"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/spf13/cobra"
+
 	tcmd "k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/validation"
-	"sigs.k8s.io/cluster-api/pkg/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 type ValidateClusterOptions struct {
-	Kubeconfig          string
 	KubeconfigOverrides tcmd.ConfigOverrides
 }
 
@@ -47,25 +50,30 @@ var validateClusterCmd = &cobra.Command{
 }
 
 func init() {
-	validateClusterCmd.Flags().StringVarP(
-		&vco.Kubeconfig, "kubeconfig", "", "",
-		"The file path of the kubeconfig file for the cluster to validate.. If not specified, $KUBECONFIG environment variable or ${HOME}/.kube/config is used.")
 	// BindContextFlags will bind the flags cluster, namespace, and user
 	tcmd.BindContextFlags(&vco.KubeconfigOverrides.Context, validateClusterCmd.Flags(), tcmd.RecommendedContextOverrideFlags(""))
 	validateCmd.AddCommand(validateClusterCmd)
 }
 
 func RunValidateCluster() error {
-	clusterApiClient, err := clientcmd.NewClusterApiClientForDefaultSearchPath(vco.Kubeconfig, vco.KubeconfigOverrides)
+	cfg, err := config.GetConfig()
 	if err != nil {
-		return fmt.Errorf("failed to create cluster API client: %v", err)
+		return fmt.Errorf("failed to create client configuration: %v", err)
 	}
-	k8sClient, err := clientcmd.NewCoreClientSetForDefaultSearchPath(vco.Kubeconfig, vco.KubeconfigOverrides)
+	mgr, err := manager.New(cfg, manager.Options{})
 	if err != nil {
-		return fmt.Errorf("failed to create kubernetes client: %v", err)
+		return fmt.Errorf("failed to create manager: %v", err)
+	}
+	// Setup Scheme for all resources
+	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+		return fmt.Errorf("failed to add APIs to manager: %v", err)
 	}
 
-	if err = validation.ValidateClusterAPIObjects(os.Stdout, clusterApiClient, k8sClient, vco.KubeconfigOverrides.Context.Cluster, vco.KubeconfigOverrides.Context.Namespace); err != nil {
+	c, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
+	if err != nil {
+		return fmt.Errorf("failed to create client: %v", err)
+	}
+	if err = validation.ValidateClusterAPIObjects(os.Stdout, c, vco.KubeconfigOverrides.Context.Cluster, vco.KubeconfigOverrides.Context.Namespace); err != nil {
 		return err
 	}
 

@@ -19,6 +19,8 @@ package main
 import (
 	"log"
 
+	"flag"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/cluster-api/pkg/apis"
 	"sigs.k8s.io/cluster-api/pkg/controller"
@@ -28,6 +30,8 @@ import (
 )
 
 func main() {
+	flag.Parse()
+
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {

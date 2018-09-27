@@ -20,18 +20,21 @@ import (
 	"fmt"
 	"io"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	"golang.org/x/net/context"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/controller/noderefutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func ValidateClusterAPIObjects(w io.Writer, clusterApiClient *clientset.Clientset, k8sClient kubernetes.Interface, clusterName string, namespace string) error {
+func ValidateClusterAPIObjects(w io.Writer, c client.Client, clusterName string, namespace string) error {
 	fmt.Fprintf(w, "Validating Cluster API objects in namespace %q\n", namespace)
 
-	cluster, err := getClusterObject(clusterApiClient, clusterName, namespace)
+	cluster, err := getClusterObject(c, clusterName, namespace)
 	if err != nil {
 		return err
 	}
@@ -39,27 +42,26 @@ func ValidateClusterAPIObjects(w io.Writer, clusterApiClient *clientset.Clientse
 		return err
 	}
 
-	machines, err := clusterApiClient.ClusterV1alpha1().Machines(namespace).List(meta_v1.ListOptions{})
-	if err != nil {
+	machines := &clusterv1alpha1.MachineList{}
+	if err := c.List(context.TODO(), client.InNamespace(namespace), machines); err != nil {
 		return fmt.Errorf("failed to get the machines from the apiserver in namespace %q: %v", namespace, err)
 	}
 
-	return validateMachineObjects(w, machines, k8sClient)
+	return validateMachineObjects(w, machines, c)
 }
 
-func getClusterObject(clusterApiClient *clientset.Clientset, clusterName string, namespace string) (*v1alpha1.Cluster, error) {
+func getClusterObject(c client.Client, clusterName string, namespace string) (*v1alpha1.Cluster, error) {
 	if clusterName != "" {
-		cluster, err := clusterApiClient.ClusterV1alpha1().Clusters(namespace).Get(clusterName, meta_v1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get the cluster %q from the apiserver in namespace %q: %v", clusterName, namespace, err)
-		}
-		return cluster, nil
+		cluster := &clusterv1alpha1.Cluster{}
+		err := c.Get(context.TODO(), types.NamespacedName{Name: clusterName, Namespace: namespace}, cluster)
+		return cluster, err
 	}
 
-	clusters, err := clusterApiClient.ClusterV1alpha1().Clusters(namespace).List(meta_v1.ListOptions{})
-	if err != nil {
+	clusters := &clusterv1alpha1.ClusterList{}
+	if err := c.List(context.TODO(), &client.ListOptions{Namespace: namespace}, clusters); err != nil {
 		return nil, fmt.Errorf("failed to get the clusters from the apiserver in namespace %q: %v", namespace, err)
 	}
+
 	if numOfClusters := len(clusters.Items); numOfClusters == 0 {
 		return nil, fmt.Errorf("fail: No cluster exists in namespace %q.", namespace)
 	} else if numOfClusters > 1 {
@@ -79,10 +81,10 @@ func validateClusterObject(w io.Writer, cluster *v1alpha1.Cluster) error {
 	return nil
 }
 
-func validateMachineObjects(w io.Writer, machines *v1alpha1.MachineList, k8sClient kubernetes.Interface) error {
+func validateMachineObjects(w io.Writer, machines *v1alpha1.MachineList, client client.Client) error {
 	pass := true
 	for _, machine := range machines.Items {
-		if !validateMachineObject(w, machine, k8sClient) {
+		if !validateMachineObject(w, machine, client) {
 			pass = false
 		}
 	}
@@ -92,14 +94,14 @@ func validateMachineObjects(w io.Writer, machines *v1alpha1.MachineList, k8sClie
 	return nil
 }
 
-func validateMachineObject(w io.Writer, machine v1alpha1.Machine, k8sClient kubernetes.Interface) bool {
+func validateMachineObject(w io.Writer, machine v1alpha1.Machine, client client.Client) bool {
 	fmt.Fprintf(w, "Checking machine object %q... ", machine.Name)
 	if machine.Status.ErrorReason != nil || machine.Status.ErrorMessage != nil {
 		var reason common.MachineStatusError = ""
 		if machine.Status.ErrorReason != nil {
 			reason = *machine.Status.ErrorReason
 		}
-		var message string = ""
+		var message string
 		if machine.Status.ErrorMessage != nil {
 			message = *machine.Status.ErrorMessage
 		}
@@ -112,8 +114,7 @@ func validateMachineObject(w io.Writer, machine v1alpha1.Machine, k8sClient kube
 		fmt.Fprintf(w, "\tThe corresponding node is missing.\n")
 		return false
 	}
-	err := validateReferredNode(w, machine.Status.NodeRef.Name, k8sClient)
-	if err != nil {
+	if err := validateReferredNode(machine.Status.NodeRef.Name, client); err != nil {
 		fmt.Fprintf(w, "FAIL\n")
 		fmt.Fprintf(w, "\t%v\n", err)
 		return false
@@ -122,9 +123,9 @@ func validateMachineObject(w io.Writer, machine v1alpha1.Machine, k8sClient kube
 	return true
 }
 
-func validateReferredNode(w io.Writer, nodeName string, k8sClient kubernetes.Interface) error {
-	node, err := k8sClient.CoreV1().Nodes().Get(nodeName, meta_v1.GetOptions{})
-	if err != nil {
+func validateReferredNode(nodeName string, client client.Client) error {
+	node := &corev1.Node{}
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: nodeName}, node); err != nil {
 		return fmt.Errorf("The corresponding node %q is not found: %v", nodeName, err)
 	}
 	if !noderefutil.IsNodeReady(node) {

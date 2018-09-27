@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package error
 
-import "sigs.k8s.io/cluster-api/tools/upgrader/cmd"
+import (
+	"fmt"
+	"time"
+)
 
-func main() {
-	cmd.Execute()
+// RequeueAfterError represents that an actuator managed object should be
+// requeued for further processing after the given RequeueAfter time has
+// passed.
+type RequeueAfterError struct {
+	RequeueAfter time.Duration
+}
+
+// Error implements the error interface
+func (e *RequeueAfterError) Error() string {
+	return fmt.Sprintf("requeue cluster in: %s", e.RequeueAfter)
 }

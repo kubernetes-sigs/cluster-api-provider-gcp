@@ -17,7 +17,7 @@ required = [
 
 [[constraint]]
   name="sigs.k8s.io/cluster-api"
-  revision="19f8d1238c9d2fb33dd4a86186414577130c4b55"
+  revision="6a9ca95c9b082938632ae7ec2e1bc37f7ac5e05b"
   source="https://github.com/pwittrock/cluster-api"
 
 [prune]

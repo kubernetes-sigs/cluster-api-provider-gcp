@@ -1,12 +1,13 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= gcr.io/k8s-cluster-api/cluster-api-controller:latest
 
 all: test manager clusterctl
 
 # Run tests
 test: generate fmt vet manifests
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	go test -v -tags=integration ./pkg/... ./cmd/...
+#	go test -v -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build manager binary
 manager: generate fmt vet
@@ -50,6 +51,9 @@ docker-build: generate fmt vet manifests
 	docker build . -t ${IMG}
 	@echo "updating kustomize image patch file for manager resource"
 	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
+
+verify:
+	./hack/verify_boilerplate.py
 
 # Push the docker image
 docker-push:

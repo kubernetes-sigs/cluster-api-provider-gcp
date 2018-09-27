@@ -14,22 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package clusterdeployer
+package clusterclient
 
 import (
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/cluster-api/pkg/clientcmd"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/clientcmd"
 )
+
+// Can create cluster clients
+type Factory interface {
+	NewClientFromKubeconfig(string) (Client, error)
+	NewCoreClientsetFromKubeconfigFile(string) (*kubernetes.Clientset, error)
+}
 
 type clientFactory struct {
 }
 
-func NewClientFactory() ClientFactory {
+func NewFactory() *clientFactory {
 	return &clientFactory{}
 }
 
-func (f *clientFactory) NewClusterClientFromKubeconfig(kubeconfig string) (ClusterClient, error) {
-	return NewClusterClient(kubeconfig)
+func (f *clientFactory) NewClientFromKubeconfig(kubeconfig string) (Client, error) {
+	return New(kubeconfig)
 }
 
 func (f *clientFactory) NewCoreClientsetFromKubeconfigFile(kubeconfigPath string) (*kubernetes.Clientset, error) {
