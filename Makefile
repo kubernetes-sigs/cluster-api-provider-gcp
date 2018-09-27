@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= gcr.io/cluster-api-provider-gcp/gcp-cluster-api-controller:latest
 
 all: test manager clusterctl
 

@@ -7,5 +7,5 @@ spec:
   template:
     spec:
       containers:
-      - image: IMAGE_URL
+      - image: gcr.io/cluster-api-provider-gcp/gcp-cluster-api-controller:latest
         name: manager

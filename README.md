@@ -26,12 +26,13 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 1. Install `kubectl` (see [here](http://kubernetes.io/docs/user-guide/prereqs/)).
 1. Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/), version <= 0.28.0 (see: [cluster-api/issues/475](https://github.com/kubernetes-sigs/cluster-api/issues/475)).
 1. Install a [driver](https://github.com/kubernetes/minikube/blob/master/docs/drivers.md) for minikube. For Linux, we recommend kvm2. For MacOS, we recommend VirtualBox.
+1. Install `kustomize` (see [here](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md)).
 1. Build the `clusterctl` tool
 
    ```bash
    git clone https://github.com/kubernetes-sigs/cluster-api-provider-gcp $GOPATH/src/sigs.k8s.io/cluster-api-provider-gcp
-   cd $GOPATH/src/sigs.k8s.io/cluster-api-provider-gcp/clusterctl
-   go build
+   cd $GOPATH/src/sigs.k8s.io/cluster-api-provider-gcp
+   make clusterctl
    ```
 
 ### Cluster Creation
@@ -39,14 +40,17 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 1. Create the `cluster.yaml`, `machines.yaml`, `provider-components.yaml`, and `addons.yaml` files:
 
    ```bash
-   cd examples/google
+   cd cmd/clusterctl/examples/google
    ./generate-yaml.sh
-   cd ../..
+   cd ../../../..
+   kustomize build config/default/ > cmd/clusterctl/examples/google/out/provider-components.yaml
+   echo "---" >> cmd/clusterctl/examples/google/out/provider-components.yaml
+   kustomize build vendor/sigs.k8s.io/cluster-api/config/default/ >> cmd/clusterctl/examples/google/out/provider-components.yaml
    ```
 1. Create a cluster:
 
    ```bash
-   clusterctl create cluster --provider google -c examples/google/out/cluster.yaml -m examples/google/out/machines.yaml -p examples/google/out/provider-components.yaml -a examples/google/out/addons.yaml
+   ./bin/clusterctl create cluster --provider google -c cmd/clusterctl/examples/google/out/cluster.yaml -m cmd/clusterctl/examples/google/out/machines.yaml -p cmd/clusterctl/examples/google/out/provider-components.yaml -a cmd/clusterctl/examples/google/out/addons.yaml
    ```
 
 To choose a specific minikube driver, please use the `--vm-driver` command line parameter. For example to use the kvm2 driver with clusterctl you woud add `--vm-driver kvm2`
@@ -54,7 +58,7 @@ To choose a specific minikube driver, please use the `--vm-driver` command line 
 Additional advanced flags can be found via help.
 
 ```bash
-clusterctl create cluster --help
+./bin/clusterctl create cluster --help
 ```
 
 ### Interacting with your cluster

@@ -35,8 +35,6 @@ MACHINE_TEMPLATE_FILE=machines.yaml.template
 MACHINE_GENERATED_FILE=${OUTPUT_DIR}/machines.yaml
 CLUSTER_TEMPLATE_FILE=cluster.yaml.template
 CLUSTER_GENERATED_FILE=${OUTPUT_DIR}/cluster.yaml
-PROVIDERCOMPONENT_TEMPLATE_FILE=provider-components.yaml.template
-PROVIDERCOMPONENT_GENERATED_FILE=${OUTPUT_DIR}/provider-components.yaml
 ADDON_TEMPLATE_FILE=addons.yaml.template
 ADDON_GENERATED_FILE=${OUTPUT_DIR}/addons.yaml
 
@@ -104,11 +102,6 @@ if [ $OVERWRITE -ne 1 ] && [ -f $CLUSTER_GENERATED_FILE ]; then
   exit 1
 fi
 
-if [ $OVERWRITE -ne 1 ] && [ -f $PROVIDERCOMPONENT_GENERATED_FILE ]; then
-  echo File $PROVIDERCOMPONENT_GENERATED_FILE already exists. Delete it manually before running this script.
-  exit 1
-fi
-
 if [ $OVERWRITE -ne 1 ] && [ -f $ADDON_GENERATED_FILE ]; then
   echo File $ADDON_GENERATED_FILE already exists. Delete it manually before running this script.
   exit 1
@@ -164,6 +157,8 @@ fi
 MACHINE_CONTROLLER_SSH_PUBLIC=$(cat $MACHINE_CONTROLLER_SSH_PUBLIC_FILE | base64 | tr -d '\r\n')
 MACHINE_CONTROLLER_SSH_PRIVATE=$(cat $MACHINE_CONTROLLER_SSH_PRIVATE_FILE | base64 | tr -d '\r\n')
 
+cp machine_setup_configs.yaml ${OUTPUT_DIR}/machine_setup_configs.yaml
+
 cat $MACHINE_TEMPLATE_FILE \
   | sed -e "s/\$ZONE/$ZONE/" \
   > $MACHINE_GENERATED_FILE
@@ -172,14 +167,6 @@ cat $CLUSTER_TEMPLATE_FILE \
   | sed -e "s/\$GCLOUD_PROJECT/$GCLOUD_PROJECT/" \
   | sed -e "s/\$CLUSTER_NAME/$CLUSTER_NAME/" \
   > $CLUSTER_GENERATED_FILE
-
-cat $PROVIDERCOMPONENT_TEMPLATE_FILE \
-  | sed -e "s/\$MACHINE_CONTROLLER_SA_KEY/$MACHINE_CONTROLLER_SA_KEY/" \
-  | sed -e "s/\$CLUSTER_NAME/$CLUSTER_NAME/" \
-  | sed -e "s/\$MACHINE_CONTROLLER_SSH_USER/$MACHINE_CONTROLLER_SSH_USER/" \
-  | sed -e "s/\$MACHINE_CONTROLLER_SSH_PUBLIC/$MACHINE_CONTROLLER_SSH_PUBLIC/" \
-  | sed -e "s/\$MACHINE_CONTROLLER_SSH_PRIVATE/$MACHINE_CONTROLLER_SSH_PRIVATE/" \
-  > $PROVIDERCOMPONENT_GENERATED_FILE
 
 cat $ADDON_TEMPLATE_FILE \
   | sed -e "s/\$GCLOUD_PROJECT/$GCLOUD_PROJECT/" \

@@ -17,10 +17,19 @@ limitations under the License.
 package main
 
 import (
-	_ "sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
+	"github.com/golang/glog"
+
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/cmd"
+	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 )
 
 func main() {
+	var err error
+	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{})
+	if err != nil {
+		glog.Fatalf("Error creating cluster provisioner for google : %v", err)
+	}
+	clustercommon.RegisterClusterProvisioner(google.ProviderName, google.MachineActuator)
 	cmd.Execute()
 }

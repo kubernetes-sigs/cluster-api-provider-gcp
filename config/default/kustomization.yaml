@@ -30,16 +30,16 @@ patches:
 secretGenerator:
 - name: machine-controller-sshkeys
   commands:
-    user: "cat ../out/user.txt"
-    private: "cat ../out/machine-controller-key"
-    public: "cat ../out/machine-controller-key.pub"
+    user: "echo clusterapi"
+    private: "cat ../../cmd/clusterctl/examples/google/out/machine-controller-key"
+    public: "cat ../../cmd/clusterctl/examples/google/out/machine-controller-key.pub"
   type: Opaque
 - name: machine-controller-credential
   commands:
-    service-account.json: "cat ../out/machine-controller-serviceaccount.json"
+    service-account.json: "cat ../../cmd/clusterctl/examples/google/out/machine-controller-serviceaccount.json"
   type: Opaque
 
 configMapGenerator:
 - name: machine-setup
   files:
-  - "../out/machine_setup_configs.yaml"
+  - "../../cmd/clusterctl/examples/google/out/machine_setup_configs.yaml"

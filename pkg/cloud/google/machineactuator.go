@@ -73,16 +73,6 @@ const (
 
 var MachineActuator *GCEClient
 
-func init() {
-	// For testing only.  Doesn't setup deps required for production. was registered twice
-	//var err error
-	//MachineActuator, err = NewMachineActuator(MachineActuatorParams{})
-	//if err != nil {
-	//	glog.Fatalf("Error creating cluster provisioner for google : %v", err)
-	//}
-	//clustercommon.RegisterClusterProvisioner(ProviderName, MachineActuator)
-}
-
 type SshCreds struct {
 	user           string
 	privateKeyPath string
