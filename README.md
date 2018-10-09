@@ -37,7 +37,7 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 
 ### Cluster Creation
 
-1. Create the `cluster.yaml`, `machines.yaml`, `provider-components.yaml`, and `addons.yaml` files:
+1. Create the `cluster.yaml`, `machines.yaml`, `provider-components.yaml`, and `addons.yaml` files, and create GCP serviceaccounts:
 
    ```bash
    cd cmd/clusterctl/examples/google
@@ -47,9 +47,15 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
    echo "---" >> cmd/clusterctl/examples/google/out/provider-components.yaml
    kustomize build vendor/sigs.k8s.io/cluster-api/config/default/ >> cmd/clusterctl/examples/google/out/provider-components.yaml
    ```
+
 1. Create a cluster:
 
+   Set the generated serviceaccount as a local environment variable so that the `clusterctl` process uses the same google
+   credentials as do the processes running in minikube and in the final cluster.
+
    ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS=cmd/clusterctl/examples/google/out/machine-controller-serviceaccount.json
+
    ./bin/clusterctl create cluster --provider google -c cmd/clusterctl/examples/google/out/cluster.yaml -m cmd/clusterctl/examples/google/out/machines.yaml -p cmd/clusterctl/examples/google/out/provider-components.yaml -a cmd/clusterctl/examples/google/out/addons.yaml
    ```
 
