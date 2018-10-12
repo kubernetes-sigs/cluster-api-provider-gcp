@@ -2,27 +2,22 @@
 
 aliases:
   sig-cluster-lifecycle-leads:
-    - lukemarsden
     - luxas
     - roberthbailey
     - timothysc
   cluster-api-admins:
     - justinsb
+    - kris-nova
     - krousey
     - luxas
     - roberthbailey
-    - kris-nova
   cluster-api-maintainers:
     - jessicaochen
-    - k4leung4
     - karan
     - kris-nova
     - krousey
-    - medinatiger
     - mkjelland
     - roberthbailey
-    - rsdcastro
-    - spew
   sig-gcp-leads:
     - abgworrall
   cluster-api-gcp-maintainers:
