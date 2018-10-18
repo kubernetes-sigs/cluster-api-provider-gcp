@@ -24,7 +24,7 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 ### Prerequisites
 
 1. Install `kubectl` (see [here](http://kubernetes.io/docs/user-guide/prereqs/)).
-1. Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/), version <= 0.28.0 (see: [cluster-api/issues/475](https://github.com/kubernetes-sigs/cluster-api/issues/475)).
+1. Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
 1. Install a [driver](https://github.com/kubernetes/minikube/blob/master/docs/drivers.md) for minikube. For Linux, we recommend kvm2. For MacOS, we recommend VirtualBox.
 1. Install `kustomize` (see [here](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md)).
 1. Build the `clusterctl` tool
