@@ -17,9 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"reflect"
 	"testing"
 
-	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,24 +28,42 @@ import (
 func TestStorageGCEMachineProviderConfig(t *testing.T) {
 	key := types.NamespacedName{Name: "foo", Namespace: "default"}
 	created := &GCEMachineProviderConfig{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
-	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
 	fetched := &GCEMachineProviderConfig{}
-	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
+	if err := c.Create(context.TODO(), created); err != nil {
+		t.Fatal(err)
+	}
 
-	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(fetched).To(gomega.Equal(created))
+	if err := c.Get(context.TODO(), key, fetched); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Get(context.TODO(), key, fetched); err != nil {
+		t.Fatal(err)
+	}
+	if equal := reflect.DeepEqual(fetched, created); !equal {
+		t.Fatalf("fetched != created; fetched = %v; created = %v", fetched, created)
+	}
 
 	// Test Updating the Labels
 	updated := fetched.DeepCopy()
 	updated.Labels = map[string]string{"hello": "world"}
-	g.Expect(c.Update(context.TODO(), updated)).NotTo(gomega.HaveOccurred())
+	if err := c.Update(context.TODO(), updated); err != nil {
+		t.Fatal(err)
+	}
 
-	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(fetched).To(gomega.Equal(updated))
+	if err := c.Get(context.TODO(), key, fetched); err != nil {
+		t.Fatal(err)
+	}
+	if equal := reflect.DeepEqual(fetched, updated); !equal {
+		t.Fatalf("fetched != created; updated = %v; created = %v", fetched, updated)
+	}
 
 	// Test Delete
-	g.Expect(c.Delete(context.TODO(), fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(c.Get(context.TODO(), key, fetched)).To(gomega.HaveOccurred())
+	if err := c.Delete(context.TODO(), fetched); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Get(context.TODO(), key, fetched); err == nil {
+		t.Fatalf("Expected error fetching key %v; got nil", key)
+	}
 }
