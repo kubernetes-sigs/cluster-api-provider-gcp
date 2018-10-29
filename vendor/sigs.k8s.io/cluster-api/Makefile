@@ -1,3 +1,16 @@
+# Copyright 2018 The Kubernetes Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Image URL to use all building/pushing image targets
 IMG ?= gcr.io/k8s-cluster-api/cluster-api-controller:latest
@@ -5,7 +18,7 @@ IMG ?= gcr.io/k8s-cluster-api/cluster-api-controller:latest
 all: test manager clusterctl
 
 # Run tests
-test: generate fmt vet manifests
+test: generate fmt vet manifests verify
 	go test -v -tags=integration ./pkg/... ./cmd/...
 #	go test -v -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
 
@@ -21,18 +34,17 @@ clusterctl: generate fmt vet
 run: generate fmt vet
 	go run ./cmd/manager/main.go
 
-# Install CRDs into a cluster
-install: manifests
-	kubectl apply -f config/crds
-
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests
-	kubectl apply -f config/crds
 	kustomize build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+	@# Kubebuilder CRD generation can't handle intstr.IntOrString properly:
+	@# https://github.com/kubernetes-sigs/kubebuilder/issues/442
+	sed -i -e 's/maxSurge:/maxSurge: {}/g' -e '/maxSurge:/{n;d};' config/crds/cluster_v1alpha1_machinedeployment.yaml
+	sed -i -e 's/maxUnavailable:/maxUnavailable: {}/g' -e '/maxUnavailable:/{n;d};' config/crds/cluster_v1alpha1_machinedeployment.yaml
 
 # Run go fmt against code
 fmt:
