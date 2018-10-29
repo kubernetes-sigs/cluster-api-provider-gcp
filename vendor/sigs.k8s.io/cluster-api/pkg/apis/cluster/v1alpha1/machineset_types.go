@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -115,7 +115,7 @@ type MachineSetStatus struct {
 	// spec, values that are unsupported by the machine controller, or the
 	// responsible machine controller itself being critically misconfigured.
 	//
-	// Any transient errors that occur during the reconcilation of Machines
+	// Any transient errors that occur during the reconciliation of Machines
 	// can be added as events to the MachineSet object and/or logged in the
 	// controller's output.
 	// +optional

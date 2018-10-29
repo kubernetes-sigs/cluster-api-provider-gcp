@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -164,15 +164,21 @@ func (r *ReconcileMachine) Reconcile(request reconcile.Request) (reconcile.Resul
 		err := r.update(m)
 		if err != nil {
 			if requeueErr, ok := err.(*controllerError.RequeueAfterError); ok {
-				glog.Infof("Actuator returned requeue after error: %v", requeueErr)
+				glog.Infof("Actuator returned requeue-after error: %v", requeueErr)
 				return reconcile.Result{Requeue: true, RequeueAfter: requeueErr.RequeueAfter}, nil
 			}
+			return reconcile.Result{}, err
 		}
+		return reconcile.Result{}, nil
 	}
 	// Machine resource created. Machine does not yet exist.
 	glog.Infof("Reconciling machine object %v triggers idempotent create.", m.ObjectMeta.Name)
 	if err := r.create(m); err != nil {
 		glog.Warningf("unable to create machine %v: %v", name, err)
+		if requeueErr, ok := err.(*controllerError.RequeueAfterError); ok {
+			glog.Infof("Actuator returned requeue-after error: %v", requeueErr)
+			return reconcile.Result{Requeue: true, RequeueAfter: requeueErr.RequeueAfter}, nil
+		}
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil

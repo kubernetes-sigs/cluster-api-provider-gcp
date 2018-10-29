@@ -767,7 +767,8 @@
   revision = "e3762e86a74c878ffed47484592986685639c2cd"
 
 [[projects]]
-  digest = "1:3c71acb9b2011d50e8e4d603b640625a57a90bf7a93af0148b349257df65df57"
+  branch = "master"
+  digest = "1:8e490426824c54fb671621acc23b9ed6ffb732b86b56ba301ec527cc877a324e"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "cmd/clusterctl/clientcmd",
@@ -796,8 +797,7 @@
     "pkg/util",
   ]
   pruneopts = "T"
-  revision = "6a9ca95c9b082938632ae7ec2e1bc37f7ac5e05b"
-  source = "https://github.com/pwittrock/cluster-api"
+  revision = "6fe3ecb17bdcdf096ede34104af87f79c2e90e68"
 
 [[projects]]
   digest = "1:0d252ff794aef84f642866acbbd8044e1e062183629750832f486611294e5ec7"
