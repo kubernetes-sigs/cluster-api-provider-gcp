@@ -30,6 +30,7 @@ import (
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
@@ -41,6 +42,8 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/ghodss/yaml"
+	gcfg "gopkg.in/gcfg.v1"
+	warnings "gopkg.in/warnings.v0"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
@@ -106,6 +109,7 @@ type MachineActuatorParams struct {
 	MachineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	EventRecorder            record.EventRecorder
 	Scheme                   *runtime.Scheme
+	CloudConfigPath          string
 }
 
 func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
@@ -137,7 +141,7 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 			privateKeyPath: privateKeyPath,
 			user:           user,
 		},
-		client: params.Client,
+		client:                   params.Client,
 		machineSetupConfigGetter: params.MachineSetupConfigGetter,
 		eventRecorder:            params.EventRecorder,
 		scheme:                   params.Scheme,
@@ -796,17 +800,51 @@ func getOrNewComputeServiceForMachine(params MachineActuatorParams) (GCEClientCo
 	if params.ComputeService != nil {
 		return params.ComputeService, nil
 	}
-	// The default GCP client expects the environment variable
-	// GOOGLE_APPLICATION_CREDENTIALS to point to a file with service credentials.
-	client, err := google.DefaultClient(context.TODO(), compute.ComputeScope)
-	if err != nil {
-		return nil, err
+
+	var client *http.Client
+	var err error
+	if params.CloudConfigPath != "" {
+		glog.Info("Trying to get open the GCE config")
+		// If specified in the GCE config, use the alternative authentication.
+		client, err = clientWithAltTokenSource(params.CloudConfigPath)
+	}
+
+	if params.CloudConfigPath == "" || err != nil {
+		glog.Warningf("Could not create an alternative auth client: %q", err)
+
+		// The default GCP client expects the environment variable
+		// GOOGLE_APPLICATION_CREDENTIALS to point to a file with service credentials.
+		client, err = google.DefaultClient(context.TODO(), compute.ComputeScope)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 	computeService, err := clients.NewComputeService(client)
 	if err != nil {
 		return nil, err
 	}
 	return computeService, nil
+}
+
+func clientWithAltTokenSource(gceConfigPath string) (*http.Client, error) {
+	glog.Info("Trying to get the alt token")
+	gceConfig := struct {
+		Global struct {
+			ProjectID string `gcfg:"project-id"`
+			TokenURL  string `gcfg:"token-url"`
+			TokenBody string `gcfg:"token-body"`
+		}
+	}{}
+
+	if err := warnings.FatalOnly(gcfg.ReadFileInto(&gceConfig, gceConfigPath)); err != nil {
+		return nil, err
+	}
+
+	tokenSource := clients.NewAltTokenSource(gceConfig.Global.TokenURL, gceConfig.Global.TokenBody)
+	client := oauth2.NewClient(context.Background(), tokenSource)
+
+	return client, nil
 }
 
 func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, clusterConfig *gceconfigv1.GCEClusterProviderConfig, configParams *machinesetup.ConfigParams) (*compute.Metadata, error) {
