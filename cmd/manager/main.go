@@ -33,6 +33,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
+var (
+	cloudConfig        = flag.String("cloud-config", "", "path to the GCE config")
+	machineSetupConfig = flag.String("machine-setup-config", "/etc/machinesetup/machine_setup_configs.yaml", "path to the machine setup config")
+)
+
 func main() {
 	flag.Parse()
 
@@ -74,20 +79,18 @@ func main() {
 }
 
 // Setup static dependencies.
-// TODO: Do something better
 func initStaticDeps(mgr manager.Manager) {
-	machineConfigLocation := "/etc/machinesetup/machine_setup_configs.yaml"
-	configWatch, err := machinesetup.NewConfigWatch(machineConfigLocation)
+	configWatch, err := machinesetup.NewConfigWatch(*machineSetupConfig)
 	if err != nil {
 		glog.Fatalf("Could not create config watch: %v", err)
 	}
 
-	//
 	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{
 		MachineSetupConfigGetter: configWatch,
 		EventRecorder:            mgr.GetRecorder("gce-controller"),
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
+		CloudConfigPath:          *cloudConfig,
 	})
 	if err != nil {
 		glog.Fatalf("Error creating cluster provisioner for google : %v", err)
