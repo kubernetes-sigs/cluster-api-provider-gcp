@@ -43,7 +43,6 @@ import (
 
 	"github.com/ghodss/yaml"
 	gcfg "gopkg.in/gcfg.v1"
-	warnings "gopkg.in/warnings.v0"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
@@ -807,12 +806,11 @@ func getOrNewComputeServiceForMachine(params MachineActuatorParams) (GCEClientCo
 	if params.CloudConfigPath != "" {
 		glog.Info("Trying to get open the GCE config")
 		client, err = clientWithAltTokenSource(params.CloudConfigPath)
-	}
-	if params.CloudConfigPath == "" || err != nil {
-		glog.Info("Using the default GCP client")
 		if err != nil {
-			glog.Warningf("Could not create an alternative auth client: %q", err)
+			glog.Fatalf("Error creating an alternative auth client: %q", err)
 		}
+	} else {
+		glog.Info("Using the default GCP client")
 		// The default GCP client expects the environment variable
 		// GOOGLE_APPLICATION_CREDENTIALS to point to a file with service credentials.
 		client, err = google.DefaultClient(context.TODO(), compute.ComputeScope)
@@ -837,7 +835,7 @@ func clientWithAltTokenSource(gceConfigPath string) (*http.Client, error) {
 			TokenBody string `gcfg:"token-body"`
 		}
 	}{}
-	if err := warnings.FatalOnly(gcfg.ReadFileInto(&gceConfig, gceConfigPath)); err != nil {
+	if err := gcfg.FatalOnly(gcfg.ReadFileInto(&gceConfig, gceConfigPath)); err != nil {
 		return nil, err
 	}
 	tokenSource := clients.NewAltTokenSource(gceConfig.Global.TokenURL, gceConfig.Global.TokenBody)

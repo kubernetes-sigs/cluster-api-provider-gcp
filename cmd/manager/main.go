@@ -34,8 +34,8 @@ import (
 )
 
 var (
-	cloudConfig        = flag.String("cloud_config", "", "path to the GCE config")
-	machineSetupConfig = flag.String("machine_setup_config", "/etc/machinesetup/machine_setup_configs.yaml", "path to the machine setup config")
+	cloudConfig        = flag.String("cloud-config", "", "path to the GCE config")
+	machineSetupConfig = flag.String("machine-setup-config", "/etc/machinesetup/machine_setup_configs.yaml", "path to the machine setup config")
 )
 
 func main() {
