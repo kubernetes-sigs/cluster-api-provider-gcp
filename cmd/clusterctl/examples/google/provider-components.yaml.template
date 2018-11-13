@@ -160,8 +160,8 @@ data:
         roles:
         - Master
         versions:
-          kubelet: 1.9.4
-          controlPlane: 1.9.4
+          kubelet: 1.12.0
+          controlPlane: 1.12.0
       image: projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts
       metadata:
         startupScript: |
@@ -224,12 +224,12 @@ data:
 
           # Override network args to use kubenet instead of cni, override Kubelet DNS args and
           # add cloud provider args.
-          cat > /etc/systemd/system/kubelet.service.d/20-kubenet.conf <<EOF
-          [Service]
-          Environment="KUBELET_NETWORK_ARGS=--network-plugin=kubenet"
-          Environment="KUBELET_DNS_ARGS=--cluster-dns=${CLUSTER_DNS_SERVER} --cluster-domain=${CLUSTER_DNS_DOMAIN}"
-          Environment="KUBELET_EXTRA_ARGS=--cloud-provider=gce --cloud-config=/etc/kubernetes/cloud-config"
+          cat > /etc/default/kubelet <<EOF
+          KUBELET_EXTRA_ARGS="--network-plugin=kubenet"
+          KUBELET_EXTRA_ARGS+=" --cluster-dns=${CLUSTER_DNS_SERVER} --cluster-domain=${CLUSTER_DNS_DOMAIN}"
+          KUBELET_EXTRA_ARGS+=" --cloud-provider=gce --cloud-config=/etc/kubernetes/cloud-config"
           EOF
+
           systemctl daemon-reload
           systemctl restart kubelet.service
           PRIVATEIP=`curl_metadata "network-interfaces/0/ip"`
@@ -247,7 +247,7 @@ data:
 
           # Set up kubeadm config file to pass parameters to kubeadm init.
           cat > /etc/kubernetes/kubeadm_config.yaml <<EOF
-          apiVersion: kubeadm.k8s.io/v1alpha1
+          apiVersion: kubeadm.k8s.io/v1alpha2
           kind: MasterConfiguration
           api:
             advertiseAddress: ${PUBLICIP}
@@ -255,15 +255,20 @@ data:
           networking:
             serviceSubnet: ${SERVICE_CIDR}
           kubernetesVersion: v${CONTROL_PLANE_VERSION}
-          cloudProvider: gce
-          token: ${TOKEN}
-          controllerManagerExtraArgs:
-            cluster-cidr: ${POD_CIDR}
-            service-cluster-ip-range: ${SERVICE_CIDR}
-            allocate-node-cidrs: "true"
           apiServerCertSANs:
           - ${PUBLICIP}
           - ${PRIVATEIP}
+          bootstrapTokens:
+          - groups:
+            - system:bootstrappers:kubeadm:default-node-token
+            token: ${TOKEN}
+          apiServerExtraArgs:
+            cloud-provider: gce
+          controllerManagerExtraArgs:
+            allocate-node-cidrs: "true"
+            cloud-provider: gce
+            cluster-cidr: ${POD_CIDR}
+            service-cluster-ip-range: ${SERVICE_CIDR}
           EOF
 
           function install_certificates () {
@@ -301,7 +306,7 @@ data:
         roles:
         - Node
         versions:
-          kubelet: 1.9.4
+          kubelet: 1.12.0
       image: projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts
       metadata:
         startupScript: |
@@ -364,12 +369,12 @@ data:
           CLUSTER_DNS_SERVER=$(prips ${SERVICE_CIDR} | head -n 11 | tail -n 1)
           # Override network args to use kubenet instead of cni, override Kubelet DNS args and
           # add cloud provider args.
-          cat > /etc/systemd/system/kubelet.service.d/20-kubenet.conf <<EOF
-          [Service]
-          Environment="KUBELET_NETWORK_ARGS=--network-plugin=kubenet"
-          Environment="KUBELET_DNS_ARGS=--cluster-dns=${CLUSTER_DNS_SERVER} --cluster-domain=${CLUSTER_DNS_DOMAIN}"
-          Environment="KUBELET_EXTRA_ARGS=--cloud-provider=gce --cloud-config=/etc/kubernetes/cloud-config"
+          cat > /etc/default/kubelet <<EOF
+          KUBELET_EXTRA_ARGS="--network-plugin=kubenet"
+          KUBELET_EXTRA_ARGS+=" --cluster-dns=${CLUSTER_DNS_SERVER} --cluster-domain=${CLUSTER_DNS_DOMAIN}"
+          KUBELET_EXTRA_ARGS+=" --cloud-provider=gce --cloud-config=/etc/kubernetes/cloud-config"
           EOF
+
           systemctl daemon-reload
           systemctl restart kubelet.service
           kubeadm join --token "${TOKEN}" "${MASTER}" --ignore-preflight-errors=all --discovery-token-unsafe-skip-ca-verification
