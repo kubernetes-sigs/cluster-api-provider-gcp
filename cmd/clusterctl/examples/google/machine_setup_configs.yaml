@@ -96,7 +96,7 @@
         advertiseAddress: ${PUBLICIP}
         bindPort: ${PORT}
       networking:
-        serviceSubnet: ${SERVICE_SUBNET}
+        serviceSubnet: ${SERVICE_CIDR}
       kubernetesVersion: v${CONTROL_PLANE_VERSION}
       apiServerCertSANs:
       - ${PUBLICIP}

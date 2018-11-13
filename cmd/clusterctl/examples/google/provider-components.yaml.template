@@ -253,7 +253,7 @@ data:
             advertiseAddress: ${PUBLICIP}
             bindPort: ${PORT}
           networking:
-            serviceSubnet: ${SERVICE_SUBNET}
+            serviceSubnet: ${SERVICE_CIDR}
           kubernetesVersion: v${CONTROL_PLANE_VERSION}
           apiServerCertSANs:
           - ${PUBLICIP}
@@ -378,7 +378,7 @@ data:
           systemctl daemon-reload
           systemctl restart kubelet.service
           kubeadm join --token "${TOKEN}" "${MASTER}" --ignore-preflight-errors=all --discovery-token-unsafe-skip-ca-verification
-          for tries in $(se 1 60); do
+          for tries in $(seq 1 60); do
           	kubectl --kubeconfig /etc/kubernetes/kubelet.conf annotate --overwrite node $(hostname) machine=${MACHINE} && break
           	sleep 1
           done
