@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["flag.go"],
+    importmap = "sigs.k8s.io/cluster-api-provider-gcp/vendor/github.com/prometheus/common/promlog/flag",
+    importpath = "github.com/prometheus/common/promlog/flag",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//vendor/github.com/prometheus/common/promlog:go_default_library",
+        "@in_gopkg_alecthomas_kingpin_v2//:go_default_library",
+    ],
+)

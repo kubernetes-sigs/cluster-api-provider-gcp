@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["disco.go"],
+    importmap = "sigs.k8s.io/cluster-api-provider-gcp/vendor/google.golang.org/api/google-api-go-generator/internal/disco",
+    importpath = "google.golang.org/api/google-api-go-generator/internal/disco",
+    visibility = ["//vendor/google.golang.org/api/google-api-go-generator:__subpackages__"],
+)
