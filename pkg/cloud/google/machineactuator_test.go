@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/net/context"
 	compute "google.golang.org/api/compute/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -265,7 +266,7 @@ func createCluster(t *testing.T, machine *v1alpha1.Machine, computeServiceMock *
 	if err != nil {
 		t.Fatalf("unable to create machine actuator: %v", err)
 	}
-	return gce.Create(cluster, machine)
+	return gce.Create(context.Background(), cluster, machine)
 }
 
 func newInsertInstanceCapturingMock() (*compute.Instance, *GCEClientComputeServiceMock) {

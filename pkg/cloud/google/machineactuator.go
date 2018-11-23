@@ -236,7 +236,7 @@ func (gce *GCEClient) ProvisionClusterDependencies(cluster *clusterv1.Cluster) e
 	return gce.serviceAccountService.CreateMasterNodeServiceAccount(cluster)
 }
 
-func (gce *GCEClient) Create(cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
+func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
 	if gce.machineSetupConfigGetter == nil {
 		return errors.New("a valid machineSetupConfigGetter is required")
 	}
@@ -344,7 +344,7 @@ func (gce *GCEClient) Create(cluster *clusterv1.Cluster, machine *clusterv1.Mach
 	return nil
 }
 
-func (gce *GCEClient) Delete(cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
+func (gce *GCEClient) Delete(_ context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
 	instance, err := gce.instanceIfExists(cluster, machine)
 	if err != nil {
 		return err
@@ -439,7 +439,7 @@ func (gce *GCEClient) PostDelete(cluster *clusterv1.Cluster) error {
 	return nil
 }
 
-func (gce *GCEClient) Update(cluster *clusterv1.Cluster, goalMachine *clusterv1.Machine) error {
+func (gce *GCEClient) Update(ctx context.Context, cluster *clusterv1.Cluster, goalMachine *clusterv1.Machine) error {
 	// Before updating, do some basic validation of the object first.
 	goalConfig, err := machineProviderFromProviderSpec(goalMachine.Spec.ProviderSpec)
 	if err != nil {
@@ -488,11 +488,11 @@ func (gce *GCEClient) Update(cluster *clusterv1.Cluster, goalMachine *clusterv1.
 		}
 	} else {
 		glog.Infof("re-creating machine %s for update.", currentMachine.ObjectMeta.Name)
-		err = gce.Delete(cluster, currentMachine)
+		err = gce.Delete(ctx, cluster, currentMachine)
 		if err != nil {
 			glog.Errorf("delete machine %s for update failed: %v", currentMachine.ObjectMeta.Name, err)
 		} else {
-			err = gce.Create(cluster, goalMachine)
+			err = gce.Create(ctx, cluster, goalMachine)
 			if err != nil {
 				glog.Errorf("create machine %s for update failed: %v", goalMachine.ObjectMeta.Name, err)
 			}
@@ -504,7 +504,7 @@ func (gce *GCEClient) Update(cluster *clusterv1.Cluster, goalMachine *clusterv1.
 	return gce.updateInstanceStatus(goalMachine)
 }
 
-func (gce *GCEClient) Exists(cluster *clusterv1.Cluster, machine *clusterv1.Machine) (bool, error) {
+func (gce *GCEClient) Exists(_ context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) (bool, error) {
 	i, err := gce.instanceIfExists(cluster, machine)
 	if err != nil {
 		return false, err
