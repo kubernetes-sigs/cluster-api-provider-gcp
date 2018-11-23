@@ -150,8 +150,10 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 // TODO move the following four functions to a separate file?
 func clusterProviderFromProviderSpec(providerSpec clusterv1.ProviderSpec) (*gceconfigv1.GCEClusterProviderSpec, error) {
 	var config gceconfigv1.GCEClusterProviderSpec
-	if err := yaml.Unmarshal(providerSpec.Value.Raw, &config); err != nil {
-		return nil, err
+	if providerSpec.Value != nil {
+		if err := yaml.Unmarshal(providerSpec.Value.Raw, &config); err != nil {
+			return nil, err
+		}
 	}
 	return &config, nil
 }
