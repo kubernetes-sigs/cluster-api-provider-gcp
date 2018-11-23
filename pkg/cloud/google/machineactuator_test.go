@@ -77,7 +77,7 @@ func (m *GCEClientMachineSetupConfigMock) GetMetadata(params *machinesetup.Confi
 }
 
 func TestKubeadmTokenShouldBeInStartupScript(t *testing.T) {
-	config := newGCEMachineProviderConfigFixture()
+	config := newGCEMachineProviderSpecFixture()
 	receivedInstance, computeServiceMock := newInsertInstanceCapturingMock()
 	kubeadm := kubeadm.NewWithCmdRunner(test_cmd_runner.NewTestRunnerFailOnErr(t, tokenCreateCommandCallback))
 	config.Roles = []gceconfigv1.MachineRole{gceconfigv1.NodeRole}
@@ -102,7 +102,7 @@ func tokenCreateCommandCallback(cmd string, args ...string) int {
 }
 
 func TestTokenCreateCommandError(t *testing.T) {
-	config := newGCEMachineProviderConfigFixture()
+	config := newGCEMachineProviderSpecFixture()
 	_, computeServiceMock := newInsertInstanceCapturingMock()
 	kubeadm := kubeadm.NewWithCmdRunner(test_cmd_runner.NewTestRunnerFailOnErr(t, tokenCreateErrorCommandCallback))
 	config.Roles = []gceconfigv1.MachineRole{gceconfigv1.NodeRole}
@@ -119,7 +119,7 @@ func tokenCreateErrorCommandCallback(cmd string, args ...string) int {
 }
 
 func TestNoDisks(t *testing.T) {
-	config := newGCEMachineProviderConfigFixture()
+	config := newGCEMachineProviderSpecFixture()
 	config.Disks = make([]gceconfigv1.Disk, 0)
 	receivedInstance, computeServiceMock := newInsertInstanceCapturingMock()
 	createClusterAndFailOnError(t, config, computeServiceMock, nil)
@@ -127,7 +127,7 @@ func TestNoDisks(t *testing.T) {
 }
 
 func TestMinimumSizeShouldBeEnforced(t *testing.T) {
-	config := newGCEMachineProviderConfigFixture()
+	config := newGCEMachineProviderSpecFixture()
 	config.Disks = []gceconfigv1.Disk{
 		{
 			InitializeParams: gceconfigv1.DiskInitializeParams{
@@ -143,7 +143,7 @@ func TestMinimumSizeShouldBeEnforced(t *testing.T) {
 }
 
 func TestOneDisk(t *testing.T) {
-	config := newGCEMachineProviderConfigFixture()
+	config := newGCEMachineProviderSpecFixture()
 	config.Disks = []gceconfigv1.Disk{
 		{
 			InitializeParams: gceconfigv1.DiskInitializeParams{
@@ -159,7 +159,7 @@ func TestOneDisk(t *testing.T) {
 }
 
 func TestTwoDisks(t *testing.T) {
-	config := newGCEMachineProviderConfigFixture()
+	config := newGCEMachineProviderSpecFixture()
 	config.Disks = []gceconfigv1.Disk{
 		{
 			InitializeParams: gceconfigv1.DiskInitializeParams{
@@ -218,7 +218,7 @@ func checkDiskValues(t *testing.T, disk *compute.AttachedDisk, boot bool, sizeGb
 }
 
 func TestCreateWithCAShouldPopulateMetadata(t *testing.T) {
-	config := newGCEMachineProviderConfigFixture()
+	config := newGCEMachineProviderSpecFixture()
 	receivedInstance, computeServiceMock := newInsertInstanceCapturingMock()
 	ca, err := cert.Load("testdata/ca")
 	if err != nil {
@@ -243,7 +243,7 @@ func checkMetadataItem(t *testing.T, metadata *compute.Metadata, key string, exp
 	}
 }
 
-func createClusterAndFailOnError(t *testing.T, config gceconfigv1.GCEMachineProviderConfig, computeServiceMock *GCEClientComputeServiceMock, ca *cert.CertificateAuthority) {
+func createClusterAndFailOnError(t *testing.T, config gceconfigv1.GCEMachineProviderSpec, computeServiceMock *GCEClientComputeServiceMock, ca *cert.CertificateAuthority) {
 	machine := newMachine(t, config)
 	err := createCluster(t, machine, computeServiceMock, ca, nil)
 	if err != nil {
@@ -310,15 +310,15 @@ func (cw *TestMachineSetupConfigWatcher) GetMachineSetupConfig() (machinesetup.M
 	return cw.machineSetupConfigMock, nil
 }
 
-func newMachine(t *testing.T, gceProviderConfig gceconfigv1.GCEMachineProviderConfig) *v1alpha1.Machine {
-	providerConfig, err := google.ProviderConfigFromMachine(&gceProviderConfig)
+func newMachine(t *testing.T, gceProviderSpec gceconfigv1.GCEMachineProviderSpec) *v1alpha1.Machine {
+	providerSpec, err := google.ProviderSpecFromMachine(&gceProviderSpec)
 	if err != nil {
-		t.Fatalf("unable to encode provider config: %v", err)
+		t.Fatalf("unable to encode provider spec: %v", err)
 	}
 
 	return &v1alpha1.Machine{
 		Spec: v1alpha1.MachineSpec{
-			ProviderConfig: *providerConfig,
+			ProviderSpec: *providerSpec,
 			Versions: v1alpha1.MachineVersionInfo{
 				Kubelet:      "1.9.4",
 				ControlPlane: "1.9.4",
@@ -327,11 +327,11 @@ func newMachine(t *testing.T, gceProviderConfig gceconfigv1.GCEMachineProviderCo
 	}
 }
 
-func newGCEMachineProviderConfigFixture() gceconfigv1.GCEMachineProviderConfig {
-	return gceconfigv1.GCEMachineProviderConfig{
+func newGCEMachineProviderSpecFixture() gceconfigv1.GCEMachineProviderSpec {
+	return gceconfigv1.GCEMachineProviderSpec{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "gceproviderconfig/v1alpha1",
-			Kind:       "GCEMachineProviderConfig",
+			Kind:       "GCEMachineProviderSpec",
 		},
 		Roles: []gceconfigv1.MachineRole{
 			gceconfigv1.MasterRole,
@@ -342,21 +342,21 @@ func newGCEMachineProviderConfigFixture() gceconfigv1.GCEMachineProviderConfig {
 	}
 }
 
-func newGCEClusterProviderConfigFixture() gceconfigv1.GCEClusterProviderConfig {
-	return gceconfigv1.GCEClusterProviderConfig{
+func newGCEClusterProviderSpecFixture() gceconfigv1.GCEClusterProviderSpec {
+	return gceconfigv1.GCEClusterProviderSpec{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "gceproviderconfig/v1alpha1",
-			Kind:       "GCEClusterProviderConfig",
+			Kind:       "GCEClusterProviderSpec",
 		},
 		Project: "project-name-2000",
 	}
 }
 
 func newDefaultClusterFixture(t *testing.T) *v1alpha1.Cluster {
-	gceProviderConfig := newGCEClusterProviderConfigFixture()
-	providerConfig, err := google.ProviderConfigFromCluster(&gceProviderConfig)
+	gceProviderSpec := newGCEClusterProviderSpecFixture()
+	providerSpec, err := google.ProviderSpecFromCluster(&gceProviderSpec)
 	if err != nil {
-		t.Fatalf("unable to encode provider config: %v", err)
+		t.Fatalf("unable to encode provider spec: %v", err)
 	}
 
 	return &v1alpha1.Cluster{
@@ -379,7 +379,7 @@ func newDefaultClusterFixture(t *testing.T) *v1alpha1.Cluster {
 					},
 				},
 			},
-			ProviderConfig: *providerConfig,
+			ProviderSpec: *providerSpec,
 		},
 		Status: v1alpha1.ClusterStatus{
 			APIEndpoints: []v1alpha1.APIEndpoint{

@@ -8,7 +8,7 @@ metadata:
 spec:
   group: gceproviderconfig.k8s.io
   names:
-    kind: GCEClusterProviderConfig
+    kind: GCEClusterProviderSpec
     plural: gceclusterproviderconfigs
   scope: Namespaced
   validation:

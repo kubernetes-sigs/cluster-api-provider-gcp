@@ -23,9 +23,9 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// GCEClusterProviderConfig is the Schema for the gceclusterproviderconfigs API
+// GCEClusterProviderSpec is the Schema for the gceclusterproviderconfigs API
 // +k8s:openapi-gen=true
-type GCEClusterProviderConfig struct {
+type GCEClusterProviderSpec struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -34,13 +34,13 @@ type GCEClusterProviderConfig struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// GCEClusterProviderConfigList contains a list of GCEClusterProviderConfig
-type GCEClusterProviderConfigList struct {
+// GCEClusterProviderSpecList contains a list of GCEClusterProviderSpec
+type GCEClusterProviderSpecList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []GCEClusterProviderConfig `json:"items"`
+	Items           []GCEClusterProviderSpec `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&GCEClusterProviderConfig{}, &GCEClusterProviderConfigList{})
+	SchemeBuilder.Register(&GCEClusterProviderSpec{}, &GCEClusterProviderSpecList{})
 }

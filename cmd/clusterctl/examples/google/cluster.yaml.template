@@ -14,8 +14,8 @@ spec:
         pods: 
             cidrBlocks: ["192.168.0.0/16"]
         serviceDomain: "cluster.local"
-    providerConfig:
+    providerSpec:
       value:
         apiVersion: "gceproviderconfig/v1alpha1"
-        kind: "GCEClusterProviderConfig"
+        kind: "GCEClusterProviderSpec"
         project: "$GCLOUD_PROJECT"

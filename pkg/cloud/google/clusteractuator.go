@@ -125,9 +125,9 @@ func (gce *GCEClusterClient) createFirewallRuleIfNotExists(cluster *clusterv1.Cl
 		// The firewall rule was already created.
 		return nil
 	}
-	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("error parsing cluster provider config: %v", err)
+		return fmt.Errorf("error parsing cluster provider spec: %v", err)
 	}
 	firewallRules, err := gce.computeService.FirewallsGet(clusterConfig.Project)
 	if err != nil {
@@ -165,9 +165,9 @@ func (gce *GCEClusterClient) containsFirewallRule(firewallRules *compute.Firewal
 }
 
 func (gce *GCEClusterClient) deleteFirewallRule(cluster *clusterv1.Cluster, ruleName string) error {
-	clusterConfig, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	clusterConfig, err := clusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("error parsing cluster provider config: %v", err)
+		return fmt.Errorf("error parsing cluster provider spec: %v", err)
 	}
 	op, err := gce.computeService.FirewallsDelete(clusterConfig.Project, ruleName)
 	if err != nil {
