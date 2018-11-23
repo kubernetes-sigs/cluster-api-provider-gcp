@@ -840,6 +840,14 @@
   revision = "4242d8e6c5dba56827bb7bcf14ad11cda38f3991"
 
 [[projects]]
+  digest = "1:e2999bf1bb6eddc2a6aa03fe5e6629120a53088926520ca3b4765f77d7ff7eab"
+  name = "k8s.io/klog"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a5bc97fbc634d635061f3146511332c7e313a55a"
+  version = "v0.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:a2c842a1e0aed96fd732b535514556323a6f5edfded3b63e5e0ab1bce188aa54"
   name = "k8s.io/kube-openapi"
@@ -849,15 +857,17 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8e490426824c54fb671621acc23b9ed6ffb732b86b56ba301ec527cc877a324e"
+  digest = "1:e5b3cfce952ea0eaf016b49b13bb86dc3f9b44133b823eb74077d86d780d5bea"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "cmd/clusterctl/clientcmd",
     "cmd/clusterctl/clusterdeployer",
+    "cmd/clusterctl/clusterdeployer/bootstrap",
     "cmd/clusterctl/clusterdeployer/bootstrap/existing",
     "cmd/clusterctl/clusterdeployer/bootstrap/minikube",
     "cmd/clusterctl/clusterdeployer/clusterclient",
     "cmd/clusterctl/cmd",
+    "cmd/clusterctl/phases",
     "cmd/clusterctl/providercomponents",
     "cmd/clusterctl/validation",
     "pkg/apis",
@@ -878,7 +888,7 @@
     "pkg/util",
   ]
   pruneopts = "T"
-  revision = "6fe3ecb17bdcdf096ede34104af87f79c2e90e68"
+  revision = "5a27d984f9af41aa4f952e7c36a11bfbfb042b83"
 
 [[projects]]
   digest = "1:cc772eeacf2f3f506acd657b4e88ffc4d1042a82e46a73079b4d73dd422f97e0"
@@ -942,6 +952,14 @@
   ]
   pruneopts = "UT"
   revision = "5818a3a284a11812aaed11d5ca0bcadec2c50e83"
+
+[[projects]]
+  digest = "1:7719608fe0b52a4ece56c2dde37bedd95b938677d1ab0f84b8a7852e4c59f849"
+  name = "sigs.k8s.io/yaml"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "fd68e9863619f6ec2fdd8625fe1f02e7c877e480"
+  version = "v1.1.0"
 
 [solve-meta]
   analyzer-name = "dep"
