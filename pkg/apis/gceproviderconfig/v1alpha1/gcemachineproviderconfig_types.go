@@ -23,9 +23,9 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// GCEMachineProviderConfig is the Schema for the gcemachineproviderconfigs API
+// GCEMachineProviderSpec is the Schema for the gcemachineproviderconfigs API
 // +k8s:openapi-gen=true
-type GCEMachineProviderConfig struct {
+type GCEMachineProviderSpec struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -76,13 +76,13 @@ type DiskInitializeParams struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// GCEMachineProviderConfigList contains a list of GCEMachineProviderConfig
-type GCEMachineProviderConfigList struct {
+// GCEMachineProviderSpecList contains a list of GCEMachineProviderSpec
+type GCEMachineProviderSpecList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []GCEMachineProviderConfig `json:"items"`
+	Items           []GCEMachineProviderSpec `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&GCEMachineProviderConfig{}, &GCEMachineProviderConfigList{})
+	SchemeBuilder.Register(&GCEMachineProviderSpec{}, &GCEMachineProviderSpecList{})
 }

@@ -6,10 +6,10 @@ items:
     labels:
       set: master
   spec:
-    providerConfig:
+    providerSpec:
       value:
         apiVersion: "gceproviderconfig/v1alpha1"
-        kind: "GCEMachineProviderConfig"
+        kind: "GCEMachineProviderSpec"
         roles:
         - Master
         zone: "$ZONE"
@@ -29,10 +29,10 @@ items:
     labels:
       set: node
   spec:
-    providerConfig:
+    providerSpec:
       value:
         apiVersion: "gceproviderconfig/v1alpha1"
-        kind: "GCEMachineProviderConfig"
+        kind: "GCEMachineProviderSpec"
         roles:
         - Node
         zone: "$ZONE"

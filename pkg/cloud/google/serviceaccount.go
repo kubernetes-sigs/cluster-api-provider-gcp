@@ -140,7 +140,7 @@ func (sas *ServiceAccountService) createSecretForServiceAccountKey(accountId str
 // of the created account and the project it belongs to.
 func (sas *ServiceAccountService) createServiceAccount(serviceAccountPrefix string, roles []string, cluster *clusterv1.Cluster) (string, string, error) {
 
-	config, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	config, err := clusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
 	if err != nil {
 		return "", "", err
 	}
@@ -186,9 +186,9 @@ func (sas *ServiceAccountService) DeleteMachineControllerServiceAccount(cluster 
 }
 
 func (sas *ServiceAccountService) deleteServiceAccount(serviceAccountPrefix string, roles []string, cluster *clusterv1.Cluster) error {
-	config, err := clusterProviderFromProviderConfig(cluster.Spec.ProviderConfig)
+	config, err := clusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
 	if err != nil {
-		glog.Info("cannot parse cluster providerConfig field")
+		glog.Info("cannot parse cluster providerSpec field")
 		return nil
 	}
 
