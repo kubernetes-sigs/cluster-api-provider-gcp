@@ -41,6 +41,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
+	"cloud.google.com/go/compute/metadata"
 	"github.com/ghodss/yaml"
 	gcfg "gopkg.in/gcfg.v1"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
@@ -155,7 +156,25 @@ func clusterProviderFromProviderSpec(providerSpec clusterv1.ProviderSpec) (*gcec
 			return nil, err
 		}
 	}
+
+	if err := populateDefaultsGCEClusterProviderSpec(&config); err != nil {
+		return nil, err
+	}
+
 	return &config, nil
+}
+
+func populateDefaultsGCEClusterProviderSpec(c *gceconfigv1.GCEClusterProviderSpec) error {
+	var err error
+
+	if c.Project == "" {
+		c.Project, err = metadata.ProjectID()
+		if err != nil {
+			return fmt.Errorf("error getting GCE project: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func machineProviderFromProviderSpec(providerSpec clusterv1.ProviderSpec) (*gceconfigv1.GCEMachineProviderSpec, error) {
