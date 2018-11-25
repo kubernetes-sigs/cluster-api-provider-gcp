@@ -3,10 +3,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = ["config_types.go"],
-    importpath = "sigs.k8s.io/cluster-api-provider-gcp/cloud/google/machinesetup",
+    importpath = "sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup",
     visibility = ["//visibility:public"],
     deps = [
-        "//cloud/google/gceproviderconfig/v1alpha1:go_default_library",
+        "//pkg/apis/gceproviderconfig/v1alpha1:go_default_library",
         "//vendor/github.com/ghodss/yaml:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1:go_default_library",
     ],
@@ -17,7 +17,7 @@ go_test(
     srcs = ["config_types_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//cloud/google/gceproviderconfig/v1alpha1:go_default_library",
+        "//pkg/apis/gceproviderconfig/v1alpha1:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1:go_default_library",
     ],
 )

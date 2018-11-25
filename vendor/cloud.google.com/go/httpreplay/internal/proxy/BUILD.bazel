@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "debug.go",
+        "log.go",
+        "record.go",
+        "replay.go",
+    ],
+    importmap = "sigs.k8s.io/cluster-api-provider-gcp/vendor/cloud.google.com/go/httpreplay/internal/proxy",
+    importpath = "cloud.google.com/go/httpreplay/internal/proxy",
+    visibility = ["//vendor/cloud.google.com/go/httpreplay:__subpackages__"],
+    deps = [
+        "@com_github_google_martian//:go_default_library",
+        "@com_github_google_martian//fifo:go_default_library",
+        "@com_github_google_martian//httpspec:go_default_library",
+        "@com_github_google_martian//martianlog:go_default_library",
+        "@com_github_google_martian//mitm:go_default_library",
+    ],
+)
