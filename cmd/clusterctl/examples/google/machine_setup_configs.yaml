@@ -18,7 +18,7 @@ items:
           curl  --retry 5 --silent --fail --header "Metadata-Flavor: Google" "http://metadata/computeMetadata/v1/instance/$@"
       }
 
-      curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+      curl -sf https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
       touch /etc/apt/sources.list.d/kubernetes.list
       sh -c 'echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list'
       apt-get update -y
@@ -42,7 +42,7 @@ items:
       }
       install_configure_docker
 
-      curl -sSL https://dl.k8s.io/release/${VERSION}/bin/linux/${ARCH}/kubeadm > /usr/bin/kubeadm.dl
+      curl -fsSL https://dl.k8s.io/release/${VERSION}/bin/linux/${ARCH}/kubeadm > /usr/bin/kubeadm.dl
       chmod a+rx /usr/bin/kubeadm.dl
       # kubeadm uses 10th IP as DNS server
       CLUSTER_DNS_SERVER=$(prips ${SERVICE_CIDR} | head -n 11 | tail -n 1)
@@ -179,7 +179,7 @@ items:
 
       install_configure_docker
 
-      curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+      curl -fs https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
       cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
       deb http://apt.kubernetes.io/ kubernetes-xenial main
       EOF

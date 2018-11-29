@@ -13,7 +13,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager sigs.k8s.io/clu
 FROM ubuntu:latest as kubeadm
 RUN apt-get update
 RUN apt-get install -y curl
-RUN curl -sSL https://dl.k8s.io/release/v1.11.2/bin/linux/amd64/kubeadm > /usr/bin/kubeadm
+RUN curl -fsSL https://dl.k8s.io/release/v1.11.2/bin/linux/amd64/kubeadm > /usr/bin/kubeadm
 RUN chmod a+rx /usr/bin/kubeadm
 
 # Copy the controller-manager into a thin image
