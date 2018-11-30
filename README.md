@@ -56,10 +56,12 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
    ```bash
    export GOOGLE_APPLICATION_CREDENTIALS=cmd/clusterctl/examples/google/out/machine-controller-serviceaccount.json
 
-   ./bin/clusterctl create cluster --provider google -c cmd/clusterctl/examples/google/out/cluster.yaml -m cmd/clusterctl/examples/google/out/machines.yaml -p cmd/clusterctl/examples/google/out/provider-components.yaml -a cmd/clusterctl/examples/google/out/addons.yaml
+   ./bin/clusterctl create cluster --provider google -c cmd/clusterctl/examples/google/out/cluster.yaml -m cmd/clusterctl/examples/google/out/machines.yaml -p cmd/clusterctl/examples/google/out/provider-components.yaml -a cmd/clusterctl/examples/google/out/addons.yaml --minikube="kubernetes-version=v1.12.0"
    ```
 
-To choose a specific minikube driver, please use the `--vm-driver` command line parameter. For example to use the kvm2 driver with clusterctl you woud add `--vm-driver kvm2`
+To choose a specific minikube driver, please use the `--vm-driver` command line parameter. For example to use the kvm2 driver with clusterctl you woud add `--vm-driver kvm2`.
+
+Adding `--minikube="kubernetes-version=v1.12.0"` enforces bootstrap cluster to be in a version supporting sub-resources in CRDs, used by this code. Kubernetes before version v1.12 doesn't support them out-of-the-box.
 
 Additional advanced flags can be found via help.
 

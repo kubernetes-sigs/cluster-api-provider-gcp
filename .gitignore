@@ -23,3 +23,6 @@ bazel-testlogs
 
 # Common editor / temporary files
 *~
+
+# Generated files
+kubeconfig
