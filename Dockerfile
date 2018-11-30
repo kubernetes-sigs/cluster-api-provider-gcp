@@ -18,7 +18,7 @@ RUN chmod a+rx /usr/bin/kubeadm
 
 # Copy the controller-manager into a thin image
 FROM ubuntu:latest
-WORKDIR /root/
+WORKDIR /
 COPY --from=builder /go/src/sigs.k8s.io/cluster-api-provider-gcp/manager .
 COPY --from=kubeadm /usr/bin/kubeadm /usr/bin/kubeadm
-ENTRYPOINT ["./manager"]
+ENTRYPOINT ["/manager"]

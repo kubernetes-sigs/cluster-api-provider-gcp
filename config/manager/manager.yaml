@@ -55,7 +55,7 @@ spec:
       - name: manager
         image: SET_BY_PATCH
         command:
-        - "/root/manager"
+        - "/manager"
         args:
         - "-logtostderr=true"
         - "-stderrthreshold=INFO"
