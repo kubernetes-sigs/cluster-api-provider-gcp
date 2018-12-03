@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"io/ioutil"
 	"log"
 
 	"github.com/golang/glog"
@@ -34,8 +35,10 @@ import (
 )
 
 var (
-	cloudConfig        = flag.String("cloud-config", "", "path to the GCE config")
-	machineSetupConfig = flag.String("machine-setup-config", "/etc/machinesetup/machine_setup_configs.yaml", "path to the machine setup config")
+	cloudConfig         = flag.String("cloud-config", "", "path to the GCE config")
+	machineSetupConfig  = flag.String("machine-setup-config", "/etc/machinesetup/machine_setup_configs.yaml", "path to the machine setup config")
+	bootstrapCACert     = flag.String("bootstrap-ca-cert", "", "path to the CA cert")
+	bootstrapKubeconfig = flag.String("bootstrap-kubeconfig", "", "path to the bootstrap kubeconfig")
 )
 
 func main() {
@@ -85,7 +88,18 @@ func initStaticDeps(mgr manager.Manager) {
 		glog.Fatalf("Could not create config watch: %v", err)
 	}
 
+	bootstrapKubeconfig, err := ioutil.ReadFile(*bootstrapKubeconfig)
+	if err != nil {
+		glog.Exitf("Couldn't open bootstrap kubeconfig file %v", err)
+	}
+	bootstrapCACert, err := ioutil.ReadFile(*bootstrapCACert)
+	if err != nil {
+		glog.Exitf("Couldn't open bootstrap CA cert file %v", err)
+	}
+
 	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{
+		BootstrapKubeconfig:      bootstrapKubeconfig,
+		BootstrapCACert:          bootstrapCACert,
 		MachineSetupConfigGetter: configWatch,
 		EventRecorder:            mgr.GetRecorder("gce-controller"),
 		Client:                   mgr.GetClient(),

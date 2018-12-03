@@ -89,6 +89,8 @@ type GCEClientMachineSetupConfigGetter interface {
 }
 
 type GCEClient struct {
+	bootstrapKubeconfig      []byte
+	bootstrapCACert          []byte
 	certificateAuthority     *cert.CertificateAuthority
 	computeService           GCEClientComputeService
 	kubeadm                  GCEClientKubeadm
@@ -101,6 +103,8 @@ type GCEClient struct {
 }
 
 type MachineActuatorParams struct {
+	BootstrapKubeconfig      []byte
+	BootstrapCACert          []byte
 	CertificateAuthority     *cert.CertificateAuthority
 	ComputeService           GCEClientComputeService
 	Kubeadm                  GCEClientKubeadm
@@ -132,6 +136,8 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 	}
 
 	return &GCEClient{
+		bootstrapKubeconfig:   params.BootstrapKubeconfig,
+		bootstrapCACert:       params.BootstrapCACert,
 		certificateAuthority:  params.CertificateAuthority,
 		computeService:        computeService,
 		kubeadm:               getOrNewKubeadm(params),
@@ -877,7 +883,7 @@ func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1
 		if err != nil {
 			return nil, err
 		}
-		metadataMap, err = nodeMetadata(kubeadmToken, cluster, machine, clusterConfig.Project, &machineSetupMetadata)
+		metadataMap, err = nodeMetadata(gce.bootstrapKubeconfig, gce.bootstrapCACert, kubeadmToken, cluster, machine, clusterConfig.Project, &machineSetupMetadata)
 		if err != nil {
 			return nil, err
 		}

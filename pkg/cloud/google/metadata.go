@@ -18,6 +18,7 @@ package google
 
 import (
 	"bytes"
+	"encoding/base64"
 	"text/template"
 
 	"fmt"
@@ -27,6 +28,9 @@ import (
 )
 
 type metadataParams struct {
+	BootstrapKubeconfig string
+	BootstrapCACert     string
+
 	Token        string
 	Cluster      *clusterv1.Cluster
 	Machine      *clusterv1.Machine
@@ -40,19 +44,21 @@ type metadataParams struct {
 	MasterEndpoint string
 }
 
-func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *machinesetup.Metadata) (map[string]string, error) {
+func nodeMetadata(bootstrapKubeconfig, bootstrapCACert []byte, token string, cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *machinesetup.Metadata) (map[string]string, error) {
 	if len(cluster.Status.APIEndpoints) == 0 {
 		return nil, fmt.Errorf("master endpoint not found in apiEndpoints for cluster %v", cluster)
 	}
 	params := metadataParams{
-		Token:          token,
-		Cluster:        cluster,
-		Machine:        machine,
-		Project:        project,
-		Metadata:       metadata,
-		PodCIDR:        getSubnet(cluster.Spec.ClusterNetwork.Pods),
-		ServiceCIDR:    getSubnet(cluster.Spec.ClusterNetwork.Services),
-		MasterEndpoint: getEndpoint(cluster.Status.APIEndpoints[0]),
+		BootstrapKubeconfig: base64.StdEncoding.EncodeToString(bootstrapKubeconfig),
+		BootstrapCACert:     base64.StdEncoding.EncodeToString(bootstrapCACert),
+		Token:               token,
+		Cluster:             cluster,
+		Machine:             machine,
+		Project:             project,
+		Metadata:            metadata,
+		PodCIDR:             getSubnet(cluster.Spec.ClusterNetwork.Pods),
+		ServiceCIDR:         getSubnet(cluster.Spec.ClusterNetwork.Services),
+		MasterEndpoint:      getEndpoint(cluster.Status.APIEndpoints[0]),
 	}
 
 	nodeMetadata := map[string]string{}
@@ -125,6 +131,8 @@ const nodeEnvironmentVars = `
 #!/bin/bash
 KUBELET_VERSION={{ .Machine.Spec.Versions.Kubelet }}
 TOKEN={{ .Token }}
+CA_CERT={{ .BootstrapCACert }}
+KUBECONFIG={{ .BootstrapKubeconfig }}
 MASTER={{ .MasterEndpoint }}
 NAMESPACE={{ .Machine.ObjectMeta.Namespace }}
 MACHINE=$NAMESPACE
