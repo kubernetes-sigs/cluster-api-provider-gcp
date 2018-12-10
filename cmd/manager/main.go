@@ -90,11 +90,11 @@ func initStaticDeps(mgr manager.Manager) {
 
 	bootstrapKubeconfig, err := ioutil.ReadFile(*bootstrapKubeconfig)
 	if err != nil {
-		glog.Exitf("Couldn't open bootstrap kubeconfig file %v", err)
+		glog.Warningf("Couldn't open bootstrap kubeconfig file %v", err)
 	}
 	bootstrapCACert, err := ioutil.ReadFile(*bootstrapCACert)
 	if err != nil {
-		glog.Exitf("Couldn't open bootstrap CA cert file %v", err)
+		glog.Warningf("Couldn't open bootstrap CA cert file %v", err)
 	}
 
 	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{
