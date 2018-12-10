@@ -21,6 +21,7 @@ rules:
   resources:
   - clusters
   - machines
+  - machines/status
   - machinedeployments
   - machinesets
   verbs:
