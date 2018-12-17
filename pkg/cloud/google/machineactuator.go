@@ -294,7 +294,7 @@ func (gce *GCEClient) createFromInstanceTemplate(cluster *clusterv1.Cluster, clu
 	project := clusterConfig.Project
 	zone := machineConfig.Zone
 
-	return gce.computeService.InstancesInsertFromTemplate(project, zone, name, fmt.Sprintf("https://www.googleapis.com/compute/v1/projects/%s/global/instanceTemplates/%s", project, machineConfig.InstanceTemplate))
+	return gce.computeService.InstancesInsertFromTemplate(project, zone, name, machineConfig.InstanceTemplate)
 }
 
 func (gce *GCEClient) create(cluster *clusterv1.Cluster, clusterConfig *gceconfigv1.GCEClusterProviderConfig, machine *clusterv1.Machine, machineConfig *gceconfigv1.GCEMachineProviderConfig) (*compute.Operation, error) {

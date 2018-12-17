@@ -91,7 +91,8 @@ func (c *ComputeService) InstancesInsert(project string, zone string, instance *
 
 // A pass through wrapper for compute.Service.Instances.Insert(...)
 func (c *ComputeService) InstancesInsertFromTemplate(project string, zone string, instanceName string, instanceTemplate string) (*compute.Operation, error) {
-	return c.service.Instances.Insert(project, zone, &compute.Instance{Name: instanceName}).SourceInstanceTemplate(instanceTemplate).Do()
+	instanceTemplateUrl := fmt.Sprintf("https://www.googleapis.com/compute/v1/projects/%s/global/instanceTemplates/%s", project, instanceTemplate)
+	return c.service.Instances.Insert(project, zone, &compute.Instance{Name: instanceName}).SourceInstanceTemplate(instanceTemplateUrl).Do()
 }
 
 // A pass through wrapper for compute.Service.ZoneOperations.Get(...)
