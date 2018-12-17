@@ -67,6 +67,10 @@ func (c *GCEClientComputeServiceMock) InstancesInsert(project string, zone strin
 	return c.mockInstancesInsert(project, zone, instance)
 }
 
+func (c *GCEClientComputeServiceMock) InstancesInsertFromTemplate(project, zone, instanceName, instanceTemplate string) (*compute.Operation, error) {
+	panic("not implemented")
+}
+
 func (c *GCEClientComputeServiceMock) ZoneOperationsGet(project string, zone string, operation string) (*compute.Operation, error) {
 	if c.mockZoneOperationsGet == nil {
 		return nil, nil

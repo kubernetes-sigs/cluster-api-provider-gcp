@@ -25,7 +25,7 @@ import (
 
 	"golang.org/x/net/context"
 	compute "google.golang.org/api/compute/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/cert"
 	"sigs.k8s.io/cluster-api/pkg/kubeadm"
-	"sigs.k8s.io/cluster-api/pkg/test-cmd-runner"
+	test_cmd_runner "sigs.k8s.io/cluster-api/pkg/test-cmd-runner"
 )
 
 func init() {
@@ -337,9 +337,10 @@ func newGCEMachineProviderSpecFixture() gceconfigv1.GCEMachineProviderSpec {
 		Roles: []gceconfigv1.MachineRole{
 			gceconfigv1.MasterRole,
 		},
-		Zone:  "us-west5-f",
-		OS:    "os-name",
-		Disks: make([]gceconfigv1.Disk, 0),
+		MachineType: "n1-standard-1",
+		Zone:        "us-west5-f",
+		OS:          "os-name",
+		Disks:       make([]gceconfigv1.Disk, 0),
 	}
 }
 

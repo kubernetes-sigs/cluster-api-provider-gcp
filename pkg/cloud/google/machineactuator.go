@@ -255,6 +255,53 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 		return gce.handleMachineError(machine, verr, createEventAction)
 	}
 
+	instance, err := gce.instanceIfExists(cluster, machine)
+	if err != nil {
+		return err
+	}
+
+	if instance != nil {
+		glog.Infof("Skipped creating a VM that already exists.\n")
+		return nil
+	}
+
+	var op *compute.Operation
+	if machineConfig.InstanceTemplate != "" {
+		op, err = gce.createFromInstanceTemplate(cluster, clusterConfig, machine, machineConfig)
+	} else {
+		op, err = gce.create(cluster, clusterConfig, machine, machineConfig)
+	}
+	if err == nil {
+		err = gce.computeService.WaitForOperation(clusterConfig.Project, op)
+	}
+
+	if err != nil {
+		return gce.handleMachineError(machine, apierrors.CreateMachine(
+			"error creating GCE instance: %v", err), createEventAction)
+	}
+
+	gce.eventRecorder.Eventf(machine, corev1.EventTypeNormal, "Created", "Created Machine %v", machine.Name)
+	// If we have a v1Alpha1Client, then annotate the machine so that we
+	// remember exactly what VM we created for it.
+	if gce.client != nil {
+		return gce.updateAnnotations(cluster, machine)
+	}
+	return nil
+}
+
+func (gce *GCEClient) createFromInstanceTemplate(cluster *clusterv1.Cluster, clusterConfig *gceconfigv1.GCEClusterProviderConfig, machine *clusterv1.Machine, machineConfig *gceconfigv1.GCEMachineProviderConfig) (*compute.Operation, error) {
+	name := machine.ObjectMeta.Name
+	project := clusterConfig.Project
+	zone := machineConfig.Zone
+
+	return gce.computeService.InstancesInsertFromTemplate(project, zone, name, fmt.Sprintf("https://www.googleapis.com/compute/v1/projects/%s/global/instanceTemplates/%s", project, machineConfig.InstanceTemplate))
+}
+
+func (gce *GCEClient) create(cluster *clusterv1.Cluster, clusterConfig *gceconfigv1.GCEClusterProviderConfig, machine *clusterv1.Machine, machineConfig *gceconfigv1.GCEMachineProviderConfig) (*compute.Operation, error) {
+	name := machine.ObjectMeta.Name
+	project := clusterConfig.Project
+	zone := machineConfig.Zone
+
 	configParams := &machinesetup.ConfigParams{
 		OS:       machineConfig.OS,
 		Roles:    machineConfig.Roles,
@@ -262,86 +309,55 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 	}
 	machineSetupConfigs, err := gce.machineSetupConfigGetter.GetMachineSetupConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	image, err := machineSetupConfigs.GetImage(configParams)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	imagePath := gce.getImagePath(image)
 	metadata, err := gce.getMetadata(cluster, machine, clusterConfig, configParams)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	instance, err := gce.instanceIfExists(cluster, machine)
-	if err != nil {
-		return err
+	labels := map[string]string{}
+	if gce.client == nil {
+		labels[BootstrapLabelKey] = "true"
 	}
 
-	name := machine.ObjectMeta.Name
-	project := clusterConfig.Project
-	zone := machineConfig.Zone
-
-	if instance == nil {
-		labels := map[string]string{}
-		if gce.client == nil {
-			labels[BootstrapLabelKey] = "true"
-		}
-
-		op, err := gce.computeService.InstancesInsert(project, zone, &compute.Instance{
-			Name:         name,
-			MachineType:  fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineConfig.MachineType),
-			CanIpForward: true,
-			NetworkInterfaces: []*compute.NetworkInterface{
-				{
-					Network: "global/networks/default",
-					AccessConfigs: []*compute.AccessConfig{
-						{
-							Type: "ONE_TO_ONE_NAT",
-							Name: "External NAT",
-						},
+	return gce.computeService.InstancesInsert(project, zone, &compute.Instance{
+		Name:         name,
+		MachineType:  fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineConfig.MachineType),
+		CanIpForward: true,
+		NetworkInterfaces: []*compute.NetworkInterface{
+			{
+				Network: "global/networks/default",
+				AccessConfigs: []*compute.AccessConfig{
+					{
+						Type: "ONE_TO_ONE_NAT",
+						Name: "External NAT",
 					},
 				},
 			},
-			Disks:    newDisks(machineConfig, zone, imagePath, int64(30)),
-			Metadata: metadata,
-			Tags: &compute.Tags{
-				Items: []string{
-					"https-server",
-					fmt.Sprintf("%s-worker", cluster.Name)},
-			},
-			Labels: labels,
-			ServiceAccounts: []*compute.ServiceAccount{
-				{
-					Email: gce.serviceAccountService.GetDefaultServiceAccountForMachine(cluster, machine),
-					Scopes: []string{
-						compute.CloudPlatformScope,
-					},
+		},
+		Disks:    newDisks(machineConfig, zone, imagePath, int64(30)),
+		Metadata: metadata,
+		Tags: &compute.Tags{
+			Items: []string{
+				"https-server",
+				fmt.Sprintf("%s-worker", cluster.Name)},
+		},
+		Labels: labels,
+		ServiceAccounts: []*compute.ServiceAccount{
+			{
+				Email: gce.serviceAccountService.GetDefaultServiceAccountForMachine(cluster, machine),
+				Scopes: []string{
+					compute.CloudPlatformScope,
 				},
 			},
-		})
-
-		if err == nil {
-			err = gce.computeService.WaitForOperation(clusterConfig.Project, op)
-		}
-
-		if err != nil {
-			return gce.handleMachineError(machine, apierrors.CreateMachine(
-				"error creating GCE instance: %v", err), createEventAction)
-		}
-
-		gce.eventRecorder.Eventf(machine, corev1.EventTypeNormal, "Created", "Created Machine %v", machine.Name)
-		// If we have a v1Alpha1Client, then annotate the machine so that we
-		// remember exactly what VM we created for it.
-		if gce.client != nil {
-			return gce.updateAnnotations(cluster, machine)
-		}
-	} else {
-		glog.Infof("Skipped creating a VM that already exists.\n")
-	}
-
-	return nil
+		},
+	})
 }
 
 func (gce *GCEClient) Delete(_ context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
@@ -694,6 +710,17 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 func (gce *GCEClient) validateMachine(machine *clusterv1.Machine, config *gceconfigv1.GCEMachineProviderSpec) *apierrors.MachineError {
 	if machine.Spec.Versions.Kubelet == "" {
 		return apierrors.InvalidMachineConfiguration("spec.versions.kubelet can't be empty")
+	}
+	if config.MachineType == "" && config.InstanceTemplate == "" {
+		return apierrors.InvalidMachineConfiguration("spec.machineType or spec.instanceTemplate can't be empty")
+	}
+	if config.InstanceTemplate != "" {
+		if config.OS != "" {
+			glog.Warning("machine.Spec.InstanceTemplate is set; machine.Spec.OS ignored")
+		}
+		if len(config.Disks) > 0 {
+			glog.Warning("machine.Spec.InstanceTemplate is set; machine.Spec.Disks ignored")
+		}
 	}
 	return nil
 }

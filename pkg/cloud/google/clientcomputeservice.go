@@ -26,6 +26,7 @@ type GCEClientComputeService interface {
 	InstancesDelete(project string, zone string, targetInstance string) (*compute.Operation, error)
 	InstancesGet(project string, zone string, instance string) (*compute.Instance, error)
 	InstancesInsert(project string, zone string, instance *compute.Instance) (*compute.Operation, error)
+	InstancesInsertFromTemplate(projest, zone, instanceName, instanceTemplate string) (*compute.Operation, error)
 	ZoneOperationsGet(project string, zone string, operation string) (*compute.Operation, error)
 	GlobalOperationsGet(project string, operation string) (*compute.Operation, error)
 	FirewallsGet(project string) (*compute.FirewallList, error)

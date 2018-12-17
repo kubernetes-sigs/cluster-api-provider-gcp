@@ -89,6 +89,11 @@ func (c *ComputeService) InstancesInsert(project string, zone string, instance *
 	return c.service.Instances.Insert(project, zone, instance).Do()
 }
 
+// A pass through wrapper for compute.Service.Instances.Insert(...)
+func (c *ComputeService) InstancesInsertFromTemplate(project string, zone string, instanceName string, instanceTemplate string) (*compute.Operation, error) {
+	return c.service.Instances.Insert(project, zone, &compute.Instance{Name: instanceName}).SourceInstanceTemplate(instanceTemplate).Do()
+}
+
 // A pass through wrapper for compute.Service.ZoneOperations.Get(...)
 func (c *ComputeService) ZoneOperationsGet(project string, zone string, operation string) (*compute.Operation, error) {
 	return c.service.ZoneOperations.Get(project, zone, operation).Do()

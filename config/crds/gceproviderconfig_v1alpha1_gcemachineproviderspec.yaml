@@ -34,6 +34,8 @@ spec:
             - initializeParams
             type: object
           type: array
+        instanceTemplate:
+          type: string
         kind:
           type: string
         machineType:
@@ -50,7 +52,6 @@ spec:
           type: string
       required:
       - zone
-      - machineType
   version: v1alpha1
 status:
   acceptedNames:
