@@ -25,12 +25,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestStorageGCEMachineProviderConfig(t *testing.T) {
+func TestStorageGCEMachineProviderSpec(t *testing.T) {
 	key := types.NamespacedName{Name: "foo", Namespace: "default"}
-	created := &GCEMachineProviderConfig{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+	created := &GCEMachineProviderSpec{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
 
 	// Test Create
-	fetched := &GCEMachineProviderConfig{}
+	fetched := &GCEMachineProviderSpec{}
 	if err := c.Create(context.TODO(), created); err != nil {
 		t.Fatal(err)
 	}

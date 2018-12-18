@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: gceclusterproviderconfigs.gceproviderconfig.k8s.io
+  name: gceclusterproviderspecs.gceproviderconfig.k8s.io
 spec:
   group: gceproviderconfig.k8s.io
   names:
-    kind: GCEClusterProviderConfig
-    plural: gceclusterproviderconfigs
+    kind: GCEClusterProviderSpec
+    plural: gceclusterproviderspecs
   scope: Namespaced
   validation:
     openAPIV3Schema:
