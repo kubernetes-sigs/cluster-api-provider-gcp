@@ -225,9 +225,7 @@ data:
           # Override network args to use kubenet instead of cni, override Kubelet DNS args and
           # add cloud provider args.
           cat > /etc/default/kubelet <<EOF
-          KUBELET_EXTRA_ARGS="--network-plugin=kubenet"
-          KUBELET_EXTRA_ARGS+=" --cluster-dns=${CLUSTER_DNS_SERVER} --cluster-domain=${CLUSTER_DNS_DOMAIN}"
-          KUBELET_EXTRA_ARGS+=" --cloud-provider=gce --cloud-config=/etc/kubernetes/cloud-config"
+          KUBELET_EXTRA_ARGS="--network-plugin=kubenet --cluster-dns=${CLUSTER_DNS_SERVER} --cluster-domain=${CLUSTER_DNS_DOMAIN} --cloud-provider=gce --cloud-config=/etc/kubernetes/cloud-config"
           EOF
 
           systemctl daemon-reload
@@ -370,9 +368,7 @@ data:
           # Override network args to use kubenet instead of cni, override Kubelet DNS args and
           # add cloud provider args.
           cat > /etc/default/kubelet <<EOF
-          KUBELET_EXTRA_ARGS="--network-plugin=kubenet"
-          KUBELET_EXTRA_ARGS+=" --cluster-dns=${CLUSTER_DNS_SERVER} --cluster-domain=${CLUSTER_DNS_DOMAIN}"
-          KUBELET_EXTRA_ARGS+=" --cloud-provider=gce --cloud-config=/etc/kubernetes/cloud-config"
+          KUBELET_EXTRA_ARGS="--network-plugin=kubenet --cluster-dns=${CLUSTER_DNS_SERVER} --cluster-domain=${CLUSTER_DNS_DOMAIN} --cloud-provider=gce --cloud-config=/etc/kubernetes/cloud-config"
           EOF
 
           systemctl daemon-reload
