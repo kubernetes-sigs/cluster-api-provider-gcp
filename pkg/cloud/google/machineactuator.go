@@ -140,7 +140,7 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 			privateKeyPath: privateKeyPath,
 			user:           user,
 		},
-		client: params.Client,
+		client:                   params.Client,
 		machineSetupConfigGetter: params.MachineSetupConfigGetter,
 		eventRecorder:            params.EventRecorder,
 		scheme:                   params.Scheme,
@@ -237,9 +237,6 @@ func (gce *GCEClient) ProvisionClusterDependencies(cluster *clusterv1.Cluster) e
 }
 
 func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	if gce.machineSetupConfigGetter == nil {
-		return errors.New("a valid machineSetupConfigGetter is required")
-	}
 	machineConfig, err := machineProviderFromProviderSpec(machine.Spec.ProviderSpec)
 	if err != nil {
 		return gce.handleMachineError(machine, apierrors.InvalidMachineConfiguration(
@@ -289,15 +286,19 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 	return nil
 }
 
-func (gce *GCEClient) createFromInstanceTemplate(cluster *clusterv1.Cluster, clusterConfig *gceconfigv1.GCEClusterProviderConfig, machine *clusterv1.Machine, machineConfig *gceconfigv1.GCEMachineProviderConfig) (*compute.Operation, error) {
-	name := machine.ObjectMeta.Name
-	project := clusterConfig.Project
-	zone := machineConfig.Zone
-
-	return gce.computeService.InstancesInsertFromTemplate(project, zone, name, machineConfig.InstanceTemplate)
+func (gce *GCEClient) createFromInstanceTemplate(cluster *clusterv1.Cluster, clusterConfig *gceconfigv1.GCEClusterProviderSpec, machine *clusterv1.Machine, machineConfig *gceconfigv1.GCEMachineProviderSpec) (*compute.Operation, error) {
+	return gce.computeService.InstancesInsertFromTemplate(clusterConfig.Project, machineConfig.Zone, machine.ObjectMeta.Name, machineConfig.InstanceTemplate)
 }
 
-func (gce *GCEClient) create(cluster *clusterv1.Cluster, clusterConfig *gceconfigv1.GCEClusterProviderConfig, machine *clusterv1.Machine, machineConfig *gceconfigv1.GCEMachineProviderConfig) (*compute.Operation, error) {
+func (gce *GCEClient) create(cluster *clusterv1.Cluster, clusterConfig *gceconfigv1.GCEClusterProviderSpec, machine *clusterv1.Machine, machineConfig *gceconfigv1.GCEMachineProviderSpec) (*compute.Operation, error) {
+	if gce.machineSetupConfigGetter == nil {
+		return nil, errors.New("a valid machineSetupConfigGetter is required")
+	}
+	machineSetupConfigs, err := gce.machineSetupConfigGetter.GetMachineSetupConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	name := machine.ObjectMeta.Name
 	project := clusterConfig.Project
 	zone := machineConfig.Zone
@@ -306,10 +307,6 @@ func (gce *GCEClient) create(cluster *clusterv1.Cluster, clusterConfig *gceconfi
 		OS:       machineConfig.OS,
 		Roles:    machineConfig.Roles,
 		Versions: machine.Spec.Versions,
-	}
-	machineSetupConfigs, err := gce.machineSetupConfigGetter.GetMachineSetupConfig()
-	if err != nil {
-		return nil, err
 	}
 	image, err := machineSetupConfigs.GetImage(configParams)
 	if err != nil {
