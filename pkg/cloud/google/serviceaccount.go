@@ -136,7 +136,7 @@ func (sas *ServiceAccountService) createSecretForServiceAccountKey(accountId str
 	return nil
 }
 
-// creates a service account with the roles specifed. Returns the account id
+// creates a service account with the roles specified. Returns the account id
 // of the created account and the project it belongs to.
 func (sas *ServiceAccountService) createServiceAccount(serviceAccountPrefix string, roles []string, cluster *clusterv1.Cluster) (string, string, error) {
 
