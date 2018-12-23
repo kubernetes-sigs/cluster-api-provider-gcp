@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Copyright 2018 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,21 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build the manager binary
-FROM golang:1.10.3 as builder
+set -o errexit
+set -o nounset
+set -o pipefail
 
-# Copy in the go src
-WORKDIR $GOPATH/src/sigs.k8s.io/cluster-api
-COPY pkg/    pkg/
-COPY cmd/    cmd/
-COPY vendor/ vendor/
+export KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 
-# Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager sigs.k8s.io/cluster-api/cmd/manager
-
-# Copy the controller-manager into a thin image
-# TODO: Build this on scratch
-FROM debian:latest
-WORKDIR /
-COPY --from=builder /go/src/sigs.k8s.io/cluster-api/manager .
-ENTRYPOINT ["/manager"]
+cd $KUBE_ROOT
+find $KUBE_ROOT/vendor -name 'BUILD' -delete
+bazel run //:gazelle
