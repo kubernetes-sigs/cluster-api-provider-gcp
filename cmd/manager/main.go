@@ -20,8 +20,8 @@ import (
 	"flag"
 	"log"
 
-	"github.com/golang/glog"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/apis"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
@@ -38,8 +38,19 @@ var (
 	machineSetupConfig = flag.String("machine-setup-config", "/etc/machinesetup/machine_setup_configs.yaml", "path to the machine setup config")
 )
 
-func main() {
+// initLogs is a temporary hack to enable proper logging until upstream dependencies
+// are migrated to fully utilize klog instead of glog.
+func initLogs() {
+	flag.Set("logtostderr", "true")
+	flags := flag.NewFlagSet("klog", flag.ExitOnError)
+	klog.InitFlags(flags)
+	flags.Set("alsologtostderr", "true")
+	flags.Set("v", "3")
 	flag.Parse()
+}
+
+func main() {
+	initLogs()
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
@@ -82,7 +93,7 @@ func main() {
 func initStaticDeps(mgr manager.Manager) {
 	configWatch, err := machinesetup.NewConfigWatch(*machineSetupConfig)
 	if err != nil {
-		glog.Fatalf("Could not create config watch: %v", err)
+		klog.Fatalf("Could not create config watch: %v", err)
 	}
 
 	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{
@@ -93,7 +104,7 @@ func initStaticDeps(mgr manager.Manager) {
 		CloudConfigPath:          *cloudConfig,
 	})
 	if err != nil {
-		glog.Fatalf("Error creating cluster provisioner for google : %v", err)
+		klog.Fatalf("Error creating cluster provisioner for google : %v", err)
 	}
 	clustercommon.RegisterClusterProvisioner(google.ProviderName, google.MachineActuator)
 }
