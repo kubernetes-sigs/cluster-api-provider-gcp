@@ -17,19 +17,32 @@ limitations under the License.
 package main
 
 import (
-	"github.com/golang/glog"
+	"flag"
 
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/cmd"
-	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 )
 
+// initLogs is a temporary hack to enable proper logging until upstream dependencies
+// are migrated to fully utilize klog instead of glog.
+func initLogs() {
+	flag.Set("logtostderr", "true")
+	flags := flag.NewFlagSet("klog", flag.ExitOnError)
+	klog.InitFlags(flags)
+	flags.Set("alsologtostderr", "true")
+	flags.Set("v", "4")
+	flag.Parse()
+}
+
 func main() {
+	initLogs()
 	var err error
 	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{})
 	if err != nil {
-		glog.Fatalf("Error creating cluster provisioner for google : %v", err)
+		klog.Fatalf("Error creating cluster provisioner for google : %v", err)
 	}
-	clustercommon.RegisterClusterProvisioner(google.ProviderName, google.MachineActuator)
+	common.RegisterClusterProvisioner(google.ProviderName, google.MachineActuator)
 	cmd.Execute()
 }
