@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package triple generates key-certificate pairs for the
-// triple (CA, Server, Client).
-package triple
+package google
 
 import (
 	"crypto/rsa"
@@ -24,37 +22,40 @@ import (
 	"fmt"
 	"net"
 
-	certutil "k8s.io/client-go/util/cert"
+	"k8s.io/client-go/util/cert"
 )
 
-type KeyPair struct {
+// Derived from staging/src/k8s.io/client-go/util/cert/triple/triple.go
+// That code was removed in kubernetes PR #70966
+
+type keyPair struct {
 	Key  *rsa.PrivateKey
 	Cert *x509.Certificate
 }
 
-func NewCA(name string) (*KeyPair, error) {
-	key, err := certutil.NewPrivateKey()
+func newCA(name string) (*keyPair, error) {
+	key, err := cert.NewPrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("unable to create a private key for a new CA: %v", err)
 	}
 
-	config := certutil.Config{
+	config := cert.Config{
 		CommonName: name,
 	}
 
-	cert, err := certutil.NewSelfSignedCACert(config, key)
+	cert, err := cert.NewSelfSignedCACert(config, key)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create a self-signed certificate for a new CA: %v", err)
 	}
 
-	return &KeyPair{
+	return &keyPair{
 		Key:  key,
 		Cert: cert,
 	}, nil
 }
 
-func NewServerKeyPair(ca *KeyPair, commonName, svcName, svcNamespace, dnsDomain string, ips, hostnames []string) (*KeyPair, error) {
-	key, err := certutil.NewPrivateKey()
+func newServerKeyPair(ca *keyPair, commonName, svcName, svcNamespace, dnsDomain string, ips, hostnames []string) (*keyPair, error) {
+	key, err := cert.NewPrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("unable to create a server private key: %v", err)
 	}
@@ -67,7 +68,7 @@ func NewServerKeyPair(ca *KeyPair, commonName, svcName, svcNamespace, dnsDomain 
 		fmt.Sprintf("%s.svc.%s", namespacedName, dnsDomain),
 	}
 
-	altNames := certutil.AltNames{}
+	altNames := cert.AltNames{}
 	for _, ipStr := range ips {
 		ip := net.ParseIP(ipStr)
 		if ip != nil {
@@ -77,39 +78,17 @@ func NewServerKeyPair(ca *KeyPair, commonName, svcName, svcNamespace, dnsDomain 
 	altNames.DNSNames = append(altNames.DNSNames, hostnames...)
 	altNames.DNSNames = append(altNames.DNSNames, internalAPIServerFQDN...)
 
-	config := certutil.Config{
+	config := cert.Config{
 		CommonName: commonName,
 		AltNames:   altNames,
 		Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
-	cert, err := certutil.NewSignedCert(config, key, ca.Cert, ca.Key)
+	cert, err := cert.NewSignedCert(config, key, ca.Cert, ca.Key)
 	if err != nil {
 		return nil, fmt.Errorf("unable to sign the server certificate: %v", err)
 	}
 
-	return &KeyPair{
-		Key:  key,
-		Cert: cert,
-	}, nil
-}
-
-func NewClientKeyPair(ca *KeyPair, commonName string, organizations []string) (*KeyPair, error) {
-	key, err := certutil.NewPrivateKey()
-	if err != nil {
-		return nil, fmt.Errorf("unable to create a client private key: %v", err)
-	}
-
-	config := certutil.Config{
-		CommonName:   commonName,
-		Organization: organizations,
-		Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-	cert, err := certutil.NewSignedCert(config, key, ca.Cert, ca.Key)
-	if err != nil {
-		return nil, fmt.Errorf("unable to sign the client certificate: %v", err)
-	}
-
-	return &KeyPair{
+	return &keyPair{
 		Key:  key,
 		Cert: cert,
 	}, nil

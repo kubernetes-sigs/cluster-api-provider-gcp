@@ -28,7 +28,6 @@ import (
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/cert"
-	"k8s.io/client-go/util/cert/triple"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/config"
 )
 
@@ -60,12 +59,12 @@ func getApiServerCerts() (*caCertParams, error) {
 	const name = "clusterapi"
 	const namespace = corev1.NamespaceDefault
 
-	caKeyPair, err := triple.NewCA(fmt.Sprintf("%s-certificate-authority", name))
+	caKeyPair, err := newCA(fmt.Sprintf("%s-certificate-authority", name))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create root-ca: %v", err)
 	}
 
-	apiServerKeyPair, err := triple.NewServerKeyPair(
+	apiServerKeyPair, err := newServerKeyPair(
 		caKeyPair,
 		fmt.Sprintf("%s.%s.svc", name, namespace),
 		name,
