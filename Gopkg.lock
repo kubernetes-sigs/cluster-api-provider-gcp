@@ -738,7 +738,7 @@
   version = "kubernetes-1.11.2"
 
 [[projects]]
-  digest = "1:a76901b286072f6a7078c4993fe88d8a2853e94c6c96c9f770968abda4be8e36"
+  digest = "1:cde9d59d2d603550aa10259fd89225067973a47493ae79457437122ceb9b52d5"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -798,7 +798,6 @@
     "transport",
     "util/buffer",
     "util/cert",
-    "util/cert/triple",
     "util/connrotation",
     "util/flowcontrol",
     "util/homedir",
@@ -991,7 +990,6 @@
     "k8s.io/client-go/rest",
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/cert",
-    "k8s.io/client-go/util/cert/triple",
     "k8s.io/client-go/util/flowcontrol",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/klog",
