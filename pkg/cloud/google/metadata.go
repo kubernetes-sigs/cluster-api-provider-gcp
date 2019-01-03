@@ -113,12 +113,6 @@ CONTROL_PLANE_VERSION={{ .Machine.Spec.Versions.ControlPlane }}
 CLUSTER_DNS_DOMAIN={{ .Cluster.Spec.ClusterNetwork.ServiceDomain }}
 POD_CIDR={{ .PodCIDR }}
 SERVICE_CIDR={{ .ServiceCIDR }}
-# Environment variables for GCE cloud config
-PROJECT={{ .Project }}
-NETWORK=default
-SUBNETWORK=kubernetes
-CLUSTER_NAME={{ .Cluster.Name }}
-NODE_TAG="$CLUSTER_NAME-worker"
 `
 
 const nodeEnvironmentVars = `
@@ -133,10 +127,4 @@ MACHINE+={{ .Machine.ObjectMeta.Name }}
 CLUSTER_DNS_DOMAIN={{ .Cluster.Spec.ClusterNetwork.ServiceDomain }}
 POD_CIDR={{ .PodCIDR }}
 SERVICE_CIDR={{ .ServiceCIDR }}
-# Environment variables for GCE cloud config
-PROJECT={{ .Project }}
-NETWORK=default
-SUBNETWORK=kubernetes
-CLUSTER_NAME={{ .Cluster.Name }}
-NODE_TAG="$CLUSTER_NAME-worker"
 `

@@ -18,6 +18,16 @@ items:
           curl  --retry 5 --silent --fail --header "Metadata-Flavor: Google" "http://metadata/computeMetadata/v1/instance/$@"
       }
 
+      function copy_file () {
+          if ! curl_metadata attributes/$1; then
+              return
+          fi
+          echo "Copying metadata $1 -> $2..."
+          mkdir -p $(dirname $2)
+          curl_metadata attributes/$1 > $2
+          chmod $3 $2
+      }
+
       curl -sf https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
       touch /etc/apt/sources.list.d/kubernetes.list
       sh -c 'echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list'
@@ -79,13 +89,7 @@ items:
       PUBLICIP=`curl_metadata "network-interfaces/0/access-configs/0/external-ip"`
 
       # Set up the GCE cloud config, which gets picked up by kubeadm init since cloudProvider is set to GCE.
-      cat > /etc/kubernetes/cloud-config <<EOF
-      [global]
-      project-id = ${PROJECT}
-      network-name = ${NETWORK}
-      subnetwork-name = ${SUBNETWORK}
-      node-tags = ${NODE_TAG}
-      EOF
+      copy_file cloud-config /etc/kubernetes/cloud-config 0644
 
       # Set up kubeadm config file to pass parameters to kubeadm init.
       cat > /etc/kubernetes/kubeadm_config.yaml <<EOF
@@ -155,6 +159,20 @@ items:
       set -e
       set -x
       (
+      function curl_metadata() {
+          curl  --retry 5 --silent --fail --header "Metadata-Flavor: Google" "http://metadata/computeMetadata/v1/instance/$@"
+      }
+
+      function copy_file () {
+          if ! curl_metadata attributes/$1; then
+              return
+          fi
+          echo "Copying metadata $1 -> $2..."
+          mkdir -p $(dirname $2)
+          curl_metadata attributes/$1 > $2
+          chmod $3 $2
+      }
+
       apt-get update
       apt-get install -y apt-transport-https prips
       apt-key adv --keyserver hkp://keyserver.ubuntu.com --recv-keys F76221572C52609D
@@ -177,20 +195,14 @@ items:
 
       install_configure_docker
 
+      copy_file cloud-config /etc/kubernetes/cloud-config 0644
+
       curl -fs https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
       cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
       deb http://apt.kubernetes.io/ kubernetes-xenial main
       EOF
       apt-get update
 
-      mkdir -p /etc/kubernetes/
-      cat > /etc/kubernetes/cloud-config <<EOF
-      [global]
-      project-id = ${PROJECT}
-      network-name = ${NETWORK}
-      subnetwork-name = ${SUBNETWORK}
-      node-tags = ${NODE_TAG}
-      EOF
       # Our Debian packages have versions like "1.8.0-00" or "1.8.0-01". Do a prefix
       # search based on our SemVer to find the right (newest) package version.
       function getversion() {
