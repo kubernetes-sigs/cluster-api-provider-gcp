@@ -882,6 +882,27 @@ func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1
 			return nil, err
 		}
 	}
+
+	{
+		var b strings.Builder
+
+		project := clusterConfig.Project
+
+		clusterName := cluster.Name
+		nodeTag := clusterName + "-worker"
+
+		network := "default"
+		subnetwork := "kubernetes"
+
+		fmt.Fprintf(&b, "[global]\n")
+		fmt.Fprintf(&b, "project-id = %s\n", project)
+		fmt.Fprintf(&b, "network-name = %s\n", network)
+		fmt.Fprintf(&b, "subnetwork-name = %s\n", subnetwork)
+		fmt.Fprintf(&b, "node-tags = %s\n", nodeTag)
+
+		metadataMap["cloud-config"] = b.String()
+	}
+
 	var metadataItems []*compute.MetadataItems
 	for k, v := range metadataMap {
 		v := v // rebind scope to avoid loop aliasing below
