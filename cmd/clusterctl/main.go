@@ -20,6 +20,7 @@ import (
 	"flag"
 
 	"k8s.io/klog"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/bootstrap"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/cmd"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
@@ -39,7 +40,15 @@ func initLogs() {
 func main() {
 	initLogs()
 	var err error
-	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{})
+
+	metadataBuilder, err := bootstrap.NewBashMetadataBuilder(bootstrap.MetadataParams{})
+	if err != nil {
+		klog.Fatalf("error creating metadata builder: %v", err)
+	}
+
+	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{
+		MetadataBuilder: metadataBuilder,
+	})
 	if err != nil {
 		klog.Fatalf("Error creating cluster provisioner for google : %v", err)
 	}

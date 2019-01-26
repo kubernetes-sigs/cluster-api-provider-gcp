@@ -17,7 +17,6 @@ limitations under the License.
 package google
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -26,7 +25,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
@@ -44,12 +42,11 @@ import (
 	"github.com/ghodss/yaml"
 	gcfg "gopkg.in/gcfg.v1"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/bootstrap"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/cert"
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
-	"sigs.k8s.io/cluster-api/pkg/kubeadm"
 	"sigs.k8s.io/cluster-api/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -80,32 +77,22 @@ type SshCreds struct {
 	privateKeyPath string
 }
 
-type GCEClientKubeadm interface {
-	TokenCreate(params kubeadm.TokenCreateParams) (string, error)
-}
-
-type GCEClientMachineSetupConfigGetter interface {
-	GetMachineSetupConfig() (machinesetup.MachineSetupConfig, error)
-}
-
 type GCEClient struct {
-	certificateAuthority     *cert.CertificateAuthority
 	computeService           GCEClientComputeService
-	kubeadm                  GCEClientKubeadm
 	serviceAccountService    *ServiceAccountService
 	sshCreds                 SshCreds
 	client                   client.Client
-	machineSetupConfigGetter GCEClientMachineSetupConfigGetter
+	machineSetupConfigGetter machinesetup.GCEClientMachineSetupConfigGetter
 	eventRecorder            record.EventRecorder
 	scheme                   *runtime.Scheme
+	metadataBuilder          bootstrap.MetadataBuilder
 }
 
 type MachineActuatorParams struct {
-	CertificateAuthority     *cert.CertificateAuthority
+	MetadataBuilder          bootstrap.MetadataBuilder
 	ComputeService           GCEClientComputeService
-	Kubeadm                  GCEClientKubeadm
 	Client                   client.Client
-	MachineSetupConfigGetter GCEClientMachineSetupConfigGetter
+	MachineSetupConfigGetter machinesetup.GCEClientMachineSetupConfigGetter
 	EventRecorder            record.EventRecorder
 	Scheme                   *runtime.Scheme
 	CloudConfigPath          string
@@ -132,9 +119,8 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 	}
 
 	return &GCEClient{
-		certificateAuthority:  params.CertificateAuthority,
+		metadataBuilder:       params.MetadataBuilder,
 		computeService:        computeService,
-		kubeadm:               getOrNewKubeadm(params),
 		serviceAccountService: serviceAccountService,
 		sshCreds: SshCreds{
 			privateKeyPath: privateKeyPath,
@@ -269,9 +255,14 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 		return err
 	}
 	imagePath := gce.getImagePath(image)
-	metadata, err := gce.getMetadata(cluster, machine, clusterConfig, configParams)
+	metadata, err := gce.metadataBuilder.BuildMetadata(cluster, machine, clusterConfig, configParams)
 	if err != nil {
-		return err
+		// TODO: Should we surface all errors?
+		if machineErr, ok := err.(*apierrors.MachineError); ok {
+			return gce.handleMachineError(machine, machineErr, createEventAction)
+		} else {
+			return err
+		}
 	}
 
 	instance, err := gce.instanceIfExists(cluster, machine)
@@ -479,7 +470,7 @@ func (gce *GCEClient) Update(ctx context.Context, cluster *clusterv1.Cluster, go
 		return nil
 	}
 
-	if isMaster(currentConfig.Roles) {
+	if bootstrap.IsMaster(currentConfig.Roles) {
 		glog.Infof("Doing an in-place upgrade for master.\n")
 		// TODO: should we support custom CAs here?
 		err = gce.updateMasterInplace(cluster, currentMachine, goalMachine)
@@ -556,15 +547,6 @@ func (gce *GCEClient) GetKubeConfig(cluster *clusterv1.Cluster, master *clusterv
 		"gcloud", "compute", "ssh", "--project", clusterConfig.Project,
 		"--zone", machineConfig.Zone, master.ObjectMeta.Name, "--command", command, "--", "-q"))
 	return result, nil
-}
-
-func isMaster(roles []gceconfigv1.MachineRole) bool {
-	for _, r := range roles {
-		if r == gceconfigv1.MasterRole {
-			return true
-		}
-	}
-	return false
 }
 
 func (gce *GCEClient) updateAnnotations(cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
@@ -768,33 +750,6 @@ func newDisks(config *gceconfigv1.GCEMachineProviderSpec, zone string, imagePath
 	return disks
 }
 
-// Just a temporary hack to grab a single range from the config.
-func getSubnet(netRange clusterv1.NetworkRanges) string {
-	if len(netRange.CIDRBlocks) == 0 {
-		return ""
-	}
-	return netRange.CIDRBlocks[0]
-}
-
-func (gce *GCEClient) getKubeadmToken() (string, error) {
-	tokenParams := kubeadm.TokenCreateParams{
-		Ttl: time.Duration(10) * time.Minute,
-	}
-	output, err := gce.kubeadm.TokenCreate(tokenParams)
-	if err != nil {
-		glog.Errorf("unable to create token: %v [%s]", err, output)
-		return "", err
-	}
-	return strings.TrimSpace(output), err
-}
-
-func getOrNewKubeadm(params MachineActuatorParams) GCEClientKubeadm {
-	if params.Kubeadm == nil {
-		return kubeadm.New()
-	}
-	return params.Kubeadm
-}
-
 func getOrNewComputeServiceForMachine(params MachineActuatorParams) (GCEClientComputeService, error) {
 	if params.ComputeService != nil {
 		return params.ComputeService, nil
@@ -841,80 +796,6 @@ func clientWithAltTokenSource(gceConfigPath string) (*http.Client, error) {
 	tokenSource := clients.NewAltTokenSource(gceConfig.Global.TokenURL, gceConfig.Global.TokenBody)
 	client := oauth2.NewClient(context.Background(), tokenSource)
 	return client, nil
-}
-
-func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, clusterConfig *gceconfigv1.GCEClusterProviderSpec, configParams *machinesetup.ConfigParams) (*compute.Metadata, error) {
-	var metadataMap map[string]string
-	if machine.Spec.Versions.Kubelet == "" {
-		return nil, errors.New("invalid master configuration: missing Machine.Spec.Versions.Kubelet")
-	}
-	machineSetupConfigs, err := gce.machineSetupConfigGetter.GetMachineSetupConfig()
-	if err != nil {
-		return nil, err
-	}
-	machineSetupMetadata, err := machineSetupConfigs.GetMetadata(configParams)
-	if err != nil {
-		return nil, err
-	}
-	if isMaster(configParams.Roles) {
-		if machine.Spec.Versions.ControlPlane == "" {
-			return nil, gce.handleMachineError(machine, apierrors.InvalidMachineConfiguration(
-				"invalid master configuration: missing Machine.Spec.Versions.ControlPlane"), createEventAction)
-		}
-		var err error
-		metadataMap, err = masterMetadata(cluster, machine, clusterConfig.Project, &machineSetupMetadata)
-		if err != nil {
-			return nil, err
-		}
-		ca := gce.certificateAuthority
-		if ca != nil {
-			metadataMap["ca-cert"] = base64.StdEncoding.EncodeToString(ca.Certificate)
-			metadataMap["ca-key"] = base64.StdEncoding.EncodeToString(ca.PrivateKey)
-		}
-	} else {
-		var err error
-		kubeadmToken, err := gce.getKubeadmToken()
-		if err != nil {
-			return nil, err
-		}
-		metadataMap, err = nodeMetadata(kubeadmToken, cluster, machine, clusterConfig.Project, &machineSetupMetadata)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	{
-		var b strings.Builder
-
-		project := clusterConfig.Project
-
-		clusterName := cluster.Name
-		nodeTag := clusterName + "-worker"
-
-		network := "default"
-		subnetwork := "kubernetes"
-
-		fmt.Fprintf(&b, "[global]\n")
-		fmt.Fprintf(&b, "project-id = %s\n", project)
-		fmt.Fprintf(&b, "network-name = %s\n", network)
-		fmt.Fprintf(&b, "subnetwork-name = %s\n", subnetwork)
-		fmt.Fprintf(&b, "node-tags = %s\n", nodeTag)
-
-		metadataMap["cloud-config"] = b.String()
-	}
-
-	var metadataItems []*compute.MetadataItems
-	for k, v := range metadataMap {
-		v := v // rebind scope to avoid loop aliasing below
-		metadataItems = append(metadataItems, &compute.MetadataItems{
-			Key:   k,
-			Value: &v,
-		})
-	}
-	metadata := compute.Metadata{
-		Items: metadataItems,
-	}
-	return &metadata, nil
 }
 
 // TODO: We need to change this when we create dedicated service account for apiserver/controller

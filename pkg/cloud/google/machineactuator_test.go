@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/bootstrap"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -255,10 +256,19 @@ func createClusterAndFailOnError(t *testing.T, config gceconfigv1.GCEMachineProv
 func createCluster(t *testing.T, machine *v1alpha1.Machine, computeServiceMock *GCEClientComputeServiceMock, ca *cert.CertificateAuthority, kubeadm *kubeadm.Kubeadm) error {
 	cluster := newDefaultClusterFixture(t)
 	configWatch := newMachineSetupConfigWatcher()
-	params := google.MachineActuatorParams{
-		CertificateAuthority:     ca,
-		ComputeService:           computeServiceMock,
+
+	metadataBuilder, err := bootstrap.NewBashMetadataBuilder(bootstrap.MetadataParams{
 		Kubeadm:                  kubeadm,
+		CertificateAuthority:     ca,
+		MachineSetupConfigGetter: configWatch,
+	})
+	if err != nil {
+		t.Fatalf("unable to create metadata builder: %v", err)
+	}
+
+	params := google.MachineActuatorParams{
+		MetadataBuilder:          metadataBuilder,
+		ComputeService:           computeServiceMock,
 		MachineSetupConfigGetter: configWatch,
 		EventRecorder:            &record.FakeRecorder{},
 	}

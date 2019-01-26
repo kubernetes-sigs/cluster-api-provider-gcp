@@ -23,6 +23,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/apis"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/bootstrap"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/controller"
@@ -96,7 +97,13 @@ func initStaticDeps(mgr manager.Manager) {
 		klog.Fatalf("Could not create config watch: %v", err)
 	}
 
+	metadataBuilder, err := bootstrap.NewBashMetadataBuilder(bootstrap.MetadataParams{MachineSetupConfigGetter: configWatch})
+	if err != nil {
+		klog.Fatalf("error creating metadata builder: %v", err)
+	}
+
 	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{
+		MetadataBuilder:          metadataBuilder,
 		MachineSetupConfigGetter: configWatch,
 		EventRecorder:            mgr.GetRecorder("gce-controller"),
 		Client:                   mgr.GetClient(),
