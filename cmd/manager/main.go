@@ -20,6 +20,7 @@ import (
 	"flag"
 	"log"
 
+	"github.com/pkg/errors"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/apis"
@@ -65,7 +66,9 @@ func main() {
 	}
 
 	log.Printf("Initializing Dependencies.")
-	initStaticDeps(mgr)
+	if err := initStaticDeps(mgr); err != nil {
+		log.Fatal(err)
+	}
 
 	log.Printf("Registering Components.")
 
@@ -90,10 +93,10 @@ func main() {
 }
 
 // Setup static dependencies.
-func initStaticDeps(mgr manager.Manager) {
+func initStaticDeps(mgr manager.Manager) error {
 	configWatch, err := machinesetup.NewConfigWatch(*machineSetupConfig)
 	if err != nil {
-		klog.Fatalf("Could not create config watch: %v", err)
+		return errors.Wrap(err, "could not create config watch")
 	}
 
 	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{
@@ -104,7 +107,8 @@ func initStaticDeps(mgr manager.Manager) {
 		CloudConfigPath:          *cloudConfig,
 	})
 	if err != nil {
-		klog.Fatalf("Error creating cluster provisioner for google : %v", err)
+		return errors.Wrap(err, "error creating cluster provisioner for google")
 	}
 	clustercommon.RegisterClusterProvisioner(google.ProviderName, google.MachineActuator)
+	return nil
 }
