@@ -18,10 +18,10 @@ package machinedeployment
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -95,15 +95,17 @@ func (r *ReconcileMachineDeployment) getMachineSetsForDeployment(d *v1alpha1.Mac
 	// List all MachineSets to find those we own but that no longer match our
 	// selector.
 	machineSets := &v1alpha1.MachineSetList{}
-	err := r.List(context.Background(), client.InNamespace(d.Namespace), machineSets)
-	if err != nil {
+	listOptions := &client.ListOptions{
+		Namespace: d.Namespace,
+	}
+	if err := r.Client.List(context.Background(), listOptions, machineSets); err != nil {
 		return nil, err
 	}
 
 	// TODO: flush out machine set adoption.
 
-	var filteredMS []*v1alpha1.MachineSet
-	for idx, _ := range machineSets.Items {
+	filteredMS := make([]*v1alpha1.MachineSet, 0, len(machineSets.Items))
+	for idx := range machineSets.Items {
 		ms := &machineSets.Items[idx]
 		if metav1.GetControllerOf(ms) == nil || (metav1.GetControllerOf(ms) != nil && !metav1.IsControlledBy(ms, d)) {
 			klog.V(4).Infof("%s not controlled by %v", ms.Name, d.Name)
@@ -136,7 +138,7 @@ func (r *ReconcileMachineDeployment) Reconcile(request reconcile.Request) (recon
 	d := &v1alpha1.MachineDeployment{}
 	err := r.Get(context.TODO(), request.NamespacedName, d)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
@@ -157,6 +159,17 @@ func (r *ReconcileMachineDeployment) Reconcile(request reconcile.Request) (recon
 			}
 		}
 		return reconcile.Result{}, nil
+	}
+
+	// Make sure that label selector can match template's labels.
+	// TODO(vincepri): Move to a validation (admission) webhook when supported.
+	selector, err := metav1.LabelSelectorAsSelector(&d.Spec.Selector)
+	if err != nil {
+		return reconcile.Result{}, errors.Wrapf(err, "failed to parse MachineDeployment %q label selector", d.Name)
+	}
+
+	if !selector.Matches(labels.Set(d.Spec.Template.Labels)) {
+		return reconcile.Result{}, errors.Errorf("failed validation on MachineDeployment %q label selector, cannot match any machines ", d.Name)
 	}
 
 	msList, err := r.getMachineSetsForDeployment(d)
@@ -182,7 +195,7 @@ func (r *ReconcileMachineDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, r.rolloutRolling(d, msList, machineMap)
 	}
 
-	return reconcile.Result{}, fmt.Errorf("unexpected deployment strategy type: %s", d.Spec.Strategy.Type)
+	return reconcile.Result{}, errors.Errorf("unexpected deployment strategy type: %s", d.Spec.Strategy.Type)
 }
 
 // getMachineDeploymentsForMachineSet returns a list of Deployments that potentially
@@ -194,13 +207,15 @@ func (r *ReconcileMachineDeployment) getMachineDeploymentsForMachineSet(ms *v1al
 	}
 
 	dList := &v1alpha1.MachineDeploymentList{}
-	err := r.Client.List(context.Background(), client.InNamespace(ms.Namespace), dList)
-	if err != nil {
+	listOptions := &client.ListOptions{
+		Namespace: ms.Namespace,
+	}
+	if err := r.Client.List(context.Background(), listOptions, dList); err != nil {
 		klog.Warningf("failed to list machine deployments, %v", err)
 		return nil
 	}
 
-	var deployments []*v1alpha1.MachineDeployment
+	deployments := make([]*v1alpha1.MachineDeployment, 0, len(dList.Items))
 	for idx, d := range dList.Items {
 		selector, err := metav1.LabelSelectorAsSelector(&d.Spec.Selector)
 		if err != nil {
@@ -230,8 +245,10 @@ func (r *ReconcileMachineDeployment) getMachineMapForDeployment(d *v1alpha1.Mach
 		return nil, err
 	}
 	machines := &v1alpha1.MachineList{}
-	err = r.List(context.Background(), client.InNamespace(d.Namespace).MatchingLabels(selector), machines)
-	if err != nil {
+	listOptions := &client.ListOptions{
+		Namespace: d.Namespace,
+	}
+	if err = r.Client.List(context.Background(), listOptions.MatchingLabels(selector), machines); err != nil {
 		return nil, err
 	}
 	// Group Machines by their controller (if it's in msList).

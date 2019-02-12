@@ -17,28 +17,29 @@ limitations under the License.
 package clusterclient
 
 import (
-	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	apiv1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	tcmd "k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clientcmd"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	"sigs.k8s.io/cluster-api/pkg/util"
-
-	"k8s.io/klog"
 )
 
 const (
-	apiServerPort               = 443
+	defaultAPIServerPort        = "443"
 	retryIntervalKubectlApply   = 10 * time.Second
 	retryIntervalResourceReady  = 10 * time.Second
 	retryIntervalResourceDelete = 10 * time.Second
@@ -87,9 +88,9 @@ type client struct {
 	closeFn         func() error
 }
 
-// New creates and returns a Client, the kubeconfig argument is expected to be the string represenation
+// New creates and returns a Client, the kubeconfig argument is expected to be the string representation
 // of a valid kubeconfig.
-func New(kubeconfig string) (*client, error) {
+func New(kubeconfig string) (*client, error) { //nolint
 	f, err := createTempFile(kubeconfig)
 	if err != nil {
 		return nil, err
@@ -110,7 +111,7 @@ func (c *client) removeKubeconfigFile() error {
 func (c *client) EnsureNamespace(namespaceName string) error {
 	clientset, err := clientcmd.NewCoreClientSetForDefaultSearchPath(c.kubeconfigFile, clientcmd.NewConfigOverrides())
 	if err != nil {
-		return fmt.Errorf("error creating core clientset: %v", err)
+		return errors.Wrap(err, "error creating core clientset")
 	}
 
 	namespace := apiv1.Namespace{
@@ -131,7 +132,7 @@ func (c *client) DeleteNamespace(namespaceName string) error {
 	}
 	clientset, err := clientcmd.NewCoreClientSetForDefaultSearchPath(c.kubeconfigFile, clientcmd.NewConfigOverrides())
 	if err != nil {
-		return fmt.Errorf("error creating core clientset: %v", err)
+		return errors.Wrap(err, "error creating core clientset")
 	}
 
 	err = clientset.CoreV1().Namespaces().Delete(namespaceName, &metav1.DeleteOptions{})
@@ -143,8 +144,8 @@ func (c *client) DeleteNamespace(namespaceName string) error {
 
 // NewFromDefaultSearchPath creates and returns a Client.  The kubeconfigFile argument is expected to be the path to a
 // valid kubeconfig file.
-func NewFromDefaultSearchPath(kubeconfigFile string, overrides tcmd.ConfigOverrides) (*client, error) {
-	c, err := clientcmd.NewClusterApiClientForDefaultSearchPath(kubeconfigFile, overrides)
+func NewFromDefaultSearchPath(kubeconfigFile string, overrides tcmd.ConfigOverrides) (*client, error) { //nolint
+	c, err := clientcmd.NewClusterAPIClientForDefaultSearchPath(kubeconfigFile, overrides)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +199,7 @@ func (c *client) GetClusterObjectsInNamespace(namespace string) ([]*clusterv1.Cl
 	clusters := []*clusterv1.Cluster{}
 	clusterlist, err := c.clientSet.ClusterV1alpha1().Clusters(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("error listing cluster objects in namespace %q: %v", namespace, err)
+		return nil, errors.Wrapf(err, "error listing cluster objects in namespace %q", namespace)
 	}
 
 	for i := 0; i < len(clusterlist.Items); i++ {
@@ -210,7 +211,7 @@ func (c *client) GetClusterObjectsInNamespace(namespace string) ([]*clusterv1.Cl
 func (c *client) GetMachineDeploymentObjectsInNamespace(namespace string) ([]*clusterv1.MachineDeployment, error) {
 	machineDeploymentList, err := c.clientSet.ClusterV1alpha1().MachineDeployments(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("error listing machine deployment objects in namespace %q: %v", namespace, err)
+		return nil, errors.Wrapf(err, "error listing machine deployment objects in namespace %q", namespace)
 	}
 	var machineDeployments []*clusterv1.MachineDeployment
 	for i := 0; i < len(machineDeploymentList.Items); i++ {
@@ -228,7 +229,7 @@ func (c *client) GetMachineDeploymentObjects() ([]*clusterv1.MachineDeployment, 
 func (c *client) GetMachineSetObjectsInNamespace(namespace string) ([]*clusterv1.MachineSet, error) {
 	machineSetList, err := c.clientSet.ClusterV1alpha1().MachineSets(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("error listing machine set objects in namespace %q: %v", namespace, err)
+		return nil, errors.Wrapf(err, "error listing machine set objects in namespace %q", namespace)
 	}
 	var machineSets []*clusterv1.MachineSet
 	for i := 0; i < len(machineSetList.Items); i++ {
@@ -247,7 +248,7 @@ func (c *client) GetMachineObjectsInNamespace(namespace string) ([]*clusterv1.Ma
 	machines := []*clusterv1.Machine{}
 	machineslist, err := c.clientSet.ClusterV1alpha1().Machines(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("error listing machine objects in namespace %q: %v", namespace, err)
+		return nil, errors.Wrapf(err, "error listing machine objects in namespace %q", namespace)
 	}
 
 	for i := 0; i < len(machineslist.Items); i++ {
@@ -270,7 +271,7 @@ func (c *client) CreateClusterObject(cluster *clusterv1.Cluster) error {
 
 	_, err := c.clientSet.ClusterV1alpha1().Clusters(namespace).Create(cluster)
 	if err != nil {
-		return fmt.Errorf("error creating cluster in namespace %v: %v", namespace, err)
+		return errors.Wrapf(err, "error creating cluster in namespace %v", namespace)
 	}
 	return err
 }
@@ -280,7 +281,7 @@ func (c *client) CreateMachineDeploymentObjects(deployments []*clusterv1.Machine
 		// TODO: Run in parallel https://github.com/kubernetes-sigs/cluster-api/issues/258
 		_, err := c.clientSet.ClusterV1alpha1().MachineDeployments(namespace).Create(deploy)
 		if err != nil {
-			return fmt.Errorf("error creating a machine deployment object in namespace %q: %v", namespace, err)
+			return errors.Wrapf(err, "error creating a machine deployment object in namespace %q", namespace)
 		}
 	}
 	return nil
@@ -291,7 +292,7 @@ func (c *client) CreateMachineSetObjects(machineSets []*clusterv1.MachineSet, na
 		// TODO: Run in parallel https://github.com/kubernetes-sigs/cluster-api/issues/258
 		_, err := c.clientSet.ClusterV1alpha1().MachineSets(namespace).Create(ms)
 		if err != nil {
-			return fmt.Errorf("error creating a machine set object in namespace %q: %v", namespace, err)
+			return errors.Wrapf(err, "error creating a machine set object in namespace %q", namespace)
 		}
 	}
 	return nil
@@ -313,7 +314,7 @@ func (c *client) CreateMachineObjects(machines []*clusterv1.Machine, namespace s
 			createdMachine, err := c.clientSet.ClusterV1alpha1().Machines(namespace).Create(machine)
 			if err != nil {
 				errOnce.Do(func() {
-					gerr = fmt.Errorf("error creating a machine object in namespace %v: %v", namespace, err)
+					gerr = errors.Wrapf(err, "error creating a machine object in namespace %v", namespace)
 				})
 				return
 			}
@@ -336,11 +337,11 @@ func (c *client) DeleteClusterObjects() error {
 func (c *client) DeleteClusterObjectsInNamespace(namespace string) error {
 	err := c.clientSet.ClusterV1alpha1().Clusters(namespace).DeleteCollection(newDeleteOptions(), metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("error deleting cluster objects in namespace %q: %v", namespace, err)
+		return errors.Wrapf(err, "error deleting cluster objects in namespace %q", namespace)
 	}
 	err = c.waitForClusterDelete(namespace)
 	if err != nil {
-		return fmt.Errorf("error waiting for cluster(s) deletion to complete in namespace %q: %v", namespace, err)
+		return errors.Wrapf(err, "error waiting for cluster(s) deletion to complete in namespace %q", namespace)
 	}
 	return nil
 }
@@ -354,11 +355,11 @@ func (c *client) DeleteMachineDeploymentObjects() error {
 func (c *client) DeleteMachineDeploymentObjectsInNamespace(namespace string) error {
 	err := c.clientSet.ClusterV1alpha1().MachineDeployments(namespace).DeleteCollection(newDeleteOptions(), metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("error deleting machine deployment objects in namespace %q: %v", namespace, err)
+		return errors.Wrapf(err, "error deleting machine deployment objects in namespace %q", namespace)
 	}
 	err = c.waitForMachineDeploymentsDelete(namespace)
 	if err != nil {
-		return fmt.Errorf("error waiting for machine deployment(s) deletion to complete in namespace %q: %v", namespace, err)
+		return errors.Wrapf(err, "error waiting for machine deployment(s) deletion to complete in namespace %q", namespace)
 	}
 	return nil
 }
@@ -372,11 +373,11 @@ func (c *client) DeleteMachineSetObjects() error {
 func (c *client) DeleteMachineSetObjectsInNamespace(namespace string) error {
 	err := c.clientSet.ClusterV1alpha1().MachineSets(namespace).DeleteCollection(newDeleteOptions(), metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("error deleting machine set objects in namespace %q: %v", namespace, err)
+		return errors.Wrapf(err, "error deleting machine set objects in namespace %q", namespace)
 	}
 	err = c.waitForMachineSetsDelete(namespace)
 	if err != nil {
-		return fmt.Errorf("error waiting for machine set(s) deletion to complete in namespace %q: %v", namespace, err)
+		return errors.Wrapf(err, "error waiting for machine set(s) deletion to complete in namespace %q", namespace)
 	}
 	return nil
 }
@@ -390,11 +391,11 @@ func (c *client) DeleteMachineObjects() error {
 func (c *client) DeleteMachineObjectsInNamespace(namespace string) error {
 	err := c.clientSet.ClusterV1alpha1().Machines(namespace).DeleteCollection(newDeleteOptions(), metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("error deleting machine objects in namespace %q: %v", namespace, err)
+		return errors.Wrapf(err, "error deleting machine objects in namespace %q", namespace)
 	}
 	err = c.waitForMachinesDelete(namespace)
 	if err != nil {
-		return fmt.Errorf("error waiting for machine(s) deletion to complete in namespace %q: %v", namespace, err)
+		return errors.Wrapf(err, "error waiting for machine(s) deletion to complete in namespace %q", namespace)
 	}
 	return nil
 }
@@ -406,16 +407,29 @@ func newDeleteOptions() *metav1.DeleteOptions {
 	}
 }
 
+// UpdateClusterObjectEndpoint updates the status of a cluster API endpoint, clusterEndpoint
+// can be passed as hostname or hostname:port, if port is not present the default port 443 is applied.
 // TODO: Test this function
-func (c *client) UpdateClusterObjectEndpoint(masterIP, clusterName, namespace string) error {
+func (c *client) UpdateClusterObjectEndpoint(clusterEndpoint, clusterName, namespace string) error {
 	cluster, err := c.GetClusterObject(clusterName, namespace)
 	if err != nil {
 		return err
 	}
+	endpointHost, endpointPort, err := net.SplitHostPort(clusterEndpoint)
+	if err != nil {
+		// We rely on provider.GetControlPlaneEndpoint to provide a correct hostname/IP, no
+		// further validation is done.
+		endpointHost = clusterEndpoint
+		endpointPort = defaultAPIServerPort
+	}
+	endpointPortInt, err := strconv.Atoi(endpointPort)
+	if err != nil {
+		return errors.Wrapf(err, "error while converting cluster endpoint port %q", endpointPort)
+	}
 	cluster.Status.APIEndpoints = append(cluster.Status.APIEndpoints,
 		clusterv1.APIEndpoint{
-			Host: masterIP,
-			Port: apiServerPort,
+			Host: endpointHost,
+			Port: endpointPortInt,
 		})
 	_, err = c.clientSet.ClusterV1alpha1().Clusters(namespace).UpdateStatus(cluster)
 	return err
@@ -494,7 +508,7 @@ func (c *client) kubectlManifestCmd(commandName, manifest string) error {
 	cmd.Stdin = strings.NewReader(manifest)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("couldn't kubectl apply: %v, output: %s", err, string(out))
+		return errors.Wrapf(err, "couldn't kubectl apply, output: %s", string(out))
 	}
 	return nil
 }
@@ -578,7 +592,7 @@ func waitForMachineReady(cs clientset.Interface, machine *clusterv1.Machine) err
 		}
 
 		// TODO: update once machine controllers have a way to indicate a machine has been provisoned. https://github.com/kubernetes-sigs/cluster-api/issues/253
-		// Seeing a node cannot be purely relied upon because the provisioned master will not be registering with
+		// Seeing a node cannot be purely relied upon because the provisioned control plane will not be registering with
 		// the stack that provisions it.
 		ready := m.Status.NodeRef != nil || len(m.Annotations) > 0
 		return ready, nil
@@ -609,4 +623,40 @@ func ifErrRemove(pErr *error, path string) {
 			klog.Warningf("Error removing file '%s': %v", path, err)
 		}
 	}
+}
+
+func GetClusterAPIObject(client Client, clusterName, namespace string) (*clusterv1.Cluster, *clusterv1.Machine, []*clusterv1.Machine, error) {
+	machines, err := client.GetMachineObjectsInNamespace(namespace)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "unable to fetch machines")
+	}
+	cluster, err := client.GetClusterObject(clusterName, namespace)
+	if err != nil {
+		return nil, nil, nil, errors.Wrapf(err, "unable to fetch cluster %s/%s", namespace, clusterName)
+	}
+
+	controlPlane, nodes, err := ExtractControlPlaneMachine(machines)
+	if err != nil {
+		return nil, nil, nil, errors.Wrapf(err, "unable to fetch control plane machine in cluster %s/%s", namespace, clusterName)
+	}
+	return cluster, controlPlane, nodes, nil
+}
+
+// ExtractControlPlaneMachine separates the machines running the control plane (singular) from the incoming machines.
+// This is currently done by looking at which machine specifies the control plane version.
+// TODO: Cleanup.
+func ExtractControlPlaneMachine(machines []*clusterv1.Machine) (*clusterv1.Machine, []*clusterv1.Machine, error) {
+	nodes := []*clusterv1.Machine{}
+	controlPlaneMachines := []*clusterv1.Machine{}
+	for _, machine := range machines {
+		if util.IsControlPlaneMachine(machine) {
+			controlPlaneMachines = append(controlPlaneMachines, machine)
+		} else {
+			nodes = append(nodes, machine)
+		}
+	}
+	if len(controlPlaneMachines) != 1 {
+		return nil, nil, errors.Errorf("expected one control plane machine, got: %v", len(controlPlaneMachines))
+	}
+	return controlPlaneMachines[0], nodes, nil
 }

@@ -21,8 +21,6 @@ go_library(
         "//pkg/cloud/google/clients/errors:go_default_library",
         "//pkg/cloud/google/config:go_default_library",
         "//pkg/cloud/google/machinesetup:go_default_library",
-        "//vendor/github.com/ghodss/yaml:go_default_library",
-        "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",
         "//vendor/golang.org/x/oauth2:go_default_library",
         "//vendor/golang.org/x/oauth2/google:go_default_library",
@@ -36,6 +34,7 @@ go_library(
         "//vendor/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/client-go/tools/record:go_default_library",
         "//vendor/k8s.io/client-go/util/cert:go_default_library",
+        "//vendor/k8s.io/klog:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/cert:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/errors:go_default_library",
@@ -43,6 +42,7 @@ go_library(
         "//vendor/sigs.k8s.io/cluster-api/pkg/util:go_default_library",
         "//vendor/sigs.k8s.io/controller-runtime/pkg/client:go_default_library",
         "//vendor/sigs.k8s.io/controller-runtime/pkg/manager:go_default_library",
+        "//vendor/sigs.k8s.io/yaml:go_default_library",
     ],
 )
 
@@ -67,7 +67,7 @@ go_test(
         "//vendor/sigs.k8s.io/cluster-api/pkg/cert:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/controller/cluster:go_default_library",
         "//vendor/sigs.k8s.io/cluster-api/pkg/kubeadm:go_default_library",
-        "//vendor/sigs.k8s.io/cluster-api/pkg/test-cmd-runner:go_default_library",
+        "//vendor/sigs.k8s.io/cluster-api/pkg/testcmdrunner:go_default_library",
         "//vendor/sigs.k8s.io/controller-runtime/pkg/manager:go_default_library",
     ],
 )

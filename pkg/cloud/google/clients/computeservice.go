@@ -25,9 +25,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	compute "google.golang.org/api/compute/v1"
+	"k8s.io/klog"
 )
 
 const (
@@ -115,8 +115,8 @@ func (c *ComputeService) FirewallsDelete(project string, name string) (*compute.
 }
 
 func (c *ComputeService) WaitForOperation(project string, op *compute.Operation) error {
-	glog.Infof("Wait for %v %q...", op.OperationType, op.Name)
-	defer glog.Infof("Finish wait for %v %q...", op.OperationType, op.Name)
+	klog.Infof("Wait for %v %q...", op.OperationType, op.Name)
+	defer klog.Infof("Finish wait for %v %q...", op.OperationType, op.Name)
 
 	start := time.Now()
 	ctx, cf := context.WithTimeout(context.Background(), gceTimeout)
@@ -127,7 +127,7 @@ func (c *ComputeService) WaitForOperation(project string, op *compute.Operation)
 		if err = c.checkOp(op, err); err != nil || op.Status == "DONE" {
 			return err
 		}
-		glog.V(1).Infof("Wait for %v %q: %v (%d%%): %v", op.OperationType, op.Name, op.Status, op.Progress, op.StatusMessage)
+		klog.V(1).Infof("Wait for %v %q: %v (%d%%): %v", op.OperationType, op.Name, op.Status, op.Progress, op.StatusMessage)
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("gce operation %v %q timed out after %v", op.OperationType, op.Name, time.Since(start))

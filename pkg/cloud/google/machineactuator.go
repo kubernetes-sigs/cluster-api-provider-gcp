@@ -28,21 +28,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
-
+	gcfg "gopkg.in/gcfg.v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
-
-	"github.com/ghodss/yaml"
-	gcfg "gopkg.in/gcfg.v1"
+	"k8s.io/klog"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/machinesetup"
@@ -52,6 +49,7 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/kubeadm"
 	"sigs.k8s.io/cluster-api/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -194,7 +192,7 @@ func (gce *GCEClient) CreateMachineController(cluster *clusterv1.Cluster, initia
 	}
 
 	// Setup SSH access to master VM
-	if err := gce.setupSSHAccess(cluster, util.GetMaster(initialMachines)); err != nil {
+	if err := gce.setupSSHAccess(cluster, util.GetControlPlaneMachine(initialMachines)); err != nil {
 		return err
 	}
 
@@ -338,7 +336,7 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 			return gce.updateAnnotations(cluster, machine)
 		}
 	} else {
-		glog.Infof("Skipped creating a VM that already exists.\n")
+		klog.Infof("Skipped creating a VM that already exists.\n")
 	}
 
 	return nil
@@ -351,7 +349,7 @@ func (gce *GCEClient) Delete(_ context.Context, cluster *clusterv1.Cluster, mach
 	}
 
 	if instance == nil {
-		glog.Infof("Skipped deleting a VM that is already deleted.\n")
+		klog.Infof("Skipped deleting a VM that is already deleted.\n")
 		return nil
 	}
 
@@ -462,7 +460,7 @@ func (gce *GCEClient) Update(ctx context.Context, cluster *clusterv1.Cluster, go
 			return err
 		}
 		if instance != nil && instance.Labels[BootstrapLabelKey] != "" {
-			glog.Infof("Populating current state for bootstrap machine %v", goalMachine.ObjectMeta.Name)
+			klog.Infof("Populating current state for bootstrap machine %v", goalMachine.ObjectMeta.Name)
 			return gce.updateAnnotations(cluster, goalMachine)
 		} else {
 			return fmt.Errorf("Cannot retrieve current state to update machine %v", goalMachine.ObjectMeta.Name)
@@ -480,21 +478,21 @@ func (gce *GCEClient) Update(ctx context.Context, cluster *clusterv1.Cluster, go
 	}
 
 	if isMaster(currentConfig.Roles) {
-		glog.Infof("Doing an in-place upgrade for master.\n")
+		klog.Infof("Doing an in-place upgrade for master.\n")
 		// TODO: should we support custom CAs here?
 		err = gce.updateMasterInplace(cluster, currentMachine, goalMachine)
 		if err != nil {
-			glog.Errorf("master inplace update failed: %v", err)
+			klog.Errorf("master inplace update failed: %v", err)
 		}
 	} else {
-		glog.Infof("re-creating machine %s for update.", currentMachine.ObjectMeta.Name)
+		klog.Infof("re-creating machine %s for update.", currentMachine.ObjectMeta.Name)
 		err = gce.Delete(ctx, cluster, currentMachine)
 		if err != nil {
-			glog.Errorf("delete machine %s for update failed: %v", currentMachine.ObjectMeta.Name, err)
+			klog.Errorf("delete machine %s for update failed: %v", currentMachine.ObjectMeta.Name, err)
 		} else {
 			err = gce.Create(ctx, cluster, goalMachine)
 			if err != nil {
-				glog.Errorf("create machine %s for update failed: %v", goalMachine.ObjectMeta.Name, err)
+				klog.Errorf("create machine %s for update failed: %v", goalMachine.ObjectMeta.Name, err)
 			}
 		}
 	}
@@ -654,7 +652,7 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 				"sudo chmod a+rx /usr/bin/kubeadm", newMachine.Spec.Versions.ControlPlane)
 		_, err := gce.remoteSshCommand(cluster, newMachine, cmd)
 		if err != nil {
-			glog.Infof("remotesshcomand error: %v", err)
+			klog.Infof("remotesshcomand error: %v", err)
 			return err
 		}
 
@@ -663,7 +661,7 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 		cmd = fmt.Sprintf("sudo kubeadm upgrade apply %s -y", "v"+newMachine.Spec.Versions.ControlPlane)
 		_, err = gce.remoteSshCommand(cluster, newMachine, cmd)
 		if err != nil {
-			glog.Infof("remotesshcomand error: %v", err)
+			klog.Infof("remotesshcomand error: %v", err)
 			return err
 		}
 	}
@@ -677,13 +675,13 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 		cmd = fmt.Sprintf("sudo apt-get install kubelet=%s", newMachine.Spec.Versions.Kubelet+"-00")
 		_, err := gce.remoteSshCommand(cluster, newMachine, cmd)
 		if err != nil {
-			glog.Infof("remotesshcomand error: %v", err)
+			klog.Infof("remotesshcomand error: %v", err)
 			return err
 		}
 		cmd = fmt.Sprintf("sudo kubectl uncordon %s --kubeconfig /etc/kubernetes/admin.conf", newMachine.Name)
 		_, err = gce.remoteSshCommand(cluster, newMachine, cmd)
 		if err != nil {
-			glog.Infof("remotesshcomand error: %v", err)
+			klog.Infof("remotesshcomand error: %v", err)
 			return err
 		}
 	}
@@ -715,7 +713,7 @@ func (gce *GCEClient) handleMachineError(machine *clusterv1.Machine, err *apierr
 		gce.eventRecorder.Eventf(machine, corev1.EventTypeWarning, "Failed"+eventAction, "%v", err.Reason)
 	}
 
-	glog.Errorf("Machine error: %v", err.Message)
+	klog.Errorf("Machine error: %v", err.Message)
 	return err
 }
 
@@ -740,7 +738,7 @@ func (gce *GCEClient) getImagePath(img string) (imagePath string) {
 	}
 
 	// Otherwise, fall back to the base image.
-	glog.Infof("Could not find image at %s. Defaulting to %s.", img, defaultImg)
+	klog.Infof("Could not find image at %s. Defaulting to %s.", img, defaultImg)
 	return defaultImg
 }
 
@@ -759,7 +757,7 @@ func newDisks(config *gceconfigv1.GCEMachineProviderSpec, zone string, imagePath
 			d.InitializeParams.SourceImage = imagePath
 			d.Boot = true
 			if diskSizeGb < minDiskSizeGb {
-				glog.Infof("increasing disk size to %v gb, the supplied disk size of %v gb is below the minimum", minDiskSizeGb, diskSizeGb)
+				klog.Infof("increasing disk size to %v gb, the supplied disk size of %v gb is below the minimum", minDiskSizeGb, diskSizeGb)
 				d.InitializeParams.DiskSizeGb = minDiskSizeGb
 			}
 		}
@@ -778,11 +776,11 @@ func getSubnet(netRange clusterv1.NetworkRanges) string {
 
 func (gce *GCEClient) getKubeadmToken() (string, error) {
 	tokenParams := kubeadm.TokenCreateParams{
-		Ttl: time.Duration(10) * time.Minute,
+		TTL: time.Duration(10) * time.Minute,
 	}
 	output, err := gce.kubeadm.TokenCreate(tokenParams)
 	if err != nil {
-		glog.Errorf("unable to create token: %v [%s]", err, output)
+		klog.Errorf("unable to create token: %v [%s]", err, output)
 		return "", err
 	}
 	return strings.TrimSpace(output), err
@@ -804,13 +802,13 @@ func getOrNewComputeServiceForMachine(params MachineActuatorParams) (GCEClientCo
 	var err error
 	// If specified in the GCE config, use the alternative authentication.
 	if params.CloudConfigPath != "" {
-		glog.Info("Trying to get open the GCE config")
+		klog.Info("Trying to get open the GCE config")
 		client, err = clientWithAltTokenSource(params.CloudConfigPath)
 		if err != nil {
-			glog.Fatalf("Error creating an alternative auth client: %q", err)
+			klog.Fatalf("Error creating an alternative auth client: %q", err)
 		}
 	} else {
-		glog.Info("Using the default GCP client")
+		klog.Info("Using the default GCP client")
 		// The default GCP client expects the environment variable
 		// GOOGLE_APPLICATION_CREDENTIALS to point to a file with service credentials.
 		client, err = google.DefaultClient(context.TODO(), compute.ComputeScope)
@@ -827,7 +825,7 @@ func getOrNewComputeServiceForMachine(params MachineActuatorParams) (GCEClientCo
 }
 
 func clientWithAltTokenSource(gceConfigPath string) (*http.Client, error) {
-	glog.Info("Trying to get the alt token")
+	klog.Info("Trying to get the alt token")
 	gceConfig := struct {
 		Global struct {
 			ProjectID string `gcfg:"project-id"`

@@ -18,14 +18,16 @@ package google_test
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
+	"sigs.k8s.io/cluster-api/pkg/testcmdrunner"
+
 	"golang.org/x/net/context"
 	compute "google.golang.org/api/compute/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google"
@@ -33,12 +35,11 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/cert"
 	"sigs.k8s.io/cluster-api/pkg/kubeadm"
-	"sigs.k8s.io/cluster-api/pkg/test-cmd-runner"
 )
 
 func init() {
-	test_cmd_runner.RegisterCallback(tokenCreateCommandCallback)
-	test_cmd_runner.RegisterCallback(tokenCreateErrorCommandCallback)
+	// testcmdrunner.RegisterCallback(tokenCreateCommandCallback)
+	// testcmdrunner.RegisterCallback(tokenCreateErrorCommandCallback)
 }
 
 const (
@@ -46,9 +47,9 @@ const (
 	tokenCreateCmdError  = "failed to load admin kubeconfig [open /etc/kubernetes/admin.conf: permission denied]"
 )
 
-func TestMain(m *testing.M) {
-	test_cmd_runner.TestMain(m)
-}
+// func TestMain(m *testing.M) {
+// 	testcmdrunner.TestMain(m)
+// }
 
 type GCEClientMachineSetupConfigMock struct {
 	mockGetYaml     func() (string, error)
@@ -80,7 +81,7 @@ func (m *GCEClientMachineSetupConfigMock) GetMetadata(params *machinesetup.Confi
 func TestKubeadmTokenShouldBeInStartupScript(t *testing.T) {
 	config := newGCEMachineProviderSpecFixture()
 	receivedInstance, computeServiceMock := newInsertInstanceCapturingMock()
-	kubeadm := kubeadm.NewWithCmdRunner(test_cmd_runner.NewTestRunnerFailOnErr(t, tokenCreateCommandCallback))
+	kubeadm := kubeadm.NewWithRunner(testcmdrunner.NewOrDie(t, tokenCreateCommandCallback))
 	config.Roles = []gceconfigv1.MachineRole{gceconfigv1.NodeRole}
 	machine := newMachine(t, config)
 	err := createCluster(t, machine, computeServiceMock, nil, kubeadm)
@@ -97,15 +98,14 @@ func TestKubeadmTokenShouldBeInStartupScript(t *testing.T) {
 	}
 }
 
-func tokenCreateCommandCallback(cmd string, args ...string) int {
-	fmt.Print(tokenCreateCmdOutput)
-	return 0
+func tokenCreateCommandCallback(cmd string, args ...string) (string, error) {
+	return tokenCreateCmdOutput, nil
 }
 
 func TestTokenCreateCommandError(t *testing.T) {
 	config := newGCEMachineProviderSpecFixture()
 	_, computeServiceMock := newInsertInstanceCapturingMock()
-	kubeadm := kubeadm.NewWithCmdRunner(test_cmd_runner.NewTestRunnerFailOnErr(t, tokenCreateErrorCommandCallback))
+	kubeadm := kubeadm.NewWithRunner(testcmdrunner.NewOrDie(t, tokenCreateErrorCommandCallback))
 	config.Roles = []gceconfigv1.MachineRole{gceconfigv1.NodeRole}
 	machine := newMachine(t, config)
 	err := createCluster(t, machine, computeServiceMock, nil, kubeadm)
@@ -114,9 +114,8 @@ func TestTokenCreateCommandError(t *testing.T) {
 	}
 }
 
-func tokenCreateErrorCommandCallback(cmd string, args ...string) int {
-	fmt.Fprintf(os.Stderr, tokenCreateCmdError)
-	return 1
+func tokenCreateErrorCommandCallback(cmd string, args ...string) (string, error) {
+	return "", errors.New(tokenCreateCmdError)
 }
 
 func TestNoDisks(t *testing.T) {

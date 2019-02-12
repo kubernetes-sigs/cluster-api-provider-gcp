@@ -23,7 +23,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
@@ -100,7 +100,7 @@ func (gce *GCEClient) setupSSHAccess(cluster *clusterv1.Cluster, machine *cluste
 }
 
 func (gce *GCEClient) remoteSshCommand(cluster *clusterv1.Cluster, machine *clusterv1.Machine, cmd string) (string, error) {
-	glog.Infof("Remote SSH execution '%s' on %s", cmd, machine.ObjectMeta.Name)
+	klog.Infof("Remote SSH execution '%s' on %s", cmd, machine.ObjectMeta.Name)
 
 	publicIP, err := gce.GetIP(cluster, machine)
 	if err != nil {
