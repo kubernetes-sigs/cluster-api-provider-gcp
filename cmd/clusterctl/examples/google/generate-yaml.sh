@@ -160,6 +160,7 @@ MACHINE_CONTROLLER_SSH_PRIVATE=$(cat $MACHINE_CONTROLLER_SSH_PRIVATE_FILE | base
 cp machine_setup_configs.yaml ${OUTPUT_DIR}/machine_setup_configs.yaml
 
 cat $MACHINE_TEMPLATE_FILE \
+  | sed -e "s/\$CLUSTER_NAME/$CLUSTER_NAME/" \
   | sed -e "s/\$ZONE/$ZONE/" \
   > $MACHINE_GENERATED_FILE
 
