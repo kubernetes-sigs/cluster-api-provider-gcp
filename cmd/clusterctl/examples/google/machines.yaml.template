@@ -4,6 +4,7 @@ items:
   metadata:
     generateName: gce-master-
     labels:
+      cluster.k8s.io/cluster-name: $CLUSTER_NAME
       set: master
   spec:
     providerSpec:
@@ -27,6 +28,7 @@ items:
   metadata:
     generateName: gce-node-
     labels:
+      cluster.k8s.io/cluster-name: $CLUSTER_NAME
       set: node
   spec:
     providerSpec:

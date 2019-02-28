@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/util"
 )
@@ -71,7 +71,7 @@ func NewServiceAccountService() *ServiceAccountService {
 // Returns the email address of the service account that should be used
 // as the default service account for this machine
 func (sas *ServiceAccountService) GetDefaultServiceAccountForMachine(cluster *clusterv1.Cluster, machine *clusterv1.Machine) string {
-	if util.IsMaster(machine) {
+	if util.IsControlPlaneMachine(machine) {
 		return cluster.ObjectMeta.Annotations[ClusterAnnotationPrefix+MasterNodeServiceAccountPrefix]
 	} else {
 		return cluster.ObjectMeta.Annotations[ClusterAnnotationPrefix+WorkerNodeServiceAccountPrefix]
@@ -130,7 +130,7 @@ func (sas *ServiceAccountService) createSecretForServiceAccountKey(accountId str
 	}
 
 	if err := run("rm", localFile); err != nil {
-		glog.Error(err)
+		klog.Error(err)
 	}
 
 	return nil
@@ -188,7 +188,7 @@ func (sas *ServiceAccountService) DeleteMachineControllerServiceAccount(cluster 
 func (sas *ServiceAccountService) deleteServiceAccount(serviceAccountPrefix string, roles []string, cluster *clusterv1.Cluster) error {
 	config, err := clusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
 	if err != nil {
-		glog.Info("cannot parse cluster providerSpec field")
+		klog.Info("cannot parse cluster providerSpec field")
 		return nil
 	}
 
@@ -198,7 +198,7 @@ func (sas *ServiceAccountService) deleteServiceAccount(serviceAccountPrefix stri
 	}
 
 	if email == "" {
-		glog.Info("No service a/c found in cluster.")
+		klog.Info("No service a/c found in cluster.")
 		return nil
 	}
 

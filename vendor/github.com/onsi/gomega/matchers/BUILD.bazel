@@ -40,6 +40,7 @@ go_library(
         "or.go",
         "panic_matcher.go",
         "receive_matcher.go",
+        "semi_structured_data_support.go",
         "succeed_matcher.go",
         "type_support.go",
         "with_transform.go",

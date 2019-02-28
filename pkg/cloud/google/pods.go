@@ -25,9 +25,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/cert"
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/config"
 )
 
@@ -93,7 +93,7 @@ func CreateApiServerAndController() error {
 
 	certParms, err := getApiServerCerts()
 	if err != nil {
-		glog.Errorf("Error: %v", err)
+		klog.Errorf("Error: %v", err)
 		return err
 	}
 
@@ -126,7 +126,7 @@ func CreateApiServerAndController() error {
 			return nil
 		} else {
 			if tries < maxTries-1 {
-				glog.Infof("Retrying scheduling machine controller after encountering error: %v\n", err)
+				klog.Infof("Retrying scheduling machine controller after encountering error: %v\n", err)
 				time.Sleep(3 * time.Second)
 			}
 		}
@@ -166,7 +166,7 @@ func CreateIngressController(project string, clusterName string) error {
 			return nil
 		} else {
 			if tries < maxTries-1 {
-				glog.Infof("Error scheduling ingress controller. Will retry... %v\n", err)
+				klog.Infof("Error scheduling ingress controller. Will retry... %v\n", err)
 				time.Sleep(3 * time.Second)
 			}
 		}
@@ -197,7 +197,7 @@ func CreateDefaultStorageClass() error {
 			return nil
 		} else {
 			if tries < maxTries-1 {
-				glog.Info("Error creating default storage class. Will retry...\n")
+				klog.Info("Error creating default storage class. Will retry...\n")
 				time.Sleep(3 * time.Second)
 			}
 		}

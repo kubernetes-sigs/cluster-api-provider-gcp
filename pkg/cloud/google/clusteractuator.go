@@ -19,11 +19,10 @@ package google
 import (
 	"fmt"
 
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
-
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -58,7 +57,7 @@ func NewClusterActuator(m manager.Manager, params ClusterActuatorParams) (*GCECl
 }
 
 func (gce *GCEClusterClient) Reconcile(cluster *clusterv1.Cluster) error {
-	glog.Infof("Reconciling cluster %v.", cluster.Name)
+	klog.Infof("Reconciling cluster %v.", cluster.Name)
 	err := gce.createFirewallRuleIfNotExists(cluster, &compute.Firewall{
 		Name:    cluster.Name + firewallRuleInternalSuffix,
 		Network: "global/networks/default",
@@ -71,7 +70,7 @@ func (gce *GCEClusterClient) Reconcile(cluster *clusterv1.Cluster) error {
 		SourceTags: []string{cluster.Name + "-worker"},
 	})
 	if err != nil {
-		glog.Warningf("Error creating firewall rule for internal cluster traffic: %v", err)
+		klog.Warningf("Error creating firewall rule for internal cluster traffic: %v", err)
 	}
 	err = gce.createFirewallRuleIfNotExists(cluster, &compute.Firewall{
 		Name:    cluster.Name + firewallRuleApiSuffix,
@@ -86,7 +85,7 @@ func (gce *GCEClusterClient) Reconcile(cluster *clusterv1.Cluster) error {
 		SourceRanges: []string{"0.0.0.0/0"},
 	})
 	if err != nil {
-		glog.Warningf("Error creating firewall rule for core api server traffic: %v", err)
+		klog.Warningf("Error creating firewall rule for core api server traffic: %v", err)
 	}
 	return nil
 }

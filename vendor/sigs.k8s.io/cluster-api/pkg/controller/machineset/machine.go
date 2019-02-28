@@ -33,7 +33,11 @@ func (c *ReconcileMachineSet) getMachineSetsForMachine(m *v1alpha1.Machine) []*v
 	}
 
 	msList := &v1alpha1.MachineSetList{}
-	err := c.Client.List(context.Background(), &client.ListOptions{Namespace: m.Namespace}, msList)
+	listOptions := &client.ListOptions{
+		Namespace: m.Namespace,
+	}
+
+	err := c.Client.List(context.Background(), listOptions, msList)
 	if err != nil {
 		klog.Errorf("Failed to list machine sets, %v", err)
 		return nil
