@@ -33,12 +33,14 @@ import (
 	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
+
 	gcfg "gopkg.in/gcfg.v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
+
 	"k8s.io/klog"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/cloud/google/clients"
@@ -251,6 +253,18 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 
 	if verr := gce.validateMachine(machine, machineConfig); verr != nil {
 		return gce.handleMachineError(machine, verr, createEventAction)
+	}
+	if !isMaster(machineConfig.Roles) {
+		isNodeSet := false
+		for _, r := range machineConfig.Roles {
+			if r == gceconfigv1.NodeRole {
+				isNodeSet = true
+				break
+			}
+		}
+		if !isNodeSet {
+			machineConfig.Roles = append(machineConfig.Roles, gceconfigv1.NodeRole)
+		}
 	}
 
 	configParams := &machinesetup.ConfigParams{
@@ -646,6 +660,8 @@ func (gce *GCEClient) machineproviderconfig(providerSpec clusterv1.ProviderSpec)
 */
 
 func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine *clusterv1.Machine, newMachine *clusterv1.Machine) error {
+	oldMachine.Spec.Versions.ControlPlane = removeUnwantedCharacters(oldMachine.Spec.Versions.ControlPlane)
+	newMachine.Spec.Versions.ControlPlane = removeUnwantedCharacters(newMachine.Spec.Versions.ControlPlane)
 	if oldMachine.Spec.Versions.ControlPlane != newMachine.Spec.Versions.ControlPlane {
 		cmd := fmt.Sprintf(
 			"curl -fsSL https://dl.k8s.io/release/v%s/bin/linux/amd64/kubeadm | sudo tee /usr/bin/kubeadm > /dev/null; "+
@@ -667,6 +683,8 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 	}
 
 	// Upgrade kubelet.
+	oldMachine.Spec.Versions.Kubelet = removeUnwantedCharacters(oldMachine.Spec.Versions.Kubelet)
+	newMachine.Spec.Versions.Kubelet = removeUnwantedCharacters(newMachine.Spec.Versions.Kubelet)
 	if oldMachine.Spec.Versions.Kubelet != newMachine.Spec.Versions.Kubelet {
 		cmd := fmt.Sprintf("sudo kubectl drain %s --kubeconfig /etc/kubernetes/admin.conf --ignore-daemonsets", newMachine.Name)
 		// The errors are intentionally ignored as master has static pods.
@@ -689,7 +707,14 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 	return nil
 }
 
+func removeUnwantedCharacters(version string) (newVersion string) {
+	cutSet := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	newVersion = strings.Trim(version, cutSet)
+	return
+}
+
 func (gce *GCEClient) validateMachine(machine *clusterv1.Machine, config *gceconfigv1.GCEMachineProviderSpec) *apierrors.MachineError {
+	machine.Spec.Versions.Kubelet = removeUnwantedCharacters(machine.Spec.Versions.Kubelet)
 	if machine.Spec.Versions.Kubelet == "" {
 		return apierrors.InvalidMachineConfiguration("spec.versions.kubelet can't be empty")
 	}
@@ -701,6 +726,8 @@ func (gce *GCEClient) validateMachine(machine *clusterv1.Machine, config *gcecon
 // cluster installation, it will operate as a no-op. It also returns the
 // original error for convenience, so callers can do "return handleMachineError(...)".
 func (gce *GCEClient) handleMachineError(machine *clusterv1.Machine, err *apierrors.MachineError, eventAction string) error {
+	klog.Errorf("Machine error: %v", err.Message)
+
 	if gce.client != nil {
 		reason := err.Reason
 		message := err.Message
@@ -712,8 +739,6 @@ func (gce *GCEClient) handleMachineError(machine *clusterv1.Machine, err *apierr
 	if eventAction != noEventAction {
 		gce.eventRecorder.Eventf(machine, corev1.EventTypeWarning, "Failed"+eventAction, "%v", err.Reason)
 	}
-
-	klog.Errorf("Machine error: %v", err.Message)
 	return err
 }
 
@@ -762,6 +787,17 @@ func newDisks(config *gceconfigv1.GCEMachineProviderSpec, zone string, imagePath
 			}
 		}
 		disks = append(disks, &d)
+	}
+	if len(disks) == 0 {
+		disks = append(disks, &compute.AttachedDisk{
+			AutoDelete: true,
+			Boot:       true,
+			InitializeParams: &compute.AttachedDiskInitializeParams{
+				DiskSizeGb:  minDiskSizeGb,
+				DiskType:    fmt.Sprintf("zones/%s/diskTypes/%s", zone, "pd-standard"),
+				SourceImage: imagePath,
+			},
+		})
 	}
 	return disks
 }
@@ -843,6 +879,7 @@ func clientWithAltTokenSource(gceConfigPath string) (*http.Client, error) {
 
 func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, clusterConfig *gceconfigv1.GCEClusterProviderSpec, configParams *machinesetup.ConfigParams) (*compute.Metadata, error) {
 	var metadataMap map[string]string
+	machine.Spec.Versions.Kubelet = removeUnwantedCharacters(machine.Spec.Versions.Kubelet)
 	if machine.Spec.Versions.Kubelet == "" {
 		return nil, errors.New("invalid master configuration: missing Machine.Spec.Versions.Kubelet")
 	}
@@ -854,6 +891,7 @@ func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1
 	if err != nil {
 		return nil, err
 	}
+	machine.Spec.Versions.ControlPlane = removeUnwantedCharacters(machine.Spec.Versions.ControlPlane)
 	if isMaster(configParams.Roles) {
 		if machine.Spec.Versions.ControlPlane == "" {
 			return nil, gce.handleMachineError(machine, apierrors.InvalidMachineConfiguration(
