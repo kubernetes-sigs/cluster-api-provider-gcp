@@ -28,29 +28,31 @@ items:
           chmod $3 $2
       }
 
+      apt-get update -y
+      apt-get install -y socat ebtables apt-get install apt-transport-https ca-certificates curl software-properties-common cloud-utils prips
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+      cat <<EOF > /etc/apt/sources.list.d/k8s.list
+      deb [arch=amd64] https://download.docker.com/linux/ubuntu ubuntu-xenial stable
+      EOF
+      apt-get update -y
+
+      function install_configure_docker () {
+          # prevent docker from auto-starting
+          echo "exit 101" > /usr/sbin/policy-rc.d
+          chmod +x /usr/sbin/policy-rc.d
+          trap "rm /usr/sbin/policy-rc.d" RETURN
+          apt-get install -y docker-ce=18.06.2~ce~3-0~ubuntu
+          echo 'DOCKER_OPTS="--iptables=false --ip-masq=false"' > /etc/default/docker
+          systemctl daemon-reload
+          systemctl enable docker
+          systemctl start docker
+      }
+
+      install_configure_docker
+
       curl -sf https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
       touch /etc/apt/sources.list.d/kubernetes.list
       sh -c 'echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list'
-      apt-get update -y
-      apt-get install -y \
-        socat \
-        ebtables \
-        apt-transport-https \
-        cloud-utils \
-        prips
-
-      function install_configure_docker () {
-        # prevent docker from auto-starting
-        echo "exit 101" > /usr/sbin/policy-rc.d
-        chmod +x /usr/sbin/policy-rc.d
-        trap "rm /usr/sbin/policy-rc.d" RETURN
-        apt-get install -y docker.io
-        echo 'DOCKER_OPTS="--iptables=false --ip-masq=false"' > /etc/default/docker
-        systemctl daemon-reload
-        systemctl enable docker
-        systemctl start docker
-      }
-      install_configure_docker
 
       curl -fsSL https://dl.k8s.io/release/${VERSION}/bin/linux/${ARCH}/kubeadm > /usr/bin/kubeadm.dl
       chmod a+rx /usr/bin/kubeadm.dl
@@ -173,20 +175,20 @@ items:
           chmod $3 $2
       }
 
-      apt-get update
-      apt-get install -y apt-transport-https prips
-      apt-key adv --keyserver hkp://keyserver.ubuntu.com --recv-keys F76221572C52609D
+      apt-get update -y
+      apt-get install -y socat ebtables apt-get install apt-transport-https ca-certificates curl software-properties-common cloud-utils prips
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
       cat <<EOF > /etc/apt/sources.list.d/k8s.list
-      deb [arch=amd64] https://apt.dockerproject.org/repo ubuntu-xenial main
+      deb [arch=amd64] https://download.docker.com/linux/ubuntu ubuntu-xenial stable
       EOF
-      apt-get update
+      apt-get update -y
 
       function install_configure_docker () {
           # prevent docker from auto-starting
           echo "exit 101" > /usr/sbin/policy-rc.d
           chmod +x /usr/sbin/policy-rc.d
           trap "rm /usr/sbin/policy-rc.d" RETURN
-          apt-get install -y docker-engine=1.12.0-0~xenial
+          apt-get install -y docker-ce=18.06.2~ce~3-0~ubuntu
           echo 'DOCKER_OPTS="--iptables=false --ip-masq=false"' > /etc/default/docker
           systemctl daemon-reload
           systemctl enable docker
