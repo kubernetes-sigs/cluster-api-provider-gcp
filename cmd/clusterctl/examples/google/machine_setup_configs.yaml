@@ -29,7 +29,7 @@ items:
       }
 
       apt-get update -y
-      apt-get install -y socat ebtables apt-get install apt-transport-https ca-certificates curl software-properties-common cloud-utils prips
+      apt-get install -y socat ebtables apt-transport-https ca-certificates curl software-properties-common cloud-utils prips
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
       cat <<EOF > /etc/apt/sources.list.d/k8s.list
       deb [arch=amd64] https://download.docker.com/linux/ubuntu ubuntu-xenial stable
@@ -176,7 +176,7 @@ items:
       }
 
       apt-get update -y
-      apt-get install -y socat ebtables apt-get install apt-transport-https ca-certificates curl software-properties-common cloud-utils prips
+      apt-get install -y socat ebtables apt-transport-https ca-certificates curl software-properties-common cloud-utils prips
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
       cat <<EOF > /etc/apt/sources.list.d/k8s.list
       deb [arch=amd64] https://download.docker.com/linux/ubuntu ubuntu-xenial stable
