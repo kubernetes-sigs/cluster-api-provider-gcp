@@ -763,6 +763,17 @@ func newDisks(config *gceconfigv1.GCEMachineProviderSpec, zone string, imagePath
 		}
 		disks = append(disks, &d)
 	}
+	if len(disks) == 0 {
+		disks = append(disks, &compute.AttachedDisk{
+			AutoDelete: true,
+			Boot:       true,
+			InitializeParams: &compute.AttachedDiskInitializeParams{
+				DiskSizeGb:  minDiskSizeGb,
+				DiskType:    fmt.Sprintf("zones/%s/diskTypes/%s", zone, "pd-standard"),
+				SourceImage: imagePath,
+			},
+		})
+	}
 	return disks
 }
 
