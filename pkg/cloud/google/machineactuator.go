@@ -701,6 +701,8 @@ func (gce *GCEClient) validateMachine(machine *clusterv1.Machine, config *gcecon
 // cluster installation, it will operate as a no-op. It also returns the
 // original error for convenience, so callers can do "return handleMachineError(...)".
 func (gce *GCEClient) handleMachineError(machine *clusterv1.Machine, err *apierrors.MachineError, eventAction string) error {
+	klog.Errorf("Machine error: %v", err.Message)
+
 	if gce.client != nil {
 		reason := err.Reason
 		message := err.Message
@@ -712,8 +714,6 @@ func (gce *GCEClient) handleMachineError(machine *clusterv1.Machine, err *apierr
 	if eventAction != noEventAction {
 		gce.eventRecorder.Eventf(machine, corev1.EventTypeWarning, "Failed"+eventAction, "%v", err.Reason)
 	}
-
-	klog.Errorf("Machine error: %v", err.Message)
 	return err
 }
 
