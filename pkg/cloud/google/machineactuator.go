@@ -646,6 +646,8 @@ func (gce *GCEClient) machineproviderconfig(providerSpec clusterv1.ProviderSpec)
 */
 
 func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine *clusterv1.Machine, newMachine *clusterv1.Machine) error {
+	oldMachine.Spec.Versions.ControlPlane = stripVersion(oldMachine.Spec.Versions.ControlPlane)
+	newMachine.Spec.Versions.ControlPlane = stripVersion(newMachine.Spec.Versions.ControlPlane)
 	if oldMachine.Spec.Versions.ControlPlane != newMachine.Spec.Versions.ControlPlane {
 		cmd := fmt.Sprintf(
 			"curl -fsSL https://dl.k8s.io/release/v%s/bin/linux/amd64/kubeadm | sudo tee /usr/bin/kubeadm > /dev/null; "+
@@ -667,6 +669,8 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 	}
 
 	// Upgrade kubelet.
+	oldMachine.Spec.Versions.Kubelet = stripVersion(oldMachine.Spec.Versions.Kubelet)
+	newMachine.Spec.Versions.Kubelet = stripVersion(newMachine.Spec.Versions.Kubelet)
 	if oldMachine.Spec.Versions.Kubelet != newMachine.Spec.Versions.Kubelet {
 		cmd := fmt.Sprintf("sudo kubectl drain %s --kubeconfig /etc/kubernetes/admin.conf --ignore-daemonsets", newMachine.Name)
 		// The errors are intentionally ignored as master has static pods.
@@ -689,7 +693,14 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 	return nil
 }
 
+func stripVersion(version string) (newVersion string) {
+	cutSet := "vV"
+	newVersion = strings.Trim(version, cutSet)
+	return
+}
+
 func (gce *GCEClient) validateMachine(machine *clusterv1.Machine, config *gceconfigv1.GCEMachineProviderSpec) *apierrors.MachineError {
+	machine.Spec.Versions.Kubelet = stripVersion(machine.Spec.Versions.Kubelet)
 	if machine.Spec.Versions.Kubelet == "" {
 		return apierrors.InvalidMachineConfiguration("spec.versions.kubelet can't be empty")
 	}
@@ -843,6 +854,7 @@ func clientWithAltTokenSource(gceConfigPath string) (*http.Client, error) {
 
 func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, clusterConfig *gceconfigv1.GCEClusterProviderSpec, configParams *machinesetup.ConfigParams) (*compute.Metadata, error) {
 	var metadataMap map[string]string
+	machine.Spec.Versions.Kubelet = stripVersion(machine.Spec.Versions.Kubelet)
 	if machine.Spec.Versions.Kubelet == "" {
 		return nil, errors.New("invalid master configuration: missing Machine.Spec.Versions.Kubelet")
 	}
@@ -854,6 +866,7 @@ func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1
 	if err != nil {
 		return nil, err
 	}
+	machine.Spec.Versions.ControlPlane = stripVersion(machine.Spec.Versions.ControlPlane)
 	if isMaster(configParams.Roles) {
 		if machine.Spec.Versions.ControlPlane == "" {
 			return nil, gce.handleMachineError(machine, apierrors.InvalidMachineConfiguration(
