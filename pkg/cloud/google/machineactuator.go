@@ -252,6 +252,18 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 	if verr := gce.validateMachine(machine, machineConfig); verr != nil {
 		return gce.handleMachineError(machine, verr, createEventAction)
 	}
+	if !isMaster(machineConfig.Roles) {
+		isNodeSet := false
+		for _, r := range machineConfig.Roles {
+			if r == gceconfigv1.NodeRole {
+				isNodeSet = true
+				break
+			}
+		}
+		if !isNodeSet {
+			machineConfig.Roles = append(machineConfig.Roles, gceconfigv1.NodeRole)
+		}
+	}
 
 	configParams := &machinesetup.ConfigParams{
 		OS:       machineConfig.OS,
