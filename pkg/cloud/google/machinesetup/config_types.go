@@ -32,7 +32,7 @@ import (
 type MachineSetupConfig interface {
 	GetYaml() (string, error)
 	GetImage(params *ConfigParams) (string, error)
-	GetMetadata(params *ConfigParams) (Metadata, error)
+	GetMetadata(params *ConfigParams) ([]MetadataItem, error)
 }
 
 // Config Watch holds the path to the machine setup configs yaml file.
@@ -59,12 +59,13 @@ type config struct {
 	// The fully specified image path. e.g.
 	//   projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts
 	//   projects/ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20180405
-	Image    string   `json:"image"`
-	Metadata Metadata `json:"metadata"`
+	Image    string         `json:"image"`
+	Metadata []MetadataItem `json:"metadata"`
 }
 
-type Metadata struct {
-	StartupScript string `json:"startupScript"`
+type MetadataItem struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type ConfigParams struct {
@@ -119,10 +120,10 @@ func (vc *ValidConfigs) GetImage(params *ConfigParams) (string, error) {
 	return machineSetupConfig.Image, nil
 }
 
-func (vc *ValidConfigs) GetMetadata(params *ConfigParams) (Metadata, error) {
+func (vc *ValidConfigs) GetMetadata(params *ConfigParams) ([]MetadataItem, error) {
 	machineSetupConfig, err := vc.matchMachineSetupConfig(params)
 	if err != nil {
-		return Metadata{}, err
+		return []MetadataItem{}, err
 	}
 	return machineSetupConfig.Metadata, nil
 }

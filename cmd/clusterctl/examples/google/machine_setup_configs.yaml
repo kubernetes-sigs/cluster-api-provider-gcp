@@ -8,7 +8,8 @@ items:
       controlPlane: 1.12.0
   image: projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts
   metadata:
-    startupScript: |
+  - name: "startup-script"
+    value: |
       set -e
       set -x
       (
@@ -155,7 +156,8 @@ items:
       kubelet: 1.12.0
   image: projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts
   metadata:
-    startupScript: |
+  - name: "startup-script"
+    value: |
       set -e
       set -x
       (

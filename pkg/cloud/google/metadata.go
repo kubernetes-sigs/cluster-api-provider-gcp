@@ -32,7 +32,7 @@ type metadataParams struct {
 	Machine      *clusterv1.Machine
 	DockerImages []string
 	Project      string
-	Metadata     *machinesetup.Metadata
+	Metadata     *[]machinesetup.MetadataItem
 
 	// These fields are set when executing the template if they are necessary.
 	PodCIDR        string
@@ -40,7 +40,7 @@ type metadataParams struct {
 	MasterEndpoint string
 }
 
-func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *machinesetup.Metadata) (map[string]string, error) {
+func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *[]machinesetup.MetadataItem) (map[string]string, error) {
 	if len(cluster.Status.APIEndpoints) == 0 {
 		return nil, fmt.Errorf("master endpoint not found in apiEndpoints for cluster %v", cluster)
 	}
@@ -60,12 +60,17 @@ func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.M
 	if err := nodeEnvironmentVarsTemplate.Execute(&buf, params); err != nil {
 		return nil, err
 	}
-	buf.WriteString(params.Metadata.StartupScript)
 	nodeMetadata["startup-script"] = buf.String()
+
+	for _, item := range *params.Metadata {
+		buf.Reset()
+		buf.WriteString(item.Value)
+		nodeMetadata[item.Name] += buf.String()
+	}
 	return nodeMetadata, nil
 }
 
-func masterMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *machinesetup.Metadata) (map[string]string, error) {
+func masterMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *[]machinesetup.MetadataItem) (map[string]string, error) {
 	params := metadataParams{
 		Cluster:     cluster,
 		Machine:     machine,
@@ -80,8 +85,13 @@ func masterMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, proj
 	if err := masterEnvironmentVarsTemplate.Execute(&buf, params); err != nil {
 		return nil, err
 	}
-	buf.WriteString(params.Metadata.StartupScript)
 	masterMetadata["startup-script"] = buf.String()
+
+	for _, item := range *params.Metadata {
+		buf.Reset()
+		buf.WriteString(item.Value)
+		masterMetadata[item.Name] += buf.String()
+	}
 	return masterMetadata, nil
 }
 

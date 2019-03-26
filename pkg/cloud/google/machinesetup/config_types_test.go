@@ -48,7 +48,8 @@ func TestParseMachineSetupYaml(t *testing.T) {
       controlPlane: 1.9.4
   image: projects/ubuntu-os-cloud/global/images/family/ubuntu-1710
   metadata:
-    startupScript: |
+  - name: "startup-script"
+    value: |
       #!/bin/bash
 - machineParams:
   - os: ubuntu-1710
@@ -63,7 +64,8 @@ func TestParseMachineSetupYaml(t *testing.T) {
       kubelet: 1.9.4
   image: projects/ubuntu-os-cloud/global/images/family/ubuntu-1710
   metadata:
-    startupScript: |
+  - name: "startup-script"
+    value: |
       #!/bin/bash
       echo this is the node config.`),
 			expectedErr: false,
@@ -117,8 +119,11 @@ func TestGetYaml(t *testing.T) {
 								},
 							},
 							Image: "projects/ubuntu-os-cloud/global/images/family/ubuntu-1710",
-							Metadata: Metadata{
-								StartupScript: "Master startup script",
+							Metadata: []MetadataItem{
+								MetadataItem{
+									Name:  "startup-script",
+									Value: "Master startup script",
+								},
 							},
 						},
 						{
@@ -132,15 +137,19 @@ func TestGetYaml(t *testing.T) {
 								},
 							},
 							Image: "projects/ubuntu-os-cloud/global/images/family/ubuntu-1710",
-							Metadata: Metadata{
-								StartupScript: "Node startup script",
+							Metadata: []MetadataItem{
+								MetadataItem{
+									Name:  "startup-script",
+									Value: "Node startup script",
+								},
 							},
 						},
 					},
 				},
 			},
-			expectedStrings: []string{"startupScript: Master startup script", "startupScript: Node startup script"},
-			expectedErr:     false,
+			expectedStrings: []string{"- name: startup-script\n    value: Master startup script",
+				"- name: startup-script\n    value: Node startup script"},
+			expectedErr: false,
 		},
 	}
 
@@ -189,8 +198,11 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 			},
 		},
 		Image: "projects/ubuntu-os-cloud/global/images/family/ubuntu-1710",
-		Metadata: Metadata{
-			StartupScript: "Master startup script",
+		Metadata: []MetadataItem{
+			MetadataItem{
+				Name:  "startup-script",
+				Value: "Master startup script",
+			},
 		},
 	}
 	nodeMachineSetupConfig := config{
@@ -211,8 +223,11 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 			},
 		},
 		Image: "projects/ubuntu-os-cloud/global/images/family/ubuntu-1710",
-		Metadata: Metadata{
-			StartupScript: "Node startup script",
+		Metadata: []MetadataItem{
+			MetadataItem{
+				Name:  "startup-script",
+				Value: "Node startup script",
+			},
 		},
 	}
 	multiRoleSetupConfig := config{
@@ -227,8 +242,11 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 			},
 		},
 		Image: "projects/ubuntu-os-cloud/global/images/family/ubuntu-1710",
-		Metadata: Metadata{
-			StartupScript: "Multi-role startup script",
+		Metadata: []MetadataItem{
+			MetadataItem{
+				Name:  "startup-script",
+				Value: "Multi-role startup script",
+			},
 		},
 	}
 	duplicateMasterMachineSetupConfig := config{
@@ -251,8 +269,11 @@ func TestMatchMachineSetupConfig(t *testing.T) {
 			},
 		},
 		Image: "projects/ubuntu-os-cloud/global/images/family/ubuntu-1710",
-		Metadata: Metadata{
-			StartupScript: "Duplicate master startup script",
+		Metadata: []MetadataItem{
+			MetadataItem{
+				Name:  "startup-script",
+				Value: "Duplicate master startup script",
+			},
 		},
 	}
 
