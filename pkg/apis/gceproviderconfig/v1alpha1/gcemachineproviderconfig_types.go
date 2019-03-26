@@ -35,8 +35,9 @@ type GCEMachineProviderSpec struct {
 	MachineType string `json:"machineType"`
 
 	// The name of the OS to be installed on the machine.
-	OS    string `json:"os,omitempty"`
-	Disks []Disk `json:"disks,omitempty"`
+	OS         string `json:"os,omitempty"`
+	Disks      []Disk `json:"disks,omitempty"`
+	ExternalIP string `json:"externalIP,omitempty"`
 }
 
 // The MachineRole indicates the purpose of the Machine, and will determine

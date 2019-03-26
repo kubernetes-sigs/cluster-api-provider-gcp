@@ -296,8 +296,9 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 					Network: "global/networks/default",
 					AccessConfigs: []*compute.AccessConfig{
 						{
-							Type: "ONE_TO_ONE_NAT",
-							Name: "External NAT",
+							Type:  "ONE_TO_ONE_NAT",
+							Name:  "External NAT",
+							NatIP: machineConfig.ExternalIP,
 						},
 					},
 				},
