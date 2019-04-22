@@ -53,6 +53,13 @@ spec:
           items:
             type: string
           type: array
+        serviceAccounts:
+          items:
+            properties:
+              email:
+                type: string
+            type: object
+          type: array
         zone:
           type: string
       required:

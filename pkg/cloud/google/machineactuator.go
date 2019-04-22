@@ -272,6 +272,31 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 		return err
 	}
 
+	var serviceAccounts []*compute.ServiceAccount
+	{
+		for i := range machineConfig.ServiceAccounts {
+			sa := &machineConfig.ServiceAccounts[i]
+
+			serviceAccounts = append(serviceAccounts,
+				&compute.ServiceAccount{
+					Email: sa.Email,
+					Scopes: []string{
+						compute.CloudPlatformScope,
+					},
+				})
+		}
+
+		if len(serviceAccounts) == 0 {
+			serviceAccounts = append(serviceAccounts,
+				&compute.ServiceAccount{
+					Email: gce.serviceAccountService.GetDefaultServiceAccountForMachine(cluster, machine),
+					Scopes: []string{
+						compute.CloudPlatformScope,
+					},
+				})
+		}
+	}
+
 	instance, err := gce.instanceIfExists(cluster, machine)
 	if err != nil {
 		return err
@@ -309,15 +334,8 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 					"https-server",
 					fmt.Sprintf("%s-worker", cluster.Name)},
 			},
-			Labels: labels,
-			ServiceAccounts: []*compute.ServiceAccount{
-				{
-					Email: gce.serviceAccountService.GetDefaultServiceAccountForMachine(cluster, machine),
-					Scopes: []string{
-						compute.CloudPlatformScope,
-					},
-				},
-			},
+			Labels:          labels,
+			ServiceAccounts: serviceAccounts,
 		})
 
 		if err == nil {
