@@ -870,12 +870,7 @@ func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1
 			metadataMap["ca-key"] = base64.StdEncoding.EncodeToString(ca.PrivateKey)
 		}
 	} else {
-		var err error
-		kubeadmToken, err := gce.getKubeadmToken()
-		if err != nil {
-			return nil, err
-		}
-		metadataMap, err = nodeMetadata(kubeadmToken, cluster, machine, clusterConfig.Project, &machineSetupMetadata)
+		metadataMap, err := nodeMetadata(gce.getKubeadmToken, cluster, machine, clusterConfig.Project, &machineSetupMetadata)
 		if err != nil {
 			return nil, err
 		}

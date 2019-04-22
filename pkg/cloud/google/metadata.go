@@ -27,7 +27,7 @@ import (
 )
 
 type metadataParams struct {
-	Token        string
+	TokenFunc    func() (string, error)
 	Cluster      *clusterv1.Cluster
 	Machine      *clusterv1.Machine
 	DockerImages []string
@@ -40,12 +40,12 @@ type metadataParams struct {
 	MasterEndpoint string
 }
 
-func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *machinesetup.Metadata) (map[string]string, error) {
+func nodeMetadata(tokenFunc func() (string, error), cluster *clusterv1.Cluster, machine *clusterv1.Machine, project string, metadata *machinesetup.Metadata) (map[string]string, error) {
 	if len(cluster.Status.APIEndpoints) == 0 {
 		return nil, fmt.Errorf("master endpoint not found in apiEndpoints for cluster %v", cluster)
 	}
 	params := metadataParams{
-		Token:          token,
+		TokenFunc:      tokenFunc,
 		Cluster:        cluster,
 		Machine:        machine,
 		Project:        project,
@@ -57,7 +57,7 @@ func nodeMetadata(token string, cluster *clusterv1.Cluster, machine *clusterv1.M
 
 	nodeMetadata := map[string]string{}
 	var buf bytes.Buffer
-	if err := nodeEnvironmentVarsTemplate.Execute(&buf, params); err != nil {
+	if err := nodeEnvironmentVars(&buf, params); err != nil {
 		return nil, err
 	}
 	buf.WriteString(params.Metadata.StartupScript)
@@ -91,12 +91,10 @@ func getEndpoint(apiEndpoint clusterv1.APIEndpoint) string {
 
 var (
 	masterEnvironmentVarsTemplate *template.Template
-	nodeEnvironmentVarsTemplate   *template.Template
 )
 
 func init() {
 	masterEnvironmentVarsTemplate = template.Must(template.New("masterEnvironmentVars").Parse(masterEnvironmentVars))
-	nodeEnvironmentVarsTemplate = template.Must(template.New("nodeEnvironmentVars").Parse(nodeEnvironmentVars))
 }
 
 // TODO(kcoronado): replace with actual network and node tag args when they are added into provider spec.
@@ -115,16 +113,21 @@ POD_CIDR={{ .PodCIDR }}
 SERVICE_CIDR={{ .ServiceCIDR }}
 `
 
-const nodeEnvironmentVars = `
-#!/bin/bash
-KUBELET_VERSION={{ .Machine.Spec.Versions.Kubelet }}
-TOKEN={{ .Token }}
-MASTER={{ .MasterEndpoint }}
-NAMESPACE={{ .Machine.ObjectMeta.Namespace }}
-MACHINE=$NAMESPACE
-MACHINE+="/"
-MACHINE+={{ .Machine.ObjectMeta.Name }}
-CLUSTER_DNS_DOMAIN={{ .Cluster.Spec.ClusterNetwork.ServiceDomain }}
-POD_CIDR={{ .PodCIDR }}
-SERVICE_CIDR={{ .ServiceCIDR }}
-`
+func nodeEnvironmentVars(buf *bytes.Buffer, params metadataParams) error {
+	token, err := params.TokenFunc()
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(buf, "#!/bin/bash\n")
+	fmt.Fprintf(buf, "KUBELET_VERSION=%s\n", params.Machine.Spec.Versions.Kubelet)
+	fmt.Fprintf(buf, "TOKEN=%s\n", token)
+	fmt.Fprintf(buf, "MASTER=%s\n", params.MasterEndpoint)
+	fmt.Fprintf(buf, "NAMESPACE=%s\n", params.Machine.ObjectMeta.Namespace)
+	fmt.Fprintf(buf, "MACHINE=%s\n", params.Machine.ObjectMeta.Namespace+"/"+params.Machine.ObjectMeta.Name)
+	fmt.Fprintf(buf, "CLUSTER_DNS_DOMAIN=%s\n", params.Cluster.Spec.ClusterNetwork.ServiceDomain)
+	fmt.Fprintf(buf, "POD_CIDR=%s\n", params.PodCIDR)
+	fmt.Fprintf(buf, "SERVICE_CIDR=%s\n", params.ServiceCIDR)
+
+	return nil
+}
