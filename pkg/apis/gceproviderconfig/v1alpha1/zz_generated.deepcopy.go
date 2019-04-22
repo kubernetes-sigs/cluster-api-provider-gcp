@@ -125,6 +125,11 @@ func (in *GCEMachineProviderSpec) DeepCopyInto(out *GCEMachineProviderSpec) {
 		*out = make([]MachineRole, len(*in))
 		copy(*out, *in)
 	}
+	if in.InstanceTags != nil {
+		in, out := &in.InstanceTags, &out.InstanceTags
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Disks != nil {
 		in, out := &in.Disks, &out.Disks
 		*out = make([]Disk, len(*in))

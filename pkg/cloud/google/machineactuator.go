@@ -25,6 +25,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -272,6 +273,19 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 		return err
 	}
 
+	var tags *compute.Tags
+	{
+		var tagList []string
+		tagList = append(tagList, machineConfig.InstanceTags...)
+		if len(tagList) == 0 {
+			tagList = append(tagList, "https-server")
+			tagList = append(tagList, cluster.Name+"-worker")
+		}
+
+		sort.Strings(tagList)
+		tags = &compute.Tags{Items: tagList}
+	}
+
 	instance, err := gce.instanceIfExists(cluster, machine)
 	if err != nil {
 		return err
@@ -304,12 +318,8 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 			},
 			Disks:    newDisks(machineConfig, zone, imagePath, int64(30)),
 			Metadata: metadata,
-			Tags: &compute.Tags{
-				Items: []string{
-					"https-server",
-					fmt.Sprintf("%s-worker", cluster.Name)},
-			},
-			Labels: labels,
+			Tags:     tags,
+			Labels:   labels,
 			ServiceAccounts: []*compute.ServiceAccount{
 				{
 					Email: gce.serviceAccountService.GetDefaultServiceAccountForMachine(cluster, machine),

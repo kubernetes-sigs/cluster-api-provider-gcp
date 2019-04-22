@@ -31,6 +31,8 @@ type GCEMachineProviderSpec struct {
 
 	Roles []MachineRole `json:"roles,omitempty"`
 
+	InstanceTags []string `json:"instanceTags,omitempty"`
+
 	Zone        string `json:"zone"`
 	MachineType string `json:"machineType"`
 
