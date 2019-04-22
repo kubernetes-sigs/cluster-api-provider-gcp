@@ -37,6 +37,15 @@ spec:
             - initializeParams
             type: object
           type: array
+        instanceMetadata:
+          items:
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+            type: object
+          type: array
         kind:
           description: 'Kind is a string value representing the REST resource this
             object represents. Servers may infer this from the endpoint the client

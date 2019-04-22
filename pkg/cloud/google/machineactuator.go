@@ -267,9 +267,39 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 		return err
 	}
 	imagePath := gce.getImagePath(image)
-	metadata, err := gce.getMetadata(cluster, machine, clusterConfig, configParams)
-	if err != nil {
-		return err
+
+	var metadata *compute.Metadata
+	{
+		metadataMap := make(map[string]string)
+		for i := range machineConfig.InstanceMetadata {
+			m := &machineConfig.InstanceMetadata[i]
+			if m.Value != nil {
+				metadataMap[m.Key] = *m.Value
+			}
+		}
+
+		if metadataMap["startup-script"] == "" {
+			metadata, err := gce.getMetadata(cluster, machine, clusterInfo, configParams)
+			if err != nil {
+				return err
+			}
+			for k, v := range metadata {
+				// TODO: Worry about conflicts?
+				metadataMap[k] = v
+			}
+		}
+
+		var metadataItems []*compute.MetadataItems
+		for k, v := range metadataMap {
+			v := v // rebind scope to avoid loop aliasing below
+			metadataItems = append(metadataItems, &compute.MetadataItems{
+				Key:   k,
+				Value: &v,
+			})
+		}
+		metadata = &compute.Metadata{
+			Items: metadataItems,
+		}
 	}
 
 	instance, err := gce.instanceIfExists(cluster, machine)
@@ -841,7 +871,7 @@ func clientWithAltTokenSource(gceConfigPath string) (*http.Client, error) {
 	return client, nil
 }
 
-func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, clusterConfig *gceconfigv1.GCEClusterProviderSpec, configParams *machinesetup.ConfigParams) (*compute.Metadata, error) {
+func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1.Machine, clusterConfig *gceconfigv1.GCEClusterProviderSpec, configParams *machinesetup.ConfigParams) (map[string]string, error) {
 	var metadataMap map[string]string
 	if machine.Spec.Versions.Kubelet == "" {
 		return nil, errors.New("invalid master configuration: missing Machine.Spec.Versions.Kubelet")
@@ -901,18 +931,7 @@ func (gce *GCEClient) getMetadata(cluster *clusterv1.Cluster, machine *clusterv1
 		metadataMap["cloud-config"] = b.String()
 	}
 
-	var metadataItems []*compute.MetadataItems
-	for k, v := range metadataMap {
-		v := v // rebind scope to avoid loop aliasing below
-		metadataItems = append(metadataItems, &compute.MetadataItems{
-			Key:   k,
-			Value: &v,
-		})
-	}
-	metadata := compute.Metadata{
-		Items: metadataItems,
-	}
-	return &metadata, nil
+	return metadataMap, nil
 }
 
 // TODO: We need to change this when we create dedicated service account for apiserver/controller
