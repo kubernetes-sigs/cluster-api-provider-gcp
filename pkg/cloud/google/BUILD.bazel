@@ -21,6 +21,7 @@ go_library(
         "//pkg/cloud/google/clients/errors:go_default_library",
         "//pkg/cloud/google/config:go_default_library",
         "//pkg/cloud/google/machinesetup:go_default_library",
+        "//vendor/cloud.google.com/go/compute/metadata:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",
         "//vendor/golang.org/x/oauth2:go_default_library",
         "//vendor/golang.org/x/oauth2/google:go_default_library",
