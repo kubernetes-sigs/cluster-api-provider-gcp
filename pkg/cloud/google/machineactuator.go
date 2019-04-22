@@ -708,7 +708,12 @@ func (gce *GCEClient) handleMachineError(machine *clusterv1.Machine, err *apierr
 		message := err.Message
 		machine.Status.ErrorReason = &reason
 		machine.Status.ErrorMessage = &message
-		panic("UpdateStatus not implemented")
+
+		ctx := context.TODO()
+
+		if err := gce.client.Status().Update(ctx, machine); err != nil {
+			klog.Warningf("failed to update status: %v", err)
+		}
 	}
 
 	if eventAction != noEventAction {
