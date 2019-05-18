@@ -81,13 +81,18 @@ func main() {
 
 // Setup static dependencies.
 func initStaticDeps(mgr manager.Manager) {
-	configWatch, err := machinesetup.NewConfigWatch(*machineSetupConfig)
-	if err != nil {
-		klog.Fatalf("Could not create config watch: %v", err)
+	var machineSetupConfigGetter google.GCEClientMachineSetupConfigGetter
+
+	if *machineSetupConfig != "" {
+		configWatch, err := machinesetup.NewConfigWatch(*machineSetupConfig)
+		if err != nil {
+			klog.Fatalf("Could not create config watch: %v", err)
+		}
+		machineSetupConfigGetter = configWatch
 	}
 
-	google.MachineActuator, err = google.NewMachineActuator(google.MachineActuatorParams{
-		MachineSetupConfigGetter: configWatch,
+	ma, err := google.NewMachineActuator(google.MachineActuatorParams{
+		MachineSetupConfigGetter: machineSetupConfigGetter,
 		EventRecorder:            mgr.GetRecorder("gce-controller"),
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
@@ -96,5 +101,6 @@ func initStaticDeps(mgr manager.Manager) {
 	if err != nil {
 		klog.Fatalf("Error creating cluster provisioner for google : %v", err)
 	}
+	google.MachineActuator = ma
 	clustercommon.RegisterClusterProvisioner(google.ProviderName, google.MachineActuator)
 }

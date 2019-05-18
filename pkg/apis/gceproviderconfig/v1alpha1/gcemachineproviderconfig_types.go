@@ -34,6 +34,8 @@ type GCEMachineProviderSpec struct {
 	Zone        string `json:"zone"`
 	MachineType string `json:"machineType"`
 
+	Image string `json:"image,omitempty"`
+
 	// The name of the OS to be installed on the machine.
 	OS    string `json:"os,omitempty"`
 	Disks []Disk `json:"disks,omitempty"`

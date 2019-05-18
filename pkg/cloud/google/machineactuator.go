@@ -235,9 +235,6 @@ func (gce *GCEClient) ProvisionClusterDependencies(cluster *clusterv1.Cluster) e
 }
 
 func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	if gce.machineSetupConfigGetter == nil {
-		return errors.New("a valid machineSetupConfigGetter is required")
-	}
 	machineConfig, err := machineProviderFromProviderSpec(machine.Spec.ProviderSpec)
 	if err != nil {
 		return gce.handleMachineError(machine, apierrors.InvalidMachineConfiguration(
@@ -253,18 +250,25 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 		return gce.handleMachineError(machine, verr, createEventAction)
 	}
 
-	configParams := &machinesetup.ConfigParams{
-		OS:       machineConfig.OS,
-		Roles:    machineConfig.Roles,
-		Versions: machine.Spec.Versions,
-	}
-	machineSetupConfigs, err := gce.machineSetupConfigGetter.GetMachineSetupConfig()
-	if err != nil {
-		return err
-	}
-	image, err := machineSetupConfigs.GetImage(configParams)
-	if err != nil {
-		return err
+	image := machineConfig.Image
+	if image == "" {
+		if gce.machineSetupConfigGetter == nil {
+			return errors.New("a valid machineSetupConfigGetter is required if image is not specified")
+		}
+
+		configParams := &machinesetup.ConfigParams{
+			OS:       machineConfig.OS,
+			Roles:    machineConfig.Roles,
+			Versions: machine.Spec.Versions,
+		}
+		machineSetupConfigs, err := gce.machineSetupConfigGetter.GetMachineSetupConfig()
+		if err != nil {
+			return err
+		}
+		image, err = machineSetupConfigs.GetImage(configParams)
+		if err != nil {
+			return err
+		}
 	}
 	imagePath := gce.getImagePath(image)
 	metadata, err := gce.getMetadata(cluster, machine, clusterConfig, configParams)
