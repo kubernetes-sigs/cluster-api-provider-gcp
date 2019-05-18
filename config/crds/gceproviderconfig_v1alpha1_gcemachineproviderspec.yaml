@@ -46,6 +46,13 @@ spec:
           type: string
         metadata:
           type: object
+        networkInterfaces:
+          items:
+            properties:
+              subnetwork:
+                type: string
+            type: object
+          type: array
         os:
           description: The name of the OS to be installed on the machine.
           type: string

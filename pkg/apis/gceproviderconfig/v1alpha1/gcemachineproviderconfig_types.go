@@ -31,12 +31,18 @@ type GCEMachineProviderSpec struct {
 
 	Roles []MachineRole `json:"roles,omitempty"`
 
+	NetworkInterfaces []NetworkInterface `json:"networkInterfaces,omitempty"`
+
 	Zone        string `json:"zone"`
 	MachineType string `json:"machineType"`
 
 	// The name of the OS to be installed on the machine.
 	OS    string `json:"os,omitempty"`
 	Disks []Disk `json:"disks,omitempty"`
+}
+
+type NetworkInterface struct {
+	Subnetwork string `json:"subnetwork,omitempty"`
 }
 
 // The MachineRole indicates the purpose of the Machine, and will determine
