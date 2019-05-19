@@ -42,7 +42,14 @@ type GCEMachineProviderSpec struct {
 }
 
 type NetworkInterface struct {
-	Subnetwork string `json:"subnetwork,omitempty"`
+	AliasIpRanges []*AliasIpRange `json:"aliasIpRanges,omitempty"`
+	Subnetwork    string          `json:"subnetwork,omitempty"`
+}
+
+type AliasIpRange struct {
+	IpCidrRange string `json:"ipCidrRange,omitempty"`
+
+	SubnetworkRangeName string `json:"subnetworkRangeName,omitempty"`
 }
 
 // The MachineRole indicates the purpose of the Machine, and will determine

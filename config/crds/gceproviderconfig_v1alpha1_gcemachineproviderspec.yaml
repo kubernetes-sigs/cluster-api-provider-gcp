@@ -49,6 +49,15 @@ spec:
         networkInterfaces:
           items:
             properties:
+              aliasIpRanges:
+                items:
+                  properties:
+                    ipCidrRange:
+                      type: string
+                    subnetworkRangeName:
+                      type: string
+                  type: object
+                type: array
               subnetwork:
                 type: string
             type: object

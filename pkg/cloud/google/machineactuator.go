@@ -292,6 +292,14 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 				ni.Subnetwork = src.Subnetwork
 			}
 
+			for j := range src.AliasIpRanges {
+				r := &compute.AliasIpRange{
+					IpCidrRange:         src.AliasIpRanges[j].IpCidrRange,
+					SubnetworkRangeName: src.AliasIpRanges[j].SubnetworkRangeName,
+				}
+				ni.AliasIpRanges = append(ni.AliasIpRanges, r)
+			}
+
 			networkInterfaces = append(networkInterfaces, ni)
 		}
 
