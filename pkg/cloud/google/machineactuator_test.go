@@ -123,7 +123,7 @@ func TestNoDisks(t *testing.T) {
 	config.Disks = make([]gceconfigv1.Disk, 0)
 	receivedInstance, computeServiceMock := newInsertInstanceCapturingMock()
 	createClusterAndFailOnError(t, config, computeServiceMock, nil)
-	checkInstanceValues(t, receivedInstance, 0)
+	checkInstanceValues(t, receivedInstance, 1)
 }
 
 func TestMinimumSizeShouldBeEnforced(t *testing.T) {
