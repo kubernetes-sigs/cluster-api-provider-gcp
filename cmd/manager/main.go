@@ -90,6 +90,7 @@ func initStaticDeps(mgr manager.Manager) {
 		MachineSetupConfigGetter: configWatch,
 		EventRecorder:            mgr.GetRecorder("gce-controller"),
 		Client:                   mgr.GetClient(),
+		Config:                   mgr.GetConfig(),
 		Scheme:                   mgr.GetScheme(),
 		CloudConfigPath:          *cloudConfig,
 	})

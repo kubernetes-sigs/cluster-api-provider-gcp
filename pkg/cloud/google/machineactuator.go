@@ -38,6 +38,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	gceconfigv1 "sigs.k8s.io/cluster-api-provider-gcp/pkg/apis/gceproviderconfig/v1alpha1"
@@ -93,6 +95,7 @@ type GCEClient struct {
 	serviceAccountService    *ServiceAccountService
 	sshCreds                 SshCreds
 	client                   client.Client
+	coreClient               corev1client.CoreV1Interface
 	machineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	eventRecorder            record.EventRecorder
 	scheme                   *runtime.Scheme
@@ -103,6 +106,7 @@ type MachineActuatorParams struct {
 	ComputeService           GCEClientComputeService
 	Kubeadm                  GCEClientKubeadm
 	Client                   client.Client
+	Config                   *rest.Config
 	MachineSetupConfigGetter GCEClientMachineSetupConfigGetter
 	EventRecorder            record.EventRecorder
 	Scheme                   *runtime.Scheme
@@ -129,6 +133,11 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 		user = string(b)
 	}
 
+	coreClient, err := corev1client.NewForConfig(params.Config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating corev1 client: %v", err)
+	}
+
 	return &GCEClient{
 		certificateAuthority:  params.CertificateAuthority,
 		computeService:        computeService,
@@ -139,6 +148,7 @@ func NewMachineActuator(params MachineActuatorParams) (*GCEClient, error) {
 			user:           user,
 		},
 		client:                   params.Client,
+		coreClient:               coreClient,
 		machineSetupConfigGetter: params.MachineSetupConfigGetter,
 		eventRecorder:            params.EventRecorder,
 		scheme:                   params.Scheme,
@@ -502,12 +512,108 @@ func (gce *GCEClient) Update(ctx context.Context, cluster *clusterv1.Cluster, go
 	return gce.updateInstanceStatus(goalMachine)
 }
 
-func (gce *GCEClient) Exists(_ context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) (bool, error) {
+func (gce *GCEClient) Exists(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) (bool, error) {
 	i, err := gce.instanceIfExists(cluster, machine)
 	if err != nil {
 		return false, err
 	}
-	return (i != nil), err
+	if i == nil {
+		return false, nil
+	}
+
+	exists := true
+
+	// TODO: Why is this only done in Exists, and not in Create?
+
+	if machine.Spec.ProviderID == nil || *machine.Spec.ProviderID == "" {
+		clusterInfo, err := gce.getClusterInfo(cluster)
+		if err != nil {
+			return true, err
+		}
+
+		zone := lastComponent(i.Zone)
+
+		providerID := "gce://" + clusterInfo.ProjectID + "/" + zone + "/" + i.Name
+		klog.Infof("setting providerID=%q for machine=%s/%s", providerID, machine.Namespace, machine.Name)
+		machine.Spec.ProviderID = &providerID
+
+		if err := gce.client.Update(ctx, machine); err != nil {
+			return exists, fmt.Errorf("error updating machine %s/%s: %v", machine.Namespace, machine.Name, err)
+		}
+		shouldUpdateMachine = false
+	}
+
+	// Set the Machine NodeRef.
+	if machine.Status.NodeRef == nil && machine.Spec.ProviderID != nil {
+		node, err := gce.findNodeByProviderID(*machine.Spec.ProviderID)
+		if err != nil {
+			return exists, fmt.Errorf("error finding node: %v", err)
+		}
+
+		if node == nil {
+			klog.Infof("unable to find node for machine %s/%s", machine.Namespace, machine.Name)
+		} else {
+			klog.Infof("setting nodeRef for machine=%s/%s", machine.Namespace, machine.Name)
+
+			nodeRef := &corev1.ObjectReference{
+				Kind:       "Node",
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Name:       node.Name,
+				UID:        node.UID,
+			}
+			machine.Status.NodeRef = nodeRef
+
+			if err := gce.client.Status().Update(ctx, machine); err != nil {
+				return exists, fmt.Errorf("error updating machine status %s/%s: %v", machine.Namespace, machine.Name, err)
+			}
+		}
+	}
+
+	return exists, nil
+}
+
+func (gce *GCEClient) findNodeByProviderID(providerID string) (*corev1.Node, error) {
+	var opts metav1.ListOptions
+
+	var matches []*corev1.Node
+	for {
+		// TODO: Some form of filtering (e.g. by name?)
+		nodeList, err := gce.coreClient.Nodes().List(opts)
+		if err != nil {
+			return nil, fmt.Errorf("error listing kubernetes node objects: %v", err)
+		}
+
+		for i := range nodeList.Items {
+			node := &nodeList.Items[i]
+			if node.Spec.ProviderID == providerID {
+				matches = append(matches, node)
+			}
+		}
+
+		// TODO: Without Limit, Continue shouldn't be set?
+		opts.Continue = nodeList.Continue
+		if opts.Continue == "" {
+			break
+		}
+	}
+
+	if len(matches) == 0 {
+		return nil, nil
+	}
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	return nil, fmt.Errorf("found multiple nodes matching providerID %q", providerID)
+}
+
+// Returns the last component of a URL, i.e. anything after the last slash
+// If there is no slash, returns the whole string
+func lastComponent(s string) string {
+	lastSlash := strings.LastIndex(s, "/")
+	if lastSlash != -1 {
+		s = s[lastSlash+1:]
+	}
+	return s
 }
 
 func (gce *GCEClient) GetIP(cluster *clusterv1.Cluster, machine *clusterv1.Machine) (string, error) {
