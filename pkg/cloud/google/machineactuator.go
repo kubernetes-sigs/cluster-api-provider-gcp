@@ -254,9 +254,12 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 	}
 
 	configParams := &machinesetup.ConfigParams{
-		OS:       machineConfig.OS,
-		Roles:    machineConfig.Roles,
-		Versions: machine.Spec.Versions,
+		OS:    machineConfig.OS,
+		Roles: machineConfig.Roles,
+		Versions: clusterv1.MachineVersionInfo{
+			Kubelet:      stripVersion(machine.Spec.Versions.Kubelet),
+			ControlPlane: stripVersion(machine.Spec.Versions.ControlPlane),
+		},
 	}
 	machineSetupConfigs, err := gce.machineSetupConfigGetter.GetMachineSetupConfig()
 	if err != nil {
@@ -649,7 +652,7 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 	if oldMachine.Spec.Versions.ControlPlane != newMachine.Spec.Versions.ControlPlane {
 		cmd := fmt.Sprintf(
 			"curl -fsSL https://dl.k8s.io/release/v%s/bin/linux/amd64/kubeadm | sudo tee /usr/bin/kubeadm > /dev/null; "+
-				"sudo chmod a+rx /usr/bin/kubeadm", newMachine.Spec.Versions.ControlPlane)
+				"sudo chmod a+rx /usr/bin/kubeadm", stripVersion(newMachine.Spec.Versions.ControlPlane))
 		_, err := gce.remoteSshCommand(cluster, newMachine, cmd)
 		if err != nil {
 			klog.Infof("remotesshcomand error: %v", err)
@@ -658,7 +661,7 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 
 		// TODO: We might want to upgrade kubeadm if the target control plane version is newer.
 		// Upgrade control plan.
-		cmd = fmt.Sprintf("sudo kubeadm upgrade apply %s -y", "v"+newMachine.Spec.Versions.ControlPlane)
+		cmd = fmt.Sprintf("sudo kubeadm upgrade apply %s -y", "v"+stripVersion(newMachine.Spec.Versions.ControlPlane))
 		_, err = gce.remoteSshCommand(cluster, newMachine, cmd)
 		if err != nil {
 			klog.Infof("remotesshcomand error: %v", err)
@@ -672,7 +675,7 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 		// The errors are intentionally ignored as master has static pods.
 		gce.remoteSshCommand(cluster, newMachine, cmd)
 		// Upgrade kubelet to desired version.
-		cmd = fmt.Sprintf("sudo apt-get install kubelet=%s", newMachine.Spec.Versions.Kubelet+"-00")
+		cmd = fmt.Sprintf("sudo apt-get install kubelet=%s", stripVersion(newMachine.Spec.Versions.Kubelet)+"-00")
 		_, err := gce.remoteSshCommand(cluster, newMachine, cmd)
 		if err != nil {
 			klog.Infof("remotesshcomand error: %v", err)
@@ -687,6 +690,10 @@ func (gce *GCEClient) updateMasterInplace(cluster *clusterv1.Cluster, oldMachine
 	}
 
 	return nil
+}
+
+func stripVersion(version string) string {
+	return strings.Trim(version, "vV")
 }
 
 func (gce *GCEClient) validateMachine(machine *clusterv1.Machine, config *gceconfigv1.GCEMachineProviderSpec) *apierrors.MachineError {
