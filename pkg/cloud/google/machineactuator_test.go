@@ -54,7 +54,7 @@ const (
 type GCEClientMachineSetupConfigMock struct {
 	mockGetYaml     func() (string, error)
 	mockGetImage    func(params *machinesetup.ConfigParams) (string, error)
-	mockGetMetadata func(params *machinesetup.ConfigParams) (machinesetup.Metadata, error)
+	mockGetMetadata func(params *machinesetup.ConfigParams) ([]machinesetup.MetadataItem, error)
 }
 
 func (m *GCEClientMachineSetupConfigMock) GetYaml() (string, error) {
@@ -71,9 +71,9 @@ func (m *GCEClientMachineSetupConfigMock) GetImage(params *machinesetup.ConfigPa
 	return m.mockGetImage(params)
 }
 
-func (m *GCEClientMachineSetupConfigMock) GetMetadata(params *machinesetup.ConfigParams) (machinesetup.Metadata, error) {
+func (m *GCEClientMachineSetupConfigMock) GetMetadata(params *machinesetup.ConfigParams) ([]machinesetup.MetadataItem, error) {
 	if m.mockGetYaml == nil {
-		return machinesetup.Metadata{}, nil
+		return []machinesetup.MetadataItem{}, nil
 	}
 	return m.mockGetMetadata(params)
 }
@@ -286,8 +286,8 @@ func newMachineSetupConfigMock() *GCEClientMachineSetupConfigMock {
 		mockGetYaml: func() (string, error) {
 			return "", nil
 		},
-		mockGetMetadata: func(params *machinesetup.ConfigParams) (machinesetup.Metadata, error) {
-			metadata := machinesetup.Metadata{}
+		mockGetMetadata: func(params *machinesetup.ConfigParams) ([]machinesetup.MetadataItem, error) {
+			metadata := []machinesetup.MetadataItem{}
 			return metadata, nil
 		},
 		mockGetImage: func(params *machinesetup.ConfigParams) (string, error) {
