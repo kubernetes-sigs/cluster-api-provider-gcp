@@ -2,25 +2,22 @@
 
 aliases:
   sig-cluster-lifecycle-leads:
+    - justinsb
     - luxas
-    - roberthbailey
     - timothysc
   cluster-api-admins:
+    - davidewatson
+    - detiber
     - justinsb
-    - kris-nova
-    - krousey
-    - luxas
-    - roberthbailey
   cluster-api-maintainers:
-    - jessicaochen
-    - karan
-    - kris-nova
-    - krousey
-    - mkjelland
-    - roberthbailey
+    - detiber
+    - justinsb
+    - vincepri
   sig-gcp-leads:
     - abgworrall
   cluster-api-gcp-maintainers:
-    - roberthbailey
+    - detiber
     - maisem
     - krousey
+    - justinsb
+    - vincepri
