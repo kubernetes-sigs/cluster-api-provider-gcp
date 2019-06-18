@@ -275,6 +275,51 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 		return err
 	}
 
+	var networkInterfaces []*compute.NetworkInterface
+	{
+		for i := range machineConfig.NetworkInterfaces {
+			src := &machineConfig.NetworkInterfaces[i]
+
+			ni := &compute.NetworkInterface{
+				AccessConfigs: []*compute.AccessConfig{
+					{
+						Type: "ONE_TO_ONE_NAT",
+						Name: "External NAT",
+					},
+				},
+			}
+
+			if src.Subnetwork == "" {
+				ni.Network = "global/networks/default"
+			} else {
+				ni.Subnetwork = src.Subnetwork
+			}
+
+			for j := range src.AliasIpRanges {
+				r := &compute.AliasIpRange{
+					IpCidrRange:         src.AliasIpRanges[j].IpCidrRange,
+					SubnetworkRangeName: src.AliasIpRanges[j].SubnetworkRangeName,
+				}
+				ni.AliasIpRanges = append(ni.AliasIpRanges, r)
+			}
+
+			networkInterfaces = append(networkInterfaces, ni)
+		}
+
+		if len(networkInterfaces) == 0 {
+			networkInterfaces = append(networkInterfaces,
+				&compute.NetworkInterface{
+					Network: "global/networks/default",
+					AccessConfigs: []*compute.AccessConfig{
+						{
+							Type: "ONE_TO_ONE_NAT",
+							Name: "External NAT",
+						},
+					},
+				})
+		}
+	}
+
 	instance, err := gce.instanceIfExists(cluster, machine)
 	if err != nil {
 		return err
@@ -291,22 +336,12 @@ func (gce *GCEClient) Create(_ context.Context, cluster *clusterv1.Cluster, mach
 		}
 
 		op, err := gce.computeService.InstancesInsert(project, zone, &compute.Instance{
-			Name:         name,
-			MachineType:  fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineConfig.MachineType),
-			CanIpForward: true,
-			NetworkInterfaces: []*compute.NetworkInterface{
-				{
-					Network: "global/networks/default",
-					AccessConfigs: []*compute.AccessConfig{
-						{
-							Type: "ONE_TO_ONE_NAT",
-							Name: "External NAT",
-						},
-					},
-				},
-			},
-			Disks:    newDisks(machineConfig, zone, imagePath, int64(30)),
-			Metadata: metadata,
+			Name:              name,
+			MachineType:       fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineConfig.MachineType),
+			CanIpForward:      true,
+			NetworkInterfaces: networkInterfaces,
+			Disks:             newDisks(machineConfig, zone, imagePath, int64(30)),
+			Metadata:          metadata,
 			Tags: &compute.Tags{
 				Items: []string{
 					"https-server",

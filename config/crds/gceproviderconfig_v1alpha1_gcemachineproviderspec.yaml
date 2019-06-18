@@ -46,6 +46,22 @@ spec:
           type: string
         metadata:
           type: object
+        networkInterfaces:
+          items:
+            properties:
+              aliasIpRanges:
+                items:
+                  properties:
+                    ipCidrRange:
+                      type: string
+                    subnetworkRangeName:
+                      type: string
+                  type: object
+                type: array
+              subnetwork:
+                type: string
+            type: object
+          type: array
         os:
           description: The name of the OS to be installed on the machine.
           type: string
