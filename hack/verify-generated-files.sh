@@ -1,6 +1,5 @@
-#!/bin/bash
-
-# Copyright 2018 The Kubernetes Authors.
+#!/usr/bin/env bash
+# Copyright 2019 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +17,13 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-# shellcheck source=../hack/ensure-go.sh
-source "${REPO_ROOT}/hack/ensure-go.sh"
+make generate
+changed_files=$(git status --porcelain)
 
-cd "${REPO_ROOT}" && make docker-build
+if [[ -n "${changed_files}" ]]; then
+  echo "!!! Generated code is out of date:" >&2
+  echo "${changed_files}" >&2
+  echo >&2
+  echo "Please run make generate." >&2
+  exit 1
+fi
