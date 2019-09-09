@@ -1,0 +1,112 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: gcpmachinetemplates.infrastructure.cluster.x-k8s.io
+spec:
+  group: infrastructure.cluster.x-k8s.io
+  names:
+    categories:
+    - cluster-api
+    kind: GCPMachineTemplate
+    plural: gcpmachinetemplates
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      description: GCPMachineTemplate is the Schema for the gcpmachinetemplates API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: GCPMachineTemplateSpec defines the desired state of GCPMachineTemplate
+          properties:
+            template:
+              description: GCPMachineTemplateResource describes the data needed to
+                create am GCPMachine from a template
+              properties:
+                spec:
+                  description: Spec is the specification of the desired behavior of
+                    the machine.
+                  properties:
+                    additionalLabels:
+                      additionalProperties:
+                        type: string
+                      description: AdditionalLabels is an optional set of tags to
+                        add to an instance, in addition to the ones added by default
+                        by the GCP provider. If both the GCPCluster and the GCPMachine
+                        specify the same tag name with different values, the GCPMachine's
+                        value takes precedence.
+                      type: object
+                    additionalNetworkTags:
+                      description: AdditionalNetworkTags is an array of references
+                        to security groups that should be applied to the instance.
+                        These security groups would be set in addition to any security
+                        groups defined at the cluster level or in the actuator.
+                      items:
+                        type: string
+                      type: array
+                    image:
+                      description: Image is the full reference to a valid image to
+                        be used for this machine.
+                      type: string
+                    instanceType:
+                      description: 'InstanceType is the type of instance to create.
+                        Example: n1.standard-2'
+                      type: string
+                    providerID:
+                      description: ProviderID is the unique identifier as specified
+                        by the cloud provider.
+                      type: string
+                    publicIP:
+                      description: PublicIP specifies whether the instance should
+                        get a public IP. Set this to true if you don't have a NAT
+                        instances or Cloud Nat setup.
+                      type: boolean
+                    rootDeviceSize:
+                      description: RootDeviceSize is the size of the root volume in
+                        GB. Defaults to 30.
+                      format: int64
+                      type: integer
+                    subnet:
+                      description: Subnet is a reference to the subnetwork to use
+                        for this instance. If not specified, the first subnetwork
+                        retrieved from the Cluster Region and Network is picked.
+                      type: string
+                    zone:
+                      description: Zone is references the GCP zone to use for this
+                        instance.
+                      type: string
+                  required:
+                  - instanceType
+                  - zone
+                  type: object
+              required:
+              - spec
+              type: object
+          required:
+          - template
+          type: object
+      type: object
+  version: v1alpha2
+  versions:
+  - name: v1alpha2
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
