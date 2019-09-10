@@ -1,6 +1,6 @@
 # Kubernetes cluster-api-provider-gcp Project
 
-This repository hosts a concrete implementation of a provider for [Google Cloud Platform](https://cloud.google.com/) for the [cluster-api project](https://github.com/dims/cluster-api).
+This repository hosts a concrete implementation of a provider for [Google Cloud Platform](https://cloud.google.com/) for the [cluster-api project](https://github.com/kubernetes-sigs/cluster-api).
 
 ## Community, discussion, contribution, and support
 
