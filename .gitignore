@@ -12,17 +12,34 @@ bin
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Ansible
+*.retry
+
+# vim
+*~
+*.swp
+
+# envfiles
+.env
+envfile
+
+# kubeconfigs
+kind.kubeconfig
+minikube.kubeconfig
+kubeconfig
+
+# Example and binary output directory
+/out
+
+# vscode
+.vscode
+
+# goland
 .idea
 
-# bazel files
-bazel-bin
-bazel-cluster-api-provider-gcp
-bazel-genfiles
-bazel-out
-bazel-testlogs
-
-# Common editor / temporary files
-*~
-
-# Generated files
-kubeconfig
+# Ignore output manifests
+examples/_out
+examples/provider-components-base.yaml
+examples/provider-components/provider-components-*.yaml
+config/samples
+manager_image_patch.yaml-e
