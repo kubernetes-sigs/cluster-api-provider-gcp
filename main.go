@@ -30,6 +30,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha2"
+	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	// +kubebuilder:scaffold:imports
@@ -133,18 +134,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize event recorder.
+	record.InitFromRecorder(mgr.GetEventRecorderFor("aws-controller"))
+
 	if err = (&controllers.GCPMachineReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("GCPMachine"),
-		Recorder: mgr.GetEventRecorderFor("gcpmachine-controller"),
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("GCPMachine"),
 	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
 		os.Exit(1)
 	}
 	if err = (&controllers.GCPClusterReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("GCPCluster"),
-		Recorder: mgr.GetEventRecorderFor("gcpcluster-controller"),
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("GCPCluster"),
 	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
 		os.Exit(1)

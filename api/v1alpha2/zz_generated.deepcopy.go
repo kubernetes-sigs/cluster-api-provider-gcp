@@ -151,11 +151,6 @@ func (in *GCPClusterList) DeepCopyObject() runtime.Object {
 func (in *GCPClusterSpec) DeepCopyInto(out *GCPClusterSpec) {
 	*out = *in
 	in.NetworkSpec.DeepCopyInto(&out.NetworkSpec)
-	if in.DefaultZone != nil {
-		in, out := &in.DefaultZone, &out.DefaultZone
-		*out = new(string)
-		**out = **in
-	}
 	if in.Network != nil {
 		in, out := &in.Network, &out.Network
 		*out = new(string)
@@ -270,6 +265,11 @@ func (in *GCPMachineSpec) DeepCopyInto(out *GCPMachineSpec) {
 	}
 	if in.ProviderID != nil {
 		in, out := &in.ProviderID, &out.ProviderID
+		*out = new(string)
+		**out = **in
+	}
+	if in.ImageFamily != nil {
+		in, out := &in.ImageFamily, &out.ImageFamily
 		*out = new(string)
 		**out = **in
 	}
