@@ -24,7 +24,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/tools/record"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute"
@@ -42,8 +41,7 @@ const (
 // GCPClusterReconciler reconciles a GCPCluster object
 type GCPClusterReconciler struct {
 	client.Client
-	Recorder record.EventRecorder
-	Log      logr.Logger
+	Log logr.Logger
 }
 
 func (r *GCPClusterReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {

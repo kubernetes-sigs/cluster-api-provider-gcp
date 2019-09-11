@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
-	"sigs.k8s.io/cluster-api-provider-gcp/record"
+	"sigs.k8s.io/cluster-api/util/record"
 )
 
 // InstanceIfExists returns the existing instance or nothing if it doesn't exist.
@@ -68,11 +68,13 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 	}
 
 	input := &compute.Instance{
-		Name:              scope.Name(),
-		Zone:              scope.Zone(),
-		MachineType:       fmt.Sprintf("zones/%s/machineTypes/%s", scope.Zone(), scope.GCPMachine.Spec.InstanceType),
-		CanIpForward:      true,
-		NetworkInterfaces: []*compute.NetworkInterface{{}},
+		Name:         scope.Name(),
+		Zone:         scope.Zone(),
+		MachineType:  fmt.Sprintf("zones/%s/machineTypes/%s", scope.Zone(), scope.GCPMachine.Spec.InstanceType),
+		CanIpForward: true,
+		NetworkInterfaces: []*compute.NetworkInterface{{
+			Network: s.scope.NetworkID(),
+		}},
 		Tags: &compute.Tags{
 			Items: append(
 				scope.GCPMachine.Spec.AdditionalNetworkTags,

@@ -37,11 +37,6 @@ type GCPClusterSpec struct {
 	// The GCP Region the cluster lives in.
 	Region string `json:"region"`
 
-	// The default zone to create instances in.
-	// If empty, the first zone available in the Region is used.
-	// +optional
-	DefaultZone *string `json:"defaultZone,omitempty"`
-
 	// The Network zone to create instances in.
 	// If empty, the GCP default network is used.
 	// +optional

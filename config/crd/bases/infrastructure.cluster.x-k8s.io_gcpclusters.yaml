@@ -41,10 +41,6 @@ spec:
                 resources managed by the GCP provider, in addition to the ones added
                 by default.
               type: object
-            defaultZone:
-              description: The default zone to create instances in. If empty, the
-                first zone available in the Region is used.
-              type: string
             network:
               description: The Network zone to create instances in. If empty, the
                 GCP default network is used.

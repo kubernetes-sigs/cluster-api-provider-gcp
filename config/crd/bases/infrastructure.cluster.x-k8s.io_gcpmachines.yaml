@@ -52,7 +52,11 @@ spec:
               type: array
             image:
               description: Image is the full reference to a valid image to be used
-                for this machine.
+                for this machine. Takes precedence over ImageFamily.
+              type: string
+            imageFamily:
+              description: ImageFamily is the full reference to a valid image family
+                to be used for this machine.
               type: string
             instanceType:
               description: 'InstanceType is the type of instance to create. Example:

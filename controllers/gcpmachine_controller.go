@@ -24,10 +24,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	gcompute "google.golang.org/api/compute/v1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
@@ -36,6 +34,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha2"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -47,8 +46,7 @@ import (
 // GCPMachineReconciler reconciles a GCPMachine object
 type GCPMachineReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Recorder record.EventRecorder
+	Log logr.Logger
 }
 
 func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
@@ -208,7 +206,7 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	// TODO(ncdc): move this validation logic into a validating webhook
 	if errs := r.validateUpdate(&machineScope.GCPMachine.Spec, instance); len(errs) > 0 {
 		agg := kerrors.NewAggregate(errs)
-		r.Recorder.Eventf(machineScope.GCPMachine, corev1.EventTypeWarning, "InvalidUpdate", "Invalid update: %s", agg.Error())
+		record.Warnf(machineScope.GCPMachine, "InvalidUpdate", "Invalid update: %s", agg.Error())
 		machineScope.Error(err, "Invalid update")
 		return reconcile.Result{}, nil
 	}
@@ -270,10 +268,10 @@ func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope,
 	default:
 		machineScope.Info("Terminating instance")
 		if err := computeSvc.TerminateInstanceAndWait(machineScope); err != nil {
-			r.Recorder.Eventf(machineScope.GCPMachine, corev1.EventTypeWarning, "FailedTerminate", "Failed to terminate instance %q: %v", instance.Name, err)
+			record.Warnf(machineScope.GCPMachine, "FailedTerminate", "Failed to terminate instance %q: %v", instance.Name, err)
 			return reconcile.Result{}, errors.Errorf("failed to terminate instance: %+v", err)
 		}
-		r.Recorder.Eventf(machineScope.GCPMachine, corev1.EventTypeNormal, "SuccessfulTerminate", "Terminated instance %q", instance.Name)
+		record.Eventf(machineScope.GCPMachine, "SuccessfulTerminate", "Terminated instance %q", instance.Name)
 	}
 
 	return reconcile.Result{}, nil
