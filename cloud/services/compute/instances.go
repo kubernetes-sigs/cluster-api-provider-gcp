@@ -61,7 +61,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 			scope.Name(), scope.Namespace())
 	}
 
-	version, err := semver.Make(*scope.Machine.Spec.Version)
+	version, err := semver.ParseTolerant(*scope.Machine.Spec.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error parsing Spec.Version on Machine %q in namespace %q, expected valid SemVer string",
 			scope.Name(), scope.Namespace())
@@ -89,7 +89,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 					DiskSizeGb: 30,
 					DiskType:   fmt.Sprintf("zones/%s/diskTypes/%s", scope.Zone(), "pd-standard"),
 					SourceImage: fmt.Sprintf(
-						"projects/%s/global/images/family/capi-ubuntu-1804-k8s-%d-%d",
+						"projects/%s/global/images/family/capi-ubuntu-1804-k8s-v%d-%d",
 						s.scope.Project(), version.Major, version.Minor),
 				},
 			},
