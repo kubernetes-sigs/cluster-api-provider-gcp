@@ -195,3 +195,13 @@ var (
 	// InstanceStatusTerminated is the string representing an instance that has been terminated.
 	InstanceStatusTerminated = InstanceStatus("TERMINATED")
 )
+
+// ServiceAccount describes compute.serviceAccount
+type ServiceAccount struct {
+	// Email: Email address of the service account.
+	Email string `json:"email,omitempty"`
+
+	// Scopes: The list of scopes to be made available for this service
+	// account.
+	Scopes []string `json:"scopes,omitempty"`
+}
