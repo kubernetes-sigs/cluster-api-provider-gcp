@@ -79,6 +79,11 @@ type GCPMachineSpec struct {
 	// Defaults to 30.
 	// +optional
 	RootDeviceSize int64 `json:"rootDeviceSize,omitempty"`
+
+	// ServiceAccount specifies the service account email and which scopes to assign to the machine.
+	// Defaults to: email: "default", scope: []{compute.CloudPlatformScope}
+	// +optional
+	ServiceAccount *ServiceAccount `json:"serviceAccounts,omitempty"`
 }
 
 // GCPMachineStatus defines the observed state of GCPMachine

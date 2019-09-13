@@ -104,13 +104,22 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 		},
 		ServiceAccounts: []*compute.ServiceAccount{
 			{
-				// TODO(vincepri): This shouldn't be the default and it should be an option.
 				Email: "default",
 				Scopes: []string{
 					compute.CloudPlatformScope,
 				},
 			},
 		},
+	}
+
+	if scope.GCPMachine.Spec.ServiceAccount != nil {
+		serviceAccount := scope.GCPMachine.Spec.ServiceAccount
+		input.ServiceAccounts = []*compute.ServiceAccount{
+			{
+				Email:  serviceAccount.Email,
+				Scopes: serviceAccount.Scopes,
+			},
+		}
 	}
 
 	input.Labels = infrav1.Build(infrav1.BuildParams{

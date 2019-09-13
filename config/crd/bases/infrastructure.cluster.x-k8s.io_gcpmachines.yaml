@@ -76,6 +76,21 @@ spec:
                 to 30.
               format: int64
               type: integer
+            serviceAccounts:
+              description: 'ServiceAccount specifies the service account email and
+                which scopes to assign to the machine. Defaults to: email: "default",
+                scope: []{compute.CloudPlatformScope}'
+              properties:
+                email:
+                  description: 'Email: Email address of the service account.'
+                  type: string
+                scopes:
+                  description: 'Scopes: The list of scopes to be made available for
+                    this service account.'
+                  items:
+                    type: string
+                  type: array
+              type: object
             subnet:
               description: Subnet is a reference to the subnetwork to use for this
                 instance. If not specified, the first subnetwork retrieved from the
