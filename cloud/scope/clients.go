@@ -20,7 +20,7 @@ import (
 	"google.golang.org/api/compute/v1"
 )
 
-// GCPClients contains all the aws clients used by the scopes.
+// GCPClients contains all the gcp clients used by the scopes.
 type GCPClients struct {
 	Compute *compute.Service
 }
