@@ -135,7 +135,7 @@ func main() {
 	}
 
 	// Initialize event recorder.
-	record.InitFromRecorder(mgr.GetEventRecorderFor("aws-controller"))
+	record.InitFromRecorder(mgr.GetEventRecorderFor("gcp-controller"))
 
 	if err = (&controllers.GCPMachineReconciler{
 		Client: mgr.GetClient(),
