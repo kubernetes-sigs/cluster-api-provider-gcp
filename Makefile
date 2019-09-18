@@ -60,6 +60,7 @@ MANIFEST_ROOT ?= config
 CRD_ROOT ?= $(MANIFEST_ROOT)/crd/bases
 WEBHOOK_ROOT ?= $(MANIFEST_ROOT)/webhook
 RBAC_ROOT ?= $(MANIFEST_ROOT)/rbac
+CLUSTER_NAME ?= test1
 
 ## --------------------------------------
 ## Help
@@ -277,7 +278,7 @@ create-cluster: $(CLUSTERCTL) ## Create a development Kubernetes cluster on GCP 
 		alpha phases get-kubeconfig -v=3 \
 		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
 		--namespace=default \
-		--cluster-name=test1
+		--cluster-name=$(CLUSTER_NAME)
 	# Apply addons on the target cluster, waiting for the control-plane to become available.
 	$(CLUSTERCTL) \
 		alpha phases apply-addons -v=3 \
@@ -294,7 +295,7 @@ delete-cluster: $(CLUSTERCTL) ## Deletes the development Kubernetes Cluster "tes
 	delete cluster -v 4 \
 	--bootstrap-type kind \
 	--bootstrap-flags="name=clusterapi" \
-	--cluster test1 \
+	--cluster $(CLUSTER_NAME) \
 	--kubeconfig ./kubeconfig \
 	-p ./examples/_out/provider-components.yaml \
 
