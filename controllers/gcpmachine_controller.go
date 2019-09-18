@@ -365,6 +365,12 @@ func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.Machine
 		return errors.Wrapf(err, "failed to add instance to group")
 	}
 
+	computeSvc := compute.NewService(clusterScope)
+	if err := computeSvc.ReconcileLoadbalancers(); err != nil {
+		gcpCluster := clusterScope.GCPCluster
+		return errors.Wrapf(err, "failed to reconcile load balancers for GCPCluster %s/%s", gcpCluster.Namespace, gcpCluster.Name)
+	}
+
 	return nil
 }
 
