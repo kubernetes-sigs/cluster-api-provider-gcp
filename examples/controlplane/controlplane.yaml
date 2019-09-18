@@ -37,7 +37,7 @@ spec:
         cloud-provider: gce
   clusterConfiguration:
     apiServer:
-      timeoutForControlPlane: 10m
+      timeoutForControlPlane: 20m
       extraArgs:
         cloud-provider: gce
     controllerManager:
