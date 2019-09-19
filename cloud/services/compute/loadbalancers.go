@@ -85,18 +85,8 @@ func (s *Service) ReconcileLoadbalancers() error {
 
 	s.scope.Network().APIServerBackendService = pointer.StringPtr(backendService.SelfLink)
 
-	// Update backend service if the list of backends has changed in the spec.
-	// This might happen if new instance groups for the control plane api server
-	// are created in additional zones.
-	if len(backendService.Backends) != len(backendServiceSpec.Backends) {
-		backendService.Backends = backendServiceSpec.Backends
-		op, err := s.backendservices.Update(s.scope.Project(), backendService.Name, backendService).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to update backend service")
-		}
-		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-			return errors.Wrapf(err, "failed to update backend service")
-		}
+	if err := s.UpdateBackendServices(); err != nil {
+		return err
 	}
 
 	// Reconcile Target Proxy.
@@ -161,6 +151,30 @@ func (s *Service) ReconcileLoadbalancers() error {
 	}
 
 	s.scope.Network().APIServerForwardingRule = pointer.StringPtr(forwardingRule.SelfLink)
+
+	return nil
+}
+
+func (s *Service) UpdateBackendServices() error {
+	backendServiceSpec := s.getAPIServerBackendServiceSpec()
+	backendService, err := s.backendservices.Get(s.scope.Project(), backendServiceSpec.Name).Do()
+	if err != nil {
+		return err
+	}
+
+	// Update backend service if the list of backends has changed in the spec.
+	// This might happen if new instance groups for the control plane api server
+	// are created in additional zones.
+	if len(backendService.Backends) != len(backendServiceSpec.Backends) {
+		backendService.Backends = backendServiceSpec.Backends
+		op, err := s.backendservices.Update(s.scope.Project(), backendService.Name, backendService).Do()
+		if err != nil {
+			return errors.Wrapf(err, "failed to update backend service")
+		}
+		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
+			return errors.Wrapf(err, "failed to update backend service")
+		}
+	}
 
 	return nil
 }

@@ -307,11 +307,20 @@ func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.Machine
 	}
 	computeSvc := compute.NewService(clusterScope)
 	groupName := fmt.Sprintf("%s-%s-%s", clusterScope.Name(), infrav1.APIServerRoleTagValue, machineScope.Zone())
+
+	// Get the instance group, or create if necessary.
 	group, err := computeSvc.GetOrCreateInstanceGroup(machineScope.Zone(), groupName)
 	if err != nil {
 		return err
 	}
-	return computeSvc.EnsureInstanceGroupMember(machineScope.Zone(), group.Name, i)
+
+	// Make sure the instance is registered.
+	if err := computeSvc.EnsureInstanceGroupMember(machineScope.Zone(), group.Name, i); err != nil {
+		return err
+	}
+
+	// Update the backend service.
+	return computeSvc.UpdateBackendServices()
 }
 
 // validateUpdate checks that no immutable fields have been updated and

@@ -48,7 +48,6 @@ func (r *GCPClusterReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		For(&infrav1.GCPCluster{}).
-		For(&infrav1.GCPMachine{}).
 		Complete(r)
 }
 
