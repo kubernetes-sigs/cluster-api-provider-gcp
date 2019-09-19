@@ -18,6 +18,7 @@ package compute
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
@@ -46,7 +47,7 @@ func (s *Service) ReconcileInstanceGroups() error {
 			if s.scope.Network().APIServerInstanceGroups == nil {
 				s.scope.Network().APIServerInstanceGroups = make(map[string]string)
 			}
-			s.scope.Network().APIServerInstanceGroups[zone] = group.Name
+			s.scope.Network().APIServerInstanceGroups[zone] = group.SelfLink
 		}
 	}
 
@@ -54,8 +55,9 @@ func (s *Service) ReconcileInstanceGroups() error {
 }
 
 func (s *Service) DeleteInstanceGroups() error {
-	for zone, group := range s.scope.Network().APIServerInstanceGroups {
-		op, err := s.instancegroups.Delete(s.scope.Project(), zone, group).Do()
+	for zone, groupSelfLink := range s.scope.Network().APIServerInstanceGroups {
+		name := path.Base(groupSelfLink)
+		op, err := s.instancegroups.Delete(s.scope.Project(), zone, name).Do()
 		if err != nil {
 			return errors.Wrapf(err, "failed to create backend service")
 		}
