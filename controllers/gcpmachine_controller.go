@@ -27,10 +27,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha2"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha2"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
@@ -307,71 +305,13 @@ func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.Machine
 	if !machineScope.IsControlPlane() {
 		return nil
 	}
-
-	groupName := fmt.Sprintf("%s-%s-%s", clusterScope.Name(), infrav1.APIServerRoleTagValue, machineScope.Zone())
-
-	group, err := clusterScope.Compute.InstanceGroups.Get(clusterScope.Project(), machineScope.Zone(), groupName).Do()
-	if gcperrors.IsNotFound(err) {
-		spec := &gcompute.InstanceGroup{
-			Name:    groupName,
-			Network: clusterScope.NetworkID(),
-			NamedPorts: []*gcompute.NamedPort{
-				{
-					Name: "apiserver",
-					Port: 6443,
-				},
-			},
-		}
-		op, err := clusterScope.Compute.InstanceGroups.Insert(clusterScope.Project(), machineScope.Zone(), spec).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to create instance group")
-		}
-		if err := wait.ForComputeOperation(clusterScope.Compute, clusterScope.Project(), op); err != nil {
-			return errors.Wrapf(err, "failed to create instance group")
-		}
-		group, err = clusterScope.Compute.InstanceGroups.Get(clusterScope.Project(), machineScope.Zone(), groupName).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to describe instance group")
-		}
-	} else if err != nil {
-		return errors.Wrapf(err, "failed to describe instance group")
-	}
-
-	groupInstances, err := clusterScope.Compute.InstanceGroups.
-		ListInstances(clusterScope.Project(), machineScope.Zone(), group.Name, &gcompute.InstanceGroupsListInstancesRequest{}).
-		Do()
-	if err != nil {
-		return errors.Wrapf(err, "could not list instances in group %q", group.Name)
-	}
-
-	for _, registered := range groupInstances.Items {
-		if registered.Instance == i.SelfLink {
-			return nil
-		}
-	}
-
-	req := &gcompute.InstanceGroupsAddInstancesRequest{
-		Instances: []*gcompute.InstanceReference{
-			{
-				Instance: i.SelfLink,
-			},
-		},
-	}
-	op, err := clusterScope.Compute.InstanceGroups.AddInstances(clusterScope.Project(), machineScope.Zone(), group.Name, req).Do()
-	if err != nil {
-		return errors.Wrapf(err, "failed to add instance to group")
-	}
-	if err := wait.ForComputeOperation(clusterScope.Compute, clusterScope.Project(), op); err != nil {
-		return errors.Wrapf(err, "failed to add instance to group")
-	}
-
 	computeSvc := compute.NewService(clusterScope)
-	if err := computeSvc.ReconcileLoadbalancers(); err != nil {
-		gcpCluster := clusterScope.GCPCluster
-		return errors.Wrapf(err, "failed to reconcile load balancers for GCPCluster %s/%s", gcpCluster.Namespace, gcpCluster.Name)
+	groupName := fmt.Sprintf("%s-%s-%s", clusterScope.Name(), infrav1.APIServerRoleTagValue, machineScope.Zone())
+	group, err := computeSvc.GetOrCreateInstanceGroup(machineScope.Zone(), groupName)
+	if err != nil {
+		return err
 	}
-
-	return nil
+	return computeSvc.EnsureInstanceGroupMember(machineScope.Zone(), group.Name, i)
 }
 
 // validateUpdate checks that no immutable fields have been updated and

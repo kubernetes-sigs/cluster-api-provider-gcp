@@ -42,27 +42,6 @@ const (
 
 // ReconcileLoadbalancers reconciles the api server load balancer.
 func (s *Service) ReconcileLoadbalancers() error {
-	// Fetch API Server Instance Groups.
-	// TODO(vincepri): Move to network reconciliation.
-	zones, err := s.getZones()
-	if err != nil {
-		return err
-	}
-	for _, zone := range zones {
-		name := fmt.Sprintf("%s-%s-%s", s.scope.Name(), infrav1.APIServerRoleTagValue, zone)
-		group, err := s.instancegroups.Get(s.scope.Project(), zone, name).Do()
-		switch {
-		case gcperrors.IsNotFound(err):
-			continue
-		case err != nil:
-			return errors.Wrapf(err, "failed to describe instance group %q", name)
-		default:
-			if s.scope.Network().APIServerInstanceGroups == nil {
-				s.scope.Network().APIServerInstanceGroups = make(map[string]string)
-			}
-			s.scope.Network().APIServerInstanceGroups[zone] = group.SelfLink
-		}
-	}
 
 	// Reconcile Health Check.
 	healthCheckSpec := s.getAPIServerHealthCheckSpec()
