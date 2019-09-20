@@ -85,10 +85,6 @@ func (s *Service) ReconcileLoadbalancers() error {
 
 	s.scope.Network().APIServerBackendService = pointer.StringPtr(backendService.SelfLink)
 
-	if err := s.UpdateBackendServices(); err != nil {
-		return err
-	}
-
 	// Reconcile Target Proxy.
 	targetProxySpec := s.getAPIServerTargetProxySpec()
 	targetProxy, err := s.targetproxies.Get(s.scope.Project(), targetProxySpec.Name).Do()
@@ -156,6 +152,12 @@ func (s *Service) ReconcileLoadbalancers() error {
 }
 
 func (s *Service) UpdateBackendServices() error {
+	// Refresh the instance groups available.
+	if err := s.ReconcileInstanceGroups(); err != nil {
+		return err
+	}
+
+	// Retrieve the spec and the current backend service.
 	backendServiceSpec := s.getAPIServerBackendServiceSpec()
 	backendService, err := s.backendservices.Get(s.scope.Project(), backendServiceSpec.Name).Do()
 	if err != nil {
