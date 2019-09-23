@@ -24,7 +24,7 @@ import json
 
 BOSKOS_HOST=os.environ.get("BOSKOS_HOST", "boskos")
 
-RESOURCE_TYPE = "gcp-account"
+RESOURCE_TYPE = "gce-project"
 USER = "cluster-api-provider-gcp"
 
 def post_request(host, input_state = "clean"):

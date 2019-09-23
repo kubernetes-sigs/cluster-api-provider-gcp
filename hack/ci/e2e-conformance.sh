@@ -25,47 +25,143 @@ CLUSTER_NAME=${CLUSTER_NAME:-"test1"}
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
-# our exit handler (trap)
-cleanup() {
+# dump logs from kind and all the nodes
+dump-logs() {
   # always attempt to dump logs
   kind "export" logs --name="clusterapi" "${ARTIFACTS}/logs" || true
+
+  # iterate through any nodes we brought up and collect logs
+  gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name, zone)' \
+  | grep "${CLUSTER_NAME}" | while read node_name node_zone; do
+    echo "collecting logs from ${node_name}"
+    dir="${ARTIFACTS}/logs/${node_name}"
+    mkdir -p ${dir}
+
+    gcloud compute instances get-serial-port-output --project "${GCP_PROJECT}" \
+      --zone "${node_zone}" --port 1 "${node_name}" > "${dir}/serial-1.log" || true
+
+    ssh-to-node "${node_name}" "${node_zone}" "sudo chmod -R a+r /var/log" || true
+    gcloud compute scp --recurse --project "${GCP_PROJECT}" --zone "${node_zone}" \
+      "${node_name}:/var/log/cloud-init.log" "${node_name}:/var/log/cloud-init-output.log" "${dir}" || true
+
+    ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --output=short-precise" > "${dir}/systemd.log" || true
+  done
+
+  timeout 120 gcloud logging read --order=asc \
+    --freshness="3h" \
+    --format='table(timestamp,jsonPayload.resource.name,jsonPayload.event_subtype)' \
+    --project "${GCP_PROJECT}" > "${ARTIFACTS}/logs/activity.log" || true
+}
+
+# our exit handler (trap)
+cleanup() {
+  # dump all the logs
+  dump-logs
+
   # KIND_IS_UP is true once we: kind create
   if [[ "${KIND_IS_UP:-}" = true ]]; then
-    kubectl \
+    timeout 60 kubectl \
       --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
       delete cluster test1 || true
-    kubectl \
+     timeout 60 kubectl \
       --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
       wait --for=delete cluster/test1 || true
     make kind-reset || true
   fi
   # clean up e2e.test symlink
   (cd "$(go env GOPATH)/src/k8s.io/kubernetes" && rm -f _output/bin/e2e.test) || true
+
+  # Force a cleanup of cluster api created resources using gcloud commands
+  gcloud compute forwarding-rules delete --project $GCP_PROJECT --global $CLUSTER_NAME-apiserver --quiet || true
+  gcloud compute target-tcp-proxies delete --project $GCP_PROJECT $CLUSTER_NAME-apiserver --quiet || true
+  gcloud compute backend-services delete --project $GCP_PROJECT --global $CLUSTER_NAME-apiserver --quiet || true
+  gcloud compute health-checks delete --project $GCP_PROJECT $CLUSTER_NAME-apiserver --quiet || true
+  (gcloud compute instances list --project $GCP_PROJECT | grep $CLUSTER_NAME \
+       | awk '{print "gcloud compute instances delete --project '$GCP_PROJECT' --quiet " $1 " --zone " $2 "\n"}' \
+       | bash) || true
+  (gcloud compute instance-groups list --project $GCP_PROJECT | grep $CLUSTER_NAME \
+       | awk '{print "gcloud compute instance-groups unmanaged delete --project '$GCP_PROJECT' --quiet " $1 " --zone " $2 "\n"}' \
+       | bash) || true
+  (gcloud compute firewall-rules list --project $GCP_PROJECT | grep $CLUSTER_NAME \
+       | awk '{print "gcloud compute firewall-rules delete --project '$GCP_PROJECT' --quiet " $1 "\n"}' \
+       | bash) || true
+
+  # cleanup the networks
+  gcloud compute routers nats delete "${CLUSTER_NAME}-mynat" --router-region="${GCP_REGION}" \
+    --router="${CLUSTER_NAME}-myrouter" --quiet || true
+  gcloud compute routers delete "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
+    --region="${GCP_REGION}" --quiet || true
+
   # remove our tempdir
   # NOTE: this needs to be last, or it will prevent kind delete
   if [[ -n "${TMP_DIR:-}" ]]; then
-    rm -rf "${TMP_DIR}"
+    rm -rf "${TMP_DIR}" || true
   fi
+}
+
+# SSH to a node by name ($1) and run a command ($2).
+function ssh-to-node() {
+  local node="$1"
+  local zone="$2"
+  local cmd="$3"
+
+  # ensure we have an IP to connect to
+  gcloud compute --project "${GCP_PROJECT}" instances add-access-config "${node}" || true
+
+  # Loop until we can successfully ssh into the box
+  for try in {1..5}; do
+    if gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" \
+      --project "${GCP_PROJECT}" --zone "${zone}" "${node}" --command "echo test > /dev/null"; then
+      break
+    fi
+    sleep 5
+  done
+  # Then actually try the command.
+  gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" \
+    --project "${GCP_PROJECT}" --zone "${zone}" "${node}" --command "${cmd}"
 }
 
 init_image() {
   image=$(gcloud compute images list --project $GCP_PROJECT \
     --no-standard-images --filter="family:capi-ubuntu-1804-k8s" --format="table[no-heading](name)")
   if [[ -z "$image" ]]; then
+      if ! command -v ansible &> /dev/null; then
+        if [[ $EUID -ne 0 ]]; then
+          echo "Please install ansible and try again."
+          exit 1
+        else
+          # we need pip to install ansible
+          curl -L https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+          python get-pip.py --user
+          rm -f get-pip.py
+
+          # install ansible needed by packer
+          version="2.8.5"
+          python -m pip install "ansible==${version}"
+        fi
+      fi
       if ! command -v packer &> /dev/null; then
         hostos=$(go env GOHOSTOS)
         hostarch=$(go env GOHOSTARCH)
         version="1.4.3"
         url="https://releases.hashicorp.com/packer/${version}/packer_${version}_${hostos}_${hostarch}.zip"
         echo "Downloading packer from $url"
-        wget -O packer.zip $url  && \
+        wget --quiet -O packer.zip $url  && \
           unzip packer.zip && \
           rm packer.zip && \
-          mv packer "$(go env GOPATH)/bin"
+          ln -s $PWD/packer /usr/local/bin/packer
       fi
-      (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
-      GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
-      make build-gce-default)
+      if [[ $EUID -ne 0 ]]; then
+        (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
+          GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
+          make build-gce-default)
+      else
+        # assume we are running in the CI environment as root
+        # Add a user for ansible to work properly
+        groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
+        # use the packer user to run the build
+        su - packer -c "bash -c 'cd /go/src/sigs.k8s.io/image-builder/images/capi && GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS make build-gce-default'"
+      fi
   fi
 }
 
@@ -96,6 +192,9 @@ build() {
 
 # generate manifests needed for creating the GCP cluster to run the tests
 generate_manifests() {
+  if ! command -v kustomize >/dev/null 2>&1; then
+    GO111MODULE=on go install sigs.k8s.io/kustomize/v3/cmd/kustomize
+  fi
 GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
 	GCP_REGION=$GCP_REGION \
 	GCP_PROJECT=$GCP_PROJECT \
@@ -109,16 +208,29 @@ create_cluster() {
   KIND_IS_UP=true
   make create-cluster
 
-  # Wait till all machines are running
+  # Wait till all machines are running (bail out at 30 mins)
+  attempt=0
   while true; do
+    kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi")
     read running total <<< $(kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
-     -o json | jq -r '.items[].status.phase' | awk '/running/ {count++} END{print count " " NR}') ;
+      -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /running/{count++} END{print count " " NR}') ;
     if [[ $total == "5" && $running == "5" ]]; then
-      return
+      return 0
+    fi
+    read failed total <<< $(kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
+      -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /failed/{count++} END{print count " " NR}') ;
+    if [[ ! $failed -eq 0 ]]; then
+      echo "$failed machines (out of $total) in cluster failed ... bailing out"
+      exit 1
     fi
     timestamp=$(date +"[%H:%M:%S]")
+    if [ $attempt -gt 180 ]; then
+      echo "cluster did not start in 30 mins ... bailing out!"
+      exit 1
+    fi
     echo "$timestamp Total machines : $total / Running : $running .. waiting for 10 seconds"
     sleep 10
+    attempt=$((attempt+1))
   done
 }
 
@@ -148,7 +260,7 @@ run_tests() {
     | grep -cv "node-role.kubernetes.io/master" )"
 
   # wait for all the nodes to be ready
-  kubectl wait --for=condition=Ready node --kubeconfig=$KUBECONFIG --all
+  kubectl wait --for=condition=Ready node --kubeconfig=$KUBECONFIG --all || true
 
   # setting this env prevents ginkg e2e from trying to run provider setup
   export KUBERNETES_CONFORMANCE_TEST="y"
@@ -160,6 +272,16 @@ run_tests() {
 
   unset KUBECONFIG
   unset KUBERNETES_CONFORMANCE_TEST
+}
+
+# initialize a router and cloud NAT
+init_networks() {
+  gcloud version
+  gcloud compute routers create "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
+    --region="${GCP_REGION}" --network=default
+  gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" \
+    --router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter" \
+    --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
 }
 
 # setup kind, build kubernetes, create a cluster, run the e2es
@@ -199,6 +321,7 @@ EOF
   source "${REPO_ROOT}/hack/ensure-kind.sh"
 
   # now build and run the cluster and tests
+  init_networks
   init_image
   build
   generate_manifests

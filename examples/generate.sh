@@ -21,8 +21,9 @@ SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 OUTPUT_DIR=${OUTPUT_DIR:-${SOURCE_DIR}/_out}
 
 # Binaries
-ENVSUBST=${ENVSUBST:-envsubst}
-command -v "${ENVSUBST}" >/dev/null 2>&1 || echo -v "Cannot find ${ENVSUBST} in path."
+envsubst() {
+  python -c 'import os,sys;[sys.stdout.write(os.path.expandvars(l)) for l in sys.stdin]'
+}
 
 # Cluster.
 export CLUSTER_NAME="${CLUSTER_NAME:-test1}"
