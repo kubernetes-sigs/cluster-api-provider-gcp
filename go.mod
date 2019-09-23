@@ -3,7 +3,6 @@ module sigs.k8s.io/cluster-api-provider-gcp
 go 1.12
 
 require (
-	github.com/aws/aws-sdk-go v1.20.19
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/go-logr/logr v0.1.0
 	github.com/onsi/ginkgo v1.8.0

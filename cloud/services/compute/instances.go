@@ -20,7 +20,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
@@ -125,7 +124,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 	input.Labels = infrav1.Build(infrav1.BuildParams{
 		ClusterName: s.scope.Name(),
 		Lifecycle:   infrav1.ResourceLifecycleOwned,
-		Role:        aws.String(scope.Role()),
+		Role:        pointer.StringPtr(scope.Role()),
 		// TODO(vincepri): Check what needs to be added for the cloud provider label.
 		Additional: s.scope.
 			GCPCluster.Spec.
