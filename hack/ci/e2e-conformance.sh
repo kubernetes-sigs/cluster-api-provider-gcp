@@ -31,7 +31,7 @@ dump-logs() {
   kind "export" logs --name="clusterapi" "${ARTIFACTS}/logs" || true
 
   # iterate through any nodes we brought up and collect logs
-  gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name, zone)' \
+  (gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name, zone)' \
   | grep "${CLUSTER_NAME}" | while read node_name node_zone; do
     echo "collecting logs from ${node_name}"
     dir="${ARTIFACTS}/logs/${node_name}"
@@ -45,12 +45,14 @@ dump-logs() {
       "${node_name}:/var/log/cloud-init.log" "${node_name}:/var/log/cloud-init-output.log" "${dir}" || true
 
     ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --output=short-precise" > "${dir}/systemd.log" || true
-  done
+  done) || true
 
   timeout 300 gcloud logging read --order=asc \
     --freshness="3h" \
     --format='table(timestamp,jsonPayload.resource.name,jsonPayload.event_subtype)' \
-    --project "${GCP_PROJECT}" > "${ARTIFACTS}/logs/activity.log" || true
+    --project "${GCP_PROJECT}" \
+    "logName=\"projects/${GCP_PROJECT}/logs/compute.googleapis.com%2Factivity_log\"" \
+     > "${ARTIFACTS}/logs/activity.log" || true
 }
 
 # our exit handler (trap)
@@ -276,7 +278,6 @@ run_tests() {
 
 # initialize a router and cloud NAT
 init_networks() {
-  gcloud version
   gcloud compute routers create "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
     --region="${GCP_REGION}" --network=default
   gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" \
