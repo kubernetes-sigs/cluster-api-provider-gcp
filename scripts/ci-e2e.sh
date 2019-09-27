@@ -33,7 +33,7 @@ trap cleanup EXIT
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 cd "${REPO_ROOT}" || exit 1
 
-# If BOSKOS_HOST is set then acquire an AWS account from Boskos.
+# If BOSKOS_HOST is set then acquire an GCP account from Boskos.
 if [ -n "${BOSKOS_HOST:-}" ]; then
   # Check out the account from Boskos and store the produced environment
   # variables in a temporary file.

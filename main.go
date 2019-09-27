@@ -92,13 +92,13 @@ func main() {
 	flag.IntVar(&gcpClusterConcurrency,
 		"gcpcluster-concurrency",
 		10,
-		"Number of AWSClusters to process simultaneously",
+		"Number of GCPClusters to process simultaneously",
 	)
 
 	flag.IntVar(&gcpMachineConcurrency,
 		"gcpmachine-concurrency",
 		10,
-		"Number of AWSMachines to process simultaneously",
+		"Number of GCPMachines to process simultaneously",
 	)
 
 	flag.DurationVar(&syncPeriod,
