@@ -23,12 +23,13 @@ set -o nounset
 set -o pipefail
 
 BOSKOS_HOST=${BOSKOS_HOST:-"boskos.test-pods.svc.cluster.local."}
+ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
 
 # our exit handler (trap)
 cleanup() {
   echo "cleaning up - checking in boskos account $BOSKOS_RESOURCE_NAME on host $BOSKOS_HOST"
   # If Boskos is being used then release the GCP project back to Boskos.
-  hack/checkin_account.py
+  hack/checkin_account.py > $ARTIFACTS/boskos.log 2>&1
 }
 
 trap cleanup EXIT
@@ -58,5 +59,7 @@ if [ ! "${checkout_account_status}" = "0" ]; then
   echo "error getting account from boskos" 1>&2
   exit "${checkout_account_status}"
 fi
+
+nohup python -u hack/heartbeat_account.py > $ARTIFACTS/boskos.log 2>&1 &
 
 (cd "${REPO_ROOT}" && hack/ci/e2e-conformance.sh)
