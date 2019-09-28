@@ -89,8 +89,8 @@ cleanup() {
        | bash) || true
 
   # cleanup the networks
-  gcloud compute routers nats delete "${CLUSTER_NAME}-mynat" --router-region="${GCP_REGION}" \
-    --router="${CLUSTER_NAME}-myrouter" --quiet || true
+  gcloud compute routers nats delete "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" \
+    --router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter" --quiet || true
   gcloud compute routers delete "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
     --region="${GCP_REGION}" --quiet || true
 
