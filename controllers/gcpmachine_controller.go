@@ -331,12 +331,6 @@ func (r *GCPMachineReconciler) validateUpdate(spec *infrav1.GCPMachineSpec, i *g
 		errs = append(errs, errors.Errorf("instance type cannot be mutated from %q to %q", i.MachineType, spec.InstanceType))
 	}
 
-	// Root Device Size
-	if len(i.Disks) > 0 && spec.RootDeviceSize > 0 && spec.RootDeviceSize != i.Disks[0].InitializeParams.DiskSizeGb {
-		errs = append(errs, errors.Errorf("Root volume size cannot be mutated from %v to %v",
-			i.Disks[0].InitializeParams.DiskSizeGb, spec.RootDeviceSize))
-	}
-
 	// TODO(vincepri): Validate other fields.
 	return errs
 }
