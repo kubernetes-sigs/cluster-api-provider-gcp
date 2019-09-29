@@ -42,6 +42,21 @@ spec:
                 If both the GCPCluster and the GCPMachine specify the same tag name
                 with different values, the GCPMachine's value takes precedence.
               type: object
+            additionalMetadata:
+              description: AdditionalMetadata is an array of MetadataItem that should
+                be applied to the instance. These are set in addition to any metadata
+                defined at the cluster level or in the actuator.
+              items:
+                description: MetadataItems describes compute.metadataItems
+                properties:
+                  key:
+                    description: Key is the identifier for the metadata entry.
+                    type: string
+                  value:
+                    description: Value is the value of the metadata entry.
+                    type: string
+                type: object
+              type: array
             additionalNetworkTags:
               description: AdditionalNetworkTags is an array of references to security
                 groups that should be applied to the instance. These security groups
