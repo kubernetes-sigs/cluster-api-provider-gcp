@@ -84,6 +84,13 @@ type GCPMachineSpec struct {
 	// Defaults to: email: "default", scope: []{compute.CloudPlatformScope}
 	// +optional
 	ServiceAccount *ServiceAccount `json:"serviceAccounts,omitempty"`
+
+	// AdditionalMetadata is an array of MetadataItem that
+	// should be applied to the instance. These are set in
+	// addition to any metadata defined at the cluster level or in
+	// the actuator.
+	// +optional
+	AdditionalMetadata []MetadataItem `json:"additionalMetadata,omitempty"`
 }
 
 // GCPMachineStatus defines the observed state of GCPMachine

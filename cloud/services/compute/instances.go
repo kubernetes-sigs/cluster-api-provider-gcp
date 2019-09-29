@@ -50,9 +50,9 @@ func (s *Service) InstanceIfExists(scope *scope.MachineScope) (*compute.Instance
 func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, error) {
 	s.scope.V(2).Info("Creating an instance")
 
-	decoded, err := base64.StdEncoding.DecodeString(*scope.Machine.Spec.Bootstrap.Data)
+	metadata, err := s.buildInstanceMetadata(scope)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode bootstrapData")
+		return nil, err
 	}
 
 	if scope.Machine.Spec.Version == nil {
@@ -93,14 +93,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 				},
 			},
 		},
-		Metadata: &compute.Metadata{
-			Items: []*compute.MetadataItems{
-				{
-					Key:   "user-data",
-					Value: pointer.StringPtr(string(decoded)),
-				},
-			},
-		},
+		Metadata: metadata,
 		ServiceAccounts: []*compute.ServiceAccount{
 			{
 				Email: "default",
@@ -195,4 +188,30 @@ func (s *Service) TerminateInstanceAndWait(scope *scope.MachineScope) error {
 	}
 
 	return nil
+}
+
+// buildInstanceMetadata builds the key/value metadata that should be attached to the GCE instance.
+func (s *Service) buildInstanceMetadata(scope *scope.MachineScope) (*compute.Metadata, error) {
+	decoded, err := base64.StdEncoding.DecodeString(*scope.Machine.Spec.Bootstrap.Data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode bootstrap data")
+	}
+
+	metadata := &compute.Metadata{
+		Items: []*compute.MetadataItems{
+			{
+				Key:   "user-data",
+				Value: pointer.StringPtr(string(decoded)),
+			},
+		},
+	}
+
+	for _, item := range scope.GCPMachine.Spec.AdditionalMetadata {
+		metadata.Items = append(metadata.Items, &compute.MetadataItems{
+			Key:   item.Key,
+			Value: item.Value,
+		})
+	}
+
+	return metadata, nil
 }

@@ -205,3 +205,12 @@ type ServiceAccount struct {
 	// account.
 	Scopes []string `json:"scopes,omitempty"`
 }
+
+// MetadataItems describes compute.metadataItems
+type MetadataItem struct {
+	// Key is the identifier for the metadata entry.
+	Key string `json:"key,omitempty"`
+
+	// Value is the value of the metadata entry.
+	Value *string `json:"value,omitempty"`
+}
