@@ -55,15 +55,9 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 		return nil, errors.Wrap(err, "failed to decode bootstrapData")
 	}
 
-	if scope.Machine.Spec.Version == nil {
-		return nil, errors.Errorf("missing required Spec.Version on Machine %q in namespace %q",
-			scope.Name(), scope.Namespace())
-	}
-
-	version, err := semver.ParseTolerant(*scope.Machine.Spec.Version)
+	sourceImage, err := s.rootDiskImage(scope)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing Spec.Version on Machine %q in namespace %q, expected valid SemVer string",
-			scope.Name(), scope.Namespace())
+		return nil, err
 	}
 
 	input := &compute.Instance{
@@ -85,11 +79,9 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 				AutoDelete: true,
 				Boot:       true,
 				InitializeParams: &compute.AttachedDiskInitializeParams{
-					DiskSizeGb: 30,
-					DiskType:   fmt.Sprintf("zones/%s/diskTypes/%s", scope.Zone(), "pd-standard"),
-					SourceImage: fmt.Sprintf(
-						"projects/%s/global/images/family/capi-ubuntu-1804-k8s-v%d-%d",
-						s.scope.Project(), version.Major, version.Minor),
+					DiskSizeGb:  30,
+					DiskType:    fmt.Sprintf("zones/%s/diskTypes/%s", scope.Zone(), "pd-standard"),
+					SourceImage: sourceImage,
 				},
 			},
 		},
@@ -131,12 +123,6 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 			AdditionalLabels.
 			AddLabels(scope.GCPMachine.Spec.AdditionalLabels),
 	})
-
-	if scope.GCPMachine.Spec.Image != nil {
-		input.Disks[0].InitializeParams.SourceImage = *scope.GCPMachine.Spec.Image
-	} else if scope.GCPMachine.Spec.ImageFamily != nil {
-		input.Disks[0].InitializeParams.SourceImage = *scope.GCPMachine.Spec.ImageFamily
-	}
 
 	if scope.GCPMachine.Spec.PublicIP != nil && *scope.GCPMachine.Spec.PublicIP {
 		input.NetworkInterfaces[0].AccessConfigs = []*compute.AccessConfig{
@@ -195,4 +181,29 @@ func (s *Service) TerminateInstanceAndWait(scope *scope.MachineScope) error {
 	}
 
 	return nil
+}
+
+// rootDiskImage computes the GCE disk image to use as the boot disk
+func (s *Service) rootDiskImage(scope *scope.MachineScope) (string, error) {
+	if scope.GCPMachine.Spec.Image != nil {
+		return *scope.GCPMachine.Spec.Image, nil
+	} else if scope.GCPMachine.Spec.ImageFamily != nil {
+		return *scope.GCPMachine.Spec.ImageFamily, nil
+	}
+
+	if scope.Machine.Spec.Version == nil {
+		return "", errors.Errorf("missing required Spec.Version on Machine %q in namespace %q",
+			scope.Name(), scope.Namespace())
+	}
+
+	version, err := semver.ParseTolerant(*scope.Machine.Spec.Version)
+	if err != nil {
+		return "", errors.Wrapf(err, "error parsing Spec.Version on Machine %q in namespace %q, expected valid SemVer string",
+			scope.Name(), scope.Namespace())
+	}
+
+	image := fmt.Sprintf(
+		"projects/%s/global/images/family/capi-ubuntu-1804-k8s-v%d-%d",
+		s.scope.Project(), version.Major, version.Minor)
+	return image, nil
 }
