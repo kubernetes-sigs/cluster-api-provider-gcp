@@ -108,7 +108,7 @@ function ssh-to-node() {
   local cmd="$3"
 
   # ensure we have an IP to connect to
-  gcloud compute --project "${GCP_PROJECT}" instances add-access-config "${node}" || true
+  gcloud compute --project "${GCP_PROJECT}" instances add-access-config --zone "${zone}" "${node}" || true
 
   # Loop until we can successfully ssh into the box
   for try in {1..5}; do
