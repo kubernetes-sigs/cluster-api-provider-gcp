@@ -125,7 +125,7 @@ function ssh-to-node() {
 
 init_image() {
   image=$(gcloud compute images list --project $GCP_PROJECT \
-    --no-standard-images --filter="family:capi-ubuntu-1804-k8s" --format="table[no-heading](name)")
+    --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v1-16" --format="table[no-heading](name)")
   if [[ -z "$image" ]]; then
       if ! command -v ansible &> /dev/null; then
         if [[ $EUID -ne 0 ]]; then
@@ -153,6 +153,9 @@ init_image() {
           rm packer.zip && \
           ln -s $PWD/packer /usr/local/bin/packer
       fi
+      (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
+        sed -i 's/1\.15\.4/1.16.0/' packer/config/kubernetes.json && \
+        sed -i 's/1\.15/1.16/' packer/config/kubernetes.json)
       if [[ $EUID -ne 0 ]]; then
         (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
           GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
@@ -201,6 +204,7 @@ GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
 	GCP_REGION=$GCP_REGION \
 	GCP_PROJECT=$GCP_PROJECT \
 	CLUSTER_NAME=$CLUSTER_NAME \
+	KUBERNETES_VERSION="v1.16.0" \
 	make generate-examples
 }
 
@@ -278,6 +282,10 @@ run_tests() {
 
 # initialize a router and cloud NAT
 init_networks() {
+  # DEBUG : trying to track down "Nat service is not available for legacy network" problem
+  gcloud compute networks list --project="${GCP_PROJECT}" || true
+  gcloud compute networks describe default --project="${GCP_PROJECT}" || true
+
   gcloud compute routers create "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
     --region="${GCP_REGION}" --network=default
   gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" \
@@ -316,7 +324,7 @@ EOF
   # ensure artifacts exists when not in CI
   ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
   export ARTIFACTS
-  mkdir -p "${ARTIFACTS}"
+  mkdir -p "${ARTIFACTS}/logs"
 
   source "${REPO_ROOT}/hack/ensure-go.sh"
   source "${REPO_ROOT}/hack/ensure-kind.sh"
