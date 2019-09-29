@@ -46,13 +46,13 @@ func (s *Service) InstanceIfExists(scope *scope.MachineScope) (*compute.Instance
 	return res, nil
 }
 
-// CreateInstance runs an ec2 instance.
+// CreateInstance runs a GCE instance.
 func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, error) {
 	s.scope.V(2).Info("Creating an instance")
 
 	decoded, err := base64.StdEncoding.DecodeString(*scope.Machine.Spec.Bootstrap.Data)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode bootstrapData")
+		return nil, errors.Wrap(err, "failed to decode bootstrap data")
 	}
 
 	if scope.Machine.Spec.Version == nil {
