@@ -23,12 +23,16 @@ GCP_PROJECT=${GCP_PROJECT:-""}
 GCP_REGION=${GCP_REGION:-"us-east4"}
 CLUSTER_NAME=${CLUSTER_NAME:-"test1"}
 
+TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%SZ")
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
 # dump logs from kind and all the nodes
 dump-logs() {
   # always attempt to dump logs
   kind "export" logs --name="clusterapi" "${ARTIFACTS}/logs" || true
+
+  gcloud compute instances list --project "${GCP_PROJECT}"
 
   # iterate through any nodes we brought up and collect logs
   (gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name, zone)' \
@@ -47,11 +51,10 @@ dump-logs() {
     ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --output=short-precise" > "${dir}/systemd.log" || true
   done) || true
 
-  timeout 300 gcloud logging read --order=asc \
-    --freshness="3h" \
+  gcloud logging read --order=asc \
     --format='table(timestamp,jsonPayload.resource.name,jsonPayload.event_subtype)' \
     --project "${GCP_PROJECT}" \
-    "logName=\"projects/${GCP_PROJECT}/logs/compute.googleapis.com%2Factivity_log\"" \
+    "timestamp >= \"${TIMESTAMP}\"" \
      > "${ARTIFACTS}/logs/activity.log" || true
 }
 
