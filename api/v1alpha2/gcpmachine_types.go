@@ -69,8 +69,8 @@ type GCPMachineSpec struct {
 	// +optional
 	PublicIP *bool `json:"publicIP,omitempty"`
 
-	// AdditionalNetworkTags is an array of references to security groups that should be applied to the
-	// instance. These security groups would be set in addition to any security groups defined
+	// AdditionalNetworkTags is a list of network tags that should be applied to the
+	// instance. These tags are set in addition to any network tags defined
 	// at the cluster level or in the actuator.
 	// +optional
 	AdditionalNetworkTags []string `json:"additionalNetworkTags,omitempty"`

@@ -50,10 +50,10 @@ spec:
                         value takes precedence.
                       type: object
                     additionalNetworkTags:
-                      description: AdditionalNetworkTags is an array of references
-                        to security groups that should be applied to the instance.
-                        These security groups would be set in addition to any security
-                        groups defined at the cluster level or in the actuator.
+                      description: AdditionalNetworkTags is a list of network tags
+                        that should be applied to the instance. These tags are set
+                        in addition to any network tags defined at the cluster level
+                        or in the actuator.
                       items:
                         type: string
                       type: array
