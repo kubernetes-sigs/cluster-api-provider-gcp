@@ -200,19 +200,24 @@ generate_manifests() {
   if ! command -v kustomize >/dev/null 2>&1; then
     GO111MODULE=on go install sigs.k8s.io/kustomize/v3/cmd/kustomize
   fi
-GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
-	GCP_REGION=$GCP_REGION \
-	GCP_PROJECT=$GCP_PROJECT \
-	CLUSTER_NAME=$CLUSTER_NAME \
-	KUBERNETES_VERSION="v1.16.0" \
-	make generate-examples
+
+  GCP_PROJECT=$GCP_PROJECT \
+    make docker-build
+  GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
+    GCP_REGION=$GCP_REGION \
+    GCP_PROJECT=$GCP_PROJECT \
+    CLUSTER_NAME=$CLUSTER_NAME \
+    KUBERNETES_VERSION="v1.16.0" \
+    make generate-examples
 }
 
 # up a cluster with kind
 create_cluster() {
   # actually create the cluster
   KIND_IS_UP=true
-  make create-cluster
+
+  # Load the newly built image into kind and start the cluster
+  LOAD_IMAGE="gcr.io/${GCP_PROJECT}/cluster-api-gcp-controller-amd64:dev" make create-cluster
 
   # Wait till all machines are running (bail out at 30 mins)
   attempt=0
@@ -331,9 +336,9 @@ EOF
 
   # now build and run the cluster and tests
   init_networks
-  init_image
   build
   generate_manifests
+  init_image
   create_cluster
   run_tests
 }
