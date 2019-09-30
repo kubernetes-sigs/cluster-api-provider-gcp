@@ -46,7 +46,8 @@ GOLANGCI_LINT := $(TOOLS_BIN_DIR)/golangci-lint
 MOCKGEN := $(TOOLS_BIN_DIR)/mockgen
 
 # Define Docker related variables. Releases should modify and double check these vars.
-REGISTRY ?= gcr.io/$(shell gcloud config get-value project)
+GCP_PROJECT ?= $(shell gcloud config get-value project)
+REGISTRY ?= gcr.io/$(GCP_PROJECT)
 STAGING_REGISTRY := gcr.io/k8s-staging-cluster-api-gcp
 PROD_REGISTRY := us.gcr.io/k8s-artifacts-prod/cluster-api-gcp
 IMAGE_NAME ?= cluster-api-gcp-controller
@@ -204,6 +205,7 @@ docker-push-manifest: ## Push the fat manifest docker image.
 set-manifest-image:
 	$(info Updating kustomize image patch file for manager resource)
 	sed -i'' -e 's@image: .*@image: '"${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./config/default/manager_image_patch.yaml
+	sed -i'' -e 's@imagePullPolicy: .*@imagePullPolicy: Never@' ./config/default/manager_image_patch.yaml
 
 ## --------------------------------------
 ## Release
@@ -261,6 +263,10 @@ release-tag-latest: ## Adds the latest tag to the last build tag.
 .PHONY: create-cluster
 create-cluster: $(CLUSTERCTL) ## Create a development Kubernetes cluster on GCP in a KIND management cluster.
 	kind create cluster --name=clusterapi
+	@if [ ! -z "${LOAD_IMAGE}" ]; then \
+		echo "loading ${LOAD_IMAGE} into kind cluster ..." && \
+		kind --name="clusterapi" load docker-image "${LOAD_IMAGE}"; \
+	fi
 	# Apply provider-components.
 	kubectl \
 		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
