@@ -37,7 +37,7 @@ dump-logs() {
   read -a node_names <<<$(gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name)')
   for node_name in "${node_names[@]}"
   do
-    node_zone=$(gcloud compute instances describe --project "${GCP_PROJECT}" ${node_name} | grep "zone:" | awk -F "/" '{print $NF}')
+    node_zone=$(gcloud compute instances list --project "${GCP_PROJECT}" --filter="name:(${node_name})" --format='value(zone)')
     echo "collecting logs from ${node_name} in zone ${node_zone}"
     dir="${ARTIFACTS}/logs/${node_name}"
     mkdir -p ${dir}
