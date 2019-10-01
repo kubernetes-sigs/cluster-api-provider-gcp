@@ -92,9 +92,12 @@ func (s *ClusterScope) Project() string {
 	return s.GCPCluster.Spec.Project
 }
 
-// Network returns the cluster network unique identifier.
-func (s *ClusterScope) NetworkID() string {
-	return s.GCPCluster.Spec.NetworkSpec.Name
+// NetworkName returns the cluster network unique identifier.
+func (s *ClusterScope) NetworkName() string {
+	if s.GCPCluster.Spec.Network.Name != nil {
+		return *s.GCPCluster.Spec.Network.Name
+	}
+	return "default"
 }
 
 // Network returns the cluster network object.
@@ -104,7 +107,7 @@ func (s *ClusterScope) Network() *infrav1.Network {
 
 // Subnets returns the cluster subnets.
 func (s *ClusterScope) Subnets() infrav1.Subnets {
-	return s.GCPCluster.Spec.NetworkSpec.Subnets
+	return s.GCPCluster.Spec.Network.Subnets
 }
 
 // Name returns the cluster name.

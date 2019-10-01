@@ -76,7 +76,7 @@ type Network struct {
 type NetworkSpec struct {
 	// Name is the name of the network to be used.
 	// +optional
-	Name string `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
 
 	// Subnets configuration.
 	// +optional

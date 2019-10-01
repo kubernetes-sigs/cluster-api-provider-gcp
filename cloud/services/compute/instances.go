@@ -66,7 +66,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 		MachineType:  fmt.Sprintf("zones/%s/machineTypes/%s", scope.Zone(), scope.GCPMachine.Spec.InstanceType),
 		CanIpForward: true,
 		NetworkInterfaces: []*compute.NetworkInterface{{
-			Network: s.scope.NetworkID(),
+			Network: s.scope.NetworkName(),
 		}},
 		Tags: &compute.Tags{
 			Items: append(

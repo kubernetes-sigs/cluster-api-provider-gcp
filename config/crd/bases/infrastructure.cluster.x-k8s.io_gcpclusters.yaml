@@ -42,13 +42,9 @@ spec:
                 by default.
               type: object
             network:
-              description: The Network zone to create instances in. If empty, the
-                GCP default network is used.
-              type: string
-            networkSpec:
               description: NetworkSpec encapsulates all things related to GCP network.
               properties:
-                id:
+                name:
                   description: Name is the name of the network to be used.
                   type: string
                 subnets:
