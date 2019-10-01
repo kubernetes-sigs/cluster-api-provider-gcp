@@ -28,19 +28,15 @@ const (
 
 // GCPClusterSpec defines the desired state of GCPCluster
 type GCPClusterSpec struct {
-	// NetworkSpec encapsulates all things related to GCP network.
-	NetworkSpec NetworkSpec `json:"networkSpec,omitempty"`
-
 	// Project is the name of the project to deploy the cluster to.
 	Project string `json:"project"`
 
 	// The GCP Region the cluster lives in.
 	Region string `json:"region"`
 
-	// The Network zone to create instances in.
-	// If empty, the GCP default network is used.
+	// NetworkSpec encapsulates all things related to GCP network.
 	// +optional
-	Network *string `json:"network,omitempty"`
+	Network NetworkSpec `json:"network"`
 
 	// AdditionalLabels is an optional set of tags to add to GCP resources managed by the GCP provider, in addition to the
 	// ones added by default.

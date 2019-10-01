@@ -124,6 +124,10 @@ func (r *GCPClusterReconciler) reconcile(clusterScope *scope.ClusterScope) (reco
 
 	computeSvc := compute.NewService(clusterScope)
 
+	if err := computeSvc.ReconcileNetwork(); err != nil {
+		return reconcile.Result{}, errors.Wrapf(err, "failed to reconcile network for GCPCluster %s/%s", gcpCluster.Namespace, gcpCluster.Name)
+	}
+
 	if err := computeSvc.ReconcileFirewalls(); err != nil {
 		return reconcile.Result{}, errors.Wrapf(err, "failed to reconcile firewalls for GCPCluster %s/%s", gcpCluster.Namespace, gcpCluster.Name)
 	}
@@ -170,6 +174,10 @@ func (r *GCPClusterReconciler) reconcileDelete(clusterScope *scope.ClusterScope)
 
 	if err := computeSvc.DeleteFirewalls(); err != nil {
 		return reconcile.Result{}, errors.Wrapf(err, "error deleting firewall rules for GCPCluster %s/%s", gcpCluster.Namespace, gcpCluster.Name)
+	}
+
+	if err := computeSvc.DeleteNetwork(); err != nil {
+		return reconcile.Result{}, errors.Wrapf(err, "error deleting network for GCPCluster %s/%s", gcpCluster.Namespace, gcpCluster.Name)
 	}
 
 	// Cluster is deleted so remove the finalizer.

@@ -38,6 +38,7 @@ type Service struct {
 	addresses       *compute.GlobalAddressesService
 	forwardingrules *compute.GlobalForwardingRulesService
 	firewalls       *compute.FirewallsService
+	routers         *compute.RoutersService
 }
 
 // NewService returns a new service given the ec2 api client.
@@ -54,5 +55,6 @@ func NewService(scope *scope.ClusterScope) *Service {
 		addresses:       scope.Compute.GlobalAddresses,
 		forwardingrules: scope.Compute.GlobalForwardingRules,
 		firewalls:       scope.Compute.Firewalls,
+		routers:         scope.Compute.Routers,
 	}
 }

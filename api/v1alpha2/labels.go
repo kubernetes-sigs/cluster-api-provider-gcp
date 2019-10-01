@@ -102,7 +102,7 @@ const (
 	// NameGCPProviderOwned is the tag name we use to differentiate
 	// cluster-api-provider-gcp owned components from other tooling that
 	// uses NameKubernetesClusterPrefix
-	NameGCPProviderOwned = NameGCPProviderPrefix + "cluster"
+	NameGCPProviderOwned = NameGCPProviderPrefix + "cluster-"
 
 	// NameGCPClusterAPIRole is the tag name we use to mark roles for resources
 	// dedicated to this cluster api provider implementation.
