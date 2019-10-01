@@ -35,22 +35,29 @@ dump-logs() {
   gcloud compute instances list --project "${GCP_PROJECT}"
 
   read -a node_names <<<$(gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name)')
+  ( IFS=$'\n'; echo "${node_names[*]}" )
+
   for node_name in "${node_names[@]}"
   do
     node_zone=$(gcloud compute instances list --project "${GCP_PROJECT}" --filter="name:(${node_name})" --format='value(zone)')
-    echo "collecting logs from ${node_name} in zone ${node_zone}"
+    echo "start collecting logs from ${node_name} in zone ${node_zone}"
     dir="${ARTIFACTS}/logs/${node_name}"
     mkdir -p ${dir}
 
+    echo "fetching serial-1.log"
     gcloud compute instances get-serial-port-output --project "${GCP_PROJECT}" \
       --zone "${node_zone}" --port 1 "${node_name}" > "${dir}/serial-1.log" || true
 
+    echo "fetching cloud-init logs"
     ssh-to-node "${node_name}" "${node_zone}" "sudo chmod -R a+r /var/log" || true
     gcloud compute scp --recurse --project "${GCP_PROJECT}" --zone "${node_zone}" \
       "${node_name}:/var/log/cloud-init.log" "${node_name}:/var/log/cloud-init-output.log" "${dir}" || true
 
+    echo "fetching systemd log"
     ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --output=short-precise" > "${dir}/systemd.log" || true
+    echo "finish collecting logs from ${node_name} in zone ${node_zone}"
   done
+  echo "done fetching logs from all nodes"
 
   gcloud logging read --order=asc \
     --format='table(timestamp,jsonPayload.resource.name,jsonPayload.event_subtype)' \
@@ -125,6 +132,7 @@ function ssh-to-node() {
   # Then actually try the command.
   gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" \
     --project "${GCP_PROJECT}" --zone "${zone}" "${node}" --command "${cmd}" || true
+  echo "ssh-to-node done"
 }
 
 init_image() {
