@@ -34,8 +34,7 @@ dump-logs() {
 
   gcloud compute instances list --project "${GCP_PROJECT}"
 
-  read -a node_names <<<$(gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name)')
-  for node_name in "${node_names[@]}"
+  for node_name in $(gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name)')
   do
     node_zone=$(gcloud compute instances list --project "${GCP_PROJECT}" --filter="name:(${node_name})" --format='value(zone)')
     echo "collecting logs from ${node_name} in zone ${node_zone}"
