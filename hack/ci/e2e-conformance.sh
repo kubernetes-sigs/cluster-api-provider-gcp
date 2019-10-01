@@ -34,10 +34,11 @@ dump-logs() {
 
   gcloud compute instances list --project "${GCP_PROJECT}"
 
-  # iterate through any nodes we brought up and collect logs
-  (gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name, zone)' \
-  | grep "${CLUSTER_NAME}" | while read node_name node_zone; do
-    echo "collecting logs from ${node_name}"
+  read -a node_names <<<$(gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name)')
+  for node_name in "${node_names[@]}"
+  do
+    node_zone=$(gcloud compute instances describe --project "${GCP_PROJECT}" ${node_name} | grep "zone:" | awk -F "/" '{print $NF}')
+    echo "collecting logs from ${node_name} in zone ${node_zone}"
     dir="${ARTIFACTS}/logs/${node_name}"
     mkdir -p ${dir}
 
@@ -49,7 +50,7 @@ dump-logs() {
       "${node_name}:/var/log/cloud-init.log" "${node_name}:/var/log/cloud-init-output.log" "${dir}" || true
 
     ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --output=short-precise" > "${dir}/systemd.log" || true
-  done) || true
+  done
 
   gcloud logging read --order=asc \
     --format='table(timestamp,jsonPayload.resource.name,jsonPayload.event_subtype)' \
