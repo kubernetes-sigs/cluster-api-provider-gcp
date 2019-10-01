@@ -100,6 +100,11 @@ func (s *ClusterScope) NetworkName() string {
 	return "default"
 }
 
+// NetworkSelfLink returns the full self link to the network.
+func (s *ClusterScope) NetworkSelfLink() string {
+	return *s.GCPCluster.Status.Network.SelfLink
+}
+
 // Network returns the cluster network object.
 func (s *ClusterScope) Network() *infrav1.Network {
 	return &s.GCPCluster.Status.Network

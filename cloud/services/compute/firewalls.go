@@ -76,7 +76,7 @@ func (s *Service) getFirewallSpecs() []*compute.Firewall {
 	return []*compute.Firewall{
 		{
 			Name:    fmt.Sprintf("allow-%s-%s-healthchecks", s.scope.Name(), infrav1.APIServerRoleTagValue),
-			Network: s.scope.NetworkName(),
+			Network: s.scope.NetworkSelfLink(),
 			Allowed: []*compute.FirewallAllowed{
 				{
 					IPProtocol: "TCP",
@@ -98,7 +98,7 @@ func (s *Service) getFirewallSpecs() []*compute.Firewall {
 		},
 		{
 			Name:    fmt.Sprintf("allow-%s-%s-cluster", s.scope.Name(), infrav1.APIServerRoleTagValue),
-			Network: s.scope.NetworkName(),
+			Network: s.scope.NetworkSelfLink(),
 			Allowed: []*compute.FirewallAllowed{
 				{
 					IPProtocol: "all",

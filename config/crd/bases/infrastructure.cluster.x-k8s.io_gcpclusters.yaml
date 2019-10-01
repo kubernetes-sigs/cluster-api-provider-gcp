@@ -44,6 +44,14 @@ spec:
             network:
               description: NetworkSpec encapsulates all things related to GCP network.
               properties:
+                autoCreateSubnetworks:
+                  description: "AutoCreateSubnetworks: When set to true, the VPC network
+                    is created in \"auto\" mode. When set to false, the VPC network
+                    is created in \"custom\" mode. \n An auto mode VPC network starts
+                    with one subnet per region. Each subnet has a predetermined range
+                    as described in Auto mode VPC network IP ranges. \n Defaults to
+                    true."
+                  type: boolean
                 name:
                   description: Name is the name of the network to be used.
                   type: string
@@ -53,8 +61,12 @@ spec:
                     description: SubnetSpec configures an GCP Subnet.
                     properties:
                       cidrBlock:
-                        description: CidrBlock is the CIDR block assigned to this
-                          subnet.
+                        description: CidrBlock is the range of internal addresses
+                          that are owned by this subnetwork. Provide this property
+                          when you create the subnetwork. For example, 10.0.0.0/8
+                          or 192.168.0.0/16. Ranges must be unique and non-overlapping
+                          within a network. Only IPv4 is supported. This field can
+                          be set only at resource creation time.
                         type: string
                       description:
                         description: Description is an optional description associated
@@ -70,11 +82,14 @@ spec:
                           IP addresses
                         type: boolean
                       region:
-                        description: Region defines the region to use for this subnet
-                          in the cluster's region.
+                        description: Region is the name of the region where the Subnetwork
+                          resides.
                         type: string
                       routeTableId:
-                        description: FlowLogs turns on the VPC flow logging.
+                        description: 'EnableFlowLogs: Whether to enable flow logging
+                          for this subnetwork. If this field is not explicitly set,
+                          it will not appear in get listings. If not set the default
+                          behavior is to disable flow logging.'
                         type: boolean
                       secondaryCidrBlocks:
                         additionalProperties:
@@ -152,6 +167,9 @@ spec:
                   description: FirewallRules is a map from the name of the rule to
                     its full reference.
                   type: object
+                selfLink:
+                  description: SelfLink is the link to the Network used for this cluster.
+                  type: string
               type: object
             ready:
               description: Bastion Instance `json:"bastion,omitempty"`

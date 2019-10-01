@@ -37,6 +37,9 @@ type Filter struct {
 
 // Network encapsulates GCP networking resources.
 type Network struct {
+	// SelfLink is the link to the Network used for this cluster.
+	SelfLink *string `json:"selfLink,omitempty"`
+
 	// FirewallRules is a map from the name of the rule to its full reference.
 	// +optional
 	FirewallRules map[string]string `json:"firewallRules,omitempty"`
@@ -78,6 +81,18 @@ type NetworkSpec struct {
 	// +optional
 	Name *string `json:"name,omitempty"`
 
+	// AutoCreateSubnetworks: When set to true, the VPC network is created
+	// in "auto" mode. When set to false, the VPC network is created in
+	// "custom" mode.
+	//
+	// An auto mode VPC network starts with one subnet per region. Each
+	// subnet has a predetermined range as described in Auto mode VPC
+	// network IP ranges.
+	//
+	// Defaults to true.
+	// +optional
+	AutoCreateSubnetworks *bool `json:"autoCreateSubnetworks,omitempty"`
+
 	// Subnets configuration.
 	// +optional
 	Subnets Subnets `json:"subnets,omitempty"`
@@ -97,7 +112,11 @@ type SubnetSpec struct {
 	// Name defines a unique identifier to reference this resource.
 	Name string `json:"name,omitempty"`
 
-	// CidrBlock is the CIDR block assigned to this subnet.
+	// CidrBlock is the range of internal addresses that are owned by this
+	// subnetwork. Provide this property when you create the subnetwork. For
+	// example, 10.0.0.0/8 or 192.168.0.0/16. Ranges must be unique and
+	// non-overlapping within a network. Only IPv4 is supported. This field
+	// can be set only at resource creation time.
 	CidrBlock string `json:"cidrBlock,omitempty"`
 
 	// Description is an optional description associated with the resource.
@@ -109,7 +128,7 @@ type SubnetSpec struct {
 	// +optional
 	SecondaryCidrBlocks map[string]string `json:"secondaryCidrBlocks,omitempty"`
 
-	// Region defines the region to use for this subnet in the cluster's region.
+	// Region is the name of the region where the Subnetwork resides.
 	Region string `json:"region,omitempty"`
 
 	// PrivateGoogleAccess defines whether VMs in this subnet can access
@@ -117,9 +136,11 @@ type SubnetSpec struct {
 	// +optional
 	PrivateGoogleAccess *bool `json:"privateGoogleAccess,omitempty"`
 
-	// FlowLogs turns on the VPC flow logging.
+	// EnableFlowLogs: Whether to enable flow logging for this subnetwork.
+	// If this field is not explicitly set, it will not appear in get
+	// listings. If not set the default behavior is to disable flow logging.
 	// +optional
-	FlowLogs *bool `json:"routeTableId"`
+	EnableFlowLogs *bool `json:"routeTableId"`
 }
 
 // String returns a string representation of the subnet.

@@ -73,7 +73,7 @@ func (s *Service) GetOrCreateInstanceGroup(zone, name string) (*compute.Instance
 	if gcperrors.IsNotFound(err) {
 		spec := &compute.InstanceGroup{
 			Name:    name,
-			Network: s.scope.NetworkName(),
+			Network: s.scope.NetworkSelfLink(),
 			NamedPorts: []*compute.NamedPort{
 				{
 					Name: "apiserver",
