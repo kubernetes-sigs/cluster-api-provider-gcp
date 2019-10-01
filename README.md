@@ -1,8 +1,8 @@
 <p align="center"><img alt="capi" src="https://github.com/kubernetes-sigs/cluster-api/raw/master/docs/book/src/images/introduction.png" width="160x" /><img alt="capi" src="https://cloud.google.com/_static/images/cloud/icons/favicons/onecloud/super_cloud.png" width="192x" /></p>
-<p align="center"><a href="https://prow.k8s.io/?job=ci-cluster-api-build">
+<p align="center"><a href="https://prow.k8s.io/?job=ci-cluster-api-provider-gcp-build">
 <!-- prow build badge, godoc, and go report card-->
-<img alt="Build Status" src="https://prow.k8s.io/badge.svg?jobs=ci-cluster-api-build">
-</a> <a href="https://godoc.org/sigs.k8s.io/cluster-api"><img src="https://godoc.org/sigs.k8s.io/cluster-api?status.svg"></a> <a href="https://goreportcard.com/report/sigs.k8s.io/cluster-api-provider-gcp"><img alt="Go Report Card" src="https://goreportcard.com/badge/sigs.k8s.io/cluster-api-provider-gcp" /></a></p>
+<img alt="Build Status" src="https://prow.k8s.io/badge.svg?jobs=ci-cluster-api-provider-gcp">
+</a> <a href="https://godoc.org/sigs.k8s.io/cluster-api-provider-gcp"><img src="https://godoc.org/sigs.k8s.io/cluster-api-provider-gcp?status.svg"></a> <a href="https://goreportcard.com/report/sigs.k8s.io/cluster-api-provider-gcp"><img alt="Go Report Card" src="https://goreportcard.com/badge/sigs.k8s.io/cluster-api-provider-gcp" /></a></p>
 
 # Kubernetes Cluster API Provider GCP
 
