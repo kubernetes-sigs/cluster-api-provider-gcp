@@ -124,7 +124,7 @@ function ssh-to-node() {
   done
   # Then actually try the command.
   gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" \
-    --project "${GCP_PROJECT}" --zone "${zone}" "${node}" --command "${cmd}"
+    --project "${GCP_PROJECT}" --zone "${zone}" "${node}" --command "${cmd}" || true
 }
 
 init_image() {
