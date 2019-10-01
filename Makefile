@@ -227,34 +227,20 @@ release: clean-release  ## Builds and push container images using the latest git
 	MANIFEST_IMG=$(PROD_REGISTRY)/$(IMAGE_NAME) MANIFEST_TAG=$(RELEASE_TAG) \
 		$(MAKE) set-manifest-image
 	$(MAKE) release-manifests
-	$(MAKE) release-binaries
 
 .PHONY: release-manifests
 release-manifests: $(RELEASE_DIR) ## Builds the manifests to publish with a release
 	kustomize build config/default > $(RELEASE_DIR)/infrastructure-components.yaml
 
-.PHONY: release-binary
-release-binary: $(RELEASE_DIR)
-	docker run \
-		--rm \
-		-e CGO_ENABLED=0 \
-		-e GOOS=$(GOOS) \
-		-e GOARCH=$(GOARCH) \
-		-v "$$(pwd):/workspace" \
-		-w /workspace \
-		golang:1.12.9 \
-		go build -a -ldflags '-extldflags "-static"' \
-		-o $(RELEASE_DIR)/$(notdir $(RELEASE_BINARY))-$(GOOS)-$(GOARCH) $(RELEASE_BINARY)
-
 .PHONY: release-staging
 release-staging: ## Builds and push container images to the staging bucket.
-	REGISTRY=$(STAGING_REGISTRY) $(MAKE) docker-build-all docker-push-all release-tag-latest
+	REGISTRY=$(STAGING_REGISTRY) $(MAKE) docker-build-all docker-push-all release-alias-tag
 
+RELEASE_ALIAS_TAG=$(shell if [ "$(PULL_BASE_REF)" = "master" ]; then echo "latest"; else echo "$(PULL_BASE_REF)"; fi)
 
-.PHONY: release-tag-latest
-release-tag-latest: ## Adds the latest tag to the last build tag.
-	## TODO(vincepri): Only do this when we're on master.
-	gcloud container images add-tag $(CONTROLLER_IMG):$(TAG) $(CONTROLLER_IMG):latest
+.PHONY: release-alias-tag
+release-alias-tag: # Adds the tag to the last build tag.
+	gcloud container images add-tag $(CONTROLLER_IMG):$(TAG) $(CONTROLLER_IMG):$(RELEASE_ALIAS_TAG)
 
 ## --------------------------------------
 ## Development
