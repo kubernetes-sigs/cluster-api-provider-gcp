@@ -19,4 +19,5 @@ metadata:
 spec:
   project: ${GCP_PROJECT}
   region: ${GCP_REGION}
-  network: ${NETWORK_NAME}
+  network:
+    name: ${NETWORK_NAME}
