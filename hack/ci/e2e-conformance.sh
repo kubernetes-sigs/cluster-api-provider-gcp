@@ -47,9 +47,15 @@ dump-logs() {
 
     ssh-to-node "${node_name}" "${node_zone}" "sudo chmod -R a+r /var/log" || true
     gcloud compute scp --recurse --project "${GCP_PROJECT}" --zone "${node_zone}" \
-      "${node_name}:/var/log/cloud-init.log" "${node_name}:/var/log/cloud-init-output.log" "${dir}" || true
+      "${node_name}:/var/log/cloud-init.log" "${node_name}:/var/log/cloud-init-output.log" \
+      "${node_name}:/var/log/pods" "${node_name}:/var/log/containers" \
+      "${dir}" || true
 
+    ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --output=short-precise -k" > "${dir}/kern.log" || true
     ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --output=short-precise" > "${dir}/systemd.log" || true
+    ssh-to-node "${node_name}" "${node_zone}" "sudo crictl version && sudo crictl info" > "${dir}/containerd.info" || true
+    ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --no-pager -u kubelet.service" > "${dir}/kubelet.log" || true
+    ssh-to-node "${node_name}" "${node_zone}" "sudo journalctl --no-pager -u containerd.service" > "${dir}/containerd.log" || true
   done
 
   gcloud logging read --order=asc \
