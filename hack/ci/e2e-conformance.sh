@@ -354,7 +354,10 @@ EOF
 
   # create temp dir and setup cleanup
   TMP_DIR=$(mktemp -d)
-  trap cleanup EXIT
+  SKIP_CLEANUP=${SKIP_CLEANUP:-""}
+  if [[ -z "${SKIP_CLEANUP}" ]]; then
+    trap cleanup EXIT
+  fi
   # ensure artifacts exists when not in CI
   ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
   export ARTIFACTS
