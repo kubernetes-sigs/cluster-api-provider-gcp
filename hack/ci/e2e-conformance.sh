@@ -22,6 +22,7 @@ GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-""}
 GCP_PROJECT=${GCP_PROJECT:-""}
 GCP_REGION=${GCP_REGION:-"us-east4"}
 CLUSTER_NAME=${CLUSTER_NAME:-"test1"}
+NETWORK_NAME=${NETWORK_NAME:-"${CLUSTER_NAME}-mynetwork"}
 
 TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -96,6 +97,14 @@ cleanup() {
     --router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter" --quiet || true
   gcloud compute routers delete "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
     --region="${GCP_REGION}" --quiet || true
+
+  if [[ ${NETWORK_NAME} != "default" ]]; then
+    (gcloud compute firewall-rules list --project $GCP_PROJECT | grep $NETWORK_NAME \
+         | awk '{print "gcloud compute firewall-rules delete --project '$GCP_PROJECT' --quiet " $1 "\n"}' \
+         | bash) || true
+    gcloud compute networks delete --project="${GCP_PROJECT}" \
+      --quiet "${NETWORK_NAME}" || true
+  fi
 
   # remove our tempdir
   # NOTE: this needs to be last, or it will prevent kind delete
@@ -210,6 +219,7 @@ generate_manifests() {
     GCP_REGION=$GCP_REGION \
     GCP_PROJECT=$GCP_PROJECT \
     CLUSTER_NAME=$CLUSTER_NAME \
+    NETWORK_NAME=$NETWORK_NAME \
     KUBERNETES_VERSION="v1.16.0" \
     make generate-examples
 }
@@ -290,12 +300,28 @@ run_tests() {
 
 # initialize a router and cloud NAT
 init_networks() {
-  # DEBUG : trying to track down "Nat service is not available for legacy network" problem
-  gcloud compute networks list --project="${GCP_PROJECT}" || true
-  gcloud compute networks describe default --project="${GCP_PROJECT}" || true
+  if [[ ${NETWORK_NAME} != "default" ]]; then
+    gcloud compute networks create --project $GCP_PROJECT ${NETWORK_NAME} --subnet-mode auto --quiet
+    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-http --project $GCP_PROJECT \
+      --allow tcp:80 --network ${NETWORK_NAME} --quiet
+    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-https --project $GCP_PROJECT \
+      --allow tcp:443 --network ${NETWORK_NAME} --quiet
+    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-icmp --project $GCP_PROJECT \
+      --allow icmp --network ${NETWORK_NAME} --priority 65534 --quiet
+    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-internal --project $GCP_PROJECT \
+      --allow "tcp:0-65535,udp:0-65535,icmp" --network ${NETWORK_NAME} --priority 65534 --quiet
+    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-rdp --project $GCP_PROJECT \
+      --allow "tcp:3389" --network ${NETWORK_NAME} --priority 65534 --quiet
+    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-ssh --project $GCP_PROJECT \
+      --allow "tcp:22" --network ${NETWORK_NAME} --priority 65534 --quiet
+  fi
+
+  gcloud compute firewall-rules list --project $GCP_PROJECT
+  gcloud compute networks list --project="${GCP_PROJECT}"
+  gcloud compute networks describe ${NETWORK_NAME} --project="${GCP_PROJECT}"
 
   gcloud compute routers create "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
-    --region="${GCP_REGION}" --network=default
+    --region="${GCP_REGION}" --network=${NETWORK_NAME}
   gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" \
     --router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter" \
     --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips

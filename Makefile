@@ -62,6 +62,7 @@ CRD_ROOT ?= $(MANIFEST_ROOT)/crd/bases
 WEBHOOK_ROOT ?= $(MANIFEST_ROOT)/webhook
 RBAC_ROOT ?= $(MANIFEST_ROOT)/rbac
 CLUSTER_NAME ?= test1
+NETWORK_NAME ?= default
 
 ## --------------------------------------
 ## Help
