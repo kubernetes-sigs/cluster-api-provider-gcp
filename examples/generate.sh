@@ -103,7 +103,7 @@ kustomize build "${SOURCE_DIR}/machinedeployment" | envsubst >> "${MACHINEDEPLOY
 echo "Generated ${MACHINEDEPLOYMENT_GENERATED_FILE}"
 
 # Generate Cluster API provider components file.
-CAPI_BRANCH=${CAPI_BRANCH:-"v0.2.0"}
+CAPI_BRANCH=${CAPI_BRANCH:-"v0.2.3"}
 if [[ ${CAPI_BRANCH} == "stable" ]]; then
   curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.2.3/cluster-api-components.yaml > "${COMPONENTS_CLUSTER_API_GENERATED_FILE}"
   echo "Downloaded ${COMPONENTS_CLUSTER_API_GENERATED_FILE}"
