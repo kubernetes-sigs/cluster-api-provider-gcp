@@ -378,7 +378,10 @@ EOF
   generate_manifests
   init_image
   create_cluster
-  run_tests
+  SKIP_RUN_TESTS=${SKIP_RUN_TESTS:-""}
+  if [[ -z "${SKIP_RUN_TESTS}" ]]; then
+    run_tests
+  fi
 }
 
 main
