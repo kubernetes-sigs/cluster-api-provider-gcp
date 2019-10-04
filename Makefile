@@ -127,6 +127,13 @@ lint-full: $(GOLANGCI_LINT) ## Run slower linters to detect possible issues
 	$(GOLANGCI_LINT) run -v --fast=false
 
 ## --------------------------------------
+## Dependencies
+## --------------------------------------
+update-deps:
+	GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org go get -u=patch ./...
+	GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org go mod tidy
+
+## --------------------------------------
 ## Generate
 ## --------------------------------------
 
