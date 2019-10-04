@@ -16,7 +16,7 @@
 
 # hack script for running a cluster-api-provider-gcp e2e
 
-set -o errexit -o nounset -o pipefail -o xtrace
+set -o errexit -o nounset -o pipefail
 
 GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-""}
 GCP_PROJECT=${GCP_PROJECT:-""}
@@ -335,6 +335,9 @@ init_networks() {
 
 # setup kind, build kubernetes, create a cluster, run the e2es
 main() {
+  if [[ ${1:-} == "--verbose" ]]; then
+     set -o xtrace
+  fi
   if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
     cat <<EOF
 $GOOGLE_APPLICATION_CREDENTIALS is not set.
@@ -384,4 +387,4 @@ EOF
   fi
 }
 
-main
+main $@
