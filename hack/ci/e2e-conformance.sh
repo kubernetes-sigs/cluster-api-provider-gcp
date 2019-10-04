@@ -26,6 +26,7 @@ NETWORK_NAME=${NETWORK_NAME:-"${CLUSTER_NAME}-mynetwork"}
 
 TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%SZ")
 
+ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
 # dump logs from kind and all the nodes
@@ -65,11 +66,8 @@ dump-logs() {
      > "${ARTIFACTS}/logs/activity.log" || true
 }
 
-# our exit handler (trap)
+# cleanup all resources we use
 cleanup() {
-  # dump all the logs
-  dump-logs
-
   # KIND_IS_UP is true once we: kind create
   if [[ "${KIND_IS_UP:-}" = true ]]; then
     timeout 600 kubectl \
@@ -117,6 +115,12 @@ cleanup() {
   if [[ -n "${TMP_DIR:-}" ]]; then
     rm -rf "${TMP_DIR}" || true
   fi
+}
+
+# our exit handler (trap)
+exit-handler() {
+  dump-logs
+  cleanup
 }
 
 # SSH to a node by name ($1) and run a command ($2).
@@ -361,14 +365,18 @@ EOF
     return 2
   fi
 
+  if [[ ${1:-} == "--clean" ]]; then
+    cleanup
+    return 0
+  fi
+
   # create temp dir and setup cleanup
   TMP_DIR=$(mktemp -d)
   SKIP_CLEANUP=${SKIP_CLEANUP:-""}
   if [[ -z "${SKIP_CLEANUP}" ]]; then
-    trap cleanup EXIT
+    trap exit-handler EXIT
   fi
   # ensure artifacts exists when not in CI
-  ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
   export ARTIFACTS
   mkdir -p "${ARTIFACTS}/logs"
 
@@ -387,4 +395,4 @@ EOF
   fi
 }
 
-main $@
+main "$@"

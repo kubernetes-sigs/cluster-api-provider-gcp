@@ -41,7 +41,6 @@ hack/ci/e2e-conformance.sh
 
 ## How to cleanup if you used SKIP_CLEANUP to start hack/ci/e2e-conformance.sh earlier
 ```
-unset SKIP_CLEANUP
 hack/ci/e2e-conformance.sh --cleanup
 ```
 
