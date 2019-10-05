@@ -31,10 +31,39 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
 # dump logs from kind and all the nodes
 dump-logs() {
-  # always attempt to dump logs
-  kind "export" logs --name="clusterapi" "${ARTIFACTS}/logs" || true
 
-  gcloud compute instances list --project "${GCP_PROJECT}"
+  # log version information
+  echo "=== versions ==="
+  echo "kind : $(kind version)" || true
+  echo "bootstrap cluster:"
+  kubectl --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") version || true
+  echo "deployed cluster:"
+  kubectl --kubeconfig=${PWD}/kubeconfig version || true
+  echo ""
+
+  # dump images info
+  echo "images in docker" >> "${ARTIFACTS}/logs/images.info"
+  docker images >> "${ARTIFACTS}/logs/images.info"
+  echo "images from bootstrap using containerd CLI" >> "${ARTIFACTS}/logs/images.info"
+  docker exec clusterapi-control-plane ctr -n k8s.io images list >> "${ARTIFACTS}/logs/images.info" || true
+  echo "images in bootstrap cluster using kubectl CLI" >> "${ARTIFACTS}/logs/images.info"
+  (kubectl --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") get pods --all-namespaces -o json \
+   | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
+  echo "images in deployed cluster using kubectl CLI" >> "${ARTIFACTS}/logs/images.info"
+  (kubectl --kubeconfig=${PWD}/kubeconfig get pods --all-namespaces -o json \
+   | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
+
+  # dump cluster info for kind
+  kubectl --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") cluster-info dump > "${ARTIFACTS}/logs/kind-cluster.info" || true
+
+  # dump cluster info for kind
+  echo "=== gcloud compute instances list ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
+  gcloud compute instances list --project "${GCP_PROJECT}" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
+  echo "=== cluster-info dump ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
+  kubectl --kubeconfig=${PWD}/kubeconfig cluster-info dump >> "${ARTIFACTS}/logs/capg-cluster.info" || true
+
+  # export all logs from kind
+  kind "export" logs --name="clusterapi" "${ARTIFACTS}/logs" || true
 
   for node_name in $(gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name)')
   do
