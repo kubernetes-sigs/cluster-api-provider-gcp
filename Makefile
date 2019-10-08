@@ -335,3 +335,17 @@ clean-examples: ## Remove all the temporary files generated in the examples fold
 verify: ## Runs verification scripts to ensure correct execution
 	./hack/verify-boilerplate.sh
 	./hack/verify-generated-files.sh
+	$(MAKE) verify-modules
+	$(MAKE) verify-gen
+
+.PHONY: verify-modules
+verify-modules: modules
+	@if !(git diff --quiet HEAD -- go.sum go.mod hack/tools/go.mod hack/tools/go.sum); then \
+		echo "go module files are out of date"; exit 1; \
+	fi
+
+.PHONY: verify-gen
+verify-gen: generate
+	@if !(git diff --quiet HEAD); then \
+		echo "generated files are out of date, run make generate"; exit 1; \
+	fi
