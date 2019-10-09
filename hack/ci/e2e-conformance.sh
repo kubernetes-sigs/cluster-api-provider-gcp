@@ -249,7 +249,7 @@ build() {
 # generate manifests needed for creating the GCP cluster to run the tests
 generate_manifests() {
   if ! command -v kustomize >/dev/null 2>&1; then
-    GO111MODULE=on go install sigs.k8s.io/kustomize/v3/cmd/kustomize
+    GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v3
   fi
 
   GCP_PROJECT=$GCP_PROJECT \
