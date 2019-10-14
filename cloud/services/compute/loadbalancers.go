@@ -36,8 +36,6 @@ const (
 	APIServerLoadBalancerScheme              = "EXTERNAL"
 	APIServerLoadBalancerIPVersion           = "IPV4"
 	APIServerLoadBalancerBackendPortName     = "apiserver"
-	APIServerLoadBalancerBackendPort         = 6443
-	APIServerLoadBalancerFrontendPortRange   = "443-443"
 )
 
 // ReconcileLoadbalancers reconciles the api server load balancer.
@@ -255,7 +253,7 @@ func (s *Service) getAPIServerHealthCheckSpec() *compute.HealthCheck {
 		Name: fmt.Sprintf("%s-%s", s.scope.Name(), infrav1.APIServerRoleTagValue),
 		Type: APIServerLoadBalancerHealthCheckProtocol,
 		SslHealthCheck: &compute.SSLHealthCheck{
-			Port:              APIServerLoadBalancerBackendPort,
+			Port:              s.scope.LoadBalancerBackendPort(),
 			PortSpecification: "USE_FIXED_PORT",
 		},
 		CheckIntervalSec:   10,
@@ -304,12 +302,13 @@ func (s *Service) getAPIServerIPAddressSpec() *compute.Address {
 }
 
 func (s *Service) getAPIServerForwardingRuleSpec() *compute.ForwardingRule {
+	frontendPortRange := fmt.Sprintf("%d-%d", s.scope.LoadBalancerFrontendPort(), s.scope.LoadBalancerFrontendPort())
 	return &compute.ForwardingRule{
 		Name:                fmt.Sprintf("%s-%s", s.scope.Name(), infrav1.APIServerRoleTagValue),
 		IPAddress:           *s.scope.Network().APIServerAddress,
 		IPProtocol:          APIServerLoadBalancerProtocol,
 		LoadBalancingScheme: APIServerLoadBalancerScheme,
-		PortRange:           APIServerLoadBalancerFrontendPortRange,
+		PortRange:           frontendPortRange,
 		Target:              *s.scope.Network().APIServerTargetProxy,
 	}
 }

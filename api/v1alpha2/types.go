@@ -96,6 +96,10 @@ type NetworkSpec struct {
 	// Subnets configuration.
 	// +optional
 	Subnets Subnets `json:"subnets,omitempty"`
+
+	// Allow for configuration of load balancer backend (useful for changing apiserver port)
+	// +optional
+	LoadBalancerBackendPort *int32 `json:"loadBalancerBackendPort,omitempty"`
 }
 
 // APIEndpoint represents a reachable Kubernetes API endpoint.

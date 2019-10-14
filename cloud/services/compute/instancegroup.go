@@ -77,7 +77,7 @@ func (s *Service) GetOrCreateInstanceGroup(zone, name string) (*compute.Instance
 			NamedPorts: []*compute.NamedPort{
 				{
 					Name: "apiserver",
-					Port: 6443,
+					Port: s.scope.LoadBalancerBackendPort(),
 				},
 			},
 		}

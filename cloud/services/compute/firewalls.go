@@ -81,7 +81,7 @@ func (s *Service) getFirewallSpecs() []*compute.Firewall {
 				{
 					IPProtocol: "TCP",
 					Ports: []string{
-						strconv.Itoa(APIServerLoadBalancerBackendPort),
+						strconv.FormatInt(s.scope.LoadBalancerBackendPort(), 10),
 					},
 				},
 			},
