@@ -41,6 +41,11 @@ dump-logs() {
   kubectl --kubeconfig=${PWD}/kubeconfig version || true
   echo ""
 
+  # dump all the info from the CAPI related CRDs
+  kubectl --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") get \
+  clusters,gcpclusters,machines,gcpmachines,kubeadmconfigs,machinedeployments,gcpmachinetemplates,kubeadmconfigtemplates,machinesets \
+  --all-namespaces -o yaml >> "${ARTIFACTS}/logs/capg.info" || true
+
   # dump images info
   echo "images in docker" >> "${ARTIFACTS}/logs/images.info"
   docker images >> "${ARTIFACTS}/logs/images.info"
