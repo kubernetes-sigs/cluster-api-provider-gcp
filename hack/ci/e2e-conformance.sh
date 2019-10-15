@@ -23,6 +23,7 @@ GCP_PROJECT=${GCP_PROJECT:-""}
 GCP_REGION=${GCP_REGION:-"us-east4"}
 CLUSTER_NAME=${CLUSTER_NAME:-"test1"}
 NETWORK_NAME=${NETWORK_NAME:-"${CLUSTER_NAME}-mynetwork"}
+KUBERNETES_VERSION=${KUBERNETES_VERSION:-"v1.16.1"}
 
 TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -210,7 +211,7 @@ init_image() {
           ln -s $PWD/packer /usr/local/bin/packer
       fi
       (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
-        sed -i 's/1\.15\.4/1.16.0/' packer/config/kubernetes.json && \
+        sed -i 's/1\.15\.4/1.16.1/' packer/config/kubernetes.json && \
         sed -i 's/1\.15/1.16/' packer/config/kubernetes.json)
       if [[ $EUID -ne 0 ]]; then
         (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
@@ -265,7 +266,7 @@ generate_manifests() {
     GCP_PROJECT=$GCP_PROJECT \
     CLUSTER_NAME=$CLUSTER_NAME \
     NETWORK_NAME=$NETWORK_NAME \
-    KUBERNETES_VERSION="v1.16.0" \
+    KUBERNETES_VERSION=$KUBERNETES_VERSION \
     make generate-examples
 }
 

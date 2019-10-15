@@ -27,7 +27,7 @@ envsubst() {
 
 # Cluster.
 export CLUSTER_NAME="${CLUSTER_NAME:-test1}"
-export KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.15.3}"
+export KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.16.1}"
 
 # Machine settings.
 export CONTROL_PLANE_MACHINE_TYPE="${CONTROL_PLANE_MACHINE_TYPE:-n1-standard-2}"
@@ -103,7 +103,7 @@ kustomize build "${SOURCE_DIR}/machinedeployment" | envsubst >> "${MACHINEDEPLOY
 echo "Generated ${MACHINEDEPLOYMENT_GENERATED_FILE}"
 
 # Generate Cluster API provider components file.
-CAPI_BRANCH=${CAPI_BRANCH:-"v0.2.5"}
+CAPI_BRANCH=${CAPI_BRANCH:-"stable"}
 if [[ ${CAPI_BRANCH} == "stable" ]]; then
   curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.2.5/cluster-api-components.yaml > "${COMPONENTS_CLUSTER_API_GENERATED_FILE}"
   echo "Downloaded ${COMPONENTS_CLUSTER_API_GENERATED_FILE} from cluster-api stable branch - v0.2.5"
@@ -113,7 +113,7 @@ else
 fi
 
 # Generate Kubeadm Bootstrap Provider components file.
-CABPK_BRANCH=${CABPK_BRANCH:-"v0.1.3"}
+CABPK_BRANCH=${CABPK_BRANCH:-"stable"}
 if [[ ${CABPK_BRANCH} == "stable" ]]; then
 curl -L https://github.com/kubernetes-sigs/cluster-api-bootstrap-provider-kubeadm/releases/download/v0.1.3/bootstrap-components.yaml > "${COMPONENTS_KUBEADM_GENERATED_FILE}"
   echo "Downloaded ${COMPONENTS_KUBEADM_GENERATED_FILE} from cluster-api-bootstrap-provider-kubeadm stable branch - v0.1.3"
@@ -130,3 +130,6 @@ echo "Generated ${COMPONENTS_GCP_GENERATED_FILE}"
 kustomize build "${SOURCE_DIR}/provider-components" | envsubst > "${PROVIDER_COMPONENTS_GENERATED_FILE}"
 echo "Generated ${PROVIDER_COMPONENTS_GENERATED_FILE}"
 echo "WARNING: ${PROVIDER_COMPONENTS_GENERATED_FILE} includes GCP credentials"
+
+# Patch kubernetes version
+sed -i 's|kubernetesVersion: .*|kubernetesVersion: '$KUBERNETES_VERSION'|' examples/_out/controlplane.yaml
