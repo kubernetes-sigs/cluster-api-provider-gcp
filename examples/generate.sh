@@ -103,7 +103,7 @@ kustomize build "${SOURCE_DIR}/machinedeployment" | envsubst >> "${MACHINEDEPLOY
 echo "Generated ${MACHINEDEPLOYMENT_GENERATED_FILE}"
 
 # Generate Cluster API provider components file.
-CAPI_BRANCH=${CAPI_BRANCH:-"v0.2.3"}
+CAPI_BRANCH=${CAPI_BRANCH:-"v0.2.5"}
 if [[ ${CAPI_BRANCH} == "stable" ]]; then
   curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.2.3/cluster-api-components.yaml > "${COMPONENTS_CLUSTER_API_GENERATED_FILE}"
   echo "Downloaded ${COMPONENTS_CLUSTER_API_GENERATED_FILE} from cluster-api stable branch - v0.2.3"
@@ -113,7 +113,7 @@ else
 fi
 
 # Generate Kubeadm Bootstrap Provider components file.
-CABPK_BRANCH=${CABPK_BRANCH:-"v0.1.1"}
+CABPK_BRANCH=${CABPK_BRANCH:-"v0.1.3"}
 if [[ ${CABPK_BRANCH} == "stable" ]]; then
 curl -L https://github.com/kubernetes-sigs/cluster-api-bootstrap-provider-kubeadm/releases/download/v0.1.1/bootstrap-components.yaml > "${COMPONENTS_KUBEADM_GENERATED_FILE}"
   echo "Downloaded ${COMPONENTS_KUBEADM_GENERATED_FILE} from cluster-api-bootstrap-provider-kubeadm stable branch - v0.1.1"
