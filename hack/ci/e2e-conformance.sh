@@ -254,6 +254,7 @@ generate_manifests() {
 
   GCP_PROJECT=$GCP_PROJECT \
     make docker-build
+
   GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
     GCP_REGION=$GCP_REGION \
     GCP_PROJECT=$GCP_PROJECT \
@@ -261,6 +262,15 @@ generate_manifests() {
     NETWORK_NAME=$NETWORK_NAME \
     KUBERNETES_VERSION="v1.16.0" \
     make generate-examples
+}
+
+# fix manifests to use k/k from CI
+fix_manifests() {
+  CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/latest-green.txt)}
+  echo "Overriding Kubernetes version to : ${CI_VERSION}"
+  sed -i 's|kubernetesVersion: .*|kubernetesVersion: "ci/'${CI_VERSION}'"|' examples/_out/controlplane.yaml
+  sed -i 's|CI_VERSION=.*|CI_VERSION='$CI_VERSION'|' examples/_out/controlplane.yaml
+  sed -i 's|CI_VERSION=.*|CI_VERSION='$CI_VERSION'|' examples/_out/machinedeployment.yaml
 }
 
 # up a cluster with kind
@@ -416,6 +426,9 @@ EOF
   init_networks
   build
   generate_manifests
+  if [[ ${1:-} == "--use-ci-artifacts" ]]; then
+    fix_manifests
+  fi
   init_image
   create_cluster
   SKIP_RUN_TESTS=${SKIP_RUN_TESTS:-""}
