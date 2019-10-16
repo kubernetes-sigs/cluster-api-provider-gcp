@@ -36,7 +36,6 @@ export SSH_KEY_NAME="${SSH_KEY_NAME:-default}"
 
 # Outputs.
 COMPONENTS_CLUSTER_API_GENERATED_FILE=${SOURCE_DIR}/provider-components/provider-components-cluster-api.yaml
-COMPONENTS_KUBEADM_GENERATED_FILE=${SOURCE_DIR}/provider-components/provider-components-kubeadm.yaml
 COMPONENTS_GCP_GENERATED_FILE=${SOURCE_DIR}/provider-components/provider-components-gcp.yaml
 
 PROVIDER_COMPONENTS_GENERATED_FILE=${OUTPUT_DIR}/provider-components.yaml
@@ -104,7 +103,7 @@ echo "Generated ${MACHINEDEPLOYMENT_GENERATED_FILE}"
 
 # Generate Cluster API provider components file.
 CAPI_BRANCH=${CAPI_BRANCH:-"master"}
-if [[ ${CAPI_BRANCH} == "master" ]]; then
+if [[ ${CAPI_BRANCH} == "stable" ]]; then
   curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.2.5/cluster-api-components.yaml > "${COMPONENTS_CLUSTER_API_GENERATED_FILE}"
   echo "Downloaded ${COMPONENTS_CLUSTER_API_GENERATED_FILE} from cluster-api stable branch - v0.2.5"
 else
@@ -122,4 +121,4 @@ echo "Generated ${PROVIDER_COMPONENTS_GENERATED_FILE}"
 echo "WARNING: ${PROVIDER_COMPONENTS_GENERATED_FILE} includes GCP credentials"
 
 # Patch kubernetes version
-sed -i 's|kubernetesVersion: .*|kubernetesVersion: '$KUBERNETES_VERSION'|' examples/_out/controlplane.yaml
+sed -i'' -e 's|kubernetesVersion: .*|kubernetesVersion: '$KUBERNETES_VERSION'|' examples/_out/controlplane.yaml
