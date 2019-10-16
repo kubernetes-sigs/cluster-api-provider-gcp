@@ -21,7 +21,7 @@ spec:
           [[ $(id -u) != 0 ]] && SUDO="sudo" || SUDO=""
 
           if ! gsutil version > /dev/null; then
-          curl -sSL https://sdk.cloud.google.com > /tmp/gcl && bash /tmp/gcl --install-dir=~/gcloud --disable-prompts
+          curl -sSL https://sdk.cloud.google.com > /tmp/gcl && bash /tmp/gcl --install-dir=~/gcloud --disable-prompts > /dev/null 2>&1
           export PATH=$PATH:~/gcloud/google-cloud-sdk/bin
           fi
           gsutil version
