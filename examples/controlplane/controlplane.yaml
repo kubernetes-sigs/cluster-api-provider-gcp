@@ -1,11 +1,11 @@
-apiVersion: cluster.x-k8s.io/v1alpha2
+apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Machine
 metadata:
   name: ${CLUSTER_NAME}-controlplane-0
   labels:
     cluster.x-k8s.io/control-plane: "true"
-    cluster.x-k8s.io/cluster-name: "${CLUSTER_NAME}"
 spec:
+  clusterName: "${CLUSTER_NAME}"
   version: ${KUBERNETES_VERSION}
   bootstrap:
     configRef:
@@ -13,11 +13,11 @@ spec:
       kind: KubeadmConfig
       name: ${CLUSTER_NAME}-controlplane-0
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
     kind: GCPMachine
     name: ${CLUSTER_NAME}-controlplane-0
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
 kind: GCPMachine
 metadata:
   name: ${CLUSTER_NAME}-controlplane-0
@@ -45,14 +45,14 @@ spec:
         cloud-provider: gce
         allocate-node-cidrs: "false"
 ---
-apiVersion: cluster.x-k8s.io/v1alpha2
+apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Machine
 metadata:
   name: ${CLUSTER_NAME}-controlplane-1
   labels:
     cluster.x-k8s.io/control-plane: "true"
-    cluster.x-k8s.io/cluster-name: "${CLUSTER_NAME}"
 spec:
+  clusterName: "${CLUSTER_NAME}"
   version: ${KUBERNETES_VERSION}
   bootstrap:
     configRef:
@@ -60,11 +60,11 @@ spec:
       kind: KubeadmConfig
       name: ${CLUSTER_NAME}-controlplane-1
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
     kind: GCPMachine
     name: ${CLUSTER_NAME}-controlplane-1
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
 kind: GCPMachine
 metadata:
   name: ${CLUSTER_NAME}-controlplane-1
@@ -84,14 +84,14 @@ spec:
       kubeletExtraArgs:
         cloud-provider: gce
 ---
-apiVersion: cluster.x-k8s.io/v1alpha2
+apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Machine
 metadata:
   name: ${CLUSTER_NAME}-controlplane-2
   labels:
     cluster.x-k8s.io/control-plane: "true"
-    cluster.x-k8s.io/cluster-name: "${CLUSTER_NAME}"
 spec:
+  clusterName: "${CLUSTER_NAME}"
   version: ${KUBERNETES_VERSION}
   bootstrap:
     configRef:
@@ -99,11 +99,11 @@ spec:
       kind: KubeadmConfig
       name: ${CLUSTER_NAME}-controlplane-2
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
     kind: GCPMachine
     name: ${CLUSTER_NAME}-controlplane-2
 ---
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
 kind: GCPMachine
 metadata:
   name: ${CLUSTER_NAME}-controlplane-2
