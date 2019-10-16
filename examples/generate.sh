@@ -115,7 +115,7 @@ fi
 # Generate Kubeadm Bootstrap Provider components file.
 CABPK_BRANCH=${CABPK_BRANCH:-"stable"}
 if [[ ${CABPK_BRANCH} == "stable" ]]; then
-curl -L https://github.com/kubernetes-sigs/cluster-api-bootstrap-provider-kubeadm/releases/download/v0.1.3/bootstrap-components.yaml > "${COMPONENTS_KUBEADM_GENERATED_FILE}"
+  curl -L https://github.com/kubernetes-sigs/cluster-api-bootstrap-provider-kubeadm/releases/download/v0.1.3/bootstrap-components.yaml > "${COMPONENTS_KUBEADM_GENERATED_FILE}"
   echo "Downloaded ${COMPONENTS_KUBEADM_GENERATED_FILE} from cluster-api-bootstrap-provider-kubeadm stable branch - v0.1.3"
 else
   kustomize build "github.com/kubernetes-sigs/cluster-api-bootstrap-provider-kubeadm/config/default/?ref=${CABPK_BRANCH}" > "${COMPONENTS_KUBEADM_GENERATED_FILE}"
