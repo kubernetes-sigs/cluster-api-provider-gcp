@@ -130,6 +130,23 @@ func (s *ClusterScope) Region() string {
 	return s.GCPCluster.Spec.Region
 }
 
+// LoadBalancerFrontendPort returns the loadbalancer frontend if specified
+// in the cluster resource's network configuration.
+func (s *ClusterScope) LoadBalancerFrontendPort() int64 {
+	if s.Cluster.Spec.ClusterNetwork.APIServerPort != nil {
+		return int64(*s.Cluster.Spec.ClusterNetwork.APIServerPort)
+	}
+	return 443
+}
+
+// LoadBalancerBackendPort returns the loadbalancer backend if specified.
+func (s *ClusterScope) LoadBalancerBackendPort() int64 {
+	if s.GCPCluster.Spec.Network.LoadBalancerBackendPort != nil {
+		return int64(*s.GCPCluster.Spec.Network.LoadBalancerBackendPort)
+	}
+	return 6443
+}
+
 // ControlPlaneConfigMapName returns the name of the ConfigMap used to
 // coordinate the bootstrapping of control plane nodes.
 func (s *ClusterScope) ControlPlaneConfigMapName() string {

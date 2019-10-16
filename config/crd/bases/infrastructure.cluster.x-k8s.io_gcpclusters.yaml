@@ -52,6 +52,11 @@ spec:
                     as described in Auto mode VPC network IP ranges. \n Defaults to
                     true."
                   type: boolean
+                loadBalancerBackendPort:
+                  description: Allow for configuration of load balancer backend (useful
+                    for changing apiserver port)
+                  format: int32
+                  type: integer
                 name:
                   description: Name is the name of the network to be used.
                   type: string
