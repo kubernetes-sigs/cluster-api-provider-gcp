@@ -11,7 +11,9 @@ spec:
     categories:
     - cluster-api
     kind: GCPCluster
+    listKind: GCPClusterList
     plural: gcpclusters
+    singular: gcpcluster
   scope: Namespaced
   subresources:
     status: {}
@@ -183,9 +185,9 @@ spec:
           - ready
           type: object
       type: object
-  version: v1alpha2
+  version: v1alpha3
   versions:
-  - name: v1alpha2
+  - name: v1alpha3
     served: true
     storage: true
 status:
