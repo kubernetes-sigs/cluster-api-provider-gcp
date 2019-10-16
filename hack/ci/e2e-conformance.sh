@@ -145,6 +145,13 @@ cleanup() {
       --quiet "${NETWORK_NAME}" || true
   fi
 
+  if [[ "${REUSE_OLD_IMAGES:-false}" == "false" ]]; then
+    (gcloud compute images list --project $GCP_PROJECT \
+      --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v1-16" --format="table[no-heading](name)" \
+         | awk '{print "gcloud compute images delete --project '$GCP_PROJECT' --quiet " $1 "\n"}' \
+         | bash) || true
+  fi
+
   # remove our tempdir
   # NOTE: this needs to be last, or it will prevent kind delete
   if [[ -n "${TMP_DIR:-}" ]]; then
@@ -181,49 +188,53 @@ function ssh-to-node() {
 }
 
 init_image() {
-  image=$(gcloud compute images list --project $GCP_PROJECT \
-    --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v1-16" --format="table[no-heading](name)")
-  if [[ -z "$image" ]]; then
-      if ! command -v ansible &> /dev/null; then
-        if [[ $EUID -ne 0 ]]; then
-          echo "Please install ansible and try again."
-          exit 1
-        else
-          # we need pip to install ansible
-          curl -L https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-          python get-pip.py --user
-          rm -f get-pip.py
+  if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then
+    image=$(gcloud compute images list --project $GCP_PROJECT \
+      --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v1-16" --format="table[no-heading](name)")
+    if [[ ! -z "$image" ]]; then
+      return
+    fi
+  fi
 
-          # install ansible needed by packer
-          version="2.8.5"
-          python -m pip install "ansible==${version}"
-        fi
-      fi
-      if ! command -v packer &> /dev/null; then
-        hostos=$(go env GOHOSTOS)
-        hostarch=$(go env GOHOSTARCH)
-        version="1.4.3"
-        url="https://releases.hashicorp.com/packer/${version}/packer_${version}_${hostos}_${hostarch}.zip"
-        echo "Downloading packer from $url"
-        wget --quiet -O packer.zip $url  && \
-          unzip packer.zip && \
-          rm packer.zip && \
-          ln -s $PWD/packer /usr/local/bin/packer
-      fi
-      (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
-        sed -i 's/1\.15\.4/1.16.1/' packer/config/kubernetes.json && \
-        sed -i 's/1\.15/1.16/' packer/config/kubernetes.json)
-      if [[ $EUID -ne 0 ]]; then
-        (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
-          GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
-          make build-gce-default)
-      else
-        # assume we are running in the CI environment as root
-        # Add a user for ansible to work properly
-        groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
-        # use the packer user to run the build
-        su - packer -c "bash -c 'cd /go/src/sigs.k8s.io/image-builder/images/capi && GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS make build-gce-default'"
-      fi
+  if ! command -v ansible &> /dev/null; then
+    if [[ $EUID -ne 0 ]]; then
+      echo "Please install ansible and try again."
+      exit 1
+    else
+      # we need pip to install ansible
+      curl -L https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+      python get-pip.py --user
+      rm -f get-pip.py
+
+      # install ansible needed by packer
+      version="2.8.5"
+      python -m pip install "ansible==${version}"
+    fi
+  fi
+  if ! command -v packer &> /dev/null; then
+    hostos=$(go env GOHOSTOS)
+    hostarch=$(go env GOHOSTARCH)
+    version="1.4.3"
+    url="https://releases.hashicorp.com/packer/${version}/packer_${version}_${hostos}_${hostarch}.zip"
+    echo "Downloading packer from $url"
+    wget --quiet -O packer.zip $url  && \
+      unzip packer.zip && \
+      rm packer.zip && \
+      ln -s $PWD/packer /usr/local/bin/packer
+  fi
+  (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
+    sed -i 's/1\.15\.4/1.16.1/' packer/config/kubernetes.json && \
+    sed -i 's/1\.15/1.16/' packer/config/kubernetes.json)
+  if [[ $EUID -ne 0 ]]; then
+    (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
+      GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
+      make build-gce-default)
+  else
+    # assume we are running in the CI environment as root
+    # Add a user for ansible to work properly
+    groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
+    # use the packer user to run the build
+    su - packer -c "bash -c 'cd /go/src/sigs.k8s.io/image-builder/images/capi && GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS make build-gce-default'"
   fi
 }
 
