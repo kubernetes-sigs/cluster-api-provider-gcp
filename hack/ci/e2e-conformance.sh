@@ -269,7 +269,7 @@ generate_manifests() {
     (cd ./hack/tools/ && GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v3)
   fi
 
-  GCP_PROJECT=$GCP_PROJECT \
+  PULL_POLICY=Never GCP_PROJECT=$GCP_PROJECT \
     make modules docker-build
 
   GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
