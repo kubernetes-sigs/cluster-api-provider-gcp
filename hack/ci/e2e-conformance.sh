@@ -303,12 +303,12 @@ create_cluster() {
   while true; do
     kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi")
     read running total <<< $(kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
-      -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /running/{count++} END{print count " " NR}') ;
+      -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /(r|R)unning/{count++} END{print count " " NR}') ;
     if [[ $total == "5" && $running == "5" ]]; then
       return 0
     fi
     read failed total <<< $(kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
-      -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /failed/{count++} END{print count " " NR}') ;
+      -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /(f|F)ailed/{count++} END{print count " " NR}') ;
     if [[ ! $failed -eq 0 ]]; then
       echo "$failed machines (out of $total) in cluster failed ... bailing out"
       exit 1
