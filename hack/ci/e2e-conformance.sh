@@ -266,11 +266,11 @@ build() {
 # generate manifests needed for creating the GCP cluster to run the tests
 generate_manifests() {
   if ! command -v kustomize >/dev/null 2>&1; then
-    GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v3
+    (cd ./hack/tools/ && GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v3)
   fi
 
   GCP_PROJECT=$GCP_PROJECT \
-    make docker-build
+    make modules docker-build
 
   GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
     GCP_REGION=$GCP_REGION \
