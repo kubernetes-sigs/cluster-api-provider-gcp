@@ -8,6 +8,6 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller:release-0.2
+      - image: gcr.io/vincepri-dev/cluster-api-gcp-controller-amd64:dev
         name: manager
-        imagePullPolicy: Always
+        imagePullPolicy: Never
