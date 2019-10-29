@@ -27,7 +27,7 @@ envsubst() {
 
 # Cluster.
 export CLUSTER_NAME="${CLUSTER_NAME:-test1}"
-export KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.16.1}"
+export KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.16.2}"
 
 # Machine settings.
 export CONTROL_PLANE_MACHINE_TYPE="${CONTROL_PLANE_MACHINE_TYPE:-n1-standard-2}"
