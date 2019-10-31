@@ -27,6 +27,7 @@ envsubst() {
 
 # Cluster.
 export CLUSTER_NAME="${CLUSTER_NAME:-test1}"
+export NETWORK_NAME="${NETWORK_NAME:-default}"
 export KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.16.2}"
 
 # Machine settings.
