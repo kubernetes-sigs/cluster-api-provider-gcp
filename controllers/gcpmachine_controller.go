@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	gcompute "google.golang.org/api/compute/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha2"
@@ -218,6 +219,12 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	// TODO(vincepri): Remove this annotation when clusterctl is no longer relevant.
 	machineScope.SetAnnotation("cluster-api-provider-gcp", "true")
 
+	addrs, err := r.getAddresses(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	machineScope.SetAddresses(addrs)
+
 	switch infrav1.InstanceStatus(instance.Status) {
 	case infrav1.InstanceStatusRunning:
 		machineScope.Info("Machine instance is running", "instance-id", *machineScope.GetInstanceID())
@@ -299,6 +306,28 @@ func (r *GCPMachineReconciler) getOrCreate(scope *scope.MachineScope, computeSvc
 	}
 
 	return instance, nil
+}
+
+func (r *GCPMachineReconciler) getAddresses(instance *gcompute.Instance) ([]v1.NodeAddress, error) {
+	addresses := []v1.NodeAddress{}
+	for _, nic := range instance.NetworkInterfaces {
+		internalAddress := v1.NodeAddress{
+			Type:    v1.NodeInternalIP,
+			Address: nic.NetworkIP,
+		}
+		addresses = append(addresses, internalAddress)
+
+		// If access configs are associated with this nic, dig out the external IP
+		if len(nic.AccessConfigs) > 0 {
+			externalAddress := v1.NodeAddress{
+				Type:    v1.NodeExternalIP,
+				Address: nic.AccessConfigs[0].NatIP,
+			}
+			addresses = append(addresses, externalAddress)
+		}
+	}
+
+	return addresses, nil
 }
 
 func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.MachineScope, clusterScope *scope.ClusterScope, i *gcompute.Instance) error {
