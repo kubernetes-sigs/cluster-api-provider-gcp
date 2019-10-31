@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/klogr"
 	"k8s.io/utils/pointer"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha2"
@@ -179,6 +180,11 @@ func (m *MachineScope) SetAnnotation(key, value string) {
 		m.GCPMachine.Annotations = map[string]string{}
 	}
 	m.GCPMachine.Annotations[key] = value
+}
+
+// SetAddresses sets the addresses field on the GCPMachine.
+func (m *MachineScope) SetAddresses(addressList []v1.NodeAddress) {
+	m.GCPMachine.Status.Addresses = addressList
 }
 
 // Close the MachineScope by updating the machine spec, machine status.
