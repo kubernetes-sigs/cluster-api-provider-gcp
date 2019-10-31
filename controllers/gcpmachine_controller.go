@@ -198,7 +198,7 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	// Set an error message if we couldn't find the instance.
 	if instance == nil {
 		machineScope.SetErrorReason(capierrors.UpdateMachineError)
-		machineScope.SetErrorMessage(errors.New("EC2 instance cannot be found"))
+		machineScope.SetErrorMessage(errors.New("GCE instance cannot be found"))
 		return reconcile.Result{}, nil
 	}
 
@@ -233,7 +233,7 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 		machineScope.Info("Machine instance is pending", "instance-id", *machineScope.GetInstanceID())
 	default:
 		machineScope.SetErrorReason(capierrors.UpdateMachineError)
-		machineScope.SetErrorMessage(errors.Errorf("EC2 instance state %q is unexpected", instance.Status))
+		machineScope.SetErrorMessage(errors.Errorf("GCE instance state %q is unexpected", instance.Status))
 	}
 
 	if err := r.reconcileLBAttachment(machineScope, clusterScope, instance); err != nil {
@@ -282,7 +282,7 @@ func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope,
 	return reconcile.Result{}, nil
 }
 
-// findInstance queries the EC2 apis and retrieves the instance if it exists, returns nil otherwise.
+// findInstance queries the GCP apis and retrieves the instance if it exists, returns nil otherwise.
 func (r *GCPMachineReconciler) findInstance(scope *scope.MachineScope, computeSvc *compute.Service) (*gcompute.Instance, error) {
 	instance, err := computeSvc.InstanceIfExists(scope)
 	if err != nil {
