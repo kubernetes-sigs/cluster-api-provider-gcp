@@ -6,6 +6,27 @@ metadata:
   creationTimestamp: null
   name: gcpmachines.infrastructure.cluster.x-k8s.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .metadata.labels.cluster\.x-k8s\.io/cluster-name
+    description: Cluster to which this GCPMachine belongs
+    name: Cluster
+    type: string
+  - JSONPath: .status.instanceState
+    description: GCE instance state
+    name: State
+    type: string
+  - JSONPath: .status.ready
+    description: Machine ready status
+    name: Ready
+    type: string
+  - JSONPath: .spec.providerID
+    description: GCE instance ID
+    name: InstanceID
+    type: string
+  - JSONPath: .metadata.ownerReferences[?(@.kind=="Machine")].name
+    description: Machine object which owns with this GCPMachine
+    name: Machine
+    type: string
   group: infrastructure.cluster.x-k8s.io
   names:
     categories:
