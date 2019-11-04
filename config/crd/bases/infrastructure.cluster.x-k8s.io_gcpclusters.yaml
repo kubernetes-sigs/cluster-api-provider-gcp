@@ -6,6 +6,24 @@ metadata:
   creationTimestamp: null
   name: gcpclusters.infrastructure.cluster.x-k8s.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .metadata.labels.cluster\.x-k8s\.io/cluster-name
+    description: Cluster to which this GCPCluster belongs
+    name: Cluster
+    type: string
+  - JSONPath: .status.ready
+    description: Cluster infrastructure is ready for GCE instances
+    name: Ready
+    type: string
+  - JSONPath: .spec.network.name
+    description: GCP network the cluster is using
+    name: Network
+    type: string
+  - JSONPath: .status.apiEndpoints[0]
+    description: API Endpoint
+    name: Endpoint
+    priority: 1
+    type: string
   group: infrastructure.cluster.x-k8s.io
   names:
     categories:
