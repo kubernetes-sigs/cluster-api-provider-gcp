@@ -27,9 +27,7 @@ ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
 
 # our exit handler (trap)
 cleanup() {
-  echo "cleaning up - checking in boskos account $BOSKOS_RESOURCE_NAME on host $BOSKOS_HOST"
-  # If Boskos is being used then release the GCP project back to Boskos.
-  hack/checkin_account.py >> $ARTIFACTS/boskos.log 2>&1
+  # stop boskos heartbeat
   [[ -z ${HEART_BEAT_PID:-} ]] || kill -9 "${HEART_BEAT_PID}"
 }
 
@@ -61,7 +59,17 @@ if [ ! "${checkout_account_status}" = "0" ]; then
   exit "${checkout_account_status}"
 fi
 
-python -u hack/heartbeat_account.py >> $ARTIFACTS/boskos.log 2>&1 &
+# run the heart beat process to tell boskos that we are still
+# using the checked out account periodically
+ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
+mkdir -p "$ARTIFACTS/logs/"
+python -u hack/heartbeat_account.py >> "$ARTIFACTS/logs/boskos.log" 2>&1 &
 HEART_BEAT_PID=$(echo $!)
 
-(cd "${REPO_ROOT}" && hack/ci/e2e-conformance.sh $*)
+hack/ci/e2e-conformance.sh --verbose $*
+test_status="${?}"
+
+# If Boskos is being used then release the GCP project back to Boskos.
+[ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> $ARTIFACTS/logs/boskos.log 2>&1
+
+exit "${test_status}"
