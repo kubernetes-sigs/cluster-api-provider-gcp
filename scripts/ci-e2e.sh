@@ -64,4 +64,4 @@ fi
 python -u hack/heartbeat_account.py >> $ARTIFACTS/boskos.log 2>&1 &
 HEART_BEAT_PID=$(echo $!)
 
-(cd "${REPO_ROOT}" && hack/ci/e2e-conformance.sh $*)
+(cd "${REPO_ROOT}" && hack/ci/e2e-conformance.sh --verbose $*)

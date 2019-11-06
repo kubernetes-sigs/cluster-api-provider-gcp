@@ -395,9 +395,23 @@ init_networks() {
 
 # setup kind, build kubernetes, create a cluster, run the e2es
 main() {
-  if [[ ${1:-} == "--verbose" ]]; then
-     set -o xtrace
-  fi
+  for arg in "$@"
+  do
+    if [[ "$arg" == "--verbose" ]]; then
+      set -o xtrace
+    fi
+    if [[ "$arg" == "--clean" ]]; then
+      cleanup
+      return 0
+    fi
+    if [[ "$arg" == "--use-ci-artifacts" ]]; then
+      USE_CI_ARTIFACTS="1"
+    fi
+    if [[ "$arg" == "--skip-init-image" ]]; then
+      SKIP_INIT_IMAGE="1"
+    fi
+  done
+
   if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
     cat <<EOF
 $GOOGLE_APPLICATION_CREDENTIALS is not set.
@@ -421,11 +435,6 @@ EOF
     return 2
   fi
 
-  if [[ ${1:-} == "--clean" ]]; then
-    cleanup
-    return 0
-  fi
-
   # create temp dir and setup cleanup
   TMP_DIR=$(mktemp -d)
   SKIP_CLEANUP=${SKIP_CLEANUP:-""}
@@ -443,11 +452,19 @@ EOF
   init_networks
   build
   generate_manifests
-  if [[ ${1:-} == "--use-ci-artifacts" ]]; then
+  if [[ ${USE_CI_ARTIFACTS:-""} == "yes" || ${USE_CI_ARTIFACTS:-""} == "1" ]]; then
+    echo "Fixing manifests to use latest CI artifacts..."
     fix_manifests
   fi
-  init_image
+  SKIP_INIT_IMAGE=${SKIP_INIT_IMAGE:-""}
+  if [[ "${SKIP_INIT_IMAGE}" == "yes" || "${SKIP_INIT_IMAGE}" == "1" ]]; then
+    echo "Skipping image initialization..."
+  else
+    init_image
+  fi
+
   create_cluster
+
   SKIP_RUN_TESTS=${SKIP_RUN_TESTS:-""}
   if [[ -z "${SKIP_RUN_TESTS}" ]]; then
     run_tests
