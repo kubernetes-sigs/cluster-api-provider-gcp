@@ -99,7 +99,7 @@ kustomize build "${SOURCE_DIR}/controlplane" | envsubst > "${CONTROLPLANE_GENERA
 echo "Generated ${CONTROLPLANE_GENERATED_FILE}"
 
 # Generate machinedeployment resources.
-kustomize build "${SOURCE_DIR}/machinedeployment" | envsubst >> "${MACHINEDEPLOYMENT_GENERATED_FILE}"
+kustomize build "${SOURCE_DIR}/machinedeployment" | envsubst > "${MACHINEDEPLOYMENT_GENERATED_FILE}"
 echo "Generated ${MACHINEDEPLOYMENT_GENERATED_FILE}"
 
 # Generate Cluster API provider components file.
