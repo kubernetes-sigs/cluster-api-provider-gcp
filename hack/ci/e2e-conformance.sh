@@ -105,10 +105,10 @@ dump-logs() {
 cleanup() {
   # KIND_IS_UP is true once we: kind create
   if [[ "${KIND_IS_UP:-}" = true ]]; then
-    timeout 600 kubectl \
+    timeout 60 kubectl \
       --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
       delete cluster test1 || true
-     timeout 600 kubectl \
+     timeout 60 kubectl \
       --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
       wait --for=delete cluster/test1 || true
     make kind-reset || true
