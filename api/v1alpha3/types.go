@@ -102,15 +102,6 @@ type NetworkSpec struct {
 	LoadBalancerBackendPort *int32 `json:"loadBalancerBackendPort,omitempty"`
 }
 
-// APIEndpoint represents a reachable Kubernetes API endpoint.
-type APIEndpoint struct {
-	// The hostname on which the API server is serving.
-	Host string `json:"host"`
-
-	// The port on which the API server is serving.
-	Port int `json:"port"`
-}
-
 // SubnetSpec configures an GCP Subnet.
 type SubnetSpec struct {
 	// Name defines a unique identifier to reference this resource.

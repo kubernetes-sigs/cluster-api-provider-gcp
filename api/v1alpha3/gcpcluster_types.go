@@ -18,6 +18,7 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 const (
@@ -33,6 +34,10 @@ type GCPClusterSpec struct {
 
 	// The GCP Region the cluster lives in.
 	Region string `json:"region"`
+
+	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
+	// +optional
+	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 
 	// NetworkSpec encapsulates all things related to GCP network.
 	// +optional
@@ -50,10 +55,6 @@ type GCPClusterStatus struct {
 
 	// Bastion Instance `json:"bastion,omitempty"`
 	Ready bool `json:"ready"`
-
-	// APIEndpoints represents the endpoints to communicate with the control plane.
-	// +optional
-	APIEndpoints []APIEndpoint `json:"apiEndpoints,omitempty"`
 }
 
 // +kubebuilder:object:root=true
