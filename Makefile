@@ -274,11 +274,22 @@ release-notes: $(RELEASE_NOTES)
 
 .PHONY: create-cluster
 create-cluster: $(CLUSTERCTL) ## Create a development Kubernetes cluster on GCP in a KIND management cluster.
+	@if [[ ! -f examples/_out/cert-manager.yaml ]]; then echo "Examples are missing. Run 'make generate-examples' first."; exit 1; fi
 	kind create cluster --name=clusterapi
 	@if [ ! -z "${LOAD_IMAGE}" ]; then \
 		echo "loading ${LOAD_IMAGE} into kind cluster ..." && \
 		kind --name="clusterapi" load docker-image "${LOAD_IMAGE}"; \
 	fi
+	# Install cert manager.
+	kubectl \
+		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
+		create -f examples/_out/cert-manager.yaml
+	# Wait for cert-manager pods to be created
+	sleep 20
+	# Wait for cert-manager pods to be ready.
+	kubectl \
+		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
+		wait --for=condition=Ready --namespace=cert-manager --timeout=15m pods --all
 	# Apply provider-components.
 	kubectl \
 		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
@@ -306,16 +317,6 @@ create-cluster: $(CLUSTERCTL) ## Create a development Kubernetes cluster on GCP 
 	kubectl \
 		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
 		create -f examples/_out/machinedeployment.yaml
-
-.PHONY: delete-cluster
-delete-cluster: $(CLUSTERCTL) ## Deletes the development Kubernetes Cluster "test1"
-	$(CLUSTERCTL) \
-	delete cluster -v 4 \
-	--bootstrap-type kind \
-	--bootstrap-flags="name=clusterapi" \
-	--cluster $(CLUSTER_NAME) \
-	--kubeconfig ./kubeconfig \
-	-p ./examples/_out/provider-components.yaml \
 
 .PHONY: kind-reset
 kind-reset: ## Destroys the "clusterapi" kind cluster.
