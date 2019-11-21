@@ -40,6 +40,7 @@ COMPONENTS_CLUSTER_API_GENERATED_FILE=${SOURCE_DIR}/provider-components/provider
 COMPONENTS_GCP_GENERATED_FILE=${SOURCE_DIR}/provider-components/provider-components-gcp.yaml
 
 PROVIDER_COMPONENTS_GENERATED_FILE=${OUTPUT_DIR}/provider-components.yaml
+CERTMANAGER_COMPONENTS_GENERATED_FILE=${OUTPUT_DIR}/cert-manager.yaml
 CLUSTER_GENERATED_FILE=${OUTPUT_DIR}/cluster.yaml
 CONTROLPLANE_GENERATED_FILE=${OUTPUT_DIR}/controlplane.yaml
 MACHINEDEPLOYMENT_GENERATED_FILE=${OUTPUT_DIR}/machinedeployment.yaml
@@ -80,6 +81,10 @@ if [ $OVERWRITE -ne 1 ] && [ -d "$OUTPUT_DIR" ]; then
 fi
 
 mkdir -p "${OUTPUT_DIR}"
+
+# Download cert-manager component
+curl -sL https://github.com/jetstack/cert-manager/releases/download/v0.11.0/cert-manager.yaml > "${CERTMANAGER_COMPONENTS_GENERATED_FILE}"
+echo "Generated ${CERTMANAGER_COMPONENTS_GENERATED_FILE}"
 
 # Generate GCP Credentials.
 GCP_B64ENCODED_CREDENTIALS="$(base64 -i "${GOOGLE_APPLICATION_CREDENTIALS}" | tr -d '\n')"
@@ -123,3 +128,5 @@ echo "WARNING: ${PROVIDER_COMPONENTS_GENERATED_FILE} includes GCP credentials"
 
 # Patch kubernetes version
 sed -i'' -e 's|kubernetesVersion: .*|kubernetesVersion: '$KUBERNETES_VERSION'|' examples/_out/controlplane.yaml
+
+echo "NOTE: Ensure that the cert-manager components are running before creating the provider-components, cluster and control-plane."
