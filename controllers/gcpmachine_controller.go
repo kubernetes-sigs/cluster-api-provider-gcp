@@ -19,14 +19,12 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	gcompute "google.golang.org/api/compute/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute"
@@ -203,14 +201,6 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 		return reconcile.Result{}, nil
 	}
 
-	// TODO(ncdc): move this validation logic into a validating webhook
-	if errs := r.validateUpdate(&machineScope.GCPMachine.Spec, instance); len(errs) > 0 {
-		agg := kerrors.NewAggregate(errs)
-		record.Warnf(machineScope.GCPMachine, "InvalidUpdate", "Invalid update: %s", agg.Error())
-		machineScope.Error(err, "Invalid update")
-		return reconcile.Result{}, nil
-	}
-
 	// Make sure Spec.ProviderID is always set.
 	machineScope.SetProviderID(fmt.Sprintf("gce://%s/%s/%s", clusterScope.Project(), machineScope.Zone(), instance.Name))
 
@@ -351,18 +341,6 @@ func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.Machine
 
 	// Update the backend service.
 	return computeSvc.UpdateBackendServices()
-}
-
-// validateUpdate checks that no immutable fields have been updated and
-// returns a slice of errors representing attempts to change immutable state.
-func (r *GCPMachineReconciler) validateUpdate(spec *infrav1.GCPMachineSpec, i *gcompute.Instance) (errs []error) {
-	// Instance Type
-	if spec.InstanceType != path.Base(i.MachineType) {
-		errs = append(errs, errors.Errorf("instance type cannot be mutated from %q to %q", i.MachineType, spec.InstanceType))
-	}
-
-	// TODO(vincepri): Validate other fields.
-	return errs
 }
 
 // GCPClusterToGCPMachine is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation

@@ -15,9 +15,9 @@ metadata:
   namespace: system
 spec:
   # $(SERVICENAME) and $(NAMESPACE) will be substituted by kustomize
-  commonName: $(SERVICENAME).$(NAMESPACE).svc
   dnsNames:
-    - $(SERVICENAME).$(NAMESPACE).svc.cluster.local
+    - $(SERVICE_NAME).$(SERVICE_NAMESPACE).svc
+    - $(SERVICE_NAME).$(SERVICE_NAMESPACE).svc.cluster.local
   issuerRef:
     kind: Issuer
     name: selfsigned-issuer

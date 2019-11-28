@@ -59,6 +59,7 @@ func main() {
 		gcpClusterConcurrency int
 		gcpMachineConcurrency int
 		syncPeriod            time.Duration
+		webhookPort           int
 	)
 
 	flag.StringVar(
@@ -107,6 +108,11 @@ func main() {
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)",
 	)
 
+	flag.IntVar(&webhookPort,
+		"webhook-port",
+		9443,
+		"Webhook Server port (set to 0 to disable)")
+
 	flag.Parse()
 
 	if watchNamespace != "" {
@@ -129,6 +135,7 @@ func main() {
 		LeaderElectionID:   "controller-leader-election-capg",
 		SyncPeriod:         &syncPeriod,
 		Namespace:          watchNamespace,
+		Port:               webhookPort,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -152,6 +159,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
 		os.Exit(1)
 	}
+
+	if webhookPort != 0 {
+		if err = (&infrav1.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
+			os.Exit(1)
+		}
+	}
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
