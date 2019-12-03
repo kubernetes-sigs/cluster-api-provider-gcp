@@ -45,7 +45,15 @@ import (
 // GCPMachineReconciler reconciles a GCPMachine object
 type GCPMachineReconciler struct {
 	client.Client
-	Log logr.Logger
+	Log        logr.Logger
+	computeSvc compute.ServiceInterface
+}
+
+func (r *GCPMachineReconciler) getComputeService(clusterScope *scope.ClusterScope) compute.ServiceInterface {
+	if r.computeSvc == nil {
+		r.computeSvc = compute.NewService(clusterScope)
+	}
+	return r.computeSvc
 }
 
 func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
@@ -188,7 +196,7 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 		return reconcile.Result{}, nil
 	}
 
-	computeSvc := compute.NewService(clusterScope)
+	computeSvc := r.getComputeService(clusterScope)
 
 	// Get or create the instance.
 	instance, err := r.getOrCreate(machineScope, computeSvc)
@@ -247,7 +255,7 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope, clusterScope *scope.ClusterScope) (_ reconcile.Result, reterr error) {
 	machineScope.Info("Handling deleted GCPMachine")
 
-	computeSvc := compute.NewService(clusterScope)
+	computeSvc := r.getComputeService(clusterScope)
 
 	instance, err := r.findInstance(machineScope, computeSvc)
 	if err != nil {
@@ -284,7 +292,7 @@ func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope,
 }
 
 // findInstance queries the GCP apis and retrieves the instance if it exists, returns nil otherwise.
-func (r *GCPMachineReconciler) findInstance(scope *scope.MachineScope, computeSvc *compute.Service) (*gcompute.Instance, error) {
+func (r *GCPMachineReconciler) findInstance(scope *scope.MachineScope, computeSvc compute.ServiceInterface) (*gcompute.Instance, error) {
 	instance, err := computeSvc.InstanceIfExists(scope)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to query GCPMachine instance")
@@ -292,7 +300,7 @@ func (r *GCPMachineReconciler) findInstance(scope *scope.MachineScope, computeSv
 	return instance, nil
 }
 
-func (r *GCPMachineReconciler) getOrCreate(scope *scope.MachineScope, computeSvc *compute.Service) (*gcompute.Instance, error) {
+func (r *GCPMachineReconciler) getOrCreate(scope *scope.MachineScope, computeSvc compute.ServiceInterface) (*gcompute.Instance, error) {
 	instance, err := r.findInstance(scope, computeSvc)
 	if err != nil {
 		return nil, err
@@ -335,7 +343,7 @@ func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.Machine
 	if !machineScope.IsControlPlane() {
 		return nil
 	}
-	computeSvc := compute.NewService(clusterScope)
+	computeSvc := r.getComputeService(clusterScope)
 	groupName := fmt.Sprintf("%s-%s-%s", clusterScope.Name(), infrav1.APIServerRoleTagValue, machineScope.Zone())
 
 	// Get the instance group, or create if necessary.
