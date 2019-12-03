@@ -25,7 +25,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf // indirect
 	k8s.io/utils v0.0.0-20190809000727-6c36bc71fc4a
-	sigs.k8s.io/cluster-api v0.2.6-0.20191016201130-165f5792ffc7
+	sigs.k8s.io/cluster-api v0.2.6-0.20191126204321-6b9b7d785129
 	sigs.k8s.io/controller-runtime v0.3.0
 	sigs.k8s.io/testing_frameworks v0.1.2 // indirect
 )

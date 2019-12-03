@@ -27,6 +27,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -146,11 +147,9 @@ func (r *GCPClusterReconciler) reconcile(clusterScope *scope.ClusterScope) (reco
 	}
 
 	// Set APIEndpoints so the Cluster API Cluster Controller can pull them
-	gcpCluster.Status.APIEndpoints = []infrav1.APIEndpoint{
-		{
-			Host: *gcpCluster.Status.Network.APIServerAddress,
-			Port: 443,
-		},
+	gcpCluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
+		Host: *gcpCluster.Status.Network.APIServerAddress,
+		Port: 443,
 	}
 
 	// No errors, so mark us ready so the Cluster API Cluster Controller can pull it

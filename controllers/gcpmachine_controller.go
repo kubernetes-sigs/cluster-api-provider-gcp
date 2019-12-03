@@ -385,7 +385,7 @@ func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o handler.MapObject) []ct
 		return result
 	}
 
-	labels := map[string]string{clusterv1.MachineClusterLabelName: cluster.Name}
+	labels := map[string]string{clusterv1.ClusterLabelName: cluster.Name}
 	machineList := &clusterv1.MachineList{}
 	if err := r.List(context.TODO(), machineList, client.InNamespace(c.Namespace), client.MatchingLabels(labels)); err != nil {
 		log.Error(err, "failed to list Machines")
