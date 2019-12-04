@@ -284,16 +284,22 @@ create-cluster: $(CLUSTERCTL) ## Create a development Kubernetes cluster on GCP 
 	kubectl \
 		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
 		create -f examples/_out/cert-manager.yaml
-	# Wait for cert-manager pods to be created
-	sleep 20
-	# Wait for cert-manager pods to be ready.
+	# Wait for webhook servers to be ready to take requests.
 	kubectl \
 		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
-		wait --for=condition=Ready --namespace=cert-manager --timeout=15m pods --all
+		wait --for=condition=Available --timeout=5m apiservice v1beta1.webhook.cert-manager.io
 	# Apply provider-components.
 	kubectl \
 		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
 		create -f examples/_out/provider-components.yaml
+	# Wait for CAPI pod.
+	kubectl \
+		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
+		wait --for=condition=Ready --timeout=5m -n capi-system pod -l control-plane=cluster-api-controller-manager
+	# Wait for CAPG pod.
+	kubectl \
+		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
+		wait --for=condition=Ready --timeout=5m -n capg-system pod -l control-plane=capg-controller-manager
 	# Create Cluster.
 	kubectl \
 		--kubeconfig=$$(kind get kubeconfig-path --name="clusterapi") \
