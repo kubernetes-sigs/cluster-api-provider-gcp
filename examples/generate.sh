@@ -110,6 +110,7 @@ echo "Generated ${MACHINEDEPLOYMENT_GENERATED_FILE}"
 # Generate Cluster API provider components file.
 CAPI_BRANCH=${CAPI_BRANCH:-"master"}
 if [[ ${CAPI_BRANCH} == "stable" ]]; then
+    # TODO: Fix the version once the first v0.3.x is released.
   curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.2.7/cluster-api-components.yaml > "${COMPONENTS_CLUSTER_API_GENERATED_FILE}"
   echo "Downloaded ${COMPONENTS_CLUSTER_API_GENERATED_FILE} from cluster-api stable branch - v0.2.7"
 else
