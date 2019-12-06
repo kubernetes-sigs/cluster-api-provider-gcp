@@ -20,7 +20,7 @@ spec:
       bootstrap:
         configRef:
           name: ${CLUSTER_NAME}-md-0
-          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha2
+          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
           kind: KubeadmConfigTemplate
       infrastructureRef:
         name: ${CLUSTER_NAME}-md-0
@@ -37,7 +37,7 @@ spec:
       zone: ${GCP_REGION}-a
       instanceType: ${NODE_MACHINE_TYPE}
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1alpha2
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
 kind: KubeadmConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0
