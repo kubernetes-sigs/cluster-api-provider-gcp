@@ -166,7 +166,7 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scope.MachineScope, clusterScope *scope.ClusterScope) (reconcile.Result, error) {
 	machineScope.Info("Reconciling GCPMachine")
 	// If the GCPMachine is in an error state, return early.
-	if machineScope.GCPMachine.Status.ErrorReason != nil || machineScope.GCPMachine.Status.ErrorMessage != nil {
+	if machineScope.GCPMachine.Status.FailureReason != nil || machineScope.GCPMachine.Status.FailureMessage != nil {
 		machineScope.Info("Error state detected, skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
@@ -195,10 +195,10 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 		return reconcile.Result{}, err
 	}
 
-	// Set an error message if we couldn't find the instance.
+	// Set a failure message if we couldn't find the instance.
 	if instance == nil {
-		machineScope.SetErrorReason(capierrors.UpdateMachineError)
-		machineScope.SetErrorMessage(errors.New("GCE instance cannot be found"))
+		machineScope.SetFailureReason(capierrors.UpdateMachineError)
+		machineScope.SetFailureMessage(errors.New("GCE instance cannot be found"))
 		return reconcile.Result{}, nil
 	}
 
@@ -232,8 +232,8 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	case infrav1.InstanceStatusProvisioning, infrav1.InstanceStatusStaging:
 		machineScope.Info("Machine instance is pending", "instance-id", *machineScope.GetInstanceID())
 	default:
-		machineScope.SetErrorReason(capierrors.UpdateMachineError)
-		machineScope.SetErrorMessage(errors.Errorf("GCE instance state %q is unexpected", instance.Status))
+		machineScope.SetFailureReason(capierrors.UpdateMachineError)
+		machineScope.SetFailureMessage(errors.Errorf("GCE instance state %q is unexpected", instance.Status))
 	}
 
 	if err := r.reconcileLBAttachment(machineScope, clusterScope, instance); err != nil {

@@ -301,13 +301,13 @@ func (in *GCPMachineStatus) DeepCopyInto(out *GCPMachineStatus) {
 		*out = new(InstanceStatus)
 		**out = **in
 	}
-	if in.ErrorReason != nil {
-		in, out := &in.ErrorReason, &out.ErrorReason
+	if in.FailureReason != nil {
+		in, out := &in.FailureReason, &out.FailureReason
 		*out = new(errors.MachineStatusError)
 		**out = **in
 	}
-	if in.ErrorMessage != nil {
-		in, out := &in.ErrorMessage, &out.ErrorMessage
+	if in.FailureMessage != nil {
+		in, out := &in.FailureMessage, &out.FailureMessage
 		*out = new(string)
 		**out = **in
 	}

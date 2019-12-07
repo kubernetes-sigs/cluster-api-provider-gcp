@@ -164,14 +164,14 @@ func (m *MachineScope) SetReady() {
 	m.GCPMachine.Status.Ready = true
 }
 
-// SetErrorMessage sets the GCPMachine status error message.
-func (m *MachineScope) SetErrorMessage(v error) {
-	m.GCPMachine.Status.ErrorMessage = pointer.StringPtr(v.Error())
+// SetFailureMessage sets the GCPMachine status failure message.
+func (m *MachineScope) SetFailureMessage(v error) {
+	m.GCPMachine.Status.FailureMessage = pointer.StringPtr(v.Error())
 }
 
-// SetErrorReason sets the GCPMachine status error reason.
-func (m *MachineScope) SetErrorReason(v capierrors.MachineStatusError) {
-	m.GCPMachine.Status.ErrorReason = &v
+// SetFailureReason sets the GCPMachine status failure reason.
+func (m *MachineScope) SetFailureReason(v capierrors.MachineStatusError) {
+	m.GCPMachine.Status.FailureReason = &v
 }
 
 // SetAnnotation sets a key value annotation on the GCPMachine.
