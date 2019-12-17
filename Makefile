@@ -273,7 +273,7 @@ release-notes: $(RELEASE_NOTES)
 ## --------------------------------------
 
 .PHONY: create-cluster
-create-cluster: $(CLUSTERCTL) ## Create a development Kubernetes cluster on GCP in a KIND management cluster.
+create-cluster: ## Create a development Kubernetes cluster on GCP in a KIND management cluster.
 	@if [[ ! -f examples/_out/cert-manager.yaml ]]; then echo "Examples are missing. Run 'make generate-examples' first."; exit 1; fi
 	kind create cluster --name=clusterapi
 	@if [ ! -z "${LOAD_IMAGE}" ]; then \
@@ -283,16 +283,16 @@ create-cluster: $(CLUSTERCTL) ## Create a development Kubernetes cluster on GCP 
 	# Install cert manager.
 	kubectl \
 		create -f examples/_out/cert-manager.yaml
-	# Wait for webhook servers to be ready to take requests.
+	# Wait for webhook servers to be ready to take requests
 	kubectl \
 		wait --for=condition=Available --timeout=5m apiservice v1beta1.webhook.cert-manager.io
 	# Apply provider-components.
 	kubectl \
 		create -f examples/_out/provider-components.yaml
-	# Wait for CAPI pod.
+	# Wait for CAPI pod
 	kubectl \
 		wait --for=condition=Ready --timeout=5m -n capi-system pod -l control-plane=cluster-api-controller-manager
-	# Wait for CAPG pod.
+    # Wait for CAPG pod
 	kubectl \
 		wait --for=condition=Ready --timeout=5m -n capg-system pod -l control-plane=capg-controller-manager
 	# Create Cluster.
@@ -302,17 +302,13 @@ create-cluster: $(CLUSTERCTL) ## Create a development Kubernetes cluster on GCP 
 	# Create control plane machine.
 	kubectl \
 		create -f examples/_out/controlplane.yaml
-	# Get KubeConfig using clusterctl.
-	$(CLUSTERCTL) \
-		alpha phases get-kubeconfig -v=3 \
-		--kubeconfig=$${HOME}/.kube/config \
-		--namespace=default \
-		--cluster-name=$(CLUSTER_NAME)
+	# Wait for the kubeconfig to become available.
+	timeout 300 bash -c "while ! kubectl get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
+	# Get kubeconfig and store it locally.
+	kubectl get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > ./kubeconfig
 	# Apply addons on the target cluster, waiting for the control-plane to become available.
-	$(CLUSTERCTL) \
-		alpha phases apply-addons -v=3 \
-		--kubeconfig=./kubeconfig \
-		-a examples/addons.yaml
+	timeout 300 bash -c "while ! kubectl --kubeconfig=./kubeconfig get nodes | grep master; do sleep 1; done"
+	kubectl --kubeconfig=./kubeconfig apply -f examples/addons.yaml
 	# Create a worker node with MachineDeployment.
 	kubectl \
 		create -f examples/_out/machinedeployment.yaml
