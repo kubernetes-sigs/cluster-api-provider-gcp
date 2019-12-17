@@ -40,6 +40,7 @@ TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
 BIN_DIR := bin
 
 # Binaries.
+KUSTOMIZE := $(TOOLS_BIN_DIR)/kustomize
 CLUSTERCTL := $(BIN_DIR)/clusterctl
 CONTROLLER_GEN := $(TOOLS_BIN_DIR)/controller-gen
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/golangci-lint
@@ -81,16 +82,8 @@ help:  ## Display this help
 ## --------------------------------------
 
 .PHONY: test
-test: generate lint ## Run tests
+test: ## Run tests
 	go test -v ./...
-
-.PHONY: test-integration
-test-integration: ## Run integration tests
-	go test -v -tags=integration ./test/integration/...
-
-.PHONY: test-e2e
-test-e2e: ## Run e2e tests
-	go test -v -tags=e2e ./test/e2e/...
 
 ## --------------------------------------
 ## Binaries
@@ -106,6 +99,9 @@ manager: ## Build manager binary.
 ## --------------------------------------
 ## Tooling Binaries
 ## --------------------------------------
+
+$(KUSTOMIZE): $(TOOLS_DIR)/go.mod # Build kustomize from tools folder.
+	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/kustomize sigs.k8s.io/kustomize/kustomize/v3
 
 $(CLUSTERCTL): go.mod ## Build clusterctl binary.
 	go build -o $(BIN_DIR)/clusterctl sigs.k8s.io/cluster-api/cmd/clusterctl
@@ -249,7 +245,7 @@ release: clean-release  ## Builds and push container images using the latest git
 
 .PHONY: release-manifests
 release-manifests: $(RELEASE_DIR) ## Builds the manifests to publish with a release
-	kustomize build config/default > $(RELEASE_DIR)/infrastructure-components.yaml
+	$(KUSTOMIZE) build config/default > $(RELEASE_DIR)/infrastructure-components.yaml
 
 .PHONY: release-staging
 release-staging: ## Builds and push container images to the staging bucket.
@@ -304,8 +300,8 @@ create-cluster: ## Create a development Kubernetes cluster on GCP in a KIND mana
 	# Get kubeconfig and store it locally.
 	kubectl get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > ./kubeconfig
 	# Apply addons on the target cluster, waiting for the control-plane to become available.
-	timeout 300 bash -c "while ! kubectl --kubeconfig=./kubeconfig get nodes | grep master; do sleep 1; done"
-	kubectl --kubeconfig=./kubeconfig apply -f examples/addons.yaml
+	timeout 600 bash -c "while ! kubectl --kubeconfig=./kubeconfig get nodes | grep controlplane-0; do sleep 1; done"
+	timeout 600 bash -c "while ! kubectl --kubeconfig=./kubeconfig apply -f examples/addons.yaml; do sleep 1; done"
 	# Create a worker node with MachineDeployment.
 	kubectl \
 		create -f examples/_out/machinedeployment.yaml

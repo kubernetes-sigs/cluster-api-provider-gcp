@@ -37,13 +37,13 @@ dump-logs() {
   echo "=== versions ==="
   echo "kind : $(kind version)" || true
   echo "bootstrap cluster:"
-  kubectl --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") version || true
+  kubectl --context=kind-clusterapi version || true
   echo "deployed cluster:"
   kubectl --kubeconfig=${PWD}/kubeconfig version || true
   echo ""
 
   # dump all the info from the CAPI related CRDs
-  kubectl --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") get \
+  kubectl --context=kind-clusterapi get \
   clusters,gcpclusters,machines,gcpmachines,kubeadmconfigs,machinedeployments,gcpmachinetemplates,kubeadmconfigtemplates,machinesets \
   --all-namespaces -o yaml >> "${ARTIFACTS}/logs/capg.info" || true
 
@@ -53,14 +53,14 @@ dump-logs() {
   echo "images from bootstrap using containerd CLI" >> "${ARTIFACTS}/logs/images.info"
   docker exec clusterapi-control-plane ctr -n k8s.io images list >> "${ARTIFACTS}/logs/images.info" || true
   echo "images in bootstrap cluster using kubectl CLI" >> "${ARTIFACTS}/logs/images.info"
-  (kubectl --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") get pods --all-namespaces -o json \
+  (kubectl --context=kind-clusterapi get pods --all-namespaces -o json \
    | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
   echo "images in deployed cluster using kubectl CLI" >> "${ARTIFACTS}/logs/images.info"
   (kubectl --kubeconfig=${PWD}/kubeconfig get pods --all-namespaces -o json \
    | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
 
   # dump cluster info for kind
-  kubectl --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") cluster-info dump > "${ARTIFACTS}/logs/kind-cluster.info" || true
+  kubectl --context=kind-clusterapi cluster-info dump > "${ARTIFACTS}/logs/kind-cluster.info" || true
 
   # dump cluster info for kind
   echo "=== gcloud compute instances list ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
@@ -106,10 +106,10 @@ cleanup() {
   # KIND_IS_UP is true once we: kind create
   if [[ "${KIND_IS_UP:-}" = true ]]; then
     timeout 60 kubectl \
-      --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
+      --context=kind-clusterapi \
       delete cluster test1 || true
      timeout 60 kubectl \
-      --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
+      --context=kind-clusterapi \
       wait --for=delete cluster/test1 || true
     make kind-reset || true
   fi
@@ -301,13 +301,13 @@ create_cluster() {
   # Wait till all machines are running (bail out at 30 mins)
   attempt=0
   while true; do
-    kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi")
-    read running total <<< $(kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
+    kubectl get machines --context=kind-clusterapi
+    read running total <<< $(kubectl get machines --context=kind-clusterapi \
       -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /(r|R)unning/{count++} END{print count " " NR}') ;
     if [[ $total == "5" && $running == "5" ]]; then
       return 0
     fi
-    read failed total <<< $(kubectl get machines --kubeconfig=$(kind get kubeconfig-path --name="clusterapi") \
+    read failed total <<< $(kubectl get machines --context=kind-clusterapi \
       -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /(f|F)ailed/{count++} END{print count " " NR}') ;
     if [[ ! $failed -eq 0 ]]; then
       echo "$failed machines (out of $total) in cluster failed ... bailing out"
