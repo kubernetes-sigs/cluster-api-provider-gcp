@@ -17,7 +17,6 @@ limitations under the License.
 package compute
 
 import (
-	"encoding/base64"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -50,9 +49,9 @@ func (s *Service) InstanceIfExists(scope *scope.MachineScope) (*compute.Instance
 func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, error) {
 	s.scope.V(2).Info("Creating an instance")
 
-	decoded, err := base64.StdEncoding.DecodeString(*scope.Machine.Spec.Bootstrap.Data)
+	bootstrapData, err := scope.GetBootstrapData()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode bootstrap data")
+		return nil, errors.Wrap(err, "failed to retrieve bootstrap data")
 	}
 
 	sourceImage, err := s.rootDiskImage(scope)
@@ -89,7 +88,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 			Items: []*compute.MetadataItems{
 				{
 					Key:   "user-data",
-					Value: pointer.StringPtr(string(decoded)),
+					Value: pointer.StringPtr(bootstrapData),
 				},
 			},
 		},

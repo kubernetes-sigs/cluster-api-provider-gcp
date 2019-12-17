@@ -69,6 +69,7 @@ func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=secrets;,verbs=get;list;watch
 
 func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr error) {
 	ctx := context.TODO()
@@ -182,8 +183,8 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	}
 
 	// Make sure bootstrap data is available and populated.
-	if machineScope.Machine.Spec.Bootstrap.Data == nil {
-		machineScope.Info("Bootstrap data is not yet available")
+	if machineScope.Machine.Spec.Bootstrap.DataSecretName == nil {
+		machineScope.Info("Bootstrap data secret reference is not yet available")
 		return reconcile.Result{}, nil
 	}
 

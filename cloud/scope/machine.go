@@ -21,7 +21,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/klogr"
 	"k8s.io/utils/pointer"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
@@ -183,8 +184,27 @@ func (m *MachineScope) SetAnnotation(key, value string) {
 }
 
 // SetAddresses sets the addresses field on the GCPMachine.
-func (m *MachineScope) SetAddresses(addressList []v1.NodeAddress) {
+func (m *MachineScope) SetAddresses(addressList []corev1.NodeAddress) {
 	m.GCPMachine.Status.Addresses = addressList
+}
+
+// GetBootstrapData returns the bootstrap data from the secret in the Machine's bootstrap.dataSecretName.
+func (m *MachineScope) GetBootstrapData() (string, error) {
+	if m.Machine.Spec.Bootstrap.DataSecretName == nil {
+		return "", errors.New("error retrieving bootstrap data: linked Machine's bootstrap.dataSecretName is nil")
+	}
+
+	secret := &corev1.Secret{}
+	key := types.NamespacedName{Namespace: m.Namespace(), Name: *m.Machine.Spec.Bootstrap.DataSecretName}
+	if err := m.client.Get(context.TODO(), key, secret); err != nil {
+		return "", errors.Wrapf(err, "failed to retrieve bootstrap data secret for GCPMachine %s/%s", m.Namespace(), m.Name())
+	}
+
+	value, ok := secret.Data["value"]
+	if !ok {
+		return "", errors.New("error retrieving bootstrap data: secret value key is missing")
+	}
+	return string(value), nil
 }
 
 // Close the MachineScope by updating the machine spec, machine status.
