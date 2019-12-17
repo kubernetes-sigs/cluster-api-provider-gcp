@@ -11,11 +11,13 @@ require (
 	github.com/pkg/errors v0.8.1
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	google.golang.org/api v0.10.0
-	k8s.io/api v0.0.0-20191121015604-11707872ac1c
-	k8s.io/apimachinery v0.0.0-20191121015412-41065c7a8c2a
-	k8s.io/client-go v0.0.0-20190918160344-1fbdaa4c8d90
+	k8s.io/api v0.17.0
+	k8s.io/apimachinery v0.17.0
+	k8s.io/client-go v0.17.0
 	k8s.io/klog v1.0.0
-	k8s.io/utils v0.0.0-20191030222137-2b95a09bc58d
+	k8s.io/utils v0.0.0-20191114184206-e782cd3c129f
 	sigs.k8s.io/cluster-api v0.2.6-0.20191216210937-8a6c3ea3eb42
+	sigs.k8s.io/cluster-api/hack/tools v0.0.0-20191217190800-a45cc5550225 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
+	sigs.k8s.io/kustomize/kustomize/v3 v3.5.2 // indirect
 )
