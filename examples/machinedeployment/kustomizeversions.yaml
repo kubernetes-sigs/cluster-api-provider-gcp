@@ -26,7 +26,7 @@ spec:
           fi
           gsutil version
 
-          # This test installs debian packages that are a result of the CI and release builds.
+          # This test installs binaries that are a result of the CI and release builds.
           # It runs '... --version' commands to verify that the binaries are correctly installed
           # and finally uninstalls the packages.
           # For the release packages it tests all versions in the support skew.
@@ -40,17 +40,19 @@ spec:
             mkdir -p $CI_DIR
             CI_URL="gs://kubernetes-release-dev/ci/$CI_VERSION-bazel/bin/linux/amd64"
             declare -a PACKAGES_TO_TEST=("kubectl" "kubelet" "kubeadm")
-            PACKAGE_EXT="deb"
             declare -a CONTAINERS_TO_TEST=("kube-apiserver" "kube-controller-manager" "kube-proxy" "kube-scheduler")
             CONTAINER_EXT="tar"
 
             echo "* testing CI version $CI_VERSION"
 
             for CI_PACKAGE in "${PACKAGES_TO_TEST[@]}"; do
-            echo "* downloading package: $CI_URL/$CI_PACKAGE.$PACKAGE_EXT"
-            gsutil cp "$CI_URL/$CI_PACKAGE.$PACKAGE_EXT" "$CI_DIR/$CI_PACKAGE.$PACKAGE_EXT"
-            ${SUDO} dpkg -i "$CI_DIR/$CI_PACKAGE.$PACKAGE_EXT" || echo "* ignoring expected 'dpkg -i' result"
+            echo "* downloading binary: $CI_URL/$CI_PACKAGE"
+            gsutil cp "$CI_URL/$CI_PACKAGE" "$CI_DIR/$CI_PACKAGE"
+            chmod +x "$CI_DIR/$CI_PACKAGE"
+            mv "$CI_DIR/$CI_PACKAGE" "/usr/bin/$CI_PACKAGE"
             done
+
+            systemctl restart kubelet
 
             for CI_CONTAINER in "${CONTAINERS_TO_TEST[@]}"; do
             echo "* downloading package: $CI_URL/$CI_CONTAINER.$CONTAINER_EXT"
