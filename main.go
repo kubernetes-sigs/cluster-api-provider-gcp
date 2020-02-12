@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -59,6 +60,7 @@ func main() {
 		gcpClusterConcurrency int
 		gcpMachineConcurrency int
 		syncPeriod            time.Duration
+		healthAddr            string
 	)
 
 	flag.StringVar(
@@ -107,6 +109,12 @@ func main() {
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)",
 	)
 
+	flag.StringVar(&healthAddr,
+		"health-addr",
+		":9440",
+		"The address the health endpoint binds to.",
+	)
+
 	flag.Parse()
 
 	if watchNamespace != "" {
@@ -123,12 +131,13 @@ func main() {
 	ctrl.SetLogger(klogr.New())
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "controller-leader-election-capg",
-		SyncPeriod:         &syncPeriod,
-		Namespace:          watchNamespace,
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "controller-leader-election-capg",
+		SyncPeriod:             &syncPeriod,
+		Namespace:              watchNamespace,
+		HealthProbeBindAddress: healthAddr,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -153,6 +162,16 @@ func main() {
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
+
+	if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to create ready check")
+		os.Exit(1)
+	}
+
+	if err := mgr.AddHealthzCheck("ping", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to create health check")
+		os.Exit(1)
+	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
