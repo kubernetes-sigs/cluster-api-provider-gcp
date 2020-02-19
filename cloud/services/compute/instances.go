@@ -137,7 +137,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 	}
 
 	if scope.GCPMachine.Spec.Subnet != nil {
-		input.NetworkInterfaces[0].Subnetwork = fmt.Sprintf("regions/%s/subnetwork/%s",
+		input.NetworkInterfaces[0].Subnetwork = fmt.Sprintf("regions/%s/subnetworks/%s",
 			scope.Region(), *scope.GCPMachine.Spec.Subnet)
 	}
 
