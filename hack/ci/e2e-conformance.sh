@@ -22,8 +22,11 @@ GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-""}
 GCP_PROJECT=${GCP_PROJECT:-""}
 GCP_REGION=${GCP_REGION:-"us-east4"}
 CLUSTER_NAME=${CLUSTER_NAME:-"test1"}
-NETWORK_NAME=${NETWORK_NAME:-"${CLUSTER_NAME}-mynetwork"}
-KUBERNETES_VERSION=${KUBERNETES_VERSION:-"v1.16.2"}
+GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${CLUSTER_NAME}-mynetwork"}
+KUBERNETES_MAJOR_VERSION="1"
+KUBERNETES_MINOR_VERSION="17"
+KUBERNETES_PATCH_VERSION="4"
+KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
 
 TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -32,19 +35,18 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
 # dump logs from kind and all the nodes
 dump-logs() {
-
   # log version information
   echo "=== versions ==="
   echo "kind : $(kind version)" || true
   echo "bootstrap cluster:"
-  kubectl --context=kind-clusterapi version || true
+  kubectl version || true
   echo "deployed cluster:"
-  kubectl --kubeconfig=${PWD}/kubeconfig version || true
+  kubectl --kubeconfig="${PWD}"/kubeconfig version || true
   echo ""
 
   # dump all the info from the CAPI related CRDs
   kubectl --context=kind-clusterapi get \
-  clusters,gcpclusters,machines,gcpmachines,kubeadmconfigs,machinedeployments,gcpmachinetemplates,kubeadmconfigtemplates,machinesets \
+  clusters,gcpclusters,machines,gcpmachines,kubeadmconfigs,machinedeployments,gcpmachinetemplates,kubeadmconfigtemplates,machinesets,kubeadmcontrolplanes \
   --all-namespaces -o yaml >> "${ARTIFACTS}/logs/capg.info" || true
 
   # dump images info
@@ -53,30 +55,30 @@ dump-logs() {
   echo "images from bootstrap using containerd CLI" >> "${ARTIFACTS}/logs/images.info"
   docker exec clusterapi-control-plane ctr -n k8s.io images list >> "${ARTIFACTS}/logs/images.info" || true
   echo "images in bootstrap cluster using kubectl CLI" >> "${ARTIFACTS}/logs/images.info"
-  (kubectl --context=kind-clusterapi get pods --all-namespaces -o json \
+  (kubectl get pods --all-namespaces -o json \
    | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
   echo "images in deployed cluster using kubectl CLI" >> "${ARTIFACTS}/logs/images.info"
-  (kubectl --kubeconfig=${PWD}/kubeconfig get pods --all-namespaces -o json \
+  (kubectl --kubeconfig="${PWD}"/kubeconfig get pods --all-namespaces -o json \
    | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
 
   # dump cluster info for kind
-  kubectl --context=kind-clusterapi cluster-info dump > "${ARTIFACTS}/logs/kind-cluster.info" || true
+  kubectl cluster-info dump > "${ARTIFACTS}/logs/kind-cluster.info" || true
 
   # dump cluster info for kind
   echo "=== gcloud compute instances list ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
   gcloud compute instances list --project "${GCP_PROJECT}" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
   echo "=== cluster-info dump ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
-  kubectl --kubeconfig=${PWD}/kubeconfig cluster-info dump >> "${ARTIFACTS}/logs/capg-cluster.info" || true
+  kubectl --kubeconfig="${PWD}"/kubeconfig cluster-info dump >> "${ARTIFACTS}/logs/capg-cluster.info" || true
 
   # export all logs from kind
   kind "export" logs --name="clusterapi" "${ARTIFACTS}/logs" || true
 
-  for node_name in $(gcloud compute instances list --project "${GCP_PROJECT}" --format='value(name)')
+  for node_name in $(gcloud compute instances list --filter="zone~'${GCP_REGION}-.*'" --project "${GCP_PROJECT}" --format='value(name)')
   do
     node_zone=$(gcloud compute instances list --project "${GCP_PROJECT}" --filter="name:(${node_name})" --format='value(zone)')
     echo "collecting logs from ${node_name} in zone ${node_zone}"
     dir="${ARTIFACTS}/logs/${node_name}"
-    mkdir -p ${dir}
+    mkdir -p "${dir}"
 
     gcloud compute instances get-serial-port-output --project "${GCP_PROJECT}" \
       --zone "${node_zone}" --port 1 "${node_name}" > "${dir}/serial-1.log" || true
@@ -105,30 +107,28 @@ dump-logs() {
 cleanup() {
   # KIND_IS_UP is true once we: kind create
   if [[ "${KIND_IS_UP:-}" = true ]]; then
-    timeout 60 kubectl \
-      --context=kind-clusterapi \
-      delete cluster test1 || true
-     timeout 60 kubectl \
-      --context=kind-clusterapi \
-      wait --for=delete cluster/test1 || true
+    timeout 600 kubectl \
+      delete cluster "${CLUSTER_NAME}" || true
+    timeout 600 kubectl \
+      wait --for=delete cluster/"${CLUSTER_NAME}" || true
     make kind-reset || true
   fi
   # clean up e2e.test symlink
   (cd "$(go env GOPATH)/src/k8s.io/kubernetes" && rm -f _output/bin/e2e.test) || true
 
   # Force a cleanup of cluster api created resources using gcloud commands
-  gcloud compute forwarding-rules delete --project $GCP_PROJECT --global $CLUSTER_NAME-apiserver --quiet || true
-  gcloud compute target-tcp-proxies delete --project $GCP_PROJECT $CLUSTER_NAME-apiserver --quiet || true
-  gcloud compute backend-services delete --project $GCP_PROJECT --global $CLUSTER_NAME-apiserver --quiet || true
-  gcloud compute health-checks delete --project $GCP_PROJECT $CLUSTER_NAME-apiserver --quiet || true
-  (gcloud compute instances list --project $GCP_PROJECT | grep $CLUSTER_NAME \
-       | awk '{print "gcloud compute instances delete --project '$GCP_PROJECT' --quiet " $1 " --zone " $2 "\n"}' \
+  gcloud compute forwarding-rules delete --project "$GCP_PROJECT" --global "$CLUSTER_NAME"-apiserver --quiet || true
+  gcloud compute target-tcp-proxies delete --project "$GCP_PROJECT" "$CLUSTER_NAME"-apiserver --quiet || true
+  gcloud compute backend-services delete --project "$GCP_PROJECT" --global "$CLUSTER_NAME"-apiserver --quiet || true
+  gcloud compute health-checks delete --project "$GCP_PROJECT" "$CLUSTER_NAME"-apiserver --quiet || true
+  (gcloud compute instances list --project "$GCP_PROJECT" | grep "$CLUSTER_NAME" \
+       | awk '{print "gcloud compute instances delete --project '"$GCP_PROJECT"' --quiet " $1 " --zone " $2 "\n"}' \
        | bash) || true
-  (gcloud compute instance-groups list --project $GCP_PROJECT | grep $CLUSTER_NAME \
-       | awk '{print "gcloud compute instance-groups unmanaged delete --project '$GCP_PROJECT' --quiet " $1 " --zone " $2 "\n"}' \
+  (gcloud compute instance-groups list --project "$GCP_PROJECT" | grep "$CLUSTER_NAME" \
+       | awk '{print "gcloud compute instance-groups unmanaged delete --project '"$GCP_PROJECT"' --quiet " $1 " --zone " $2 "\n"}' \
        | bash) || true
-  (gcloud compute firewall-rules list --project $GCP_PROJECT | grep $CLUSTER_NAME \
-       | awk '{print "gcloud compute firewall-rules delete --project '$GCP_PROJECT' --quiet " $1 "\n"}' \
+  (gcloud compute firewall-rules list --project "$GCP_PROJECT" | grep "$CLUSTER_NAME" \
+       | awk '{print "gcloud compute firewall-rules delete --project '"$GCP_PROJECT"' --quiet " $1 "\n"}' \
        | bash) || true
 
   # cleanup the networks
@@ -137,18 +137,18 @@ cleanup() {
   gcloud compute routers delete "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
     --region="${GCP_REGION}" --quiet || true
 
-  if [[ ${NETWORK_NAME} != "default" ]]; then
-    (gcloud compute firewall-rules list --project $GCP_PROJECT | grep $NETWORK_NAME \
-         | awk '{print "gcloud compute firewall-rules delete --project '$GCP_PROJECT' --quiet " $1 "\n"}' \
+  if [[ ${GCP_NETWORK_NAME} != "default" ]]; then
+    (gcloud compute firewall-rules list --project "$GCP_PROJECT" | grep "$GCP_NETWORK_NAME" \
+         | awk '{print "gcloud compute firewall-rules delete --project '"$GCP_PROJECT"' --quiet " $1 "\n"}' \
          | bash) || true
     gcloud compute networks delete --project="${GCP_PROJECT}" \
-      --quiet "${NETWORK_NAME}" || true
+      --quiet "${GCP_NETWORK_NAME}" || true
   fi
 
   if [[ "${REUSE_OLD_IMAGES:-false}" == "false" ]]; then
-    (gcloud compute images list --project $GCP_PROJECT \
-      --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v1-16" --format="table[no-heading](name)" \
-         | awk '{print "gcloud compute images delete --project '$GCP_PROJECT' --quiet " $1 "\n"}' \
+    (gcloud compute images list --project "$GCP_PROJECT" \
+      --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}" --format="table[no-heading](name)" \
+         | awk '{print "gcloud compute images delete --project '"$GCP_PROJECT"' --quiet " $1 "\n"}' \
          | bash) || true
   fi
 
@@ -189,9 +189,9 @@ function ssh-to-node() {
 
 init_image() {
   if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then
-    image=$(gcloud compute images list --project $GCP_PROJECT \
+    image=$(gcloud compute images list --project "$GCP_PROJECT" \
       --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v1-16" --format="table[no-heading](name)")
-    if [[ ! -z "$image" ]]; then
+    if [[ -n "$image" ]]; then
       return
     fi
   fi
@@ -217,24 +217,31 @@ init_image() {
     version="1.4.3"
     url="https://releases.hashicorp.com/packer/${version}/packer_${version}_${hostos}_${hostarch}.zip"
     echo "Downloading packer from $url"
-    wget --quiet -O packer.zip $url  && \
+    wget --quiet -O packer.zip "$url"  && \
       unzip packer.zip && \
       rm packer.zip && \
-      ln -s $PWD/packer /usr/local/bin/packer
+      ln -s "$PWD"/packer /usr/local/bin/packer
   fi
-  (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
-    sed -i 's/1\.15\.4/1.16.2/' packer/config/kubernetes.json && \
-    sed -i 's/1\.15/1.16/' packer/config/kubernetes.json)
+    cat << EOF > "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi/override.json"
+{
+  "kubernetes_series": "v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}",
+  "kubernetes_semver": "${KUBERNETES_VERSION}",
+  "kubernetes_rpm_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-0",
+  "kubernetes_deb_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-00"
+}
+EOF
   if [[ $EUID -ne 0 ]]; then
     (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
-      GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
+      GCP_PROJECT_ID=$GCP_PROJECT \
+      GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
+      PACKER_VAR_FILES=override.json \
       make build-gce-default)
   else
     # assume we are running in the CI environment as root
     # Add a user for ansible to work properly
     groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
     # use the packer user to run the build
-    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS make build-gce-default'"
+    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make build-gce-default'"
   fi
 }
 
@@ -269,26 +276,17 @@ generate_manifests() {
     (cd ./hack/tools/ && GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v3)
   fi
 
-  PULL_POLICY=Never GCP_PROJECT=$GCP_PROJECT \
-    make modules docker-build
+  (GCP_PROJECT=${GCP_PROJECT} \
+  PULL_POLICY=Never \
+    make modules docker-build)
 
-  GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
-    GCP_REGION=$GCP_REGION \
-    GCP_PROJECT=$GCP_PROJECT \
-    CLUSTER_NAME=$CLUSTER_NAME \
-    NETWORK_NAME=$NETWORK_NAME \
-    KUBERNETES_VERSION=$KUBERNETES_VERSION \
-    make generate-examples
-}
-
-# fix manifests to use k/k from CI
-fix_manifests() {
-  # TODO: revert to https://dl.k8s.io/ci/latest-green.txt once https://github.com/kubernetes/release/issues/897 is fixed.
-  CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/k8s-master.txt)}
-  echo "Overriding Kubernetes version to : ${CI_VERSION}"
-  sed -i 's|kubernetesVersion: .*|kubernetesVersion: "ci/'${CI_VERSION}'"|' examples/_out/controlplane.yaml
-  sed -i 's|CI_VERSION=.*|CI_VERSION='$CI_VERSION'|' examples/_out/controlplane.yaml
-  sed -i 's|CI_VERSION=.*|CI_VERSION='$CI_VERSION'|' examples/_out/machinedeployment.yaml
+  # Enable the bits to inject a script that can pull newer versions of kubernetes
+  if [[ -n ${CI_VERSION:-} || -n ${USE_CI_ARTIFACTS:-} ]]; then
+    if ! grep -i -wq "patchesStrategicMerge" "templates/kustomization.yaml"; then
+      echo "patchesStrategicMerge:" >> "templates/kustomization.yaml"
+      echo "- kustomizeversions.yaml" >> "templates/kustomization.yaml"
+    fi
+  fi
 }
 
 # up a cluster with kind
@@ -296,8 +294,30 @@ create_cluster() {
   # actually create the cluster
   KIND_IS_UP=true
 
+  tracestate="$(shopt -po xtrace)"
+  set +o xtrace
+
+  if [[ -n ${USE_CI_ARTIFACTS:-} ]]; then
+    # TODO: revert to https://dl.k8s.io/ci/latest-green.txt once https://github.com/kubernetes/release/issues/897 is fixed.
+    CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/k8s-master.txt)}
+  fi
+
   # Load the newly built image into kind and start the cluster
-  LOAD_IMAGE="gcr.io/${GCP_PROJECT}/cluster-api-gcp-controller-amd64:dev" make create-cluster
+  (GCP_REGION=${GCP_REGION} \
+  GCP_PROJECT=${GCP_PROJECT} \
+  CONTROL_PLANE_MACHINE_COUNT=1 \
+  WORKER_MACHINE_COUNT=2 \
+  KUBERNETES_VERSION=${KUBERNETES_VERSION} \
+  GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2 \
+  GCP_NODE_MACHINE_TYPE=n1-standard-2 \
+  GCP_NETWORK_NAME=${GCP_NETWORK_NAME} \
+  GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS") \
+  CLUSTER_NAME="${CLUSTER_NAME}" \
+  CI_VERSION="${CI_VERSION:-}" \
+  LOAD_IMAGE="gcr.io/${GCP_PROJECT}/cluster-api-gcp-controller-amd64:dev" \
+    make create-cluster)
+
+  eval "$tracestate"
 
   # Wait till all machines are running (bail out at 30 mins)
   attempt=0
@@ -305,7 +325,7 @@ create_cluster() {
     kubectl get machines --context=kind-clusterapi
     read running total <<< $(kubectl get machines --context=kind-clusterapi \
       -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /(r|R)unning/{count++} END{print count " " NR}') ;
-    if [[ $total == "5" && $running == "5" ]]; then
+    if [[ $total == "3" && $running == "3" ]]; then
       return 0
     fi
     read failed total <<< $(kubectl get machines --context=kind-clusterapi \
@@ -346,12 +366,12 @@ run_tests() {
 
   # get the number of worker nodes
   # TODO(bentheelder): this is kinda gross
-  NUM_NODES="$(kubectl get nodes --kubeconfig=$KUBECONFIG \
+  NUM_NODES="$(kubectl get nodes --kubeconfig="$KUBECONFIG" \
     -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.taints}{"\n"}{end}' \
     | grep -cv "node-role.kubernetes.io/master" )"
 
   # wait for all the nodes to be ready
-  kubectl wait --for=condition=Ready node --kubeconfig=$KUBECONFIG --all || true
+  kubectl wait --for=condition=Ready node --kubeconfig="$KUBECONFIG" --all || true
 
   # setting this env prevents ginkg e2e from trying to run provider setup
   export KUBERNETES_CONFORMANCE_TEST="y"
@@ -367,28 +387,28 @@ run_tests() {
 
 # initialize a router and cloud NAT
 init_networks() {
-  if [[ ${NETWORK_NAME} != "default" ]]; then
-    gcloud compute networks create --project $GCP_PROJECT ${NETWORK_NAME} --subnet-mode auto --quiet
-    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-http --project $GCP_PROJECT \
-      --allow tcp:80 --network ${NETWORK_NAME} --quiet
-    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-https --project $GCP_PROJECT \
-      --allow tcp:443 --network ${NETWORK_NAME} --quiet
-    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-icmp --project $GCP_PROJECT \
-      --allow icmp --network ${NETWORK_NAME} --priority 65534 --quiet
-    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-internal --project $GCP_PROJECT \
-      --allow "tcp:0-65535,udp:0-65535,icmp" --network ${NETWORK_NAME} --priority 65534 --quiet
-    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-rdp --project $GCP_PROJECT \
-      --allow "tcp:3389" --network ${NETWORK_NAME} --priority 65534 --quiet
-    gcloud compute firewall-rules create ${NETWORK_NAME}-allow-ssh --project $GCP_PROJECT \
-      --allow "tcp:22" --network ${NETWORK_NAME} --priority 65534 --quiet
+  if [[ ${GCP_NETWORK_NAME} != "default" ]]; then
+    gcloud compute networks create --project "$GCP_PROJECT" "${GCP_NETWORK_NAME}" --subnet-mode auto --quiet
+    gcloud compute firewall-rules create "${GCP_NETWORK_NAME}"-allow-http --project "$GCP_PROJECT" \
+      --allow tcp:80 --network "${GCP_NETWORK_NAME}" --quiet
+    gcloud compute firewall-rules create "${GCP_NETWORK_NAME}"-allow-https --project "$GCP_PROJECT" \
+      --allow tcp:443 --network "${GCP_NETWORK_NAME}" --quiet
+    gcloud compute firewall-rules create "${GCP_NETWORK_NAME}"-allow-icmp --project "$GCP_PROJECT" \
+      --allow icmp --network "${GCP_NETWORK_NAME}" --priority 65534 --quiet
+    gcloud compute firewall-rules create "${GCP_NETWORK_NAME}"-allow-internal --project "$GCP_PROJECT" \
+      --allow "tcp:0-65535,udp:0-65535,icmp" --network "${GCP_NETWORK_NAME}" --priority 65534 --quiet
+    gcloud compute firewall-rules create "${GCP_NETWORK_NAME}"-allow-rdp --project "$GCP_PROJECT" \
+      --allow "tcp:3389" --network "${GCP_NETWORK_NAME}" --priority 65534 --quiet
+    gcloud compute firewall-rules create "${GCP_NETWORK_NAME}"-allow-ssh --project "$GCP_PROJECT" \
+      --allow "tcp:22" --network "${GCP_NETWORK_NAME}" --priority 65534 --quiet
   fi
 
-  gcloud compute firewall-rules list --project $GCP_PROJECT
+  gcloud compute firewall-rules list --project "$GCP_PROJECT"
   gcloud compute networks list --project="${GCP_PROJECT}"
-  gcloud compute networks describe ${NETWORK_NAME} --project="${GCP_PROJECT}"
+  gcloud compute networks describe "${GCP_NETWORK_NAME}" --project="${GCP_PROJECT}"
 
   gcloud compute routers create "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
-    --region="${GCP_REGION}" --network=${NETWORK_NAME}
+    --region="${GCP_REGION}" --network="${GCP_NETWORK_NAME}"
   gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" \
     --router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter" \
     --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
@@ -423,7 +443,7 @@ EOF
     gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}"
   fi
   if [[ -z "$GCP_PROJECT" ]]; then
-    GCP_PROJECT=$(cat ${GOOGLE_APPLICATION_CREDENTIALS} | jq -r .project_id)
+    GCP_PROJECT=$(cat "${GOOGLE_APPLICATION_CREDENTIALS}" | jq -r .project_id)
     cat <<EOF
 GCP_PROJECT is not set. Using project_id $GCP_PROJECT
 EOF
@@ -453,12 +473,7 @@ EOF
   init_networks
   build
   generate_manifests
-  if [[ ${USE_CI_ARTIFACTS:-""} == "yes" || ${USE_CI_ARTIFACTS:-""} == "1" ]]; then
-    echo "Fixing manifests to use latest CI artifacts..."
-    fix_manifests
-  fi
-  SKIP_INIT_IMAGE=${SKIP_INIT_IMAGE:-""}
-  if [[ "${SKIP_INIT_IMAGE}" == "yes" || "${SKIP_INIT_IMAGE}" == "1" ]]; then
+  if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
     echo "Skipping image initialization..."
   else
     init_image
@@ -466,8 +481,7 @@ EOF
 
   create_cluster
 
-  SKIP_RUN_TESTS=${SKIP_RUN_TESTS:-""}
-  if [[ -z "${SKIP_RUN_TESTS}" ]]; then
+  if [[ -z "${SKIP_RUN_TESTS:-}" ]]; then
     run_tests
   fi
 }

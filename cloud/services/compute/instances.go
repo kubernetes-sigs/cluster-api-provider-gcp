@@ -23,16 +23,18 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/cluster-api/util/record"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
-	"sigs.k8s.io/cluster-api/util/record"
 )
 
 // InstanceIfExists returns the existing instance or nothing if it doesn't exist.
 func (s *Service) InstanceIfExists(scope *scope.MachineScope) (*compute.Instance, error) {
-	s.scope.V(2).Info("Looking for instance by name", "instance-name", scope.Name())
+	log := s.scope.Logger.WithValues("instance-name", scope.Name())
+	log.V(2).Info("Looking for instance by name")
 
 	res, err := s.instances.Get(s.scope.Project(), scope.Zone(), scope.Name()).Do()
 	switch {
@@ -47,7 +49,8 @@ func (s *Service) InstanceIfExists(scope *scope.MachineScope) (*compute.Instance
 
 // CreateInstance runs a GCE instance.
 func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, error) {
-	s.scope.V(2).Info("Creating an instance")
+	log := s.scope.Logger.WithValues("machine-role", scope.Role())
+	log.V(2).Info("Creating an instance")
 
 	bootstrapData, err := scope.GetBootstrapData()
 	if err != nil {
@@ -145,7 +148,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 		return nil, errors.New("failed to run controlplane, APIServer address not available")
 	}
 
-	s.scope.V(2).Info("Running instance", "machine-role", scope.Role())
+	log.Info("Running instance")
 	out, err := s.runInstance(input)
 	if err != nil {
 		record.Warnf(scope.Machine, "FailedCreate", "Failed to create instance: %v", err)

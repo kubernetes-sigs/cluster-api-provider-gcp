@@ -1,0 +1,114 @@
+---
+apiVersion: cluster.x-k8s.io/v1alpha3
+kind: Cluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    kind: GCPCluster
+    name: "${CLUSTER_NAME}"
+  controlPlaneRef:
+    kind: KubeadmControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+    name: "${CLUSTER_NAME}-control-plane"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+kind: GCPCluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  project: "${GCP_PROJECT}"
+  region: "${GCP_REGION}"
+  network:
+    name: "${GCP_NETWORK_NAME}"
+---
+kind: KubeadmControlPlane
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  infrastructureTemplate:
+    kind: GCPMachineTemplate
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    name: "${CLUSTER_NAME}-control-plane"
+  kubeadmConfigSpec:
+    initConfiguration:
+      nodeRegistration:
+        name: '{{ ds.meta_data.local_hostname }}'
+        kubeletExtraArgs:
+          cloud-provider: gce
+    clusterConfiguration:
+      apiServer:
+        timeoutForControlPlane: 20m
+        extraArgs:
+          cloud-provider: gce
+      controllerManager:
+        extraArgs:
+          cloud-provider: gce
+          allocate-node-cidrs: "false"
+    joinConfiguration:
+      nodeRegistration:
+        name: '{{ ds.meta_data.local_hostname }}'
+        kubeletExtraArgs:
+          cloud-provider: gce
+  version: "${KUBERNETES_VERSION}"
+---
+kind: GCPMachineTemplate
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
+---
+apiVersion: cluster.x-k8s.io/v1alpha3
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  clusterName: "${CLUSTER_NAME}"
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+  template:
+    spec:
+      clusterName: "${CLUSTER_NAME}"
+      failureDomain: "${GCP_REGION}-a"
+      version: "${KUBERNETES_VERSION}"
+      bootstrap:
+        configRef:
+          name: "${CLUSTER_NAME}-md-0"
+          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+          kind: KubeadmConfigTemplate
+      infrastructureRef:
+        name: "${CLUSTER_NAME}-md-0"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+        kind: GCPMachineTemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+kind: GCPMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_NODE_MACHINE_TYPE}"
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+kind: KubeadmConfigTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      joinConfiguration:
+        nodeRegistration:
+          name: '{{ ds.meta_data.local_hostname }}'
+          kubeletExtraArgs:
+            cloud-provider: gce

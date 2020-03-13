@@ -19,11 +19,13 @@ package controllers
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 )
 
 var _ = Describe("GCPMachineReconciler", func() {
@@ -44,8 +46,9 @@ var _ = Describe("GCPMachineReconciler", func() {
 					Name:      instance.Name,
 				},
 			})
-			Expect(err).To(BeNil())
+			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(BeZero())
+			Expect(result.Requeue).To(BeFalse())
 		})
 	})
 })

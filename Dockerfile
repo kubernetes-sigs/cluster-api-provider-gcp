@@ -32,8 +32,9 @@ COPY ./ ./
 
 # Build
 ARG ARCH
+ARG LDFLAGS
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} \
-    go build -a -ldflags '-extldflags "-static"' \
+    go build -a -ldflags "${LDFLAGS} -extldflags '-static'" \
     -o manager .
 
 # Copy the controller-manager into a thin image

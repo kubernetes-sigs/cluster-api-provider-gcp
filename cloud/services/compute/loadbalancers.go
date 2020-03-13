@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/utils/pointer"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
@@ -40,7 +41,6 @@ const (
 
 // ReconcileLoadbalancers reconciles the api server load balancer.
 func (s *Service) ReconcileLoadbalancers() error {
-
 	// Reconcile Health Check.
 	healthCheckSpec := s.getAPIServerHealthCheckSpec()
 	healthCheck, err := s.healthchecks.Get(s.scope.Project(), healthCheckSpec.Name).Do()

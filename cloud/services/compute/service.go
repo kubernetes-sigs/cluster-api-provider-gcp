@@ -18,6 +18,7 @@ package compute
 
 import (
 	"google.golang.org/api/compute/v1"
+
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 )
 
