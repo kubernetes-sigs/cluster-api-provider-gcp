@@ -22,16 +22,18 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/klog"
-	"k8s.io/klog/klogr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	"k8s.io/klog"
+	"k8s.io/klog/klogr"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -53,7 +55,7 @@ func TestAPIs(t *testing.T) {
 
 	RunSpecsWithDefaultAndCustomReporters(t,
 		"Controller Suite",
-		[]Reporter{envtest.NewlineReporter{}})
+		[]Reporter{printer.NewlineReporter{}})
 }
 
 var _ = BeforeSuite(func(done Done) {

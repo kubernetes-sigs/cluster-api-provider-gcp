@@ -26,32 +26,32 @@ import (
 type Labels map[string]string
 
 // Equals returns true if the tags are equal.
-func (t Labels) Equals(other Labels) bool {
-	return reflect.DeepEqual(t, other)
+func (in Labels) Equals(other Labels) bool {
+	return reflect.DeepEqual(in, other)
 }
 
 // HasOwned returns true if the tags contains a tag that marks the resource as owned by the cluster from the perspective of this management tooling.
-func (t Labels) HasOwned(cluster string) bool {
-	value, ok := t[ClusterTagKey(cluster)]
+func (in Labels) HasOwned(cluster string) bool {
+	value, ok := in[ClusterTagKey(cluster)]
 	return ok && ResourceLifecycle(value) == ResourceLifecycleOwned
 }
 
 // // HasOwned returns true if the tags contains a tag that marks the resource as owned by the cluster from the perspective of the in-tree cloud provider.
-// func (t Labels) HasGCPCloudProviderOwned(cluster string) bool {
+// func (in Labels) HasGCPCloudProviderOwned(cluster string) bool {
 // 	value, ok := t[ClusterGCPCloudProviderTagKey(cluster)]
 // 	return ok && ResourceLifecycle(value) == ResourceLifecycleOwned
 // }
 
 // GetRole returns the Cluster API role for the tagged resource
-func (t Labels) GetRole() string {
-	return t[NameGCPClusterAPIRole]
+func (in Labels) GetRole() string {
+	return in[NameGCPClusterAPIRole]
 }
 
 // ToComputeFilter returns the string representation of the labels as a filter
 // to be used in google compute sdk calls.
-func (t Labels) ToComputeFilter() string {
+func (in Labels) ToComputeFilter() string {
 	var builder strings.Builder
-	for k, v := range t {
+	for k, v := range in {
 		builder.WriteString(fmt.Sprintf("(labels.%s = %q) ", k, v))
 	}
 	return builder.String()
@@ -59,10 +59,10 @@ func (t Labels) ToComputeFilter() string {
 
 // Difference returns the difference between this map of tags and the other map of tags.
 // Items are considered equals if key and value are equals.
-func (t Labels) Difference(other Labels) Labels {
-	res := make(Labels, len(t))
+func (in Labels) Difference(other Labels) Labels {
+	res := make(Labels, len(in))
 
-	for key, value := range t {
+	for key, value := range in {
 		if otherValue, ok := other[key]; ok && value == otherValue {
 			continue
 		}
@@ -73,11 +73,11 @@ func (t Labels) Difference(other Labels) Labels {
 }
 
 // AddLabels adds (and overwrites) the current labels with the ones passed in.
-func (t Labels) AddLabels(other Labels) Labels {
+func (in Labels) AddLabels(other Labels) Labels {
 	for key, value := range other {
-		t[key] = value
+		in[key] = value
 	}
-	return t
+	return in
 }
 
 // ResourceLifecycle configures the lifecycle of a resource
@@ -88,11 +88,6 @@ const (
 	// that the resource is considered owned and managed by the cluster,
 	// and in particular that the lifecycle is tied to the lifecycle of the cluster.
 	ResourceLifecycleOwned = ResourceLifecycle("owned")
-
-	// ResourceLifecycleShared is the value we use when tagging resources to indicate
-	// that the resource is shared between multiple clusters, and should not be destroyed
-	// if the cluster is destroyed.
-	ResourceLifecycleShared = ResourceLifecycle("shared")
 
 	// NameGCPProviderPrefix is the tag prefix we use to differentiate
 	// cluster-api-provider-gcp owned components from other tooling that
@@ -110,15 +105,6 @@ const (
 
 	// APIServerRoleTagValue describes the value for the apiserver role
 	APIServerRoleTagValue = "apiserver"
-
-	// CommonRoleTagValue describes the value for the common role
-	CommonRoleTagValue = "common"
-
-	// PublicRoleTagValue describes the value for the public role
-	PublicRoleTagValue = "public"
-
-	// PrivateRoleTagValue describes the value for the private role
-	PrivateRoleTagValue = "private"
 )
 
 // ClusterTagKey generates the key for resources associated with a cluster.

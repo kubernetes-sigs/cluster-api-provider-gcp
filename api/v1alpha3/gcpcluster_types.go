@@ -51,7 +51,8 @@ type GCPClusterSpec struct {
 
 // GCPClusterStatus defines the observed state of GCPCluster
 type GCPClusterStatus struct {
-	Network Network `json:"network,omitempty"`
+	FailureDomains clusterv1.FailureDomains `json:"failureDomains,omitempty"`
+	Network        Network                  `json:"network,omitempty"`
 
 	// Bastion Instance `json:"bastion,omitempty"`
 	Ready bool `json:"ready"`

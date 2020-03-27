@@ -25,13 +25,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/klogr"
 	"k8s.io/utils/pointer"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 )
 
 // MachineScopeParams defines the input parameters used to create a new MachineScope.
@@ -100,9 +101,12 @@ func (m *MachineScope) Region() string {
 	return m.GCPCluster.Spec.Region
 }
 
-// Zone returns the GCPMachine zone.
+// Zone returns the FailureDomain for the GCPMachine.
 func (m *MachineScope) Zone() string {
-	return m.GCPMachine.Spec.Zone
+	if m.Machine.Spec.FailureDomain == nil {
+		return ""
+	}
+	return *m.Machine.Spec.FailureDomain
 }
 
 // Name returns the GCPMachine name.
@@ -207,7 +211,12 @@ func (m *MachineScope) GetBootstrapData() (string, error) {
 	return string(value), nil
 }
 
-// Close the MachineScope by updating the machine spec, machine status.
-func (m *MachineScope) Close() error {
+// PatchObject persists the cluster configuration and status.
+func (m *MachineScope) PatchObject() error {
 	return m.patchHelper.Patch(context.TODO(), m.GCPMachine)
+}
+
+// Close closes the current scope persisting the cluster configuration and status.
+func (m *MachineScope) Close() error {
+	return m.PatchObject()
 }

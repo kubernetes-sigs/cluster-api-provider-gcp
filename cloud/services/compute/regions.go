@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Service) getZones() ([]string, error) {
+func (s *Service) GetZones() ([]string, error) {
 	region, err := s.scope.Compute.Regions.Get(s.scope.Project(), s.scope.Region()).Do()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to describe region %q", s.scope.Region())

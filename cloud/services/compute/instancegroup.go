@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
@@ -29,7 +30,7 @@ import (
 
 func (s *Service) ReconcileInstanceGroups() error {
 	// Get each available zone.
-	zones, err := s.getZones()
+	zones, err := s.GetZones()
 	if err != nil {
 		return err
 	}

@@ -24,10 +24,11 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/klog/klogr"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 )
 
 // ClusterScopeParams defines the input parameters used to create a new Scope.
@@ -160,7 +161,12 @@ func (s *ClusterScope) ListOptionsLabelSelector() client.ListOption {
 	})
 }
 
+// PatchObject persists the cluster configuration and status.
+func (s *ClusterScope) PatchObject() error {
+	return s.patchHelper.Patch(context.TODO(), s.GCPCluster)
+}
+
 // Close closes the current scope persisting the cluster configuration and status.
 func (s *ClusterScope) Close() error {
-	return s.patchHelper.Patch(context.TODO(), s.GCPCluster)
+	return s.PatchObject()
 }

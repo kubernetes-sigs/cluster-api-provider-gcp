@@ -16,11 +16,6 @@ limitations under the License.
 
 package scope
 
-var (
-	DefaultClusterScopeGetter ClusterScopeGetter = ClusterScopeGetterFunc(NewClusterScope)
-	DefaultMachineScopeGetter MachineScopeGetter = MachineScopeGetterFunc(NewMachineScope)
-)
-
 type ClusterScopeGetter interface {
 	ClusterScope(params ClusterScopeParams) (*ClusterScope, error)
 }

@@ -30,9 +30,6 @@ const (
 
 // GCPMachineSpec defines the desired state of GCPMachine
 type GCPMachineSpec struct {
-	// Zone is references the GCP zone to use for this instance.
-	Zone string `json:"zone"`
-
 	// InstanceType is the type of instance to create. Example: n1.standard-2
 	InstanceType string `json:"instanceType"`
 

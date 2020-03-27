@@ -19,17 +19,12 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	gcompute "google.golang.org/api/compute/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	kerrors "k8s.io/apimachinery/pkg/util/errors"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
@@ -37,9 +32,15 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute"
 )
 
 // GCPMachineReconciler reconciles a GCPMachine object
@@ -49,7 +50,7 @@ type GCPMachineReconciler struct {
 }
 
 func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		For(&infrav1.GCPMachine{}).
 		Watches(
@@ -62,7 +63,33 @@ func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 			&source.Kind{Type: &infrav1.GCPCluster{}},
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(r.GCPClusterToGCPMachines)},
 		).
-		Complete(r)
+		WithEventFilter(pausePredicates).
+		Build(r)
+
+	if err != nil {
+		return err
+	}
+
+	return c.Watch(
+		&source.Kind{Type: &clusterv1.Cluster{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(r.requeueGCPMachinesForUnpausedCluster),
+		},
+		predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				oldCluster := e.ObjectOld.(*clusterv1.Cluster)
+				newCluster := e.ObjectNew.(*clusterv1.Cluster)
+				return oldCluster.Spec.Paused && !newCluster.Spec.Paused
+			},
+			CreateFunc: func(e event.CreateEvent) bool {
+				cluster := e.Object.(*clusterv1.Cluster)
+				return !cluster.Spec.Paused
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+		},
+	)
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines,verbs=get;list;watch;create;update;patch;delete
@@ -73,43 +100,43 @@ func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 
 func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr error) {
 	ctx := context.TODO()
-	logger := r.Log.
-		WithName(controllerName).
-		WithName(fmt.Sprintf("namespace=%s", req.Namespace)).
-		WithName(fmt.Sprintf("gcpMachine=%s", req.Name))
+	logger := r.Log.WithValues("namespace", req.Namespace, "gcpMachine", req.Name)
 
 	// Fetch the GCPMachine instance.
 	gcpMachine := &infrav1.GCPMachine{}
 	err := r.Get(ctx, req.NamespacedName, gcpMachine)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			return ctrl.Result{}, nil
 		}
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
-
-	logger = logger.WithName(gcpMachine.APIVersion)
 
 	// Fetch the Machine.
 	machine, err := util.GetOwnerMachine(ctx, r.Client, gcpMachine.ObjectMeta)
 	if err != nil {
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
 	if machine == nil {
 		logger.Info("Machine Controller has not yet set OwnerRef")
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
-	logger = logger.WithName(fmt.Sprintf("machine=%s", machine.Name))
+	logger = logger.WithValues("machine", machine.Name)
 
 	// Fetch the Cluster.
 	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machine.ObjectMeta)
 	if err != nil {
 		logger.Info("Machine is missing cluster label or cluster does not exist")
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
-	logger = logger.WithName(fmt.Sprintf("cluster=%s", cluster.Name))
+	if isPaused(cluster, gcpMachine) {
+		logger.Info("GCPMachine or linked Cluster is marked as paused. Won't reconcile")
+		return ctrl.Result{}, nil
+	}
+
+	logger = logger.WithValues("cluster", cluster.Name)
 
 	gcpCluster := &infrav1.GCPCluster{}
 
@@ -119,10 +146,10 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 	}
 	if err := r.Client.Get(ctx, gcpClusterName, gcpCluster); err != nil {
 		logger.Info("GCPCluster is not available yet")
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
-	logger = logger.WithName(fmt.Sprintf("gcpCluster=%s", gcpCluster.Name))
+	logger = logger.WithValues("gcpCluster", gcpCluster.Name)
 
 	// Create the cluster scope
 	clusterScope, err := scope.NewClusterScope(scope.ClusterScopeParams{
@@ -132,7 +159,7 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 		GCPCluster: gcpCluster,
 	})
 	if err != nil {
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
 
 	// Create the machine scope
@@ -145,7 +172,7 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 		GCPMachine: gcpMachine,
 	})
 	if err != nil {
-		return reconcile.Result{}, errors.Errorf("failed to create scope: %+v", err)
+		return ctrl.Result{}, errors.Errorf("failed to create scope: %+v", err)
 	}
 
 	// Always close the scope when exiting this function so we can persist any GCPMachine changes.
@@ -164,28 +191,29 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 	return r.reconcile(ctx, machineScope, clusterScope)
 }
 
-func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scope.MachineScope, clusterScope *scope.ClusterScope) (reconcile.Result, error) {
+func (r *GCPMachineReconciler) reconcile(_ context.Context, machineScope *scope.MachineScope, clusterScope *scope.ClusterScope) (ctrl.Result, error) {
 	machineScope.Info("Reconciling GCPMachine")
 	// If the GCPMachine is in an error state, return early.
 	if machineScope.GCPMachine.Status.FailureReason != nil || machineScope.GCPMachine.Status.FailureMessage != nil {
 		machineScope.Info("Error state detected, skipping reconciliation")
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
 	// If the GCPMachine doesn't have our finalizer, add it.
-	if !util.Contains(machineScope.GCPMachine.Finalizers, infrav1.MachineFinalizer) {
-		machineScope.GCPMachine.Finalizers = append(machineScope.GCPMachine.Finalizers, infrav1.MachineFinalizer)
+	controllerutil.AddFinalizer(machineScope.GCPMachine, infrav1.MachineFinalizer)
+	if err := machineScope.PatchObject(); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if !machineScope.Cluster.Status.InfrastructureReady {
 		machineScope.Info("Cluster infrastructure is not ready yet")
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
 	// Make sure bootstrap data is available and populated.
 	if machineScope.Machine.Spec.Bootstrap.DataSecretName == nil {
 		machineScope.Info("Bootstrap data secret reference is not yet available")
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
 	computeSvc := compute.NewService(clusterScope)
@@ -193,22 +221,14 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	// Get or create the instance.
 	instance, err := r.getOrCreate(machineScope, computeSvc)
 	if err != nil {
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
 
 	// Set a failure message if we couldn't find the instance.
 	if instance == nil {
 		machineScope.SetFailureReason(capierrors.UpdateMachineError)
 		machineScope.SetFailureMessage(errors.New("GCE instance cannot be found"))
-		return reconcile.Result{}, nil
-	}
-
-	// TODO(ncdc): move this validation logic into a validating webhook
-	if errs := r.validateUpdate(&machineScope.GCPMachine.Spec, instance); len(errs) > 0 {
-		agg := kerrors.NewAggregate(errs)
-		record.Warnf(machineScope.GCPMachine, "InvalidUpdate", "Invalid update: %s", agg.Error())
-		machineScope.Error(err, "Invalid update")
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
 	// Make sure Spec.ProviderID is always set.
@@ -217,14 +237,7 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	// Proceed to reconcile the GCPMachine state.
 	machineScope.SetInstanceStatus(infrav1.InstanceStatus(instance.Status))
 
-	// TODO(vincepri): Remove this annotation when clusterctl is no longer relevant.
-	machineScope.SetAnnotation("cluster-api-provider-gcp", "true")
-
-	addrs, err := r.getAddresses(instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	machineScope.SetAddresses(addrs)
+	machineScope.SetAddresses(r.getAddresses(instance))
 
 	switch infrav1.InstanceStatus(instance.Status) {
 	case infrav1.InstanceStatusRunning:
@@ -238,32 +251,26 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	}
 
 	if err := r.reconcileLBAttachment(machineScope, clusterScope, instance); err != nil {
-		return reconcile.Result{}, errors.Errorf("failed to reconcile LB attachment: %+v", err)
+		return ctrl.Result{}, errors.Errorf("failed to reconcile LB attachment: %+v", err)
 	}
 
-	return reconcile.Result{}, nil
+	return ctrl.Result{}, nil
 }
 
-func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope, clusterScope *scope.ClusterScope) (_ reconcile.Result, reterr error) {
+func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope, clusterScope *scope.ClusterScope) (_ ctrl.Result, reterr error) {
 	machineScope.Info("Handling deleted GCPMachine")
 
 	computeSvc := compute.NewService(clusterScope)
 
 	instance, err := r.findInstance(machineScope, computeSvc)
 	if err != nil {
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
-
-	defer func() {
-		if reterr == nil {
-			machineScope.GCPMachine.Finalizers = util.Filter(machineScope.GCPMachine.Finalizers, infrav1.MachineFinalizer)
-		}
-	}()
 
 	if instance == nil {
 		// The machine was never created or was deleted by some other entity
 		machineScope.V(3).Info("Unable to locate instance by ID or tags")
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
 	// Check the instance state. If it's already shutting down or terminated,
@@ -275,12 +282,15 @@ func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope,
 		machineScope.Info("Terminating instance")
 		if err := computeSvc.TerminateInstanceAndWait(machineScope); err != nil {
 			record.Warnf(machineScope.GCPMachine, "FailedTerminate", "Failed to terminate instance %q: %v", instance.Name, err)
-			return reconcile.Result{}, errors.Errorf("failed to terminate instance: %+v", err)
+			return ctrl.Result{}, errors.Errorf("failed to terminate instance: %+v", err)
 		}
 		record.Eventf(machineScope.GCPMachine, "SuccessfulTerminate", "Terminated instance %q", instance.Name)
 	}
 
-	return reconcile.Result{}, nil
+	// Instance is deleted so remove the finalizer.
+	controllerutil.RemoveFinalizer(machineScope.GCPMachine, infrav1.MachineFinalizer)
+
+	return ctrl.Result{}, nil
 }
 
 // findInstance queries the GCP apis and retrieves the instance if it exists, returns nil otherwise.
@@ -309,8 +319,8 @@ func (r *GCPMachineReconciler) getOrCreate(scope *scope.MachineScope, computeSvc
 	return instance, nil
 }
 
-func (r *GCPMachineReconciler) getAddresses(instance *gcompute.Instance) ([]v1.NodeAddress, error) {
-	addresses := []v1.NodeAddress{}
+func (r *GCPMachineReconciler) getAddresses(instance *gcompute.Instance) []v1.NodeAddress {
+	addresses := make([]v1.NodeAddress, 0, len(instance.NetworkInterfaces))
 	for _, nic := range instance.NetworkInterfaces {
 		internalAddress := v1.NodeAddress{
 			Type:    v1.NodeInternalIP,
@@ -328,7 +338,7 @@ func (r *GCPMachineReconciler) getAddresses(instance *gcompute.Instance) ([]v1.N
 		}
 	}
 
-	return addresses, nil
+	return addresses
 }
 
 func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.MachineScope, clusterScope *scope.ClusterScope, i *gcompute.Instance) error {
@@ -353,23 +363,9 @@ func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.Machine
 	return computeSvc.UpdateBackendServices()
 }
 
-// validateUpdate checks that no immutable fields have been updated and
-// returns a slice of errors representing attempts to change immutable state.
-func (r *GCPMachineReconciler) validateUpdate(spec *infrav1.GCPMachineSpec, i *gcompute.Instance) (errs []error) {
-	// Instance Type
-	if spec.InstanceType != path.Base(i.MachineType) {
-		errs = append(errs, errors.Errorf("instance type cannot be mutated from %q to %q", i.MachineType, spec.InstanceType))
-	}
-
-	// TODO(vincepri): Validate other fields.
-	return errs
-}
-
 // GCPClusterToGCPMachine is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation
 // of GCPMachines.
 func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o handler.MapObject) []ctrl.Request {
-	result := []ctrl.Request{}
-
 	c, ok := o.Object.(*infrav1.GCPCluster)
 	if !ok {
 		r.Log.Error(errors.Errorf("expected a GCPCluster but got a %T", o.Object), "failed to get GCPMachine for GCPCluster")
@@ -380,25 +376,44 @@ func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o handler.MapObject) []ct
 	cluster, err := util.GetOwnerCluster(context.TODO(), r.Client, c.ObjectMeta)
 	switch {
 	case apierrors.IsNotFound(err) || cluster == nil:
-		return result
+		return nil
 	case err != nil:
 		log.Error(err, "failed to get owning cluster")
-		return result
-	}
-
-	labels := map[string]string{clusterv1.ClusterLabelName: cluster.Name}
-	machineList := &clusterv1.MachineList{}
-	if err := r.List(context.TODO(), machineList, client.InNamespace(c.Namespace), client.MatchingLabels(labels)); err != nil {
-		log.Error(err, "failed to list Machines")
 		return nil
 	}
-	for _, m := range machineList.Items {
-		if m.Spec.InfrastructureRef.Name == "" {
-			continue
-		}
-		name := client.ObjectKey{Namespace: m.Namespace, Name: m.Spec.InfrastructureRef.Name}
-		result = append(result, ctrl.Request{NamespacedName: name})
+
+	return r.requestsForCluster(cluster.Namespace, cluster.Name)
+}
+
+func (r *GCPMachineReconciler) requeueGCPMachinesForUnpausedCluster(o handler.MapObject) []ctrl.Request {
+	c, ok := o.Object.(*clusterv1.Cluster)
+	if !ok {
+		r.Log.Error(errors.Errorf("expected a Cluster but got a %T", o.Object), "failed to get GCPMachines for unpaused Cluster")
+		return nil
 	}
 
+	// Don't handle deleted clusters
+	if !c.ObjectMeta.DeletionTimestamp.IsZero() {
+		return nil
+	}
+
+	return r.requestsForCluster(c.Namespace, c.Name)
+}
+
+func (r *GCPMachineReconciler) requestsForCluster(namespace, name string) []ctrl.Request {
+	log := r.Log.WithValues("Cluster", name, "Namespace", namespace)
+	labels := map[string]string{clusterv1.ClusterLabelName: name}
+	machineList := &clusterv1.MachineList{}
+	if err := r.Client.List(context.TODO(), machineList, client.InNamespace(namespace), client.MatchingLabels(labels)); err != nil {
+		log.Error(err, "failed to get owned Machines")
+		return nil
+	}
+
+	result := make([]ctrl.Request, 0, len(machineList.Items))
+	for _, m := range machineList.Items {
+		if m.Spec.InfrastructureRef.Name != "" {
+			result = append(result, ctrl.Request{NamespacedName: client.ObjectKey{Namespace: m.Namespace, Name: m.Spec.InfrastructureRef.Name}})
+		}
+	}
 	return result
 }

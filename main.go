@@ -27,13 +27,14 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
 	"k8s.io/klog/klogr"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
-	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -53,14 +54,16 @@ func main() {
 	klog.InitFlags(nil)
 
 	var (
-		metricsAddr           string
-		enableLeaderElection  bool
-		watchNamespace        string
-		profilerAddress       string
-		gcpClusterConcurrency int
-		gcpMachineConcurrency int
-		syncPeriod            time.Duration
-		healthAddr            string
+		metricsAddr             string
+		enableLeaderElection    bool
+		leaderElectionNamespace string
+		watchNamespace          string
+		profilerAddress         string
+		gcpClusterConcurrency   int
+		gcpMachineConcurrency   int
+		syncPeriod              time.Duration
+		webhookPort             int
+		healthAddr              string
 	)
 
 	flag.StringVar(
@@ -82,6 +85,13 @@ func main() {
 		"namespace",
 		"",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.",
+	)
+
+	flag.StringVar(
+		&leaderElectionNamespace,
+		"leader-election-namespace",
+		"",
+		"Namespace that the controller performs leader election in. If unspecified, the controller will discover which namespace it is running in.",
 	)
 
 	flag.StringVar(
@@ -109,6 +119,12 @@ func main() {
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)",
 	)
 
+	flag.IntVar(&webhookPort,
+		"webhook-port",
+		0,
+		"Webhook Server port, disabled by default. When enabled, the manager will only work as webhook server, no reconcilers are installed.",
+	)
+
 	flag.StringVar(&healthAddr,
 		"health-addr",
 		":9440",
@@ -131,13 +147,15 @@ func main() {
 	ctrl.SetLogger(klogr.New())
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "controller-leader-election-capg",
-		SyncPeriod:             &syncPeriod,
-		Namespace:              watchNamespace,
-		HealthProbeBindAddress: healthAddr,
+		Scheme:                  scheme,
+		MetricsBindAddress:      metricsAddr,
+		LeaderElection:          enableLeaderElection,
+		LeaderElectionID:        "controller-leader-election-capg",
+		LeaderElectionNamespace: leaderElectionNamespace,
+		SyncPeriod:              &syncPeriod,
+		Namespace:               watchNamespace,
+		Port:                    webhookPort,
+		HealthProbeBindAddress:  healthAddr,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -147,19 +165,30 @@ func main() {
 	// Initialize event recorder.
 	record.InitFromRecorder(mgr.GetEventRecorderFor("gcp-controller"))
 
-	if err = (&controllers.GCPMachineReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("GCPMachine"),
-	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
-		os.Exit(1)
-	}
-	if err = (&controllers.GCPClusterReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("GCPCluster"),
-	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
-		os.Exit(1)
+	if webhookPort == 0 {
+		if err = (&controllers.GCPMachineReconciler{
+			Client: mgr.GetClient(),
+			Log:    ctrl.Log.WithName("controllers").WithName("GCPMachine"),
+		}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
+			os.Exit(1)
+		}
+		if err = (&controllers.GCPClusterReconciler{
+			Client: mgr.GetClient(),
+			Log:    ctrl.Log.WithName("controllers").WithName("GCPCluster"),
+		}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
+			os.Exit(1)
+		}
+	} else {
+		if err = (&infrav1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
+			os.Exit(1)
+		}
+		if err = (&infrav1.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 

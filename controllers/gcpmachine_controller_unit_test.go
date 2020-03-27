@@ -19,26 +19,18 @@ package controllers
 import (
 	"testing"
 
+	. "github.com/onsi/gomega"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/klogr"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-)
 
-func setupScheme() (*runtime.Scheme, error) {
-	scheme := runtime.NewScheme()
-	if err := infrav1.AddToScheme(scheme); err != nil {
-		return nil, err
-	}
-	if err := clusterv1.AddToScheme(scheme); err != nil {
-		return nil, err
-	}
-	return scheme, nil
-}
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+)
 
 func newMachine(clusterName, machineName string) *clusterv1.Machine {
 	return &clusterv1.Machine{
@@ -71,10 +63,12 @@ func newCluster(name string) *clusterv1.Cluster {
 }
 
 func TestGCPMachineReconciler_GCPClusterToGCPMachines(t *testing.T) {
-	scheme, err := setupScheme()
-	if err != nil {
-		t.Fatal(err)
-	}
+	g := NewWithT(t)
+
+	scheme := runtime.NewScheme()
+	g.Expect(infrav1.AddToScheme(scheme)).To(Succeed())
+	g.Expect(clusterv1.AddToScheme(scheme)).To(Succeed())
+
 	clusterName := "my-cluster"
 	initObjects := []runtime.Object{
 		newCluster(clusterName),
@@ -105,7 +99,5 @@ func TestGCPMachineReconciler_GCPClusterToGCPMachines(t *testing.T) {
 			},
 		},
 	})
-	if len(requests) != 2 {
-		t.Fatalf("Expected 2 but found %d requests", len(initObjects))
-	}
+	g.Expect(requests).To(HaveLen(2))
 }
