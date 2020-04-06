@@ -50,7 +50,7 @@ func (r *GCPClusterReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 		WithOptions(options).
 		For(&infrav1.GCPCluster{}).
 		Watches(
-			&source.Kind{Type: &infrav1.GCPCluster{}},
+			&source.Kind{Type: &infrav1.GCPMachine{}},
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(r.GCPMachineToGCPCluster)},
 		).
 		WithEventFilter(pausePredicates).
