@@ -31,7 +31,6 @@ KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${K
 TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%SZ")
 
 ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
 # dump logs from kind and all the nodes
 dump-logs() {
@@ -161,6 +160,7 @@ cleanup() {
 
 # our exit handler (trap)
 exit-handler() {
+  unset KUBECONFIG
   dump-logs
   cleanup
 }
@@ -190,7 +190,7 @@ function ssh-to-node() {
 init_image() {
   if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then
     image=$(gcloud compute images list --project "$GCP_PROJECT" \
-      --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v1-16" --format="table[no-heading](name)")
+      --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}" --format="table[no-heading](name)")
     if [[ -n "$image" ]]; then
       return
     fi
@@ -224,10 +224,12 @@ init_image() {
   fi
     cat << EOF > "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi/override.json"
 {
+  "build_timestamp": "0",
+  "kubernetes_source_type": "url",
+  "kubernetes_cni_source_type": "url",
+  "kubernetes_http_source": "https://storage.googleapis.com/kubernetes-release-dev/ci",
   "kubernetes_series": "v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}",
-  "kubernetes_semver": "${KUBERNETES_VERSION}",
-  "kubernetes_rpm_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-0",
-  "kubernetes_deb_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-00"
+  "kubernetes_semver": "${KUBERNETES_VERSION}"
 }
 EOF
   if [[ $EUID -ne 0 ]]; then
@@ -245,8 +247,8 @@ EOF
   fi
 }
 
-# build kubernetes / node image, e2e binaries
-build() {
+# build Kubernetes E2E binaries
+build_k8s() {
   # possibly enable bazel build caching before building kubernetes
   if [[ "${BAZEL_REMOTE_CACHE_ENABLED:-false}" == "true" ]]; then
     create_bazel_cache_rcs.sh || true
@@ -270,37 +272,21 @@ build() {
   popd
 }
 
-# generate manifests needed for creating the GCP cluster to run the tests
-generate_manifests() {
-  if ! command -v kustomize >/dev/null 2>&1; then
-    (cd ./hack/tools/ && GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v3)
-  fi
-
-  (GCP_PROJECT=${GCP_PROJECT} \
-  PULL_POLICY=Never \
-    make modules docker-build)
-
-  # Enable the bits to inject a script that can pull newer versions of kubernetes
-  if [[ -n ${CI_VERSION:-} || -n ${USE_CI_ARTIFACTS:-} ]]; then
-    if ! grep -i -wq "patchesStrategicMerge" "templates/kustomization.yaml"; then
-      echo "patchesStrategicMerge:" >> "templates/kustomization.yaml"
-      echo "- kustomizeversions.yaml" >> "templates/kustomization.yaml"
-    fi
-  fi
-}
-
 # up a cluster with kind
 create_cluster() {
   # actually create the cluster
   KIND_IS_UP=true
 
+  filter="name~cluster-api-ubuntu-1804-${KUBERNETES_VERSION//[.+]/-}"
+  image_id=$(gcloud compute images list --project "$GCP_PROJECT" \
+    --no-standard-images --filter="${filter}" --format="table[no-heading](name)")
+  if [[ -z "$image_id" ]]; then
+    echo "unable to find image using : $filter $GCP_PROJECT ... bailing out!"
+    exit 1
+  fi
+
   tracestate="$(shopt -po xtrace)"
   set +o xtrace
-
-  if [[ -n ${USE_CI_ARTIFACTS:-} ]]; then
-    # TODO: revert to https://dl.k8s.io/ci/latest-green.txt once https://github.com/kubernetes/release/issues/897 is fixed.
-    CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/k8s-master.txt)}
-  fi
 
   # Load the newly built image into kind and start the cluster
   (GCP_REGION=${GCP_REGION} \
@@ -313,8 +299,8 @@ create_cluster() {
   GCP_NETWORK_NAME=${GCP_NETWORK_NAME} \
   GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS") \
   CLUSTER_NAME="${CLUSTER_NAME}" \
-  CI_VERSION="${CI_VERSION:-}" \
-  LOAD_IMAGE="gcr.io/${GCP_PROJECT}/cluster-api-gcp-controller-amd64:dev" \
+  CI_VERSION=${CI_VERSION} \
+  IMAGE_ID="projects/${GCP_PROJECT}/global/images/${image_id}" \
     make create-cluster)
 
   eval "$tracestate"
@@ -414,6 +400,17 @@ init_networks() {
     --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
 }
 
+# generate manifests needed for creating the GCP cluster to run the tests
+add_kustomize_patch() {
+    # Enable the bits to inject a script that can pull newer versions of kubernetes
+    if ! grep -i -wq "patchesStrategicMerge" "templates/kustomization.yaml"; then
+        echo "patchesStrategicMerge:" >> "templates/kustomization.yaml"
+    fi
+    if ! grep -i -wq "kustomizeversions" "templates/kustomization.yaml"; then
+        echo "- kustomizeversions.yaml" >> "templates/kustomization.yaml"
+    fi
+}
+
 # setup kind, build kubernetes, create a cluster, run the e2es
 main() {
   for arg in "$@"
@@ -435,7 +432,7 @@ main() {
 
   if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
     cat <<EOF
-$GOOGLE_APPLICATION_CREDENTIALS is not set.
+GOOGLE_APPLICATION_CREDENTIALS is not set.
 Please set this to the path of the service account used to run this script.
 EOF
     return 2
@@ -443,7 +440,7 @@ EOF
     gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}"
   fi
   if [[ -z "$GCP_PROJECT" ]]; then
-    GCP_PROJECT=$(cat "${GOOGLE_APPLICATION_CREDENTIALS}" | jq -r .project_id)
+    GCP_PROJECT=$(jq -r .project_id "${GOOGLE_APPLICATION_CREDENTIALS}")
     cat <<EOF
 GCP_PROJECT is not set. Using project_id $GCP_PROJECT
 EOF
@@ -466,22 +463,47 @@ EOF
   export ARTIFACTS
   mkdir -p "${ARTIFACTS}/logs"
 
-  source "${REPO_ROOT}/hack/ensure-go.sh"
-  source "${REPO_ROOT}/hack/ensure-kind.sh"
+  # Initialize the necessary network requirements
+  if [[ -n "${SKIP_INIT_NETWORK:-}" ]]; then
+    echo "Skipping network initialization..."
+  else
+    init_networks
+  fi
 
-  # now build and run the cluster and tests
-  init_networks
-  build
-  generate_manifests
+  if [[ -n ${CI_VERSION:-} || -n ${USE_CI_ARTIFACTS:-} ]]; then
+    CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/k8s-master.txt)}
+    KUBERNETES_VERSION=${CI_VERSION}
+    KUBERNETES_MAJOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d '.' -f1 - | sed 's/v//')
+    KUBERNETES_MINOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d '.' -f2 -)
+  fi
+
   if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
-    echo "Skipping image initialization..."
+    echo "Skipping GCP image initialization..."
   else
     init_image
   fi
 
-  create_cluster
+  # Build the images
+  if [[ -n "${SKIP_IMAGE_BUILD:-}" ]]; then
+    echo "Skipping Container image building..."
+  else
+    (GCP_PROJECT=${GCP_PROJECT} PULL_POLICY=Never make modules docker-build)
+  fi
 
-  if [[ -z "${SKIP_RUN_TESTS:-}" ]]; then
+  # create cluster
+  if [[ -n "${SKIP_CREATE_CLUSTER:-}" ]]; then
+    echo "Skipping cluster creation..."
+  else
+    if [[ -n ${CI_VERSION:-} ]]; then
+      echo "Adding kustomize patch for ci version..."
+      add_kustomize_patch
+    fi
+    create_cluster
+  fi
+
+  # build k8s binaries and run conformance tests
+  if [[ -z "${SKIP_TESTS:-}" && -z "${SKIP_RUN_TESTS:-}" ]]; then
+    build_k8s
     run_tests
   fi
 }
