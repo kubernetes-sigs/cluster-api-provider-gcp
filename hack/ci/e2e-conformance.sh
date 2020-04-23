@@ -222,6 +222,8 @@ init_image() {
       rm packer.zip && \
       ln -s "$PWD"/packer /usr/local/bin/packer
   fi
+
+  if [[ -n ${CI_VERSION:-} ]]; then
     cat << EOF > "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi/override.json"
 {
   "build_timestamp": "0",
@@ -232,6 +234,18 @@ init_image() {
   "kubernetes_semver": "${KUBERNETES_VERSION}"
 }
 EOF
+  else
+    cat << EOF > "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi/override.json"
+{
+  "build_timestamp": "0",
+  "kubernetes_series": "v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}",
+  "kubernetes_semver": "${KUBERNETES_VERSION}",
+  "kubernetes_deb_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-00",
+  "kubernetes_rpm_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-0"
+}
+EOF
+  fi
+
   if [[ $EUID -ne 0 ]]; then
     (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
       GCP_PROJECT_ID=$GCP_PROJECT \
