@@ -313,7 +313,7 @@ create_cluster() {
   GCP_NETWORK_NAME=${GCP_NETWORK_NAME} \
   GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS") \
   CLUSTER_NAME="${CLUSTER_NAME}" \
-  CI_VERSION=${CI_VERSION} \
+  CI_VERSION=${CI_VERSION:-} \
   IMAGE_ID="projects/${GCP_PROJECT}/global/images/${image_id}" \
     make create-cluster)
 
