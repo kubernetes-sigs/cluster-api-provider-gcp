@@ -39,7 +39,7 @@ spec:
   kubeadmConfigSpec:
     initConfiguration:
       nodeRegistration:
-        name: '{{ ds.meta_data.local_hostname }}'
+        name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
         kubeletExtraArgs:
           cloud-provider: gce
     clusterConfiguration:
@@ -53,7 +53,7 @@ spec:
           allocate-node-cidrs: "false"
     joinConfiguration:
       nodeRegistration:
-        name: '{{ ds.meta_data.local_hostname }}'
+        name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
         kubeletExtraArgs:
           cloud-provider: gce
   version: "${KUBERNETES_VERSION}"
@@ -109,6 +109,6 @@ spec:
     spec:
       joinConfiguration:
         nodeRegistration:
-          name: '{{ ds.meta_data.local_hostname }}'
+          name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
           kubeletExtraArgs:
             cloud-provider: gce
