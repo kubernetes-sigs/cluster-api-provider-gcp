@@ -74,6 +74,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 			Items: append(
 				scope.GCPMachine.Spec.AdditionalNetworkTags,
 				fmt.Sprintf("%s-%s", scope.Cluster.Name, scope.Role()),
+				scope.Cluster.Name,
 			),
 		},
 		Disks: []*compute.AttachedDisk{
