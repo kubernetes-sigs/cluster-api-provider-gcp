@@ -44,6 +44,11 @@ type Network struct {
 	// +optional
 	FirewallRules map[string]string `json:"firewallRules,omitempty"`
 
+	// Router is the full reference to the router created within the network
+	// it'll contain the cloud nat gateway
+	// +optional
+	Router *string `json:"router,omitempty"`
+
 	// APIServerAddress is the IPV4 global address assigned to the load balancer
 	// created for the API Server.
 	// +optional

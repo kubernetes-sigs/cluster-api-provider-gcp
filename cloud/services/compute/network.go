@@ -17,6 +17,7 @@ limitations under the License.
 package compute
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/utils/pointer"
@@ -31,7 +32,9 @@ func (s *Service) ReconcileNetwork() error {
 	// Create Network
 	spec := s.getNetworkSpec()
 	network, err := s.networks.Get(s.scope.Project(), spec.Name).Do()
+	autoCreateCloudNat := false
 	if gcperrors.IsNotFound(err) {
+		autoCreateCloudNat = true
 		op, err := s.networks.Insert(s.scope.Project(), spec).Do()
 		if err != nil {
 			return errors.Wrapf(err, "failed to create network")
@@ -45,6 +48,12 @@ func (s *Service) ReconcileNetwork() error {
 		}
 	} else if err != nil {
 		return errors.Wrapf(err, "failed to describe network")
+	}
+
+	if autoCreateCloudNat {
+		if err := s.createCloudNat(network); err != nil {
+			return errors.Wrapf(err, "failed to create cloudnat gateway")
+		}
 	}
 
 	s.scope.GCPCluster.Spec.Network.Name = pointer.StringPtr(network.Name)
@@ -88,4 +97,61 @@ func (s *Service) DeleteNetwork() error {
 	}
 	s.scope.GCPCluster.Spec.Network.Name = nil
 	return nil
+}
+
+func (s *Service) createCloudNat(network *compute.Network) error {
+	router, err := s.routers.Get(s.scope.Project(), s.scope.Region(), getRouterName(s.scope.NetworkName())).Do()
+	if gcperrors.IsNotFound(err) {
+		router = s.getRouterSpec(network)
+		op, err := s.routers.Insert(s.scope.Project(), s.scope.Region(), router).Do()
+		if err != nil {
+			return errors.Wrapf(err, "failed to create router")
+		}
+		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
+			return errors.Wrapf(err, "failed to wait for create router operation")
+		}
+		router, err = s.routers.Get(s.scope.Project(), s.scope.Region(), router.Name).Do()
+		if err != nil {
+			return errors.Wrapf(err, "failed to get router after create")
+		}
+	} else if err != nil {
+		return errors.Wrapf(err, "failed to get routers")
+	}
+
+	if len(router.Nats) == 0 {
+		router.Nats = []*compute.RouterNat{s.getRouterNatSpec()}
+		op, err := s.routers.Patch(s.scope.Project(), s.scope.Region(), router.Name, router).Do()
+		if err != nil {
+			return errors.Wrapf(err, "failed to patch router to create nat")
+		}
+		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
+			return errors.Wrapf(err, "failed to wait for patch router operation")
+		}
+	}
+
+	s.scope.GCPCluster.Status.Network.Router = pointer.StringPtr(router.SelfLink)
+	return nil
+}
+
+func (s *Service) getRouterSpec(network *compute.Network) *compute.Router {
+	return &compute.Router{
+		Name:    getRouterName(network.Name),
+		Network: network.SelfLink,
+		Nats:    []*compute.RouterNat{s.getRouterNatSpec()},
+	}
+}
+
+func (s *Service) getRouterNatSpec() *compute.RouterNat {
+	return &compute.RouterNat{
+		Name:                          getRouterNatName(s.scope.NetworkName()),
+		NatIpAllocateOption:           "AUTO_ONLY",
+		SourceSubnetworkIpRangesToNat: "ALL_SUBNETWORKS_ALL_IP_RANGES",
+	}
+}
+
+func getRouterName(network string) string {
+	return fmt.Sprintf("%s-%s", network, "router")
+}
+func getRouterNatName(network string) string {
+	return fmt.Sprintf("%s-%s", network, "nat")
 }

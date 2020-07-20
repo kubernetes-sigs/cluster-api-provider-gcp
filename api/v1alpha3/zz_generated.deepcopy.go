@@ -457,6 +457,11 @@ func (in *Network) DeepCopyInto(out *Network) {
 			(*out)[key] = val
 		}
 	}
+	if in.Router != nil {
+		in, out := &in.Router, &out.Router
+		*out = new(string)
+		**out = **in
+	}
 	if in.APIServerAddress != nil {
 		in, out := &in.APIServerAddress, &out.APIServerAddress
 		*out = new(string)

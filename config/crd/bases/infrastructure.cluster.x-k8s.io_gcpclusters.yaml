@@ -212,6 +212,10 @@ spec:
                     description: FirewallRules is a map from the name of the rule
                       to its full reference.
                     type: object
+                  router:
+                    description: Router is the full reference to the router created
+                      within the network it'll contain the cloud nat gateway
+                    type: string
                   selfLink:
                     description: SelfLink is the link to the Network used for this
                       cluster.
