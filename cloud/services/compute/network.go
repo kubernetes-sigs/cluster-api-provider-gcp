@@ -87,6 +87,22 @@ func (s *Service) DeleteNetwork() error {
 		return nil
 	}
 
+	// Delete Router.
+	router, err := s.routers.Get(s.scope.Project(), s.scope.Region(), getRouterName(s.scope.NetworkName())).Do()
+	if err == nil {
+		op, err := s.routers.Delete(s.scope.Project(), s.scope.Region(), router.Name).Do()
+		if err != nil {
+			return errors.Wrapf(err, "failed to delete router")
+		}
+		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
+			return errors.Wrapf(err, "failed to wait for delete router")
+		}
+	} else {
+		if !gcperrors.IsNotFound(err) {
+			return errors.Wrapf(err, "failed to get router to delete")
+		}
+	}
+
 	// Delete Network.
 	op, err := s.networks.Delete(s.scope.Project(), network.Name).Do()
 	if err != nil {
