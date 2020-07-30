@@ -192,8 +192,20 @@ func (r *GCPClusterReconciler) reconcile(clusterScope *scope.ClusterScope) (ctrl
 	}
 	gcpCluster.Status.FailureDomains = make(clusterv1.FailureDomains, len(zones))
 	for _, zone := range zones {
-		gcpCluster.Status.FailureDomains[zone] = clusterv1.FailureDomainSpec{
-			ControlPlane: true,
+		if len(gcpCluster.Spec.FailureDomains) > 0 {
+			found := false
+			for _, fd := range gcpCluster.Spec.FailureDomains {
+				if fd == zone {
+					found = true
+				}
+			}
+			gcpCluster.Status.FailureDomains[zone] = clusterv1.FailureDomainSpec{
+				ControlPlane: found,
+			}
+		} else {
+			gcpCluster.Status.FailureDomains[zone] = clusterv1.FailureDomainSpec{
+				ControlPlane: true,
+			}
 		}
 	}
 

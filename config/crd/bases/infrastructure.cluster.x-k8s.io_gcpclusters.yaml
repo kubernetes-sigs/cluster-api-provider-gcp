@@ -78,6 +78,14 @@ spec:
                 - host
                 - port
                 type: object
+              failureDomains:
+                description: FailureDomains is an optional field which is used to
+                  assign selected availability zones to a cluster FailureDomains if
+                  empty, defaults to all the zones in the selected region and if specified
+                  would override the default zones.
+                items:
+                  type: string
+                type: array
               network:
                 description: NetworkSpec encapsulates all things related to GCP network.
                 properties:
