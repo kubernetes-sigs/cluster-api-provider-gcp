@@ -196,33 +196,6 @@ init_image() {
     fi
   fi
 
-  if ! command -v ansible &> /dev/null; then
-    if [[ $EUID -ne 0 ]]; then
-      echo "Please install ansible and try again."
-      exit 1
-    else
-      # we need pip to install ansible
-      curl -L https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-      python get-pip.py --user
-      rm -f get-pip.py
-
-      # install ansible needed by packer
-      version="2.8.5"
-      python -m pip install "ansible==${version}"
-    fi
-  fi
-  if ! command -v packer &> /dev/null; then
-    hostos=$(go env GOHOSTOS)
-    hostarch=$(go env GOHOSTARCH)
-    version="1.4.3"
-    url="https://releases.hashicorp.com/packer/${version}/packer_${version}_${hostos}_${hostarch}.zip"
-    echo "Downloading packer from $url"
-    wget --quiet -O packer.zip "$url"  && \
-      unzip packer.zip && \
-      rm packer.zip && \
-      ln -s "$PWD"/packer /usr/local/bin/packer
-  fi
-
   if [[ -n ${CI_VERSION:-} ]]; then
     cat << EOF > "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi/override.json"
 {
@@ -251,13 +224,14 @@ EOF
       GCP_PROJECT_ID=$GCP_PROJECT \
       GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
       PACKER_VAR_FILES=override.json \
-      make build-gce-default)
+      make deps-gce build-gce-default)
   else
     # assume we are running in the CI environment as root
     # Add a user for ansible to work properly
     groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
+    chown -R packer:packer /home/prow/go/src/sigs.k8s.io/image-builder
     # use the packer user to run the build
-    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make build-gce-default'"
+    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && PATH=$PATH:~packer/.local/bin:/home/prow/go/src/sigs.k8s.io/image-builder/images/capi/.local/bin GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make deps-gce build-gce-default'"
   fi
 }
 
