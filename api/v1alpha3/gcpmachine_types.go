@@ -86,8 +86,8 @@ type GCPMachineSpec struct {
 
 	// RootDeviceType is the type of the root volume.
 	// Supported types of root volumes:
-	// * "pd-standard" - Standrad (HDD) persistent disk
-	// * "pd-ssd" - SSD persistent disk
+	// 1. "pd-standard" - Standrad (HDD) persistent disk
+	// 2. "pd-ssd" - SSD persistent disk
 	// Default is "pd-standard".
 	// +optional
 	RootDeviceType *DiskType `json:"rootDeviceType,omitempty"`

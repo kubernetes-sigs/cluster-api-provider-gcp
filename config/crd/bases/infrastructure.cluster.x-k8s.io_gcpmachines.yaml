@@ -101,6 +101,11 @@ spec:
                   Defaults to 30.
                 format: int64
                 type: integer
+              rootDeviceType:
+                description: 'RootDeviceType is the type of the root volume. Supported
+                  types of root volumes: 1. "pd-standard" - Standrad (HDD) persistent
+                  disk 2. "pd-ssd" - SSD persistent disk Default is "pd-standard".'
+                type: string
               serviceAccounts:
                 description: 'ServiceAccount specifies the service account email and
                   which scopes to assign to the machine. Defaults to: email: "default",
