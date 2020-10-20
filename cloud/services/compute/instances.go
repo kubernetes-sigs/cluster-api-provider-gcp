@@ -19,7 +19,7 @@ package compute
 import (
 	"fmt"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/utils/pointer"
