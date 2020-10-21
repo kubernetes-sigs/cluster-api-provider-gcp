@@ -83,6 +83,9 @@ LDFLAGS := $(shell source ./hack/version.sh; version::ldflags)
 
 GOLANG_VERSION := 1.13.8
 
+# CI
+CAPG_WORKER_CLUSTER_KUBECONFIG ?= "/tmp/kubeconfig"
+
 ## --------------------------------------
 ## Help
 ## --------------------------------------
@@ -311,13 +314,13 @@ create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST)
 	# Wait for the kubeconfig to become available.
 	timeout 5m bash -c "while ! kubectl get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
 	# Get kubeconfig and store it locally.
-	kubectl get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > ./kubeconfig
-	timeout 15m bash -c "while ! kubectl --kubeconfig=./kubeconfig get nodes | grep master; do sleep 1; done"
+	kubectl get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > $(CAPG_WORKER_CLUSTER_KUBECONFIG)
+	timeout 15m bash -c "while ! kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep master; do sleep 1; done"
 
 	# Deploy calico
-	kubectl --kubeconfig=./kubeconfig apply -f https://docs.projectcalico.org/manifests/calico.yaml
+	kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
-	@echo 'run "kubectl --kubeconfig=./kubeconfig ..." to work with the new target cluster'
+	@echo 'run "kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) ..." to work with the new target cluster'
 
 .PHONY: create-cluster
 create-cluster: create-management-cluster create-workload-cluster ## Create a development Kubernetes cluster on GCP in a KIND management cluster.
