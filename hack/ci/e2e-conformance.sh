@@ -22,6 +22,7 @@ GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-""}
 GCP_PROJECT=${GCP_PROJECT:-""}
 GCP_REGION=${GCP_REGION:-"us-east4"}
 CLUSTER_NAME=${CLUSTER_NAME:-"test1"}
+CAPG_WORKER_CLUSTER_KUBECONFIG=${CAPG_WORKER_CLUSTER_KUBECONFIG:-"/tmp/kubeconfig"}
 GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${CLUSTER_NAME}-mynetwork"}
 KUBERNETES_MAJOR_VERSION="1"
 KUBERNETES_MINOR_VERSION="17"
@@ -40,7 +41,7 @@ dump-logs() {
   echo "bootstrap cluster:"
   kubectl version || true
   echo "deployed cluster:"
-  kubectl --kubeconfig="${PWD}"/kubeconfig version || true
+  kubectl --kubeconfig="${CAPG_WORKER_CLUSTER_KUBECONFIG}" version || true
   echo ""
 
   # dump all the info from the CAPI related CRDs
@@ -57,7 +58,7 @@ dump-logs() {
   (kubectl get pods --all-namespaces -o json \
    | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
   echo "images in deployed cluster using kubectl CLI" >> "${ARTIFACTS}/logs/images.info"
-  (kubectl --kubeconfig="${PWD}"/kubeconfig get pods --all-namespaces -o json \
+  (kubectl --kubeconfig="${CAPG_WORKER_CLUSTER_KUBECONFIG}" get pods --all-namespaces -o json \
    | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
 
   # dump cluster info for kind
@@ -67,7 +68,7 @@ dump-logs() {
   echo "=== gcloud compute instances list ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
   gcloud compute instances list --project "${GCP_PROJECT}" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
   echo "=== cluster-info dump ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
-  kubectl --kubeconfig="${PWD}"/kubeconfig cluster-info dump >> "${ARTIFACTS}/logs/capg-cluster.info" || true
+  kubectl --kubeconfig="${CAPG_WORKER_CLUSTER_KUBECONFIG}" cluster-info dump >> "${ARTIFACTS}/logs/capg-cluster.info" || true
 
   # export all logs from kind
   kind "export" logs --name="clusterapi" "${ARTIFACTS}/logs" || true
@@ -172,7 +173,7 @@ function ssh-to-node() {
   local cmd="$3"
 
   # ensure we have an IP to connect to
-  gcloud compute --project "${GCP_PROJECT}" instances add-access-config --zone "${zone}" "${node}" || true
+  gcloud compute instances add-access-config "${node}" --project "${GCP_PROJECT}" --zone "${zone}" || true
 
   # Loop until we can successfully ssh into the box
   for try in {1..5}; do
@@ -245,11 +246,9 @@ build_k8s() {
   pushd "$(go env GOPATH)/src/k8s.io/kubernetes"
 
   # make sure we have e2e requirements
-  bazel build //cmd/kubectl //test/e2e:e2e.test //vendor/github.com/onsi/ginkgo/ginkgo
+  make WHAT="test/e2e/e2e.test vendor/github.com/onsi/ginkgo/ginkgo cmd/kubectl"
 
   # ensure the e2e script will find our binaries ...
-  mkdir -p "${PWD}/_output/bin/"
-  cp "${PWD}/bazel-bin/test/e2e/e2e.test" "${PWD}/_output/bin/e2e.test"
   PATH="$(dirname "$(find "${PWD}/bazel-bin/" -name kubectl -type f)"):${PATH}"
   export PATH
 
@@ -322,7 +321,7 @@ create_cluster() {
 # run e2es with kubetest
 run_tests() {
   # export the KUBECONFIG
-  KUBECONFIG="${PWD}/kubeconfig"
+  KUBECONFIG="${CAPG_WORKER_CLUSTER_KUBECONFIG}"
   export KUBECONFIG
 
   # ginkgo regexes
