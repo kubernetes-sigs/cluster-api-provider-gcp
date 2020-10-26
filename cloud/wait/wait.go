@@ -74,5 +74,6 @@ func checkComputeOperation(op *compute.Operation, err error) error {
 		errs.WriteString(v.Message)
 		errs.WriteByte('\n')
 	}
+
 	return errors.New(errs.String())
 }

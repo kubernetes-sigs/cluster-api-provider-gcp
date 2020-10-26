@@ -46,12 +46,6 @@ GO_INSTALL = ./scripts/go_install.sh
 
 # Binaries.
 CLUSTERCTL := $(BIN_DIR)/clusterctl
-KUSTOMIZE := $(TOOLS_BIN_DIR)/kustomize
-CONTROLLER_GEN := $(TOOLS_BIN_DIR)/controller-gen
-ENVSUBST := $(TOOLS_BIN_DIR)/envsubst
-GOLANGCI_LINT := $(TOOLS_BIN_DIR)/golangci-lint
-RELEASE_NOTES_BIN := bin/release-notes
-RELEASE_NOTES := $(TOOLS_DIR)/$(RELEASE_NOTES_BIN)
 
 CONTROLLER_GEN_VER := v0.3.0
 CONTROLLER_GEN_BIN := controller-gen
@@ -61,8 +55,9 @@ CONVERSION_GEN_VER := v0.18.4
 CONVERSION_GEN_BIN := conversion-gen
 CONVERSION_GEN := $(TOOLS_BIN_DIR)/$(CONVERSION_GEN_BIN)-$(CONVERSION_GEN_VER)
 
+ENVSUBST_VER := v1.2.0
 ENVSUBST_BIN := envsubst
-ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)-drone
+ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
 
 GOLANGCI_LINT_VER := v1.31.0
 GOLANGCI_LINT_BIN := golangci-lint
@@ -145,12 +140,7 @@ $(CLUSTERCTL): go.mod ## Build clusterctl binary.
 	go build -o $(BIN_DIR)/clusterctl sigs.k8s.io/cluster-api/cmd/clusterctl
 
 $(ENVSUBST): ## Build envsubst from tools folder.
-	rm -f $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)*
-	mkdir -p $(TOOLS_DIR) && cd $(TOOLS_DIR) && go build -tags=tools -o $(ENVSUBST) github.com/drone/envsubst/cmd/envsubst
-	ln -sf $(ENVSUBST) $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
-
-.PHONY: $(ENVSUBST_BIN)
-$(ENVSUBST_BIN): $(ENVSUBST) ## Build envsubst from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/a8m/envsubst/cmd/envsubst $(ENVSUBST_BIN) $(ENVSUBST_VER)
 
 $(GOLANGCI_LINT): ## Build golangci-lint from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/golangci/golangci-lint/cmd/golangci-lint $(GOLANGCI_LINT_BIN) $(GOLANGCI_LINT_VER)
@@ -182,7 +172,6 @@ lint: $(GOLANGCI_LINT) ## Lint codebase
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
 	go mod tidy
-	cd $(TOOLS_DIR); go mod tidy
 
 .PHONY: generate
 generate: ## Generate code

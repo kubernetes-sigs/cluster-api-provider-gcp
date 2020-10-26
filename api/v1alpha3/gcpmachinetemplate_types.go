@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GCPMachineTemplateSpec defines the desired state of GCPMachineTemplate
+// GCPMachineTemplateSpec defines the desired state of GCPMachineTemplate.
 type GCPMachineTemplateSpec struct {
 	Template GCPMachineTemplateResource `json:"template"`
 }
@@ -29,7 +29,7 @@ type GCPMachineTemplateSpec struct {
 // +kubebuilder:resource:path=gcpmachinetemplates,scope=Namespaced,categories=cluster-api
 // +kubebuilder:storageversion
 
-// GCPMachineTemplate is the Schema for the gcpmachinetemplates API
+// GCPMachineTemplate is the Schema for the gcpmachinetemplates API.
 type GCPMachineTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -39,7 +39,7 @@ type GCPMachineTemplate struct {
 
 // +kubebuilder:object:root=true
 
-// GCPMachineTemplateList contains a list of GCPMachineTemplate
+// GCPMachineTemplateList contains a list of GCPMachineTemplate.
 type GCPMachineTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -45,7 +45,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 )
 
-// GCPMachineReconciler reconciles a GCPMachine object
+// GCPMachineReconciler reconciles a GCPMachine object.
 type GCPMachineReconciler struct {
 	client.Client
 	Log              logr.Logger
@@ -66,9 +66,7 @@ func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 			&source.Kind{Type: &infrav1.GCPCluster{}},
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(r.GCPClusterToGCPMachines)},
 		).
-		WithEventFilter(pausePredicates).
-		Build(r)
-
+		WithEventFilter(pausePredicates).Build(r)
 	if err != nil {
 		return err
 	}
@@ -82,10 +80,12 @@ func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				oldCluster := e.ObjectOld.(*clusterv1.Cluster)
 				newCluster := e.ObjectNew.(*clusterv1.Cluster)
+
 				return oldCluster.Spec.Paused && !newCluster.Spec.Paused
 			},
 			CreateFunc: func(e event.CreateEvent) bool {
 				cluster := e.Object.(*clusterv1.Cluster)
+
 				return !cluster.Spec.Paused
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
@@ -113,6 +113,7 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
+
 		return ctrl.Result{}, err
 	}
 
@@ -123,6 +124,7 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 	}
 	if machine == nil {
 		logger.Info("Machine Controller has not yet set OwnerRef")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -132,11 +134,13 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machine.ObjectMeta)
 	if err != nil {
 		logger.Info("Machine is missing cluster label or cluster does not exist")
+
 		return ctrl.Result{}, nil
 	}
 
 	if isPaused(cluster, gcpMachine) {
 		logger.Info("GCPMachine or linked Cluster is marked as paused. Won't reconcile")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -150,6 +154,7 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 	}
 	if err := r.Client.Get(ctx, gcpClusterName, gcpCluster); err != nil {
 		logger.Info("GCPCluster is not available yet")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -200,6 +205,7 @@ func (r *GCPMachineReconciler) reconcile(_ context.Context, machineScope *scope.
 	// If the GCPMachine is in an error state, return early.
 	if machineScope.GCPMachine.Status.FailureReason != nil || machineScope.GCPMachine.Status.FailureMessage != nil {
 		machineScope.Info("Error state detected, skipping reconciliation")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -211,12 +217,14 @@ func (r *GCPMachineReconciler) reconcile(_ context.Context, machineScope *scope.
 
 	if !machineScope.Cluster.Status.InfrastructureReady {
 		machineScope.Info("Cluster infrastructure is not ready yet")
+
 		return ctrl.Result{}, nil
 	}
 
 	// Make sure bootstrap data is available and populated.
 	if machineScope.Machine.Spec.Bootstrap.DataSecretName == nil {
 		machineScope.Info("Bootstrap data secret reference is not yet available")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -232,6 +240,7 @@ func (r *GCPMachineReconciler) reconcile(_ context.Context, machineScope *scope.
 	if instance == nil {
 		machineScope.SetFailureReason(capierrors.UpdateMachineError)
 		machineScope.SetFailureMessage(errors.New("GCE instance cannot be found"))
+
 		return ctrl.Result{}, nil
 	}
 
@@ -274,6 +283,7 @@ func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope,
 	if instance == nil {
 		// The machine was never created or was deleted by some other entity
 		machineScope.V(3).Info("Unable to locate instance by ID or tags")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -286,6 +296,7 @@ func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope,
 		machineScope.Info("Terminating instance")
 		if err := computeSvc.TerminateInstanceAndWait(machineScope); err != nil {
 			record.Warnf(machineScope.GCPMachine, "FailedTerminate", "Failed to terminate instance %q: %v", instance.Name, err)
+
 			return ctrl.Result{}, errors.Errorf("failed to terminate instance: %+v", err)
 		}
 		record.Eventf(machineScope.GCPMachine, "SuccessfulTerminate", "Terminated instance %q", instance.Name)
@@ -303,6 +314,7 @@ func (r *GCPMachineReconciler) findInstance(scope *scope.MachineScope, computeSv
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to query GCPMachine instance")
 	}
+
 	return instance, nil
 }
 
@@ -373,6 +385,7 @@ func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o handler.MapObject) []ct
 	c, ok := o.Object.(*infrav1.GCPCluster)
 	if !ok {
 		r.Log.Error(errors.Errorf("expected a GCPCluster but got a %T", o.Object), "failed to get GCPMachine for GCPCluster")
+
 		return nil
 	}
 	log := r.Log.WithValues("GCPCluster", c.Name, "Namespace", c.Namespace)
@@ -383,6 +396,7 @@ func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o handler.MapObject) []ct
 		return nil
 	case err != nil:
 		log.Error(err, "failed to get owning cluster")
+
 		return nil
 	}
 
@@ -393,6 +407,7 @@ func (r *GCPMachineReconciler) requeueGCPMachinesForUnpausedCluster(o handler.Ma
 	c, ok := o.Object.(*clusterv1.Cluster)
 	if !ok {
 		r.Log.Error(errors.Errorf("expected a Cluster but got a %T", o.Object), "failed to get GCPMachines for unpaused Cluster")
+
 		return nil
 	}
 
@@ -410,6 +425,7 @@ func (r *GCPMachineReconciler) requestsForCluster(namespace, name string) []ctrl
 	machineList := &clusterv1.MachineList{}
 	if err := r.Client.List(context.TODO(), machineList, client.InNamespace(namespace), client.MatchingLabels(labels)); err != nil {
 		log.Error(err, "failed to get owned Machines")
+
 		return nil
 	}
 
@@ -419,5 +435,6 @@ func (r *GCPMachineReconciler) requestsForCluster(namespace, name string) []ctrl
 			result = append(result, ctrl.Request{NamespacedName: client.ObjectKey{Namespace: m.Namespace, Name: m.Spec.InfrastructureRef.Name}})
 		}
 	}
+
 	return result
 }

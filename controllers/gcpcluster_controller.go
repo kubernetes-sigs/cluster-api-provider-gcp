@@ -40,7 +40,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 )
 
-// GCPClusterReconciler reconciles a GCPCluster object
+// GCPClusterReconciler reconciles a GCPCluster object.
 type GCPClusterReconciler struct {
 	client.Client
 	Log              logr.Logger
@@ -55,8 +55,7 @@ func (r *GCPClusterReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 			&source.Kind{Type: &infrav1.GCPMachine{}},
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(r.GCPMachineToGCPCluster)},
 		).
-		WithEventFilter(pausePredicates).
-		Build(r)
+		WithEventFilter(pausePredicates).Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
 	}
@@ -69,6 +68,7 @@ func (r *GCPClusterReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 		predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				cluster := e.Object.(*clusterv1.Cluster)
+
 				return !cluster.Spec.Paused
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
@@ -77,6 +77,7 @@ func (r *GCPClusterReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				oldCluster := e.ObjectOld.(*clusterv1.Cluster)
 				newCluster := e.ObjectNew.(*clusterv1.Cluster)
+
 				return oldCluster.Spec.Paused && !newCluster.Spec.Paused
 			},
 		},
@@ -99,6 +100,7 @@ func (r *GCPClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
+
 		return ctrl.Result{}, err
 	}
 
@@ -110,11 +112,13 @@ func (r *GCPClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 
 	if isPaused(cluster, gcpCluster) {
 		log.Info("GCPCluster of linked Cluster is marked as paused. Won't reconcile")
+
 		return ctrl.Result{}, nil
 	}
 
 	if cluster == nil {
 		log.Info("Cluster Controller has not yet set OwnerRef")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -179,6 +183,7 @@ func (r *GCPClusterReconciler) reconcile(clusterScope *scope.ClusterScope) (ctrl
 
 	if gcpCluster.Status.Network.APIServerAddress == nil {
 		clusterScope.Info("Waiting on API server Global IP Address")
+
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
 
@@ -202,6 +207,7 @@ func (r *GCPClusterReconciler) reconcile(clusterScope *scope.ClusterScope) (ctrl
 
 	// No errors, so mark us ready so the Cluster API Cluster Controller can pull it
 	gcpCluster.Status.Ready = true
+
 	return ctrl.Result{}, nil
 }
 
@@ -237,6 +243,7 @@ func (r *GCPClusterReconciler) requeueGCPClusterForUnpausedCluster(o handler.Map
 	c, ok := o.Object.(*clusterv1.Cluster)
 	if !ok {
 		r.Log.Error(errors.Errorf("expected a Cluster but got a %T", o.Object), "failed to get GCPClusters for unpaused Cluster")
+
 		return nil
 	}
 
@@ -263,6 +270,7 @@ func (r *GCPClusterReconciler) GCPMachineToGCPCluster(o handler.MapObject) []ctr
 	m, ok := o.Object.(*infrav1.GCPMachine)
 	if !ok {
 		r.Log.Error(errors.Errorf("expected a GCPMachine but got a %T", o.Object), "failed to get GCPCluster for GCPMachine")
+
 		return nil
 	}
 	log := r.Log.WithValues("GCPMachine", m.Name, "Namespace", m.Namespace)
@@ -271,6 +279,7 @@ func (r *GCPClusterReconciler) GCPMachineToGCPCluster(o handler.MapObject) []ctr
 	switch {
 	case err != nil:
 		log.Error(err, "failed to get owning cluster")
+
 		return nil
 	case apierrors.IsNotFound(err) || c == nil || c.Spec.InfrastructureRef == nil:
 		return nil

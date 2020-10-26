@@ -24,11 +24,10 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/klog/klogr"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 )
 
 // ClusterScopeParams defines the input parameters used to create a new Scope.
@@ -67,6 +66,7 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
+
 	return &ClusterScope{
 		Logger:      params.Logger,
 		client:      params.Client,
@@ -98,6 +98,7 @@ func (s *ClusterScope) NetworkName() string {
 	if s.GCPCluster.Spec.Network.Name != nil {
 		return *s.GCPCluster.Spec.Network.Name
 	}
+
 	return "default"
 }
 
@@ -137,6 +138,7 @@ func (s *ClusterScope) LoadBalancerFrontendPort() int64 {
 	if s.Cluster.Spec.ClusterNetwork.APIServerPort != nil {
 		return int64(*s.Cluster.Spec.ClusterNetwork.APIServerPort)
 	}
+
 	return 443
 }
 
@@ -145,6 +147,7 @@ func (s *ClusterScope) LoadBalancerBackendPort() int64 {
 	if s.GCPCluster.Spec.Network.LoadBalancerBackendPort != nil {
 		return int64(*s.GCPCluster.Spec.Network.LoadBalancerBackendPort)
 	}
+
 	return 6443
 }
 

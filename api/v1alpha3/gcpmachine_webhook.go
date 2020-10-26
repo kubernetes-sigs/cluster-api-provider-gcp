@@ -41,12 +41,12 @@ func (r *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.Validator = &GCPMachine{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (r *GCPMachine) ValidateCreate() error {
 	return nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
 func (r *GCPMachine) ValidateUpdate(old runtime.Object) error {
 	newGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(r)
 	if err != nil {
@@ -81,10 +81,11 @@ func (r *GCPMachine) ValidateUpdate(old runtime.Object) error {
 			field.Forbidden(field.NewPath("spec"), "cannot be modified"),
 		})
 	}
+
 	return nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
 func (r *GCPMachine) ValidateDelete() error {
 	return nil
 }

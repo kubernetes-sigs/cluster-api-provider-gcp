@@ -27,7 +27,7 @@ const (
 	ClusterFinalizer = "gcpcluster.infrastructure.cluster.x-k8s.io"
 )
 
-// GCPClusterSpec defines the desired state of GCPCluster
+// GCPClusterSpec defines the desired state of GCPCluster.
 type GCPClusterSpec struct {
 	// Project is the name of the project to deploy the cluster to.
 	Project string `json:"project"`
@@ -49,7 +49,7 @@ type GCPClusterSpec struct {
 	AdditionalLabels Labels `json:"additionalLabels,omitempty"`
 }
 
-// GCPClusterStatus defines the observed state of GCPCluster
+// GCPClusterStatus defines the observed state of GCPCluster.
 type GCPClusterStatus struct {
 	FailureDomains clusterv1.FailureDomains `json:"failureDomains,omitempty"`
 	Network        Network                  `json:"network,omitempty"`
@@ -67,7 +67,7 @@ type GCPClusterStatus struct {
 // +kubebuilder:printcolumn:name="Network",type="string",JSONPath=".spec.network.name",description="GCP network the cluster is using"
 // +kubebuilder:printcolumn:name="Endpoint",type="string",JSONPath=".status.apiEndpoints[0]",description="API Endpoint",priority=1
 
-// GCPCluster is the Schema for the gcpclusters API
+// GCPCluster is the Schema for the gcpclusters API.
 type GCPCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -78,7 +78,7 @@ type GCPCluster struct {
 
 // +kubebuilder:object:root=true
 
-// GCPClusterList contains a list of GCPCluster
+// GCPClusterList contains a list of GCPCluster.
 type GCPClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

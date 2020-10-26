@@ -66,6 +66,7 @@ func (s *Service) DeleteInstanceGroups() error {
 			return errors.Wrapf(err, "failed to create backend service")
 		}
 	}
+
 	return nil
 }
 
@@ -107,6 +108,7 @@ func (s *Service) GetInstanceGroupMembers(zone, name string) ([]*compute.Instanc
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not list instances in group %q", name)
 	}
+
 	return members.Items, nil
 }
 
