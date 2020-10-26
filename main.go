@@ -35,6 +35,7 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -54,16 +55,17 @@ func main() {
 	klog.InitFlags(nil)
 
 	var (
-		metricsAddr             string
 		enableLeaderElection    bool
+		metricsAddr             string
 		leaderElectionNamespace string
 		watchNamespace          string
 		profilerAddress         string
+		healthAddr              string
 		gcpClusterConcurrency   int
 		gcpMachineConcurrency   int
-		syncPeriod              time.Duration
 		webhookPort             int
-		healthAddr              string
+		reconcileTimeout        time.Duration
+		syncPeriod              time.Duration
 	)
 
 	flag.StringVar(
@@ -131,6 +133,12 @@ func main() {
 		"The address the health endpoint binds to.",
 	)
 
+	flag.DurationVar(&reconcileTimeout,
+		"reconcile-timeout",
+		reconciler.DefaultLoopTimeout,
+		"The maximum duration a reconcile loop can run (e.g. 90m)",
+	)
+
 	flag.Parse()
 
 	if watchNamespace != "" {
@@ -167,15 +175,17 @@ func main() {
 
 	if webhookPort == 0 {
 		if err = (&controllers.GCPMachineReconciler{
-			Client: mgr.GetClient(),
-			Log:    ctrl.Log.WithName("controllers").WithName("GCPMachine"),
+			Client:           mgr.GetClient(),
+			Log:              ctrl.Log.WithName("controllers").WithName("GCPMachine"),
+			ReconcileTimeout: reconcileTimeout,
 		}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
 			os.Exit(1)
 		}
 		if err = (&controllers.GCPClusterReconciler{
-			Client: mgr.GetClient(),
-			Log:    ctrl.Log.WithName("controllers").WithName("GCPCluster"),
+			Client:           mgr.GetClient(),
+			Log:              ctrl.Log.WithName("controllers").WithName("GCPCluster"),
+			ReconcileTimeout: reconcileTimeout,
 		}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
 			os.Exit(1)

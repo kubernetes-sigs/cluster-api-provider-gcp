@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -41,12 +42,14 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 )
 
 // GCPMachineReconciler reconciles a GCPMachine object
 type GCPMachineReconciler struct {
 	client.Client
-	Log logr.Logger
+	Log              logr.Logger
+	ReconcileTimeout time.Duration
 }
 
 func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
@@ -99,7 +102,8 @@ func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 // +kubebuilder:rbac:groups="",resources=secrets;,verbs=get;list;watch
 
 func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr error) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
+	defer cancel()
 	logger := r.Log.WithValues("namespace", req.Namespace, "gcpMachine", req.Name)
 
 	// Fetch the GCPMachine instance.
