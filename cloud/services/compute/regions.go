@@ -40,5 +40,6 @@ func (s *Service) GetZones() ([]string, error) {
 	for _, x := range zones.Items {
 		res = append(res, x.Name)
 	}
+
 	return res, nil
 }

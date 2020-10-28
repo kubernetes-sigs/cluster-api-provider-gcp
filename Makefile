@@ -38,18 +38,38 @@ export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=60s
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
 # Directories.
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TOOLS_DIR := hack/tools
-TOOLS_BIN_DIR := $(TOOLS_DIR)/bin
-BIN_DIR := bin
+TOOLS_BIN_DIR := $(abspath $(TOOLS_DIR)/bin)
+BIN_DIR := $(abspath $(ROOT_DIR)/bin)
+GO_INSTALL = ./scripts/go_install.sh
 
 # Binaries.
 CLUSTERCTL := $(BIN_DIR)/clusterctl
-KUSTOMIZE := $(TOOLS_BIN_DIR)/kustomize
-CONTROLLER_GEN := $(TOOLS_BIN_DIR)/controller-gen
-ENVSUBST := $(TOOLS_BIN_DIR)/envsubst
-GOLANGCI_LINT := $(TOOLS_BIN_DIR)/golangci-lint
-RELEASE_NOTES_BIN := bin/release-notes
-RELEASE_NOTES := $(TOOLS_DIR)/$(RELEASE_NOTES_BIN)
+
+CONTROLLER_GEN_VER := v0.3.0
+CONTROLLER_GEN_BIN := controller-gen
+CONTROLLER_GEN := $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER)
+
+CONVERSION_GEN_VER := v0.18.4
+CONVERSION_GEN_BIN := conversion-gen
+CONVERSION_GEN := $(TOOLS_BIN_DIR)/$(CONVERSION_GEN_BIN)-$(CONVERSION_GEN_VER)
+
+ENVSUBST_VER := v1.2.0
+ENVSUBST_BIN := envsubst
+ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
+
+GOLANGCI_LINT_VER := v1.31.0
+GOLANGCI_LINT_BIN := golangci-lint
+GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
+
+KUSTOMIZE_VER := v3.5.4
+KUSTOMIZE_BIN := kustomize
+KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
+
+RELEASE_NOTES_VER := v0.3.4
+RELEASE_NOTES_BIN := release-notes
+RELEASE_NOTES := $(TOOLS_BIN_DIR)/$(RELEASE_NOTES_BIN)-$(RELEASE_NOTES_VER)
 
 # Define Docker related variables. Releases should modify and double check these vars.
 export GCP_PROJECT ?= $(shell gcloud config get-value project)
@@ -119,20 +139,23 @@ manager: ## Build manager binary.
 $(CLUSTERCTL): go.mod ## Build clusterctl binary.
 	go build -o $(BIN_DIR)/clusterctl sigs.k8s.io/cluster-api/cmd/clusterctl
 
-$(CONTROLLER_GEN): $(TOOLS_DIR)/go.mod # Build controller-gen from tools folder.
-	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/controller-gen sigs.k8s.io/controller-tools/cmd/controller-gen
+$(ENVSUBST): ## Build envsubst from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/a8m/envsubst/cmd/envsubst $(ENVSUBST_BIN) $(ENVSUBST_VER)
 
-$(ENVSUBST): $(TOOLS_DIR)/go.mod # Build envsubst from tools folder.
-	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/envsubst github.com/a8m/envsubst/cmd/envsubst
+$(GOLANGCI_LINT): ## Build golangci-lint from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/golangci/golangci-lint/cmd/golangci-lint $(GOLANGCI_LINT_BIN) $(GOLANGCI_LINT_VER)
 
-$(GOLANGCI_LINT): $(TOOLS_DIR)/go.mod # Build golangci-lint from tools folder.
-	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
+$(KUSTOMIZE): ## Build kustomize from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/kustomize/kustomize/v3 $(KUSTOMIZE_BIN) $(KUSTOMIZE_VER)
 
-$(KUSTOMIZE): $(TOOLS_DIR)/go.mod # Build kustomize from tools folder.
-	cd $(TOOLS_DIR); go build -tags=tools -o $(BIN_DIR)/kustomize sigs.k8s.io/kustomize/kustomize/v3
+$(CONTROLLER_GEN): ## Build controller-gen from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-tools/cmd/controller-gen $(CONTROLLER_GEN_BIN) $(CONTROLLER_GEN_VER)
 
-$(RELEASE_NOTES) : $(TOOLS_DIR)/go.mod
-	cd $(TOOLS_DIR) && go build -tags tools -o $(BIN_DIR)/release-notes sigs.k8s.io/cluster-api/hack/tools/release
+$(CONVERSION_GEN): ## Build conversion-gen.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/code-generator/cmd/conversion-gen $(CONVERSION_GEN_BIN) $(CONVERSION_GEN_VER)
+
+$(RELEASE_NOTES): ## Build release notes.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/release/cmd/release-notes $(RELEASE_NOTES_BIN) $(RELEASE_NOTES_VER)
 
 ## --------------------------------------
 ## Linting
@@ -149,7 +172,6 @@ lint: $(GOLANGCI_LINT) ## Lint codebase
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
 	go mod tidy
-	cd $(TOOLS_DIR); go mod tidy
 
 .PHONY: generate
 generate: ## Generate code
@@ -157,7 +179,7 @@ generate: ## Generate code
 	$(MAKE) generate-manifests
 
 .PHONY: generate-go
-generate-go: $(CONTROLLER_GEN) ## Runs Go related generate targets
+generate-go: $(CONTROLLER_GEN) $(CONVERSION_GEN) ## Runs Go related generate targets
 	go generate ./...
 	$(CONTROLLER_GEN) \
 		paths=./api/... \

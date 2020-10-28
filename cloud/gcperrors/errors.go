@@ -29,5 +29,6 @@ func IsNotFound(err error) bool {
 		return false
 	}
 	ae, ok := err.(*googleapi.Error)
+
 	return ok && ae.Code == http.StatusNotFound
 }

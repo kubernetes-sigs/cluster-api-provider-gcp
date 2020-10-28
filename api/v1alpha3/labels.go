@@ -33,6 +33,7 @@ func (in Labels) Equals(other Labels) bool {
 // HasOwned returns true if the tags contains a tag that marks the resource as owned by the cluster from the perspective of this management tooling.
 func (in Labels) HasOwned(cluster string) bool {
 	value, ok := in[ClusterTagKey(cluster)]
+
 	return ok && ResourceLifecycle(value) == ResourceLifecycleOwned
 }
 
@@ -42,7 +43,7 @@ func (in Labels) HasOwned(cluster string) bool {
 // 	return ok && ResourceLifecycle(value) == ResourceLifecycleOwned
 // }
 
-// GetRole returns the Cluster API role for the tagged resource
+// GetRole returns the Cluster API role for the tagged resource.
 func (in Labels) GetRole() string {
 	return in[NameGCPClusterAPIRole]
 }
@@ -54,6 +55,7 @@ func (in Labels) ToComputeFilter() string {
 	for k, v := range in {
 		builder.WriteString(fmt.Sprintf("(labels.%s = %q) ", k, v))
 	}
+
 	return builder.String()
 }
 
@@ -77,10 +79,11 @@ func (in Labels) AddLabels(other Labels) Labels {
 	for key, value := range other {
 		in[key] = value
 	}
+
 	return in
 }
 
-// ResourceLifecycle configures the lifecycle of a resource
+// ResourceLifecycle configures the lifecycle of a resource.
 type ResourceLifecycle string
 
 const (
@@ -91,19 +94,19 @@ const (
 
 	// NameGCPProviderPrefix is the tag prefix we use to differentiate
 	// cluster-api-provider-gcp owned components from other tooling that
-	// uses NameKubernetesClusterPrefix
+	// uses NameKubernetesClusterPrefix.
 	NameGCPProviderPrefix = "capg-"
 
 	// NameGCPProviderOwned is the tag name we use to differentiate
 	// cluster-api-provider-gcp owned components from other tooling that
-	// uses NameKubernetesClusterPrefix
+	// uses NameKubernetesClusterPrefix.
 	NameGCPProviderOwned = NameGCPProviderPrefix + "cluster-"
 
 	// NameGCPClusterAPIRole is the tag name we use to mark roles for resources
 	// dedicated to this cluster api provider implementation.
 	NameGCPClusterAPIRole = NameGCPProviderPrefix + "role"
 
-	// APIServerRoleTagValue describes the value for the apiserver role
+	// APIServerRoleTagValue describes the value for the apiserver role.
 	APIServerRoleTagValue = "apiserver"
 )
 

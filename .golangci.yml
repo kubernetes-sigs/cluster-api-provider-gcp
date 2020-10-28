@@ -1,15 +1,23 @@
 linters:
-  enable-all: true
-  disable:
-    - funlen
-    - gochecknoglobals
-    - gochecknoinits
-    - lll
-    - godox
-    - wsl
-    - gocognit
-    - gomnd
-  fast: false
+  disable-all: true
+  enable:
+    - deadcode
+    - goconst
+    - gofmt
+    - golint
+    - gosec
+    - govet
+    - ineffassign
+    - interfacer
+    - maligned
+    - misspell
+    - nakedret
+    - prealloc
+    - structcheck
+    - unconvert
+    - varcheck
+  # Run with --fast=false for more extensive checks
+  fast: true
 issues:
   max-same-issues: 0
   max-per-linter: 0
@@ -18,6 +26,10 @@ issues:
     - Using the variable on range scope `(tc)|(rt)|(tt)|(test)|(testcase)|(testCase)` in function literal
     - "G108: Profiling endpoint is automatically exposed on /debug/pprof"
 run:
-  timeout: 6m
+  deadline: 5m
+  skip-dirs:
+    - mock*
   skip-files:
-    - "zz_generated.*\\.go$"
+  - "zz_generated.*\\.go$"
+  - ".*conversion.*\\.go$"
+

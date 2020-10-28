@@ -35,12 +35,12 @@ func (r *GCPMachineTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.Validator = &GCPMachineTemplate{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (r *GCPMachineTemplate) ValidateCreate() error {
 	return nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
 func (r *GCPMachineTemplate) ValidateUpdate(old runtime.Object) error {
 	oldGCPMachineTemplate := old.(*GCPMachineTemplate)
 	if !reflect.DeepEqual(r.Spec, oldGCPMachineTemplate.Spec) {
@@ -50,7 +50,7 @@ func (r *GCPMachineTemplate) ValidateUpdate(old runtime.Object) error {
 	return nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
 func (r *GCPMachineTemplate) ValidateDelete() error {
 	return nil
 }

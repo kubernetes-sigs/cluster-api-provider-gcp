@@ -28,7 +28,7 @@ const (
 	MachineFinalizer = "gcpmachine.infrastructure.cluster.x-k8s.io"
 )
 
-// GCPMachineSpec defines the desired state of GCPMachine
+// GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
 	InstanceType string `json:"instanceType"`
@@ -83,7 +83,7 @@ type GCPMachineSpec struct {
 	ServiceAccount *ServiceAccount `json:"serviceAccounts,omitempty"`
 }
 
-// GCPMachineStatus defines the observed state of GCPMachine
+// GCPMachineStatus defines the observed state of GCPMachine.
 type GCPMachineStatus struct {
 	// Ready is true when the provider resource is ready.
 	// +optional
@@ -145,7 +145,7 @@ type GCPMachineStatus struct {
 // +kubebuilder:printcolumn:name="InstanceID",type="string",JSONPath=".spec.providerID",description="GCE instance ID"
 // +kubebuilder:printcolumn:name="Machine",type="string",JSONPath=".metadata.ownerReferences[?(@.kind==\"Machine\")].name",description="Machine object which owns with this GCPMachine"
 
-// GCPMachine is the Schema for the gcpmachines API
+// GCPMachine is the Schema for the gcpmachines API.
 type GCPMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -156,7 +156,7 @@ type GCPMachine struct {
 
 // +kubebuilder:object:root=true
 
-// GCPMachineList contains a list of GCPMachine
+// GCPMachineList contains a list of GCPMachine.
 type GCPMachineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

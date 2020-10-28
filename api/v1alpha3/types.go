@@ -20,13 +20,13 @@ import (
 	"fmt"
 )
 
-// GCPMachineTemplateResource describes the data needed to create am GCPMachine from a template
+// GCPMachineTemplateResource describes the data needed to create am GCPMachine from a template.
 type GCPMachineTemplateResource struct {
 	// Spec is the specification of the desired behavior of the machine.
 	Spec GCPMachineSpec `json:"spec"`
 }
 
-// Filter is a filter used to identify an GCP resource
+// Filter is a filter used to identify an GCP resource.
 type Filter struct {
 	// Name of the filter. Filter names are case-sensitive.
 	Name string `json:"name"`
@@ -152,6 +152,7 @@ func (s Subnets) ToMap() map[string]*SubnetSpec {
 	for _, x := range s {
 		res[x.Name] = x
 	}
+
 	return res
 }
 
@@ -166,13 +167,14 @@ func (s Subnets) FindByName(name string) *SubnetSpec {
 	return nil
 }
 
-// FilterByZone returns a slice containing all subnets that live in the specified region.
+// FilterByRegion returns a slice containing all subnets that live in the specified region.
 func (s Subnets) FilterByRegion(region string) (res Subnets) {
 	for _, x := range s {
 		if x.Region == region {
 			res = append(res, x)
 		}
 	}
+
 	return
 }
 
@@ -205,14 +207,14 @@ var (
 	InstanceStatusSuspended = InstanceStatus("SUSPENDED")
 
 	// InstanceStatusSuspending is the string representing an instance
-	// that is in the process of being suspended
+	// that is in the process of being suspended.
 	InstanceStatusSuspending = InstanceStatus("SUSPENDING")
 
 	// InstanceStatusTerminated is the string representing an instance that has been terminated.
 	InstanceStatusTerminated = InstanceStatus("TERMINATED")
 )
 
-// ServiceAccount describes compute.serviceAccount
+// ServiceAccount describes compute.serviceAccount.
 type ServiceAccount struct {
 	// Email: Email address of the service account.
 	Email string `json:"email,omitempty"`

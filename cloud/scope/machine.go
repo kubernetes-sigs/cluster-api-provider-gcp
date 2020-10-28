@@ -21,18 +21,20 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/klogr"
 	"k8s.io/utils/pointer"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 )
 
 // MachineScopeParams defines the input parameters used to create a new MachineScope.
@@ -73,6 +75,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
+
 	return &MachineScope{
 		client:      params.Client,
 		Cluster:     params.Cluster,
@@ -106,6 +109,7 @@ func (m *MachineScope) Zone() string {
 	if m.Machine.Spec.FailureDomain == nil {
 		return ""
 	}
+
 	return *m.Machine.Spec.FailureDomain
 }
 
@@ -129,6 +133,7 @@ func (m *MachineScope) Role() string {
 	if util.IsControlPlaneMachine(m.Machine) {
 		return "control-plane"
 	}
+
 	return "node"
 }
 
@@ -138,6 +143,7 @@ func (m *MachineScope) GetInstanceID() *string {
 	if err != nil {
 		return nil
 	}
+
 	return pointer.StringPtr(parsed.ID())
 }
 
@@ -146,6 +152,7 @@ func (m *MachineScope) GetProviderID() string {
 	if m.GCPMachine.Spec.ProviderID != nil {
 		return *m.GCPMachine.Spec.ProviderID
 	}
+
 	return ""
 }
 
@@ -164,7 +171,7 @@ func (m *MachineScope) SetInstanceStatus(v infrav1.InstanceStatus) {
 	m.GCPMachine.Status.InstanceStatus = &v
 }
 
-// SetReady sets the GCPMachine Ready Status
+// SetReady sets the GCPMachine Ready Status.
 func (m *MachineScope) SetReady() {
 	m.GCPMachine.Status.Ready = true
 }
@@ -208,6 +215,7 @@ func (m *MachineScope) GetBootstrapData() (string, error) {
 	if !ok {
 		return "", errors.New("error retrieving bootstrap data: secret value key is missing")
 	}
+
 	return string(value), nil
 }
 
