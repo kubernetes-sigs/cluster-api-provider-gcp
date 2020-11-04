@@ -81,10 +81,12 @@ func (s *Service) DeleteNetwork() error {
 	// Delete Network.
 	op, err := s.networks.Delete(s.scope.Project(), network.Name).Do()
 	if err != nil {
-		return errors.Wrapf(err, "failed to delete forwarding rules")
+		if !gcperrors.IsNotFound(err) {
+			return errors.Wrapf(err, "failed to delete network")
+		}
 	}
 	if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-		return errors.Wrapf(err, "failed to delete forwarding rules")
+		return errors.Wrapf(err, "failed to wait for delete network operation")
 	}
 	s.scope.GCPCluster.Spec.Network.Name = nil
 	return nil
