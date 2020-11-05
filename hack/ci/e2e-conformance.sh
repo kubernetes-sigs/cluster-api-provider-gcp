@@ -25,9 +25,12 @@ CLUSTER_NAME=${CLUSTER_NAME:-"test1"}
 CAPG_WORKER_CLUSTER_KUBECONFIG=${CAPG_WORKER_CLUSTER_KUBECONFIG:-"/tmp/kubeconfig"}
 GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${CLUSTER_NAME}-mynetwork"}
 KUBERNETES_MAJOR_VERSION="1"
-KUBERNETES_MINOR_VERSION="17"
-KUBERNETES_PATCH_VERSION="4"
+KUBERNETES_MINOR_VERSION="19"
+KUBERNETES_PATCH_VERSION="2"
 KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
+CONTROL_PLANE_MACHINE_COUNT=1
+WORKER_MACHINE_COUNT=5
+TOTAL_MACHINE_COUNT=$((CONTROL_PLANE_MACHINE_COUNT+WORKER_MACHINE_COUNT))
 
 TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -278,8 +281,8 @@ create_cluster() {
   # Load the newly built image into kind and start the cluster
   (GCP_REGION=${GCP_REGION} \
   GCP_PROJECT=${GCP_PROJECT} \
-  CONTROL_PLANE_MACHINE_COUNT=1 \
-  WORKER_MACHINE_COUNT=2 \
+  CONTROL_PLANE_MACHINE_COUNT=${CONTROL_PLANE_MACHINE_COUNT} \
+  WORKER_MACHINE_COUNT=${WORKER_MACHINE_COUNT} \
   KUBERNETES_VERSION=${KUBERNETES_VERSION} \
   GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2 \
   GCP_NODE_MACHINE_TYPE=n1-standard-2 \
@@ -298,7 +301,7 @@ create_cluster() {
     kubectl get machines --context=kind-clusterapi
     read running total <<< $(kubectl get machines --context=kind-clusterapi \
       -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /(r|R)unning/{count++} END{print count " " NR}') ;
-    if [[ $total == "3" && $running == "3" ]]; then
+    if [[ $total == "${TOTAL_MACHINE_COUNT}" && $running == "${TOTAL_MACHINE_COUNT}" ]]; then
       return 0
     fi
     read failed total <<< $(kubectl get machines --context=kind-clusterapi \
