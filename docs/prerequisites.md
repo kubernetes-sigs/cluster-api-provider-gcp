@@ -6,6 +6,7 @@
 - A [Google Cloud](https://console.cloud.google.com) account.
 - [Packer](https://www.packer.io/intro/getting-started/install.html) and [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) to build images
 - Make to use `Makefile` targets
+- Install `coreutils` (for timeout) on *OSX*
 
 ### Setup a Network and Cloud NAT
 
