@@ -22,11 +22,15 @@ GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-""}
 GCP_PROJECT=${GCP_PROJECT:-""}
 GCP_REGION=${GCP_REGION:-"us-east4"}
 CLUSTER_NAME=${CLUSTER_NAME:-"test1"}
+CAPG_WORKER_CLUSTER_KUBECONFIG=${CAPG_WORKER_CLUSTER_KUBECONFIG:-"/tmp/kubeconfig"}
 GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${CLUSTER_NAME}-mynetwork"}
 KUBERNETES_MAJOR_VERSION="1"
-KUBERNETES_MINOR_VERSION="17"
-KUBERNETES_PATCH_VERSION="4"
+KUBERNETES_MINOR_VERSION="19"
+KUBERNETES_PATCH_VERSION="2"
 KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
+CONTROL_PLANE_MACHINE_COUNT=1
+WORKER_MACHINE_COUNT=5
+TOTAL_MACHINE_COUNT=$((CONTROL_PLANE_MACHINE_COUNT+WORKER_MACHINE_COUNT))
 
 TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -40,7 +44,7 @@ dump-logs() {
   echo "bootstrap cluster:"
   kubectl version || true
   echo "deployed cluster:"
-  kubectl --kubeconfig="${PWD}"/kubeconfig version || true
+  kubectl --kubeconfig="${CAPG_WORKER_CLUSTER_KUBECONFIG}" version || true
   echo ""
 
   # dump all the info from the CAPI related CRDs
@@ -57,7 +61,7 @@ dump-logs() {
   (kubectl get pods --all-namespaces -o json \
    | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
   echo "images in deployed cluster using kubectl CLI" >> "${ARTIFACTS}/logs/images.info"
-  (kubectl --kubeconfig="${PWD}"/kubeconfig get pods --all-namespaces -o json \
+  (kubectl --kubeconfig="${CAPG_WORKER_CLUSTER_KUBECONFIG}" get pods --all-namespaces -o json \
    | jq --raw-output '.items[].spec.containers[].image' | sort)  >> "${ARTIFACTS}/logs/images.info" || true
 
   # dump cluster info for kind
@@ -67,7 +71,7 @@ dump-logs() {
   echo "=== gcloud compute instances list ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
   gcloud compute instances list --project "${GCP_PROJECT}" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
   echo "=== cluster-info dump ===" >> "${ARTIFACTS}/logs/capg-cluster.info" || true
-  kubectl --kubeconfig="${PWD}"/kubeconfig cluster-info dump >> "${ARTIFACTS}/logs/capg-cluster.info" || true
+  kubectl --kubeconfig="${CAPG_WORKER_CLUSTER_KUBECONFIG}" cluster-info dump >> "${ARTIFACTS}/logs/capg-cluster.info" || true
 
   # export all logs from kind
   kind "export" logs --name="clusterapi" "${ARTIFACTS}/logs" || true
@@ -172,7 +176,7 @@ function ssh-to-node() {
   local cmd="$3"
 
   # ensure we have an IP to connect to
-  gcloud compute --project "${GCP_PROJECT}" instances add-access-config --zone "${zone}" "${node}" || true
+  gcloud compute instances add-access-config "${node}" --project "${GCP_PROJECT}" --zone "${zone}" || true
 
   # Loop until we can successfully ssh into the box
   for try in {1..5}; do
@@ -194,33 +198,6 @@ init_image() {
     if [[ -n "$image" ]]; then
       return
     fi
-  fi
-
-  if ! command -v ansible &> /dev/null; then
-    if [[ $EUID -ne 0 ]]; then
-      echo "Please install ansible and try again."
-      exit 1
-    else
-      # we need pip to install ansible
-      curl -L https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-      python get-pip.py --user
-      rm -f get-pip.py
-
-      # install ansible needed by packer
-      version="2.8.5"
-      python -m pip install "ansible==${version}"
-    fi
-  fi
-  if ! command -v packer &> /dev/null; then
-    hostos=$(go env GOHOSTOS)
-    hostarch=$(go env GOHOSTARCH)
-    version="1.4.3"
-    url="https://releases.hashicorp.com/packer/${version}/packer_${version}_${hostos}_${hostarch}.zip"
-    echo "Downloading packer from $url"
-    wget --quiet -O packer.zip "$url"  && \
-      unzip packer.zip && \
-      rm packer.zip && \
-      ln -s "$PWD"/packer /usr/local/bin/packer
   fi
 
   if [[ -n ${CI_VERSION:-} ]]; then
@@ -251,13 +228,14 @@ EOF
       GCP_PROJECT_ID=$GCP_PROJECT \
       GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
       PACKER_VAR_FILES=override.json \
-      make build-gce-default)
+      make deps-gce build-gce-default)
   else
     # assume we are running in the CI environment as root
     # Add a user for ansible to work properly
     groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
+    chown -R packer:packer /home/prow/go/src/sigs.k8s.io/image-builder
     # use the packer user to run the build
-    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make build-gce-default'"
+    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && PATH=$PATH:~packer/.local/bin:/home/prow/go/src/sigs.k8s.io/image-builder/images/capi/.local/bin GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make deps-gce build-gce-default'"
   fi
 }
 
@@ -271,11 +249,9 @@ build_k8s() {
   pushd "$(go env GOPATH)/src/k8s.io/kubernetes"
 
   # make sure we have e2e requirements
-  bazel build //cmd/kubectl //test/e2e:e2e.test //vendor/github.com/onsi/ginkgo/ginkgo
+  make WHAT="test/e2e/e2e.test vendor/github.com/onsi/ginkgo/ginkgo cmd/kubectl"
 
   # ensure the e2e script will find our binaries ...
-  mkdir -p "${PWD}/_output/bin/"
-  cp "${PWD}/bazel-bin/test/e2e/e2e.test" "${PWD}/_output/bin/e2e.test"
   PATH="$(dirname "$(find "${PWD}/bazel-bin/" -name kubectl -type f)"):${PATH}"
   export PATH
 
@@ -305,8 +281,8 @@ create_cluster() {
   # Load the newly built image into kind and start the cluster
   (GCP_REGION=${GCP_REGION} \
   GCP_PROJECT=${GCP_PROJECT} \
-  CONTROL_PLANE_MACHINE_COUNT=1 \
-  WORKER_MACHINE_COUNT=2 \
+  CONTROL_PLANE_MACHINE_COUNT=${CONTROL_PLANE_MACHINE_COUNT} \
+  WORKER_MACHINE_COUNT=${WORKER_MACHINE_COUNT} \
   KUBERNETES_VERSION=${KUBERNETES_VERSION} \
   GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2 \
   GCP_NODE_MACHINE_TYPE=n1-standard-2 \
@@ -325,7 +301,7 @@ create_cluster() {
     kubectl get machines --context=kind-clusterapi
     read running total <<< $(kubectl get machines --context=kind-clusterapi \
       -o json | jq -r '.items[].status.phase' | awk 'BEGIN{count=0} /(r|R)unning/{count++} END{print count " " NR}') ;
-    if [[ $total == "3" && $running == "3" ]]; then
+    if [[ $total == "${TOTAL_MACHINE_COUNT}" && $running == "${TOTAL_MACHINE_COUNT}" ]]; then
       return 0
     fi
     read failed total <<< $(kubectl get machines --context=kind-clusterapi \
@@ -348,7 +324,7 @@ create_cluster() {
 # run e2es with kubetest
 run_tests() {
   # export the KUBECONFIG
-  KUBECONFIG="${PWD}/kubeconfig"
+  KUBECONFIG="${CAPG_WORKER_CLUSTER_KUBECONFIG}"
   export KUBECONFIG
 
   # ginkgo regexes
@@ -485,7 +461,7 @@ EOF
   fi
 
   if [[ -n ${CI_VERSION:-} || -n ${USE_CI_ARTIFACTS:-} ]]; then
-    CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/latest.txt)}
+    CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/latest-1.19.txt)}
     KUBERNETES_VERSION=${CI_VERSION}
     KUBERNETES_MAJOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d '.' -f1 - | sed 's/v//')
     KUBERNETES_MINOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d '.' -f2 -)

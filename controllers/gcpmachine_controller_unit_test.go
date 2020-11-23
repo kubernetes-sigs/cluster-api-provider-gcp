@@ -43,6 +43,7 @@ func newMachine(clusterName, machineName string) *clusterv1.Machine {
 		},
 	}
 }
+
 func newMachineWithInfrastructureRef(clusterName, machineName string) *clusterv1.Machine {
 	m := newMachine(clusterName, machineName)
 	m.Spec.InfrastructureRef = v1.ObjectReference{
@@ -51,8 +52,10 @@ func newMachineWithInfrastructureRef(clusterName, machineName string) *clusterv1
 		Name:       "gcp" + machineName,
 		APIVersion: infrav1.GroupVersion.String(),
 	}
+
 	return m
 }
+
 func newCluster(name string) *clusterv1.Cluster {
 	return &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{

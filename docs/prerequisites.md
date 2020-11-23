@@ -6,6 +6,7 @@
 - A [Google Cloud](https://console.cloud.google.com) account.
 - [Packer](https://www.packer.io/intro/getting-started/install.html) and [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) to build images
 - Make to use `Makefile` targets
+- Install `coreutils` (for timeout) on *OSX*
 
 ### Setup a Network and Cloud NAT
 
@@ -40,7 +41,7 @@ export GCP_PROJECT_ID=<project-id>
 export GOOGLE_APPLICATION_CREDENTIALS=</path/to/serviceaccount-key.json>
 
 # Clone the image builder repository if you haven't already.
-git clone https://sigs.k8s.io/image-builder.git image-builder
+git clone https://github.com/kubernetes-sigs/image-builder.git image-builder
 
 # Change directory to images/capi within the image builder repository
 cd image-builder/images/capi

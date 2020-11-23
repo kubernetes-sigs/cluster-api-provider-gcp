@@ -19,7 +19,7 @@ package compute
 import (
 	"fmt"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/utils/pointer"
@@ -160,10 +160,12 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 	out, err := s.runInstance(input)
 	if err != nil {
 		record.Warnf(scope.Machine, "FailedCreate", "Failed to create instance: %v", err)
+
 		return nil, err
 	}
 
 	record.Eventf(scope.Machine, "SuccessfulCreate", "Created new %s instance with name %q", scope.Role(), out.Name)
+
 	return out, nil
 }
 
@@ -193,7 +195,7 @@ func (s *Service) TerminateInstanceAndWait(scope *scope.MachineScope) error {
 	return nil
 }
 
-// rootDiskImage computes the GCE disk image to use as the boot disk
+// rootDiskImage computes the GCE disk image to use as the boot disk.
 func (s *Service) rootDiskImage(scope *scope.MachineScope) (string, error) {
 	if scope.GCPMachine.Spec.Image != nil {
 		return *scope.GCPMachine.Spec.Image, nil
@@ -215,5 +217,6 @@ func (s *Service) rootDiskImage(scope *scope.MachineScope) (string, error) {
 	image := fmt.Sprintf(
 		"projects/%s/global/images/family/capi-ubuntu-1804-k8s-v%d-%d",
 		s.scope.Project(), version.Major, version.Minor)
+
 	return image, nil
 }

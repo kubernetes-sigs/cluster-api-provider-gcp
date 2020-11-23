@@ -303,6 +303,7 @@ func (s *Service) getAPIServerIPAddressSpec() *compute.Address {
 
 func (s *Service) getAPIServerForwardingRuleSpec() *compute.ForwardingRule {
 	frontendPortRange := fmt.Sprintf("%d-%d", s.scope.LoadBalancerFrontendPort(), s.scope.LoadBalancerFrontendPort())
+
 	return &compute.ForwardingRule{
 		Name:                fmt.Sprintf("%s-%s", s.scope.Name(), infrav1.APIServerRoleTagValue),
 		IPAddress:           *s.scope.Network().APIServerAddress,

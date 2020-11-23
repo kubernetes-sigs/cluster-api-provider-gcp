@@ -36,9 +36,11 @@ func (s *Service) ReconcileNetwork() error {
 		if err != nil {
 			return errors.Wrapf(err, "failed to create network")
 		}
+
 		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
 			return errors.Wrapf(err, "failed to create network")
 		}
+
 		network, err = s.networks.Get(s.scope.Project(), spec.Name).Do()
 		if err != nil {
 			return errors.Wrapf(err, "failed to describe network")
@@ -50,6 +52,7 @@ func (s *Service) ReconcileNetwork() error {
 	s.scope.GCPCluster.Spec.Network.Name = pointer.StringPtr(network.Name)
 	s.scope.GCPCluster.Spec.Network.AutoCreateSubnetworks = pointer.BoolPtr(network.AutoCreateSubnetworks)
 	s.scope.GCPCluster.Status.Network.SelfLink = pointer.StringPtr(network.SelfLink)
+
 	return nil
 }
 
@@ -83,9 +86,12 @@ func (s *Service) DeleteNetwork() error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to delete forwarding rules")
 	}
+
 	if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
 		return errors.Wrapf(err, "failed to delete forwarding rules")
 	}
+
 	s.scope.GCPCluster.Spec.Network.Name = nil
+
 	return nil
 }

@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// TODO: Move to Cluster API
+// TODO: Move to Cluster API.
 var pausePredicates = predicate.Funcs{
 	UpdateFunc: func(e event.UpdateEvent) bool {
 		return !isPaused(nil, e.MetaNew)
@@ -37,12 +37,13 @@ var pausePredicates = predicate.Funcs{
 	},
 }
 
-// TODO: Fix up Cluster API's clusterutil.IsPaused function
+// TODO: Fix up Cluster API's clusterutil.IsPaused function.
 func isPaused(cluster *clusterv1.Cluster, v metav1.Object) bool {
 	if cluster == nil {
 		cluster = &clusterv1.Cluster{
 			Spec: clusterv1.ClusterSpec{},
 		}
 	}
+
 	return clusterutil.IsPaused(cluster, v)
 }
