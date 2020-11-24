@@ -47,7 +47,7 @@ git clone https://github.com/kubernetes-sigs/image-builder.git image-builder
 cd image-builder/images/capi
 
 # Run the Make target to generate GCE images.
-make build-gce-default
+make build-gce-ubuntu-1804
 
 # Check that you can the published images.
 gcloud compute images list --project ${GCP_PROJECT_ID} --no-standard-images --filter="family:capi-ubuntu-1804-k8s"
