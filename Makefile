@@ -333,6 +333,8 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST)
 .PHONY: create-workload-cluster
 create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST)
 	# Create workload Cluster.
+	$(KUSTOMIZE) build templates | $(ENVSUBST) > test.yaml
+	cat test.yaml
 	$(KUSTOMIZE) build templates | $(ENVSUBST) | kubectl apply -f -
 
 	# Wait for the kubeconfig to become available.
