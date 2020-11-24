@@ -42,7 +42,7 @@ spec:
     name: v1alpha3
     schema:
       openAPIV3Schema:
-        description: GCPMachine is the Schema for the gcpmachines API
+        description: GCPMachine is the Schema for the gcpmachines API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -57,7 +57,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: GCPMachineSpec defines the desired state of GCPMachine
+            description: GCPMachineSpec defines the desired state of GCPMachine.
             properties:
               additionalLabels:
                 additionalProperties:
@@ -103,7 +103,7 @@ spec:
                 type: integer
               rootDeviceType:
                 description: 'RootDeviceType is the type of the root volume. Supported
-                  types of root volumes: 1. "pd-standard" - Standrad (HDD) persistent
+                  types of root volumes: 1. "pd-standard" - Standard (HDD) persistent
                   disk 2. "pd-ssd" - SSD persistent disk Default is "pd-standard".'
                 type: string
               serviceAccounts:
@@ -130,7 +130,7 @@ spec:
             - instanceType
             type: object
           status:
-            description: GCPMachineStatus defines the observed state of GCPMachine
+            description: GCPMachineStatus defines the observed state of GCPMachine.
             properties:
               addresses:
                 description: Addresses contains the GCP instance associated addresses.
