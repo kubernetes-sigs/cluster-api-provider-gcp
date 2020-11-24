@@ -39,7 +39,7 @@ spec:
     name: v1alpha3
     schema:
       openAPIV3Schema:
-        description: GCPCluster is the Schema for the gcpclusters API
+        description: GCPCluster is the Schema for the gcpclusters API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -54,7 +54,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: GCPClusterSpec defines the desired state of GCPCluster
+            description: GCPClusterSpec defines the desired state of GCPCluster.
             properties:
               additionalLabels:
                 additionalProperties:
@@ -155,7 +155,7 @@ spec:
             - region
             type: object
           status:
-            description: GCPClusterStatus defines the observed state of GCPCluster
+            description: GCPClusterStatus defines the observed state of GCPCluster.
             properties:
               failureDomains:
                 additionalProperties:

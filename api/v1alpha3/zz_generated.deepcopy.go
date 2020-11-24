@@ -279,6 +279,11 @@ func (in *GCPMachineSpec) DeepCopyInto(out *GCPMachineSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.RootDeviceType != nil {
+		in, out := &in.RootDeviceType, &out.RootDeviceType
+		*out = new(DiskType)
+		**out = **in
+	}
 	if in.ServiceAccount != nil {
 		in, out := &in.ServiceAccount, &out.ServiceAccount
 		*out = new(ServiceAccount)

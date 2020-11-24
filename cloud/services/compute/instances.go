@@ -47,6 +47,10 @@ func (s *Service) InstanceIfExists(scope *scope.MachineScope) (*compute.Instance
 	return res, nil
 }
 
+func diskTypeURL(zone string, dt infrav1.DiskType) string {
+	return fmt.Sprintf("zones/%s/diskTypes/%s", zone, dt)
+}
+
 // CreateInstance runs a GCE instance.
 func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, error) {
 	log := s.scope.Logger.WithValues("machine-role", scope.Role())
@@ -83,7 +87,7 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 				Boot:       true,
 				InitializeParams: &compute.AttachedDiskInitializeParams{
 					DiskSizeGb:  30,
-					DiskType:    fmt.Sprintf("zones/%s/diskTypes/%s", scope.Zone(), "pd-standard"),
+					DiskType:    diskTypeURL(scope.Zone(), infrav1.PdStandardDiskType),
 					SourceImage: sourceImage,
 				},
 			},
@@ -138,6 +142,9 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 
 	if scope.GCPMachine.Spec.RootDeviceSize > 0 {
 		input.Disks[0].InitializeParams.DiskSizeGb = scope.GCPMachine.Spec.RootDeviceSize
+	}
+	if scope.GCPMachine.Spec.RootDeviceType != nil {
+		input.Disks[0].InitializeParams.DiskType = diskTypeURL(scope.Zone(), *scope.GCPMachine.Spec.RootDeviceType)
 	}
 
 	if scope.GCPMachine.Spec.Subnet != nil {
