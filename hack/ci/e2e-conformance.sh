@@ -228,14 +228,14 @@ EOF
       GCP_PROJECT_ID=$GCP_PROJECT \
       GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
       PACKER_VAR_FILES=override.json \
-      make deps-gce build-gce-default)
+      make deps-gce build-gce-ubuntu-1804)
   else
     # assume we are running in the CI environment as root
     # Add a user for ansible to work properly
     groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
     chown -R packer:packer /home/prow/go/src/sigs.k8s.io/image-builder
     # use the packer user to run the build
-    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && PATH=$PATH:~packer/.local/bin:/home/prow/go/src/sigs.k8s.io/image-builder/images/capi/.local/bin GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make deps-gce build-gce-default'"
+    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && PATH=$PATH:~packer/.local/bin:/home/prow/go/src/sigs.k8s.io/image-builder/images/capi/.local/bin GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make deps-gce build-gce-ubuntu-1804'"
   fi
 }
 
@@ -461,7 +461,7 @@ EOF
   fi
 
   if [[ -n ${CI_VERSION:-} || -n ${USE_CI_ARTIFACTS:-} ]]; then
-    CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/latest-1.19.txt)}
+    CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/latest.txt)}
     KUBERNETES_VERSION=${CI_VERSION}
     KUBERNETES_MAJOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d '.' -f1 - | sed 's/v//')
     KUBERNETES_MINOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d '.' -f2 -)

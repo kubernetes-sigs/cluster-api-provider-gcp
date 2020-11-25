@@ -28,6 +28,13 @@ const (
 	MachineFinalizer = "gcpmachine.infrastructure.cluster.x-k8s.io"
 )
 
+type DiskType string
+
+const (
+	PdStandardDiskType DiskType = "pd-standard"
+	PdSsdDiskType      DiskType = "pd-ssd"
+)
+
 // GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
@@ -76,6 +83,14 @@ type GCPMachineSpec struct {
 	// Defaults to 30.
 	// +optional
 	RootDeviceSize int64 `json:"rootDeviceSize,omitempty"`
+
+	// RootDeviceType is the type of the root volume.
+	// Supported types of root volumes:
+	// 1. "pd-standard" - Standard (HDD) persistent disk
+	// 2. "pd-ssd" - SSD persistent disk
+	// Default is "pd-standard".
+	// +optional
+	RootDeviceType *DiskType `json:"rootDeviceType,omitempty"`
 
 	// ServiceAccount specifies the service account email and which scopes to assign to the machine.
 	// Defaults to: email: "default", scope: []{compute.CloudPlatformScope}
