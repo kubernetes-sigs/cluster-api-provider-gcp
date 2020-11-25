@@ -9,3 +9,4 @@ templates/
 scripts/
 **/.md
 tilt-provider.json
+_artifacts/
