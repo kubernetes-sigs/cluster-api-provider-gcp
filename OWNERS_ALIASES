@@ -10,8 +10,10 @@ aliases:
     - detiber
     - justinsb
   cluster-api-maintainers:
+    - CecileRobertMichon
     - detiber
     - justinsb
+    - ncdc
     - vincepri
   sig-gcp-leads:
     - abgworrall
