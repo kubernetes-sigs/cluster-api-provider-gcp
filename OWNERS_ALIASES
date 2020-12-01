@@ -10,16 +10,19 @@ aliases:
     - detiber
     - justinsb
   cluster-api-maintainers:
+    - CecileRobertMichon
     - detiber
     - justinsb
+    - ncdc
     - vincepri
   sig-gcp-leads:
     - abgworrall
   cluster-api-gcp-maintainers:
+    - cpanato
     - detiber
-    - maisem
-    - krousey
-    - justinsb
-    - vincepri
     - gab-satchi
+    - justinsb
+    - krousey
+    - maisem
     - rsmitty
+    - vincepri
