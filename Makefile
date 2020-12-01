@@ -43,6 +43,8 @@ TOOLS_DIR := hack/tools
 TOOLS_BIN_DIR := $(abspath $(TOOLS_DIR)/bin)
 BIN_DIR := $(abspath $(ROOT_DIR)/bin)
 GO_INSTALL = ./scripts/go_install.sh
+E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/gcp-ci.yaml
+E2E_CONF_FILE_ENVSUBST := $(ROOT_DIR)/test/e2e/config/gcp-ci-envsubst.yaml
 
 # Binaries.
 CLUSTERCTL := $(BIN_DIR)/clusterctl
@@ -70,6 +72,10 @@ KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
 RELEASE_NOTES_VER := v0.3.4
 RELEASE_NOTES_BIN := release-notes
 RELEASE_NOTES := $(TOOLS_BIN_DIR)/$(RELEASE_NOTES_BIN)-$(RELEASE_NOTES_VER)
+
+GINKGO_VER := v1.13.0
+GINKGO_BIN := ginkgo
+GINKGO := $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
 
 TIMEOUT := $(shell command -v timeout || command -v gtimeout)
 
@@ -123,6 +129,25 @@ help:  ## Display this help
 test: ## Run tests
 	source ./scripts/fetch_ext_bins.sh; fetch_tools; setup_envs; go test -v ./...
 
+# Allow overriding the e2e configurations
+GINKGO_FOCUS ?= Workload cluster creation
+GINKGO_NODES ?= 3
+GINKGO_NOCOLOR ?= false
+GINKGO_ARGS ?=
+ARTIFACTS ?= $(ROOT_DIR)/_artifacts
+SKIP_CLEANUP ?= false
+SKIP_CREATE_MGMT_CLUSTER ?= false
+
+.PHONY: test-e2e
+test-e2e: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end tests
+	$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
+	time $(GINKGO) -v -trace -progress -v -tags=e2e -focus=$(GINKGO_FOCUS) -nodes=$(GINKGO_NODES) --noColor=$(GINKGO_NOCOLOR) ./test/e2e -- \
+		-e2e.artifacts-folder="$(ARTIFACTS)" \
+		-e2e.config="$(E2E_CONF_FILE_ENVSUBST)" \
+		-e2e.skip-resource-cleanup=$(SKIP_CLEANUP) \
+		-e2e.use-existing-cluster=$(SKIP_CREATE_MGMT_CLUSTER)
+
+
 ## --------------------------------------
 ## Binaries
 ## --------------------------------------
@@ -158,6 +183,9 @@ $(CONVERSION_GEN): ## Build conversion-gen.
 
 $(RELEASE_NOTES): ## Build release notes.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/release/cmd/release-notes $(RELEASE_NOTES_BIN) $(RELEASE_NOTES_VER)
+
+$(GINKGO): ## Build ginkgo.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/onsi/ginkgo/ginkgo $(GINKGO_BIN) $(GINKGO_VER)
 
 ## --------------------------------------
 ## Linting
@@ -213,6 +241,10 @@ docker-build: ## Build the docker image for controller-manager
 .PHONY: docker-push
 docker-push: ## Push the docker image
 	docker push $(CONTROLLER_IMG)-$(ARCH):$(TAG)
+
+.PHONY: e2e-image
+e2e-image:
+	docker build --tag=gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller:e2e .
 
 ## --------------------------------------
 ## Docker — All ARCH
