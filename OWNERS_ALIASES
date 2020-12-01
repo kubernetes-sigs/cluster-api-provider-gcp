@@ -18,10 +18,11 @@ aliases:
   sig-gcp-leads:
     - abgworrall
   cluster-api-gcp-maintainers:
+    - cpanato
     - detiber
-    - maisem
-    - krousey
-    - justinsb
-    - vincepri
     - gab-satchi
+    - justinsb
+    - krousey
+    - maisem
     - rsmitty
+    - vincepri
