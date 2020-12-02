@@ -198,10 +198,26 @@ func (r *GCPClusterReconciler) reconcile(clusterScope *scope.ClusterScope) (ctrl
 	if err != nil {
 		return ctrl.Result{}, errors.Wrapf(err, "failed to get available zones for GCPCluster %s/%s", gcpCluster.Namespace, gcpCluster.Name)
 	}
+
+	// FailureDomains list should be empty by default.
 	gcpCluster.Status.FailureDomains = make(clusterv1.FailureDomains, len(zones))
+
+	// Iterate through all zones
 	for _, zone := range zones {
-		gcpCluster.Status.FailureDomains[zone] = clusterv1.FailureDomainSpec{
-			ControlPlane: true,
+		// If we have failuredomains in spec, see if this zone is in valid zone
+		// Add to the status _only_ if it's mentioned in the gcpCluster spec
+		if len(gcpCluster.Spec.FailureDomains) > 0 {
+			for _, fd := range gcpCluster.Spec.FailureDomains {
+				if fd == zone {
+					gcpCluster.Status.FailureDomains[zone] = clusterv1.FailureDomainSpec{
+						ControlPlane: true,
+					}
+				}
+			}
+		} else {
+			gcpCluster.Status.FailureDomains[zone] = clusterv1.FailureDomainSpec{
+				ControlPlane: true,
+			}
 		}
 	}
 

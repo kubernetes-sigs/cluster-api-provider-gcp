@@ -43,6 +43,12 @@ type GCPClusterSpec struct {
 	// +optional
 	Network NetworkSpec `json:"network"`
 
+	// FailureDomains is an optional field which is used to assign selected availability zones to a cluster
+	// FailureDomains if empty, defaults to all the zones in the selected region and if specified would override
+	// the default zones.
+	// +optional
+	FailureDomains []string `json:"failureDomains,omitempty"`
+
 	// AdditionalLabels is an optional set of tags to add to GCP resources managed by the GCP provider, in addition to the
 	// ones added by default.
 	// +optional

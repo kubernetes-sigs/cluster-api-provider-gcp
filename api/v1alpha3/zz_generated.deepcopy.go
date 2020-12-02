@@ -138,6 +138,11 @@ func (in *GCPClusterSpec) DeepCopyInto(out *GCPClusterSpec) {
 	*out = *in
 	out.ControlPlaneEndpoint = in.ControlPlaneEndpoint
 	in.Network.DeepCopyInto(&out.Network)
+	if in.FailureDomains != nil {
+		in, out := &in.FailureDomains, &out.FailureDomains
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.AdditionalLabels != nil {
 		in, out := &in.AdditionalLabels, &out.AdditionalLabels
 		*out = make(Labels, len(*in))
