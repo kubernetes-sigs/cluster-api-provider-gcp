@@ -8,7 +8,7 @@
         - Example PR: https://github.com/kubernetes/test-infra/pull/16827
 
 ## Prepare branch, tag and release notes
- 
+
  - Update the file `metadata.yaml` if is a major or minor release
  - Submit a PR for the `metadata.yaml` update if needed, wait for it to be merged before continuing, and pull any changes prior to continuing.
  - Create tag with git
@@ -21,7 +21,7 @@
  - Export GITHUB_TOKEN
  - Run the release-notes tool with the appropriate commits. Commits range from the first commit after the previous release to the new release commit.
   ```
-  release-notes --github-org kubernetes-sigs --github-repo cluster-api-provider-gcp \
+  release-notes --org kubernetes-sigs --repo cluster-api-provider-gcp \
   --start-sha 1cf1ec4a1effd9340fe7370ab45b173a4979dc8f  \
   --end-sha e843409f896981185ca31d6b4a4c939f27d975de
   ```

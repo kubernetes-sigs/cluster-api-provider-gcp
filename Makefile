@@ -302,6 +302,7 @@ release: clean-release  ## Builds and push container images using the latest git
 	$(MAKE) set-manifest-pull-policy PULL_POLICY=IfNotPresent
 	$(MAKE) release-manifests
 	$(MAKE) release-metadata
+	$(MAKE) release-templates
 
 .PHONY: release-manifests
 release-manifests: $(KUSTOMIZE) $(RELEASE_DIR) ## Builds the manifests to publish with a release
@@ -310,6 +311,10 @@ release-manifests: $(KUSTOMIZE) $(RELEASE_DIR) ## Builds the manifests to publis
 .PHONY: release-metadata
 release-metadata: $(RELEASE_DIR)
 	cp metadata.yaml $(RELEASE_DIR)/metadata.yaml
+
+.PHONY: release-templates
+release-templates: $(RELEASE_DIR)
+	cp templates/cluster-template* $(RELEASE_DIR)/
 
 .PHONY: release-staging
 release-staging: ## Builds and push container images to the staging bucket.
