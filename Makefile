@@ -349,7 +349,7 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST)
 	kubectl wait --for=condition=Available --timeout=5m apiservice v1beta1.webhook.cert-manager.io
 
 	# Deploy CAPI
-	wget -O- https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.11/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
+	wget -O- https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.12/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
 
 	# Deploy CAPG
 	kind load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
