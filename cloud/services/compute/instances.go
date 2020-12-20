@@ -110,6 +110,13 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 		},
 	}
 
+	for _, m := range scope.GCPMachine.Spec.AdditionalMetadata {
+		input.Metadata.Items = append(input.Metadata.Items, &compute.MetadataItems{
+			Key:   m.Key,
+			Value: m.Value,
+		})
+	}
+
 	if scope.GCPMachine.Spec.ServiceAccount != nil {
 		serviceAccount := scope.GCPMachine.Spec.ServiceAccount
 		input.ServiceAccounts = []*compute.ServiceAccount{
