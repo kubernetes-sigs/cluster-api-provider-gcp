@@ -121,9 +121,10 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 	}
 
 	input.Labels = infrav1.Build(infrav1.BuildParams{
-		ClusterName: s.scope.Name(),
-		Lifecycle:   infrav1.ResourceLifecycleOwned,
-		Role:        pointer.StringPtr(scope.Role()),
+		ClusterName:      s.scope.Name(),
+		Lifecycle:        infrav1.ResourceLifecycleOwned,
+		Role:             pointer.StringPtr(scope.Role()),
+		KubernetesObject: scope.GCPMachine,
 		// TODO(vincepri): Check what needs to be added for the cloud provider label.
 		Additional: s.scope.
 			GCPCluster.Spec.
