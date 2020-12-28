@@ -47,6 +47,27 @@ spec:
                     description: Spec is the specification of the desired behavior
                       of the machine.
                     properties:
+                      additionalDisks:
+                        description: AdditionalDisks are optional non-boot attached
+                          disks.
+                        items:
+                          description: AttachedDiskSpec degined GCP machine disk.
+                          properties:
+                            deviceType:
+                              description: 'DeviceType is a device type of the attached
+                                disk. Supported types of non-root attached volumes:
+                                1. "pd-standard" - Standard (HDD) persistent disk
+                                2. "pd-ssd" - SSD persistent disk 3. "local-ssd" -
+                                Local SSD disk (https://cloud.google.com/compute/docs/disks/local-ssd).
+                                Default is "pd-standard".'
+                              type: string
+                            size:
+                              description: Size is the size of the disk in GBs. Defaults
+                                to 30GB. For "local-ssd" size is always 375GB.
+                              format: int64
+                              type: integer
+                          type: object
+                        type: array
                       additionalLabels:
                         additionalProperties:
                           type: string
