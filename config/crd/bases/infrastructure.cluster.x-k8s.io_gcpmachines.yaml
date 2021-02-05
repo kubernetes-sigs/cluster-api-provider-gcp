@@ -87,6 +87,9 @@ spec:
                 description: 'InstanceType is the type of instance to create. Example:
                   n1.standard-2'
                 type: string
+              preemptible:
+                description: Preemptible defines if instance is preemptible
+                type: boolean
               providerID:
                 description: ProviderID is the unique identifier as specified by the
                   cloud provider.

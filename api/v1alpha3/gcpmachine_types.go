@@ -96,6 +96,10 @@ type GCPMachineSpec struct {
 	// Defaults to: email: "default", scope: []{compute.CloudPlatformScope}
 	// +optional
 	ServiceAccount *ServiceAccount `json:"serviceAccounts,omitempty"`
+
+	// Preemptible defines if instance is preemptible
+	// +optional
+	Preemptible bool `json:"preemptible,omitempty"`
 }
 
 // GCPMachineStatus defines the observed state of GCPMachine.

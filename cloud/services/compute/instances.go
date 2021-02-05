@@ -108,6 +108,9 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*compute.Instance, 
 				},
 			},
 		},
+		Scheduling: &compute.Scheduling{
+			Preemptible: scope.GCPMachine.Spec.Preemptible,
+		},
 	}
 
 	if scope.GCPMachine.Spec.ServiceAccount != nil {
