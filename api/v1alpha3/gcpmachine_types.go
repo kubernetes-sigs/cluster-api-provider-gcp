@@ -64,6 +64,13 @@ type GCPMachineSpec struct {
 	// +optional
 	AdditionalLabels Labels `json:"additionalLabels,omitempty"`
 
+	// AdditionalMetadata is an optional set of metadata to add to an instance, in addition to the ones added by default by the
+	// GCP provider.
+	// +listType=map
+	// +listMapKey=key
+	// +optional
+	AdditionalMetadata []MetadataItem `json:"additionalMetadata,omitempty"`
+
 	// IAMInstanceProfile is a name of an IAM instance profile to assign to the instance
 	// +optional
 	// IAMInstanceProfile string `json:"iamInstanceProfile,omitempty"`
@@ -100,6 +107,14 @@ type GCPMachineSpec struct {
 	// Preemptible defines if instance is preemptible
 	// +optional
 	Preemptible bool `json:"preemptible,omitempty"`
+}
+
+// MetadataItem defines a single piece of metadata associated with an instance.
+type MetadataItem struct {
+	// Key is the identifier for the metadata entry.
+	Key string `json:"key,omitempty"`
+	// Value is the value of the metadata entry.
+	Value *string `json:"value,omitempty"`
 }
 
 // GCPMachineStatus defines the observed state of GCPMachine.

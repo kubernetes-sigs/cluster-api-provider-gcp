@@ -68,6 +68,25 @@ spec:
                   same tag name with different values, the GCPMachine's value takes
                   precedence.
                 type: object
+              additionalMetadata:
+                description: AdditionalMetadata is an optional set of metadata to
+                  add to an instance, in addition to the ones added by default by
+                  the GCP provider.
+                items:
+                  description: MetadataItem defines a single piece of metadata associated
+                    with an instance.
+                  properties:
+                    key:
+                      description: Key is the identifier for the metadata entry.
+                      type: string
+                    value:
+                      description: Value is the value of the metadata entry.
+                      type: string
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - key
+                x-kubernetes-list-type: map
               additionalNetworkTags:
                 description: AdditionalNetworkTags is a list of network tags that
                   should be applied to the instance. These tags are set in addition
