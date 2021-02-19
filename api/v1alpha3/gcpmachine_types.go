@@ -112,7 +112,7 @@ type GCPMachineSpec struct {
 // MetadataItem defines a single piece of metadata associated with an instance.
 type MetadataItem struct {
 	// Key is the identifier for the metadata entry.
-	Key string `json:"key,omitempty"`
+	Key string `json:"key"`
 	// Value is the value of the metadata entry.
 	Value *string `json:"value,omitempty"`
 }
