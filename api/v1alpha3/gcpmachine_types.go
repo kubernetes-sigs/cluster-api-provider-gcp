@@ -33,7 +33,24 @@ type DiskType string
 const (
 	PdStandardDiskType DiskType = "pd-standard"
 	PdSsdDiskType      DiskType = "pd-ssd"
+	LocalSsdDiskType   DiskType = "local-ssd"
 )
+
+// AttachedDiskSpec degined GCP machine disk.
+type AttachedDiskSpec struct {
+	// DeviceType is a device type of the attached disk.
+	// Supported types of non-root attached volumes:
+	// 1. "pd-standard" - Standard (HDD) persistent disk
+	// 2. "pd-ssd" - SSD persistent disk
+	// 3. "local-ssd" - Local SSD disk (https://cloud.google.com/compute/docs/disks/local-ssd).
+	// Default is "pd-standard".
+	// +optional
+	DeviceType *DiskType `json:"deviceType,omitempty"`
+	// Size is the size of the disk in GBs.
+	// Defaults to 30GB. For "local-ssd" size is always 375GB.
+	// +optional
+	Size *int64 `json:"size,omitempty"`
+}
 
 // GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
@@ -98,6 +115,10 @@ type GCPMachineSpec struct {
 	// Default is "pd-standard".
 	// +optional
 	RootDeviceType *DiskType `json:"rootDeviceType,omitempty"`
+
+	// AdditionalDisks are optional non-boot attached disks.
+	// +optional
+	AdditionalDisks []AttachedDiskSpec `json:"additionalDisks,omitempty"`
 
 	// ServiceAccount specifies the service account email and which scopes to assign to the machine.
 	// Defaults to: email: "default", scope: []{compute.CloudPlatformScope}
