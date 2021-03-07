@@ -25,11 +25,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/klogr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 )
 
 func newMachine(clusterName, machineName string) *clusterv1.Machine {
@@ -81,23 +80,21 @@ func TestGCPMachineReconciler_GCPClusterToGCPMachines(t *testing.T) {
 		newMachine(clusterName, "my-machine-2"),
 	}
 
-	client := fake.NewFakeClientWithScheme(scheme, initObjects...)
+	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(initObjects...).Build()
 
 	reconciler := &GCPMachineReconciler{
 		Client: client,
 		Log:    klogr.New(),
 	}
-	requests := reconciler.GCPClusterToGCPMachines(handler.MapObject{
-		Object: &infrav1.GCPCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      clusterName,
-				Namespace: "default",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						Name:       clusterName,
-						Kind:       "Cluster",
-						APIVersion: clusterv1.GroupVersion.String(),
-					},
+	requests := reconciler.GCPClusterToGCPMachines(&infrav1.GCPCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Name:       clusterName,
+					Kind:       "Cluster",
+					APIVersion: clusterv1.GroupVersion.String(),
 				},
 			},
 		},

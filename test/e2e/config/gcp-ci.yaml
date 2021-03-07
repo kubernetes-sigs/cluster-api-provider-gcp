@@ -20,43 +20,46 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v0.3.12
-        # Use manifest from source files
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.12/core-components.yaml"
-        type: "url"
-        replacements:
-          - old: "imagePullPolicy: Always"
-            new: "imagePullPolicy: IfNotPresent"
-          - old: "--enable-leader-election"
-            new: "--enable-leader-election=false"
+    - name: v0.4.0
+      value: https://storage.googleapis.com/artifacts.k8s-staging-cluster-api.appspot.com/components/nightly_master_20210301/core-components.yaml
+      type: url
+      files:
+      - sourcePath: "../data/shared/v1alpha4/metadata.yaml"
+      replacements:
+      - old: "imagePullPolicy: Always"
+        new: "imagePullPolicy: IfNotPresent"
+      - old: "--leader-elect"
+        new: "--leader-elect=false"
   - name: kubeadm
     type: BootstrapProvider
     versions:
-      - name: v0.3.12
-        # Use manifest from source files
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.12/bootstrap-components.yaml"
-        type: "url"
-        replacements:
-          - old: "imagePullPolicy: Always"
-            new: "imagePullPolicy: IfNotPresent"
-          - old: "--enable-leader-election"
-            new: "--enable-leader-election=false"
+    - name: v0.4.0
+      value: https://storage.googleapis.com/artifacts.k8s-staging-cluster-api.appspot.com/components/nightly_master_20210301/bootstrap-components.yaml
+      type: url
+      files:
+      - sourcePath: "../data/shared/v1alpha4/metadata.yaml"
+      replacements:
+      - old: "imagePullPolicy: Always"
+        new: "imagePullPolicy: IfNotPresent"
+      - old: "--leader-elect"
+        new: "--leader-elect=false"
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-      - name: v0.3.12
-        # Use manifest from source files
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.12/control-plane-components.yaml"
-        type: "url"
-        replacements:
-          - old: "imagePullPolicy: Always"
-            new: "imagePullPolicy: IfNotPresent"
-          - old: "--enable-leader-election"
-            new: "--enable-leader-election=false"
+    - name: v0.4.0
+      value: https://storage.googleapis.com/artifacts.k8s-staging-cluster-api.appspot.com/components/nightly_master_20210301/control-plane-components.yaml
+      type: url
+      files:
+      - sourcePath: "../data/shared/v1alpha4/metadata.yaml"
+      replacements:
+      - old: "imagePullPolicy: Always"
+        new: "imagePullPolicy: IfNotPresent"
+      - old: "--leader-elect"
+        new: "--leader-elect=false"
   - name: gcp
     type: InfrastructureProvider
     versions:
-    - name: v0.3.0
+    - name: v0.4.0
       value: "${PWD}/config"
     files:
     - sourcePath: "${PWD}/metadata.yaml"

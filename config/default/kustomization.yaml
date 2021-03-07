@@ -1,5 +1,11 @@
 namespace: capg-system
 
+namePrefix: capg-
+
+# Labels to add to all resources and selectors.
+commonLabels:
+  cluster.x-k8s.io/provider: "infrastructure-gcp"
+
 resources:
   - namespace.yaml
   - credentials.yaml
