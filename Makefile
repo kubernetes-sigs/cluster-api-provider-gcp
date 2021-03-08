@@ -65,7 +65,7 @@ GOLANGCI_LINT_VER := v1.31.0
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
 
-KUSTOMIZE_VER := v3.5.4
+KUSTOMIZE_VER := v3.8.6
 KUSTOMIZE_BIN := kustomize
 KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
 
@@ -281,13 +281,13 @@ docker-push-manifest: ## Push the fat manifest docker image.
 
 .PHONY: set-manifest-image
 set-manifest-image:
-	$(info Updating kustomize image patch file for manager resource)
-	sed -i'' -e 's@image: .*@image: '"${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./config/manager/manager_image_patch.yaml
+	$(info Updating kustomize image patch file for default resource)
+	sed -i'' -e 's@image: .*@image: '"${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./config/default/manager_image_patch.yaml
 
 .PHONY: set-manifest-pull-policy
 set-manifest-pull-policy:
-	$(info Updating kustomize pull policy file for manager resource)
-	sed -i'' -e 's@imagePullPolicy: .*@imagePullPolicy: '"$(PULL_POLICY)"'@' ./config/manager/manager_pull_policy.yaml
+	$(info Updating kustomize pull policy file for default resource)
+	sed -i'' -e 's@imagePullPolicy: .*@imagePullPolicy: '"$(PULL_POLICY)"'@' ./config/default/manager_pull_policy.yaml
 
 ## --------------------------------------
 ## Release
@@ -313,7 +313,7 @@ release: clean-release  ## Builds and push container images using the latest git
 
 .PHONY: release-manifests
 release-manifests: $(KUSTOMIZE) $(RELEASE_DIR) ## Builds the manifests to publish with a release
-	$(KUSTOMIZE) build config > $(RELEASE_DIR)/infrastructure-components.yaml
+	$(KUSTOMIZE) build config/default > $(RELEASE_DIR)/infrastructure-components.yaml
 
 .PHONY: release-metadata
 release-metadata: $(RELEASE_DIR)
@@ -352,20 +352,22 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST)
 	kind create cluster --name=clusterapi
 
 	# Install cert manager and wait for availability
-	kubectl create -f https://github.com/jetstack/cert-manager/releases/download/v0.11.1/cert-manager.yaml
-	kubectl wait --for=condition=Available --timeout=5m apiservice v1beta1.webhook.cert-manager.io
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.0.1/cert-manager.yaml
+	kubectl wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager
+	kubectl wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-cainjector
+	kubectl wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-webhook
 
 	# Deploy CAPI
-	wget -O- https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.12/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
+	wget -O- https://storage.googleapis.com/artifacts.k8s-staging-cluster-api.appspot.com/components/nightly_master_20210210/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
 
 	# Deploy CAPG
 	kind load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
-	$(KUSTOMIZE) build config | $(ENVSUBST) | kubectl apply -f -
+	$(KUSTOMIZE) build config/default | $(ENVSUBST) | kubectl apply -f -
 
 	# Wait for CAPI pods
-	kubectl wait --for=condition=Ready --timeout=5m -n capi-system pod -l cluster.x-k8s.io/provider=cluster-api
-	kubectl wait --for=condition=Ready --timeout=5m -n capi-kubeadm-bootstrap-system pod -l cluster.x-k8s.io/provider=bootstrap-kubeadm
-	kubectl wait --for=condition=Ready --timeout=5m -n capi-kubeadm-control-plane-system pod -l cluster.x-k8s.io/provider=control-plane-kubeadm
+	kubectl wait --for=condition=Available --timeout=5m -n capi-system deployment -l cluster.x-k8s.io/provider=cluster-api
+	kubectl wait --for=condition=Available --timeout=5m -n capi-kubeadm-bootstrap-system deployment -l cluster.x-k8s.io/provider=bootstrap-kubeadm
+	kubectl wait --for=condition=Available --timeout=5m -n capi-kubeadm-control-plane-system deployment -l cluster.x-k8s.io/provider=control-plane-kubeadm
 
 	# Wait for CAPG pods
 	kubectl wait --for=condition=Ready --timeout=5m -n capg-system pod -l cluster.x-k8s.io/provider=infrastructure-gcp
