@@ -17,40 +17,15 @@ limitations under the License.
 package v1alpha4
 
 import (
-	"errors"
-	"reflect"
-
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+// log is for logging in this package.
+var _ = logf.Log.WithName("gcpmachinetemplate-resource")
 
 func (r *GCPMachineTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
-}
-
-// +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpmachinetemplate,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinetemplates,versions=v1alpha4,sideEffects=None,name=validation.gcpmachinetemplate.infrastructure.x-k8s.io,admissionReviewVersions=v1beta1
-
-var _ webhook.Validator = &GCPMachineTemplate{}
-
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPMachineTemplate) ValidateCreate() error {
-	return nil
-}
-
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPMachineTemplate) ValidateUpdate(old runtime.Object) error {
-	oldGCPMachineTemplate := old.(*GCPMachineTemplate)
-	if !reflect.DeepEqual(r.Spec, oldGCPMachineTemplate.Spec) {
-		return errors.New("gcpMachineTemplateSpec is immutable")
-	}
-
-	return nil
-}
-
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPMachineTemplate) ValidateDelete() error {
-	return nil
 }

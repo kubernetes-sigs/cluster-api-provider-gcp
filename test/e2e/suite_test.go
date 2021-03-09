@@ -162,7 +162,7 @@ var _ = SynchronizedAfterSuite(func() {
 func initScheme() *runtime.Scheme {
 	sc := runtime.NewScheme()
 	framework.TryAddDefaultSchemes(sc)
-	_ = v1alpha4.AddToScheme(sc)
+	Expect(v1alpha4.AddToScheme(sc)).To(Succeed())
 
 	return sc
 }

@@ -49,7 +49,7 @@ E2E_CONF_FILE_ENVSUBST := $(ROOT_DIR)/test/e2e/config/gcp-ci-envsubst.yaml
 # Binaries.
 CLUSTERCTL := $(BIN_DIR)/clusterctl
 
-CONTROLLER_GEN_VER := v0.4.1-0.20201002000720-57250aac17f6
+CONTROLLER_GEN_VER := v0.5.0
 CONTROLLER_GEN_BIN := controller-gen
 CONTROLLER_GEN := $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER)
 
@@ -106,10 +106,10 @@ ifeq ($(SELINUX_ENABLED),1)
   DOCKER_VOL_OPTS?=:z
 endif
 
-# Set build time variables including version details
-LDFLAGS := $(shell source ./hack/version.sh; version::ldflags)
+# Build time versioning details.
+LDFLAGS := $(shell hack/version.sh)
 
-GOLANG_VERSION := 1.15.8
+GOLANG_VERSION := 1.16.0
 
 # CI
 CAPG_WORKER_CLUSTER_KUBECONFIG ?= "/tmp/kubeconfig"

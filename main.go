@@ -69,6 +69,7 @@ var (
 	profilerAddress             string
 	healthAddr                  string
 	watchFilterValue            string
+	webhookCertDir              string
 	gcpClusterConcurrency       int
 	gcpMachineConcurrency       int
 	webhookPort                 int
@@ -115,6 +116,7 @@ func main() {
 		SyncPeriod:              &syncPeriod,
 		Namespace:               watchNamespace,
 		Port:                    webhookPort,
+		CertDir:                 webhookCertDir,
 		HealthProbeBindAddress:  healthAddr,
 		EventBroadcaster:        broadcaster,
 	})
@@ -129,34 +131,36 @@ func main() {
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
 
-	if webhookPort == 0 {
-		if err = (&controllers.GCPMachineReconciler{
-			Client:           mgr.GetClient(),
-			Log:              ctrl.Log.WithName("controllers").WithName("GCPMachine"),
-			ReconcileTimeout: reconcileTimeout,
-			WatchFilterValue: watchFilterValue,
-		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
-			os.Exit(1)
-		}
-		if err = (&controllers.GCPClusterReconciler{
-			Client:           mgr.GetClient(),
-			Log:              ctrl.Log.WithName("controllers").WithName("GCPCluster"),
-			ReconcileTimeout: reconcileTimeout,
-			WatchFilterValue: watchFilterValue,
-		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
-			os.Exit(1)
-		}
-	} else {
-		if err = (&infrav1alpha4.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
-			os.Exit(1)
-		}
-		if err = (&infrav1alpha4.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
-			os.Exit(1)
-		}
+	if err = (&controllers.GCPMachineReconciler{
+		Client:           mgr.GetClient(),
+		Log:              ctrl.Log.WithName("controllers").WithName("GCPMachine"),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
+		os.Exit(1)
+	}
+	if err = (&controllers.GCPClusterReconciler{
+		Client:           mgr.GetClient(),
+		Log:              ctrl.Log.WithName("controllers").WithName("GCPCluster"),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
+		os.Exit(1)
+	}
+
+	if err = (&infrav1alpha4.GCPCluster{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "GCPCluster")
+		os.Exit(1)
+	}
+	if err = (&infrav1alpha4.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
+		os.Exit(1)
+	}
+	if err = (&infrav1alpha4.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
+		os.Exit(1)
 	}
 
 	if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {
@@ -180,7 +184,7 @@ func main() {
 func initFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&metricsAddr,
-		"metrics-addr",
+		"metrics-bind-addr",
 		":8080",
 		"The address the metric endpoint binds to.",
 	)
@@ -262,7 +266,13 @@ func initFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&webhookPort,
 		"webhook-port",
 		9443,
-		"Webhook Server port, disabled by default. When enabled, the manager will only work as webhook server, no reconcilers are installed.",
+		"Webhook Server port",
+	)
+
+	fs.StringVar(&webhookCertDir,
+		"webhook-cert-dir",
+		"/tmp/k8s-webhook-server/serving-certs",
+		"Webhook Server Certificate Directory, is the directory that contains the server key and certificate",
 	)
 
 	fs.StringVar(&healthAddr,
