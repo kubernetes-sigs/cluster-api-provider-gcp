@@ -35,12 +35,6 @@ func (src *GCPCluster) ConvertTo(dstRaw conversion.Hub) error { // nolint
 		return err
 	}
 
-	// Manually restore data.
-	restored := &v1alpha4.GCPCluster{}
-	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
-		return err
-	}
-
 	return nil
 }
 

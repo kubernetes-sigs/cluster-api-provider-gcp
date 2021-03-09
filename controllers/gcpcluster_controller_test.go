@@ -35,7 +35,7 @@ var _ = Describe("GCPClusterReconciler", func() {
 
 	Context("Reconcile an GCPCluster", func() {
 		It("should not error and not requeue the request with insufficient set up", func() {
-			ctx := context.TODO()
+			ctx := context.Background()
 
 			reconciler := &GCPClusterReconciler{
 				Client: k8sClient,

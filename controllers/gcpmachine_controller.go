@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -55,46 +56,24 @@ type GCPMachineReconciler struct {
 }
 
 func (r *GCPMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
-	c, err := ctrl.NewControllerManagedBy(mgr).
+	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		For(&infrav1.GCPMachine{}).
 		Watches(
 			&source.Kind{Type: &clusterv1.Machine{}},
-			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPMachine"))),
+			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPMachine"))),
 		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
-		// Watches(
-		// 	&source.Kind{Type: &infrav1.GCPCluster{}},
-		// 	&handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(r.GCPClusterToGCPMachines)},
-		// ).
-		Build(r)
-	if err != nil {
-		return err
-	}
-
-	return c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
-		// &handler.EnqueueRequestsFromMapFunc{
-		// 	ToRequests: handler.ToRequestsFunc(r.requeueGCPMachinesForUnpausedCluster),
-		// },
-		handler.EnqueueRequestsFromMapFunc(r.requeueGCPMachinesForUnpausedCluster),
-		// predicate.Funcs{
-		// 	UpdateFunc: func(e event.UpdateEvent) bool {
-		// 		oldCluster := e.ObjectOld.(*clusterv1.Cluster)
-		// 		newCluster := e.ObjectNew.(*clusterv1.Cluster)
-
-		// 		return oldCluster.Spec.Paused && !newCluster.Spec.Paused
-		// 	},
-		// 	CreateFunc: func(e event.CreateEvent) bool {
-		// 		cluster := e.Object.(*clusterv1.Cluster)
-
-		// 		return !cluster.Spec.Paused
-		// 	},
-		// 	DeleteFunc: func(e event.DeleteEvent) bool {
-		// 		return false
-		// 	},
-		// },
-	)
+		Watches(
+			&source.Kind{Type: &infrav1.GCPCluster{}},
+			handler.EnqueueRequestsFromMapFunc(r.GCPClusterToGCPMachines),
+		).
+		Watches(
+			&source.Kind{Type: &clusterv1.Cluster{}},
+			handler.EnqueueRequestsFromMapFunc(r.requeueGCPMachinesForUnpausedCluster),
+			builder.WithPredicates(predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx))),
+		).
+		Complete(r)
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines,verbs=get;list;watch;create;update;patch;delete

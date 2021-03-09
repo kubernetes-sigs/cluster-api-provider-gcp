@@ -30,12 +30,6 @@ func (src *GCPMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 		return err
 	}
 
-	// Manually restore data from annotations
-	restored := &infrav1alpha4.GCPMachineTemplate{}
-	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
-		return err
-	}
-
 	return nil
 }
 
