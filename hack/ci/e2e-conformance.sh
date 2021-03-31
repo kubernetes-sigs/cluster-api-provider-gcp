@@ -45,7 +45,7 @@ dump-logs() {
   kubectl version || true
   echo "deployed cluster:"
   kubectl --kubeconfig="${CAPG_WORKER_CLUSTER_KUBECONFIG}" version || true
-  echo ""
+  echo "=== ==="
 
   # dump all the info from the CAPI related CRDs
   kubectl --context=kind-clusterapi get \
