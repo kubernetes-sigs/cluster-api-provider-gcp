@@ -5,11 +5,11 @@ go 1.13
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/go-logr/logr v0.1.0
-	github.com/onsi/ginkgo v1.14.2
+	github.com/onsi/ginkgo v1.15.2
 	github.com/onsi/gomega v1.10.3
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20201006153459-a7d1128ccaa0
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	google.golang.org/api v0.20.0
 	k8s.io/api v0.17.13
 	k8s.io/apimachinery v0.17.13
