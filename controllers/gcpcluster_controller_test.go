@@ -22,11 +22,11 @@ import (
 
 	"golang.org/x/net/context"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 )
 
 var _ = Describe("GCPClusterReconciler", func() {
@@ -46,8 +46,12 @@ var _ = Describe("GCPClusterReconciler", func() {
 
 			// Create the GCPCluster object and expect the Reconcile and Deployment to be created
 			Expect(k8sClient.Create(ctx, instance)).To(Succeed())
+			defer func() {
+				err := k8sClient.Delete(ctx, instance)
+				Expect(err).NotTo(HaveOccurred())
+			}()
 
-			result, err := reconciler.Reconcile(ctrl.Request{
+			result, err := reconciler.Reconcile(ctx, ctrl.Request{
 				NamespacedName: client.ObjectKey{
 					Namespace: instance.Namespace,
 					Name:      instance.Name,

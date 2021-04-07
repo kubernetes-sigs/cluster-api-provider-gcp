@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2021 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha3
+package v1alpha4
 
 import (
 	"reflect"
@@ -31,32 +31,35 @@ import (
 // log is for logging in this package.
 var _ = logf.Log.WithName("gcpmachine-resource")
 
-func (r *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (m *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(m).
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1alpha3-gcpmachine,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines,versions=v1alpha3,name=validation.gcpmachine.infrastructure.cluster.x-k8s.io
+// +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpmachine,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines,versions=v1alpha4,name=validation.gcpmachine.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1beta1
+// +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpmachine,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines,versions=v1alpha4,name=default.gcpmachine.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1beta1
 
 var _ webhook.Validator = &GCPMachine{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPMachine) ValidateCreate() error {
+func (m *GCPMachine) ValidateCreate() error {
+	clusterlog.Info("validate create", "name", m.Name)
+
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPMachine) ValidateUpdate(old runtime.Object) error {
-	newGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(r)
+func (m *GCPMachine) ValidateUpdate(old runtime.Object) error {
+	newGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(m)
 	if err != nil {
-		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), r.Name, field.ErrorList{
+		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.InternalError(nil, errors.Wrap(err, "failed to convert new GCPMachine to unstructured object")),
 		})
 	}
 	oldGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(old)
 	if err != nil {
-		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), r.Name, field.ErrorList{
+		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.InternalError(nil, errors.Wrap(err, "failed to convert old GCPMachine to unstructured object")),
 		})
 	}
@@ -77,7 +80,7 @@ func (r *GCPMachine) ValidateUpdate(old runtime.Object) error {
 	delete(newGCPMachineSpec, "additionalNetworkTags")
 
 	if !reflect.DeepEqual(oldGCPMachineSpec, newGCPMachineSpec) {
-		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), r.Name, field.ErrorList{
+		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.Forbidden(field.NewPath("spec"), "cannot be modified"),
 		})
 	}
@@ -86,6 +89,13 @@ func (r *GCPMachine) ValidateUpdate(old runtime.Object) error {
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPMachine) ValidateDelete() error {
+func (m *GCPMachine) ValidateDelete() error {
+	clusterlog.Info("validate delete", "name", m.Name)
+
 	return nil
+}
+
+// Default implements webhookutil.defaulter so a webhook will be registered for the type
+func (m *GCPMachine) Default() {
+	clusterlog.Info("default", "name", m.Name)
 }

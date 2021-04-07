@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
 )

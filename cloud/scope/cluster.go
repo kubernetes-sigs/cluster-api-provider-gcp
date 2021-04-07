@@ -24,8 +24,8 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/klog/klogr"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

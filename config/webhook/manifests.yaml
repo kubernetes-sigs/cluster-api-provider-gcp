@@ -1,17 +1,89 @@
 
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpcluster
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.gcpcluster.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpclusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpmachine
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.gcpmachine.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpmachines
+  sideEffects: None
+
+---
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   creationTimestamp: null
   name: validating-webhook-configuration
 webhooks:
-- clientConfig:
-    caBundle: Cg==
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-gcpmachine
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpcluster
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.gcpcluster.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpclusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpmachine
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.gcpmachine.infrastructure.cluster.x-k8s.io
@@ -19,28 +91,10 @@ webhooks:
   - apiGroups:
     - infrastructure.cluster.x-k8s.io
     apiVersions:
-    - v1alpha3
+    - v1alpha4
     operations:
     - CREATE
     - UPDATE
     resources:
     - gcpmachines
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha3-gcpmachinetemplate
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  name: validation.gcpmachinetemplate.infrastructure.x-k8s.io
-  rules:
-  - apiGroups:
-    - infrastructure.cluster.x-k8s.io
-    apiVersions:
-    - v1alpha3
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - gcpmachinetemplates
+  sideEffects: None

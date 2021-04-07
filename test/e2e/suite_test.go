@@ -33,14 +33,14 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 
-	"sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
-
 	"k8s.io/apimachinery/pkg/runtime"
 
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/bootstrap"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
+
+	"sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 )
 
 const (
@@ -162,7 +162,7 @@ var _ = SynchronizedAfterSuite(func() {
 func initScheme() *runtime.Scheme {
 	sc := runtime.NewScheme()
 	framework.TryAddDefaultSchemes(sc)
-	_ = v1alpha3.AddToScheme(sc)
+	Expect(v1alpha4.AddToScheme(sc)).To(Succeed())
 
 	return sc
 }

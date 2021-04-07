@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -29,16 +30,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	cgrecord "k8s.io/client-go/tools/record"
+	"k8s.io/component-base/version"
 	"k8s.io/klog"
 	"k8s.io/klog/klogr"
 
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	infrav1alpha3 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	infrav1alpha4 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 )
@@ -52,23 +55,29 @@ func init() {
 	klog.InitFlags(nil)
 
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = infrav1.AddToScheme(scheme)
+	_ = infrav1alpha3.AddToScheme(scheme)
+	_ = infrav1alpha4.AddToScheme(scheme)
 	_ = clusterv1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
 var (
-	enableLeaderElection    bool
-	metricsAddr             string
-	leaderElectionNamespace string
-	watchNamespace          string
-	profilerAddress         string
-	healthAddr              string
-	gcpClusterConcurrency   int
-	gcpMachineConcurrency   int
-	webhookPort             int
-	reconcileTimeout        time.Duration
-	syncPeriod              time.Duration
+	enableLeaderElection        bool
+	metricsAddr                 string
+	leaderElectionNamespace     string
+	watchNamespace              string
+	profilerAddress             string
+	healthAddr                  string
+	watchFilterValue            string
+	webhookCertDir              string
+	gcpClusterConcurrency       int
+	gcpMachineConcurrency       int
+	webhookPort                 int
+	reconcileTimeout            time.Duration
+	syncPeriod                  time.Duration
+	leaderElectionLeaseDuration time.Duration
+	leaderElectionRenewDeadline time.Duration
+	leaderElectionRetryPeriod   time.Duration
 )
 
 func main() {
@@ -101,9 +110,13 @@ func main() {
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionID:        "controller-leader-election-capg",
 		LeaderElectionNamespace: leaderElectionNamespace,
+		LeaseDuration:           &leaderElectionLeaseDuration,
+		RenewDeadline:           &leaderElectionRenewDeadline,
+		RetryPeriod:             &leaderElectionRetryPeriod,
 		SyncPeriod:              &syncPeriod,
 		Namespace:               watchNamespace,
 		Port:                    webhookPort,
+		CertDir:                 webhookCertDir,
 		HealthProbeBindAddress:  healthAddr,
 		EventBroadcaster:        broadcaster,
 	})
@@ -115,34 +128,40 @@ func main() {
 	// Initialize event recorder.
 	record.InitFromRecorder(mgr.GetEventRecorderFor("gcp-controller"))
 
-	if webhookPort == 0 {
-		if err = (&controllers.GCPMachineReconciler{
-			Client:           mgr.GetClient(),
-			Log:              ctrl.Log.WithName("controllers").WithName("GCPMachine"),
-			ReconcileTimeout: reconcileTimeout,
-		}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
-			os.Exit(1)
-		}
-		if err = (&controllers.GCPClusterReconciler{
-			Client:           mgr.GetClient(),
-			Log:              ctrl.Log.WithName("controllers").WithName("GCPCluster"),
-			ReconcileTimeout: reconcileTimeout,
-		}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
-			os.Exit(1)
-		}
-	} else {
-		if err = (&infrav1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
-			os.Exit(1)
-		}
-		if err = (&infrav1.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
-			os.Exit(1)
-		}
+	// Setup the context that's going to be used in controllers and for the manager.
+	ctx := ctrl.SetupSignalHandler()
+
+	if err = (&controllers.GCPMachineReconciler{
+		Client:           mgr.GetClient(),
+		Log:              ctrl.Log.WithName("controllers").WithName("GCPMachine"),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
+		os.Exit(1)
 	}
-	// +kubebuilder:scaffold:builder
+	if err = (&controllers.GCPClusterReconciler{
+		Client:           mgr.GetClient(),
+		Log:              ctrl.Log.WithName("controllers").WithName("GCPCluster"),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
+		os.Exit(1)
+	}
+
+	if err = (&infrav1alpha4.GCPCluster{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "GCPCluster")
+		os.Exit(1)
+	}
+	if err = (&infrav1alpha4.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
+		os.Exit(1)
+	}
+	if err = (&infrav1alpha4.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
+		os.Exit(1)
+	}
 
 	if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to create ready check")
@@ -154,8 +173,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	// +kubebuilder:scaffold:builder
+	setupLog.Info("starting manager", "version", version.Get().String())
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
@@ -164,16 +184,37 @@ func main() {
 func initFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&metricsAddr,
-		"metrics-addr",
+		"metrics-bind-addr",
 		":8080",
 		"The address the metric endpoint binds to.",
 	)
 
 	fs.BoolVar(
 		&enableLeaderElection,
-		"enable-leader-election",
+		"leader-elect",
 		false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.",
+	)
+
+	fs.DurationVar(
+		&leaderElectionLeaseDuration,
+		"leader-elect-lease-duration",
+		15*time.Second,
+		"Interval at which non-leader candidates will wait to force acquire leadership (duration string)",
+	)
+
+	fs.DurationVar(
+		&leaderElectionRenewDeadline,
+		"leader-elect-renew-deadline",
+		10*time.Second,
+		"Duration that the leading controller manager will retry refreshing leadership before giving up (duration string)",
+	)
+
+	fs.DurationVar(
+		&leaderElectionRetryPeriod,
+		"leader-elect-retry-period",
+		2*time.Second,
+		"Duration the LeaderElector clients should wait between tries of actions (duration string)",
 	)
 
 	fs.StringVar(
@@ -197,6 +238,13 @@ func initFlags(fs *pflag.FlagSet) {
 		"Bind address to expose the pprof profiler (e.g. localhost:6060)",
 	)
 
+	fs.StringVar(
+		&watchFilterValue,
+		"watch-filter",
+		"",
+		fmt.Sprintf("Label value that the controller watches to reconcile cluster-api objects. Label key is always %s. If unspecified, the controller watches for all cluster-api objects.", clusterv1.WatchLabel),
+	)
+
 	fs.IntVar(&gcpClusterConcurrency,
 		"gcpcluster-concurrency",
 		10,
@@ -217,8 +265,14 @@ func initFlags(fs *pflag.FlagSet) {
 
 	fs.IntVar(&webhookPort,
 		"webhook-port",
-		0,
-		"Webhook Server port, disabled by default. When enabled, the manager will only work as webhook server, no reconcilers are installed.",
+		9443,
+		"Webhook Server port",
+	)
+
+	fs.StringVar(&webhookCertDir,
+		"webhook-cert-dir",
+		"/tmp/k8s-webhook-server/serving-certs",
+		"Webhook Server Certificate Directory, is the directory that contains the server key and certificate",
 	)
 
 	fs.StringVar(&healthAddr,

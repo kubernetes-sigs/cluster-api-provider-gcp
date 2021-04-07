@@ -25,7 +25,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/cluster-api/util/record"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"

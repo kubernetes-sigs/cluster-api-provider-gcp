@@ -24,22 +24,23 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	gcompute "google.golang.org/api/compute/v1"
+
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/annotations"
+	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
@@ -50,49 +51,44 @@ type GCPMachineReconciler struct {
 	client.Client
 	Log              logr.Logger
 	ReconcileTimeout time.Duration
+	WatchFilterValue string
 }
 
-func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
+func (r *GCPMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+	log := r.Log.WithValues("controller", "GCPMachine")
+
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		For(&infrav1.GCPMachine{}).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
 		Watches(
 			&source.Kind{Type: &clusterv1.Machine{}},
-			&handler.EnqueueRequestsFromMapFunc{
-				ToRequests: util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPMachine")),
-			},
+			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPMachine"))),
 		).
 		Watches(
 			&source.Kind{Type: &infrav1.GCPCluster{}},
-			&handler.EnqueueRequestsFromMapFunc{ToRequests: handler.ToRequestsFunc(r.GCPClusterToGCPMachines)},
+			handler.EnqueueRequestsFromMapFunc(r.GCPClusterToGCPMachines),
 		).
-		WithEventFilter(pausePredicates).Build(r)
+		Build(r)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error creating controller")
 	}
 
-	return c.Watch(
+	gcpMachineMapper, err := util.ClusterToObjectsMapper(r.Client, &infrav1.GCPMachineList{}, mgr.GetScheme())
+	if err != nil {
+		return errors.Wrap(err, "failed to create mapper for Cluster to GCPMachines")
+	}
+
+	// Add a watch on clusterv1.Cluster object for unpause & ready notifications.
+	if err := c.Watch(
 		&source.Kind{Type: &clusterv1.Cluster{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(r.requeueGCPMachinesForUnpausedCluster),
-		},
-		predicate.Funcs{
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				oldCluster := e.ObjectOld.(*clusterv1.Cluster)
-				newCluster := e.ObjectNew.(*clusterv1.Cluster)
+		handler.EnqueueRequestsFromMapFunc(gcpMachineMapper),
+		predicates.ClusterUnpausedAndInfrastructureReady(log),
+	); err != nil {
+		return errors.Wrap(err, "failed adding a watch for ready clusters")
+	}
 
-				return oldCluster.Spec.Paused && !newCluster.Spec.Paused
-			},
-			CreateFunc: func(e event.CreateEvent) bool {
-				cluster := e.Object.(*clusterv1.Cluster)
-
-				return !cluster.Spec.Paused
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return false
-			},
-		},
-	)
+	return nil
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines,verbs=get;list;watch;create;update;patch;delete
@@ -101,8 +97,8 @@ func (r *GCPMachineReconciler) SetupWithManager(mgr ctrl.Manager, options contro
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups="",resources=secrets;,verbs=get;list;watch
 
-func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr error) {
-	ctx, cancel := context.WithTimeout(context.Background(), reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
+func (r *GCPMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
 	defer cancel()
 	logger := r.Log.WithValues("namespace", req.Namespace, "gcpMachine", req.Name)
 
@@ -138,9 +134,8 @@ func (r *GCPMachineReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reter
 		return ctrl.Result{}, nil
 	}
 
-	if isPaused(cluster, gcpMachine) {
+	if annotations.IsPaused(cluster, gcpMachine) {
 		logger.Info("GCPMachine or linked Cluster is marked as paused. Won't reconcile")
-
 		return ctrl.Result{}, nil
 	}
 
@@ -381,10 +376,10 @@ func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.Machine
 
 // GCPClusterToGCPMachine is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation
 // of GCPMachines.
-func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o handler.MapObject) []ctrl.Request {
-	c, ok := o.Object.(*infrav1.GCPCluster)
+func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o client.Object) []ctrl.Request {
+	c, ok := o.(*infrav1.GCPCluster)
 	if !ok {
-		r.Log.Error(errors.Errorf("expected a GCPCluster but got a %T", o.Object), "failed to get GCPMachine for GCPCluster")
+		r.Log.Error(errors.Errorf("expected a GCPCluster but got a %T", o), "failed to get GCPMachine for GCPCluster")
 
 		return nil
 	}
@@ -403,10 +398,10 @@ func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o handler.MapObject) []ct
 	return r.requestsForCluster(cluster.Namespace, cluster.Name)
 }
 
-func (r *GCPMachineReconciler) requeueGCPMachinesForUnpausedCluster(o handler.MapObject) []ctrl.Request {
-	c, ok := o.Object.(*clusterv1.Cluster)
+func (r *GCPMachineReconciler) requeueGCPMachinesForUnpausedCluster(o client.Object) []ctrl.Request {
+	c, ok := o.(*clusterv1.Cluster)
 	if !ok {
-		r.Log.Error(errors.Errorf("expected a Cluster but got a %T", o.Object), "failed to get GCPMachines for unpaused Cluster")
+		r.Log.Error(errors.Errorf("expected a Cluster but got a %T", o), "failed to get GCPMachines for unpaused Cluster")
 
 		return nil
 	}
