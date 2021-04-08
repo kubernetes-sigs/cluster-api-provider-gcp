@@ -25,7 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
