@@ -7,11 +7,11 @@
 
 images:
   # Use local dev images built source tree;
-  - name: gcr.io/k8s-staging-cluster-api/cluster-api-controller-amd64:v0.3.10
+  - name: gcr.io/k8s-staging-cluster-api/cluster-api-controller-amd64:v0.3.16
     loadBehavior: tryLoad
-  - name: gcr.io/k8s-staging-cluster-api/kubeadm-bootstrap-controller-amd64:v0.3.10
+  - name: gcr.io/k8s-staging-cluster-api/kubeadm-bootstrap-controller-amd64:v0.3.16
     loadBehavior: tryLoad
-  - name: gcr.io/k8s-staging-cluster-api/kubeadm-control-plane-controller-amd64:v0.3.10
+  - name: gcr.io/k8s-staging-cluster-api/kubeadm-control-plane-controller-amd64:v0.3.16
     loadBehavior: tryLoad
   - name: gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller:e2e
     loadBehavior: mustLoad
@@ -26,9 +26,9 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v0.3.10
+      - name: v0.3.16
         # Use manifest from source files
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.10/core-components.yaml"
+        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.16/core-components.yaml"
         type: "url"
         replacements:
           - old: "imagePullPolicy: Always"
@@ -38,9 +38,9 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-      - name: v0.3.10
+      - name: v0.3.16
         # Use manifest from source files
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.10/bootstrap-components.yaml"
+        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.16/bootstrap-components.yaml"
         type: "url"
         replacements:
           - old: "imagePullPolicy: Always"
@@ -50,9 +50,9 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-      - name: v0.3.10
+      - name: v0.3.16
         # Use manifest from source files
-        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.10/control-plane-components.yaml"
+        value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.16/control-plane-components.yaml"
         type: "url"
         replacements:
           - old: "imagePullPolicy: Always"
