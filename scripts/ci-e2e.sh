@@ -182,6 +182,9 @@ main() {
     if [[ "$arg" == "--skip-init-image" ]]; then
       SKIP_INIT_IMAGE="1"
     fi
+    if [[ "$arg" == "--build-image-only" ]]; then
+      BUILD_IMAGE_ONLY="1"
+    fi
   done
 
   # If BOSKOS_HOST is set then acquire an GCP account from Boskos.
@@ -240,17 +243,20 @@ EOF
     trap exit-handler EXIT
   fi
 
+  if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
+    echo "Skipping GCP image initialization..."
+  else
+    init_image
+    if [[ -n "${BUILD_IMAGE_ONLY:-}" ]]; then
+      exit 0
+    fi
+  fi
+
   # Initialize the necessary network requirements
   if [[ -n "${SKIP_INIT_NETWORK:-}" ]]; then
     echo "Skipping network initialization..."
   else
     init_networks
-  fi
-
-  if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
-    echo "Skipping GCP image initialization..."
-  else
-    init_image
   fi
 
   make test-e2e
