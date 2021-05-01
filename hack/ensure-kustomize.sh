@@ -26,7 +26,7 @@ verify_kustomize_version() {
 
   # If kustomize is not available on the path, get it
   if ! [ -x "$(command -v kustomize)" ]; then
-    if [[ "${OSTYPE}" == "linux-gnu" ]]; then
+    if [[ "${OSTYPE}" == "linux"* ]]; then
       echo 'kustomize not found, installing'
       if ! [ -d "${GOPATH_BIN}" ]; then
         mkdir -p "${GOPATH_BIN}"
