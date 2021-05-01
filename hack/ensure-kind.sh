@@ -26,7 +26,7 @@ verify_kind_version() {
 
   # If kind is not available on the path, get it
   if ! [ -x "$(command -v kind)" ]; then
-    if [[ "${OSTYPE}" == "linux-gnu" ]]; then
+    if [[ "${OSTYPE}" == "linux"* ]]; then
       echo 'kind not found, installing'
       if ! [ -d "${GOPATH_BIN}" ]; then
         mkdir -p "${GOPATH_BIN}"

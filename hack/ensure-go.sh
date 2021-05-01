@@ -24,6 +24,7 @@ verify_go_version() {
     if [[ "${INSTALL_GO:-"true"}" == "true" ]]; then
       curl -sSL https://golang.org/dl/go${GO_VERSION:-"1.16.3"}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
       export PATH=/usr/local/go/bin:$PATH
+      export PATH=$(go env GOPATH)/bin:$PATH
     else
       cat <<EOF
 Can't find 'go' in PATH, please fix and retry.

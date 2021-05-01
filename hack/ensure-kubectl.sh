@@ -26,7 +26,7 @@ verify_kubectl_version() {
 
   # If kubectl is not available on the path, get it
   if ! [ -x "$(command -v kubectl)" ]; then
-    if [[ "${OSTYPE}" == "linux-gnu" ]]; then
+    if [[ "${OSTYPE}" == "linux"* ]]; then
       if ! [ -d "${GOPATH_BIN}" ]; then
         mkdir -p "${GOPATH_BIN}"
       fi
