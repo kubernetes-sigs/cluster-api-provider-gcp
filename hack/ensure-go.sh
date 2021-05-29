@@ -22,7 +22,7 @@ set -o pipefail
 verify_go_version() {
   if [[ -z "$(command -v go)" ]]; then
     if [[ "${INSTALL_GO:-"true"}" == "true" ]]; then
-      curl -sSL https://golang.org/dl/go${GO_VERSION:-"1.16.3"}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+      curl -sSL https://golang.org/dl/go${GO_VERSION:-"1.16.4"}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
       export PATH=/usr/local/go/bin:$PATH
       export PATH=$(go env GOPATH)/bin:$PATH
     else
@@ -37,7 +37,7 @@ EOF
   local go_version
   IFS=" " read -ra go_version <<< "$(go version)"
   local minimum_go_version
-  minimum_go_version=1.16.0
+  minimum_go_version=1.16.4
   if [[ "${minimum_go_version}" != $(echo -e "${minimum_go_version}\n${go_version[2]}" | sort -s -t. -k 1,1 -k 2,2n -k 3,3n | head -n1) && "${go_version[2]}" != "devel" ]]; then
     cat <<EOF
 Detected go version: ${go_version[*]}.
