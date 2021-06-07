@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
@@ -56,6 +57,7 @@ func (r *GCPClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		WithOptions(options).
 		For(&infrav1.GCPCluster{}).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceIsNotExternallyManaged(ctrl.LoggerFrom(ctx))).
 		Watches(
 			&source.Kind{Type: &infrav1.GCPMachine{}},
 			handler.EnqueueRequestsFromMapFunc(r.GCPMachineToGCPCluster),
@@ -65,9 +67,27 @@ func (r *GCPClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		return errors.Wrap(err, "error creating controller")
 	}
 
+	clusterToInfraFn := util.ClusterToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPCluster"))
 	if err = c.Watch(
 		&source.Kind{Type: &clusterv1.Cluster{}},
-		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPCluster"))),
+		handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
+			requests := clusterToInfraFn(o)
+			if requests == nil {
+				return nil
+			}
+
+			gcpCluster := &infrav1.GCPCluster{}
+			if err := r.Get(ctx, requests[0].NamespacedName, gcpCluster); err != nil {
+				log.V(4).Error(err, "Failed to get GCP cluster")
+				return nil
+			}
+
+			if annotations.IsExternallyManaged(gcpCluster) {
+				log.V(4).Info("GCPCluster is externally managed, skipping mapping.")
+				return nil
+			}
+			return requests
+		}),
 		predicates.ClusterUnpaused(log),
 	); err != nil {
 		return errors.Wrap(err, "failed adding a watch for ready clusters")
@@ -265,6 +285,10 @@ func (r *GCPClusterReconciler) GCPMachineToGCPCluster(o client.Object) []ctrl.Re
 		return nil
 	}
 
+	if annotations.IsExternallyManaged(c) {
+		log.V(4).Info("GCPCluster is externally managed, skipping mapping.")
+		return nil
+	}
 	return []ctrl.Request{
 		{
 			NamespacedName: client.ObjectKey{Namespace: c.Namespace, Name: c.Spec.InfrastructureRef.Name},
