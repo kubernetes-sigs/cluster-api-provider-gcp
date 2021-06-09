@@ -352,14 +352,14 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST)
 	kind create cluster --name=clusterapi
 
 	# Install cert manager and wait for availability
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.0.1/cert-manager.yaml
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.1.0/cert-manager.yaml
 	kubectl wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager
 	kubectl wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-cainjector
 	kubectl wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-webhook
 
 	# Deploy CAPI
 	# TODO: update this to use the offical source once CAPI  v0.4.0 is released: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/353
-	wget -O- https://storage.googleapis.com/artifacts.k8s-staging-cluster-api.appspot.com/components/nightly_master_20210526/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
+	wget -O- https://storage.googleapis.com/artifacts.k8s-staging-cluster-api.appspot.com/components/nightly_master_20210607/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
 
 	# Deploy CAPG
 	kind load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
