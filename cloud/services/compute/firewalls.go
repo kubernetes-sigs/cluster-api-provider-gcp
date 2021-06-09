@@ -61,11 +61,8 @@ func (s *Service) ReconcileFirewalls() error {
 func (s *Service) DeleteFirewalls() error {
 	for name := range s.scope.Network().FirewallRules {
 		op, err := s.firewalls.Delete(s.scope.Project(), name).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
-		}
-		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
+		if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {
+			return errors.Wrapf(opErr, "failed to delete firewalls")
 		}
 		delete(s.scope.Network().FirewallRules, name)
 	}

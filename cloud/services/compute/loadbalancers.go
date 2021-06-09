@@ -184,12 +184,10 @@ func (s *Service) DeleteLoadbalancers() error {
 	if s.scope.Network().APIServerForwardingRule != nil {
 		name := path.Base(*s.scope.Network().APIServerForwardingRule)
 		op, err := s.forwardingrules.Delete(s.scope.Project(), name).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
+		if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {
+			return errors.Wrapf(opErr, "failed to delete forwarding rules")
 		}
-		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
-		}
+
 		s.scope.Network().APIServerForwardingRule = nil
 	}
 
@@ -197,11 +195,8 @@ func (s *Service) DeleteLoadbalancers() error {
 	if s.scope.Network().APIServerAddress != nil {
 		name := s.getAPIServerIPAddressSpec().Name
 		op, err := s.addresses.Delete(s.scope.Project(), name).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
-		}
-		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
+		if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {
+			return errors.Wrapf(opErr, "failed to delete globalAddress resource")
 		}
 		s.scope.Network().APIServerAddress = nil
 	}
@@ -210,11 +205,8 @@ func (s *Service) DeleteLoadbalancers() error {
 	if s.scope.Network().APIServerTargetProxy != nil {
 		name := path.Base(*s.scope.Network().APIServerTargetProxy)
 		op, err := s.targetproxies.Delete(s.scope.Project(), name).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
-		}
-		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
+		if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {
+			return errors.Wrapf(opErr, "failed to delete target proxy")
 		}
 		s.scope.Network().APIServerTargetProxy = nil
 	}
@@ -223,11 +215,8 @@ func (s *Service) DeleteLoadbalancers() error {
 	if s.scope.Network().APIServerBackendService != nil {
 		name := path.Base(*s.scope.Network().APIServerBackendService)
 		op, err := s.backendservices.Delete(s.scope.Project(), name).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
-		}
-		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
+		if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {
+			return errors.Wrapf(opErr, "failed to delete backend service")
 		}
 		s.scope.Network().APIServerBackendService = nil
 	}
@@ -236,11 +225,8 @@ func (s *Service) DeleteLoadbalancers() error {
 	if s.scope.Network().APIServerHealthCheck != nil {
 		name := path.Base(*s.scope.Network().APIServerHealthCheck)
 		op, err := s.healthchecks.Delete(s.scope.Project(), name).Do()
-		if err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
-		}
-		if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-			return errors.Wrapf(err, "failed to delete forwarding rules")
+		if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {
+			return errors.Wrapf(opErr, "failed to delete health check")
 		}
 		s.scope.Network().APIServerHealthCheck = nil
 	}

@@ -279,6 +279,7 @@ func (r *GCPMachineReconciler) reconcileDelete(machineScope *scope.MachineScope,
 		// The machine was never created or was deleted by some other entity
 		machineScope.V(3).Info("Unable to locate instance by ID or tags")
 
+		controllerutil.RemoveFinalizer(machineScope.GCPMachine, infrav1.MachineFinalizer)
 		return ctrl.Result{}, nil
 	}
 

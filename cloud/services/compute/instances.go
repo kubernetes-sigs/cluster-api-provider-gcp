@@ -226,12 +226,8 @@ func (s *Service) runInstance(input *compute.Instance) (*compute.Instance, error
 
 func (s *Service) TerminateInstanceAndWait(scope *scope.MachineScope) error {
 	op, err := s.instances.Delete(s.scope.Project(), scope.Zone(), scope.Name()).Do()
-	if err != nil {
-		return errors.Wrap(err, "failed to terminate gcp instance")
-	}
-
-	if err := wait.ForComputeOperation(s.scope.Compute, s.scope.Project(), op); err != nil {
-		return errors.Wrap(err, "failed to terminate gcp instance")
+	if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {
+		return errors.Wrapf(opErr, "failed to terminate instance")
 	}
 
 	return nil
