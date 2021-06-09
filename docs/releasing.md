@@ -24,6 +24,7 @@
   release-notes --org kubernetes-sigs --repo cluster-api-provider-gcp \
   --start-sha 1cf1ec4a1effd9340fe7370ab45b173a4979dc8f  \
   --end-sha e843409f896981185ca31d6b4a4c939f27d975de
+  --branch <RELEASE_BRANCH_OR_MAIN_BRANCH>
   ```
  - Manually format and categorize the release notes
 
@@ -32,8 +33,16 @@
 Promote image
  - Images are built by the [post push images job](https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#post-cluster-api-provider-gcp-push-images)
  - Create a PR in https://github.com/kubernetes/k8s.io to add the image and tag
-   - Example PR: https://github.com/kubernetes/k8s.io/pull/1030/files
+   - Example PR: https://github.com/kubernetes/k8s.io/pull/1462
  - Location of image: https://console.cloud.google.com/gcr/images/k8s-staging-cluster-api-gcp/GLOBAL/cluster-api-gcp-controller?rImageListsize=30
+
+To promote the image you should use a tool called `cip-mm`, please refer: https://github.com/kubernetes/release/tree/master/cmd/cip-mm
+
+For example, we want to promote v0.3.1 release, we can run the following command:
+
+```console
+$ cip-mm --base_dir=$GOPATH/src/k8s.io/k8s.io/k8s.gcr.io --staging_repo=gcr.io/k8s-staging-cluster-api-gcp  --filter_tag=v0.3.1
+```
 
 ## Release in GitHub
 
