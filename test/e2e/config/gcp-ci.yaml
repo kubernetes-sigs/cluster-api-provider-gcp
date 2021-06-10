@@ -70,6 +70,7 @@ variables:
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
   IMAGE_ID: "${IMAGE_ID}"
+  IP_FAMILY: "IPv4"
 
 intervals:
   default/wait-controllers: ["3m", "10s"]
