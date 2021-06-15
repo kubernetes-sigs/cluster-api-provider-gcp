@@ -37,6 +37,9 @@ export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=60s
 # This option is for running docker manifest command
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
+# curl retries
+CURL_RETRIES=3
+
 # Directories.
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TOOLS_DIR := hack/tools
