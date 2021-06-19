@@ -20,7 +20,9 @@ SHELL:=/usr/bin/env bash
 
 .DEFAULT_GOAL:=help
 
-# Use GOPROXY environment variable if set
+GOPATH  := $(shell go env GOPATH)
+GOARCH  := $(shell go env GOARCH)
+GOOS    := $(shell go env GOOS)
 GOPROXY := $(shell go env GOPROXY)
 ifeq ($(GOPROXY),)
 GOPROXY := https://proxy.golang.org
@@ -64,7 +66,7 @@ ENVSUBST_VER := v1.2.0
 ENVSUBST_BIN := envsubst
 ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
 
-GOLANGCI_LINT_VER := v1.31.0
+GOLANGCI_LINT_VER := v1.41.0
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
 
@@ -79,6 +81,10 @@ RELEASE_NOTES := $(TOOLS_BIN_DIR)/$(RELEASE_NOTES_BIN)-$(RELEASE_NOTES_VER)
 GINKGO_VER := v1.15.2
 GINKGO_BIN := ginkgo
 GINKGO := $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
+
+KUBECTL_VER := v1.20.4
+KUBECTL_BIN := kubectl
+KUBECTL := $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)-$(KUBECTL_VER)
 
 TIMEOUT := $(shell command -v timeout || command -v gtimeout)
 
@@ -112,7 +118,7 @@ endif
 # Build time versioning details.
 LDFLAGS := $(shell hack/version.sh)
 
-GOLANG_VERSION := 1.16.4
+GOLANG_VERSION := 1.16.5
 
 # CI
 CAPG_WORKER_CLUSTER_KUBECONFIG ?= "/tmp/kubeconfig"
@@ -189,6 +195,14 @@ $(RELEASE_NOTES): ## Build release notes.
 
 $(GINKGO): ## Build ginkgo.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/onsi/ginkgo/ginkgo $(GINKGO_BIN) $(GINKGO_VER)
+
+$(KUBECTL): ## Build kubectl
+	mkdir -p $(TOOLS_BIN_DIR)
+	rm -f "$(KUBECTL)*"
+	curl --retry $(CURL_RETRIES) -fsL https://storage.googleapis.com/kubernetes-release/release/$(KUBECTL_VER)/bin/$(GOOS)/$(GOARCH)/kubectl -o $(KUBECTL)
+	ln -sf "$(KUBECTL)" "$(TOOLS_BIN_DIR)/$(KUBECTL_BIN)"
+	chmod +x "$(TOOLS_BIN_DIR)/$(KUBECTL_BIN)" "$(KUBECTL)"
+
 
 ## --------------------------------------
 ## Linting
@@ -403,13 +417,27 @@ delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 	@echo 'Your GCP resources will now be deleted, this can take up to 20 minutes'
 	kubectl delete cluster $(CLUSTER_NAME)
 
-.PHONY: delete-cluster
-delete-cluster: delete-workload-cluster  ## Deletes the example kind cluster "clusterapi"
-	kind delete cluster --name=clusterapi
-
 .PHONY: kind-reset
-kind-reset: ## Destroys the "clusterapi" kind cluster.
+kind-reset: ## Destroys the kind clusters.
+	kind delete cluster --name=capg || true
+	kind delete cluster --name=capg-e2e || true
 	kind delete cluster --name=clusterapi || true
+
+## --------------------------------------
+## Tilt / Kind
+## --------------------------------------
+
+.PHONY: kind-create
+kind-create: $(KUBECTL) ## create capg kind cluster if needed
+	./scripts/kind-with-registry.sh
+
+.PHONY: tilt-up
+tilt-up: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) kind-create ## start tilt and build kind cluster if needed
+	EXP_CLUSTER_RESOURCE_SET=true tilt up
+
+.PHONY: delete-cluster
+delete-cluster: delete-workload-cluster  ## Deletes the example kind cluster "capg"
+	kind delete cluster --name=capg
 
 ## --------------------------------------
 ## Cleanup / Verification
