@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package wait implements cloud wait operations.
 package wait
 
 import (
@@ -33,6 +34,7 @@ const (
 	gceWaitSleep = time.Second * 5
 )
 
+// ForComputeOperation wait when a compute operation is in progress.
 func ForComputeOperation(client *compute.Service, project string, op *compute.Operation) error {
 	start := time.Now()
 	ctx, cf := context.WithTimeout(context.Background(), gceTimeout)

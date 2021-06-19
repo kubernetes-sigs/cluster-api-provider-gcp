@@ -31,12 +31,18 @@ import (
 )
 
 const (
-	APIServerLoadBalancerProtocol            = "TCP"
+	// APIServerLoadBalancerProtocol defines the LB protocol.
+	APIServerLoadBalancerProtocol = "TCP"
+	// APIServerLoadBalancerHealthCheckProtocol defines the LB health check protocol.
 	APIServerLoadBalancerHealthCheckProtocol = "SSL"
-	APIServerLoadBalancerProxyHeader         = "NONE"
-	APIServerLoadBalancerScheme              = "EXTERNAL"
-	APIServerLoadBalancerIPVersion           = "IPV4"
-	APIServerLoadBalancerBackendPortName     = "apiserver"
+	// APIServerLoadBalancerProxyHeader defines the LB proxy header.
+	APIServerLoadBalancerProxyHeader = "NONE"
+	// APIServerLoadBalancerScheme defines the LB scheme.
+	APIServerLoadBalancerScheme = "EXTERNAL"
+	// APIServerLoadBalancerIPVersion defines the LB IP type.
+	APIServerLoadBalancerIPVersion = "IPV4"
+	// APIServerLoadBalancerBackendPortName defines the LB backend port name.
+	APIServerLoadBalancerBackendPortName = "apiserver"
 )
 
 // ReconcileLoadbalancers reconciles the api server load balancer.
@@ -149,6 +155,7 @@ func (s *Service) ReconcileLoadbalancers() error {
 	return nil
 }
 
+// UpdateBackendServices updates the backend services for a instance group.
 func (s *Service) UpdateBackendServices() error {
 	// Refresh the instance groups available.
 	if err := s.ReconcileInstanceGroups(); err != nil {
@@ -179,6 +186,7 @@ func (s *Service) UpdateBackendServices() error {
 	return nil
 }
 
+// DeleteLoadbalancers deletes LoadBalancers.
 func (s *Service) DeleteLoadbalancers() error {
 	// Delete Forwarding Rules.
 	if s.scope.Network().APIServerForwardingRule != nil {

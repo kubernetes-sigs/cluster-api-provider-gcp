@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/gomega"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2/klogr"
@@ -45,7 +45,7 @@ func newMachine(clusterName, machineName string) *clusterv1.Machine {
 
 func newMachineWithInfrastructureRef(clusterName, machineName string) *clusterv1.Machine {
 	m := newMachine(clusterName, machineName)
-	m.Spec.InfrastructureRef = v1.ObjectReference{
+	m.Spec.InfrastructureRef = corev1.ObjectReference{
 		Kind:       "GCPMachine",
 		Namespace:  "",
 		Name:       "gcp" + machineName,

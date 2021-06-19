@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package controllers implements controller types.
 package controllers
 
 import (
@@ -25,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	gcompute "google.golang.org/api/compute/v1"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 	capierrors "sigs.k8s.io/cluster-api/errors"
@@ -331,19 +332,19 @@ func (r *GCPMachineReconciler) getOrCreate(scope *scope.MachineScope, computeSvc
 	return instance, nil
 }
 
-func (r *GCPMachineReconciler) getAddresses(instance *gcompute.Instance) []v1.NodeAddress {
-	addresses := make([]v1.NodeAddress, 0, len(instance.NetworkInterfaces))
+func (r *GCPMachineReconciler) getAddresses(instance *gcompute.Instance) []corev1.NodeAddress {
+	addresses := make([]corev1.NodeAddress, 0, len(instance.NetworkInterfaces))
 	for _, nic := range instance.NetworkInterfaces {
-		internalAddress := v1.NodeAddress{
-			Type:    v1.NodeInternalIP,
+		internalAddress := corev1.NodeAddress{
+			Type:    corev1.NodeInternalIP,
 			Address: nic.NetworkIP,
 		}
 		addresses = append(addresses, internalAddress)
 
 		// If access configs are associated with this nic, dig out the external IP
 		if len(nic.AccessConfigs) > 0 {
-			externalAddress := v1.NodeAddress{
-				Type:    v1.NodeExternalIP,
+			externalAddress := corev1.NodeAddress{
+				Type:    corev1.NodeExternalIP,
 				Address: nic.AccessConfigs[0].NatIP,
 			}
 			addresses = append(addresses, externalAddress)
@@ -375,8 +376,7 @@ func (r *GCPMachineReconciler) reconcileLBAttachment(machineScope *scope.Machine
 	return computeSvc.UpdateBackendServices()
 }
 
-// GCPClusterToGCPMachine is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation
-// of GCPMachines.
+// GCPClusterToGCPMachines is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation of GCPMachines.
 func (r *GCPMachineReconciler) GCPClusterToGCPMachines(o client.Object) []ctrl.Request {
 	c, ok := o.(*infrav1.GCPCluster)
 	if !ok {

@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-// log is for logging in this package.
+// clusterlog is for logging in this package.
 var clusterlog = logf.Log.WithName("gcpcluster-resource")
 
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
@@ -43,19 +43,19 @@ func (c *GCPCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &GCPCluster{}
 var _ webhook.Defaulter = &GCPCluster{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default implements webhook.Defaulter so a webhook will be registered for the type.
 func (c *GCPCluster) Default() {
 	clusterlog.Info("default", "name", c.Name)
 }
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (c *GCPCluster) ValidateCreate() error {
 	clusterlog.Info("validate create", "name", c.Name)
 
 	return nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
 func (c *GCPCluster) ValidateUpdate(oldRaw runtime.Object) error {
 	clusterlog.Info("validate update", "name", c.Name)
 	var allErrs field.ErrorList
@@ -82,7 +82,7 @@ func (c *GCPCluster) ValidateUpdate(oldRaw runtime.Object) error {
 	return apierrors.NewInvalid(GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
 func (c *GCPCluster) ValidateDelete() error {
 	clusterlog.Info("validate delete", "name", c.Name)
 

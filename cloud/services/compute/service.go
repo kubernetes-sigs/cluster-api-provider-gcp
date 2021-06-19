@@ -64,7 +64,7 @@ func NewService(scope *scope.ClusterScope) *Service {
 
 // If err == IsNotFound, then return nil
 // If err != nil, then return err
-// Otherwise should wait for operation to finish
+// Otherwise should wait for operation to finish.
 func (s *Service) checkOrWaitForDeleteOp(op *compute.Operation, err error) error {
 	if err != nil {
 		if gcperrors.IsNotFound(err) {

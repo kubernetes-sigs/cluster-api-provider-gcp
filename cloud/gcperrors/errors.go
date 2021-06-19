@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package gcperrors implements gcp errors types.
 package gcperrors
 
 import (
