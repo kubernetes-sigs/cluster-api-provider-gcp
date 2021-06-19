@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package compute implements gcp compute services.
 package compute
 
 import (
@@ -22,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GetZones retireves GCP regions.
 func (s *Service) GetZones() ([]string, error) {
 	region, err := s.scope.Compute.Regions.Get(s.scope.Project(), s.scope.Region()).Do()
 	if err != nil {

@@ -95,7 +95,7 @@ func (m *GCPMachine) ValidateDelete() error {
 	return nil
 }
 
-// Default implements webhookutil.defaulter so a webhook will be registered for the type
+// Default implements webhookutil.defaulter so a webhook will be registered for the type.
 func (m *GCPMachine) Default() {
 	clusterlog.Info("default", "name", m.Name)
 }

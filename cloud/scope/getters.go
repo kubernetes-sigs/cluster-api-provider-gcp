@@ -16,22 +16,28 @@ limitations under the License.
 
 package scope
 
+// ClusterScopeGetter is a Service which knows how to retrieve the scope for a cluster.
 type ClusterScopeGetter interface {
 	ClusterScope(params ClusterScopeParams) (*ClusterScope, error)
 }
 
+// ClusterScopeGetterFunc ...
 type ClusterScopeGetterFunc func(params ClusterScopeParams) (*ClusterScope, error)
 
+// ClusterScope returns the cluster scope.
 func (f ClusterScopeGetterFunc) ClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 	return f(params)
 }
 
+// MachineScopeGetter ...
 type MachineScopeGetter interface {
 	MachineScope(params MachineScopeParams) (*MachineScope, error)
 }
 
+// MachineScopeGetterFunc ...
 type MachineScopeGetterFunc func(params MachineScopeParams) (*MachineScope, error)
 
+// MachineScope returns the machine scope.
 func (f MachineScopeGetterFunc) MachineScope(params MachineScopeParams) (*MachineScope, error) {
 	return f(params)
 }

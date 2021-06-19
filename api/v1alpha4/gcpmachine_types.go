@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha4
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/cluster-api/errors"
 )
@@ -28,12 +28,16 @@ const (
 	MachineFinalizer = "gcpmachine.infrastructure.cluster.x-k8s.io"
 )
 
+// DiskType is a type to use to define with disk type will be used.
 type DiskType string
 
 const (
+	// PdStandardDiskType defines the name for the standard disk.
 	PdStandardDiskType DiskType = "pd-standard"
-	PdSsdDiskType      DiskType = "pd-ssd"
-	LocalSsdDiskType   DiskType = "local-ssd"
+	// PdSsdDiskType defines the name for the ssd disk.
+	PdSsdDiskType DiskType = "pd-ssd"
+	// LocalSsdDiskType defines the name for the local ssd disk.
+	LocalSsdDiskType DiskType = "local-ssd"
 )
 
 // AttachedDiskSpec degined GCP machine disk.
@@ -145,7 +149,7 @@ type GCPMachineStatus struct {
 	Ready bool `json:"ready"`
 
 	// Addresses contains the GCP instance associated addresses.
-	Addresses []v1.NodeAddress `json:"addresses,omitempty"`
+	Addresses []corev1.NodeAddress `json:"addresses,omitempty"`
 
 	// InstanceStatus is the status of the GCP instance for this machine.
 	// +optional

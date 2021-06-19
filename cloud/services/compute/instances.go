@@ -224,6 +224,7 @@ func (s *Service) runInstance(input *compute.Instance) (*compute.Instance, error
 	return s.instances.Get(s.scope.Project(), input.Zone, input.Name).Do()
 }
 
+// TerminateInstanceAndWait terminates the instance and wait for the termination.
 func (s *Service) TerminateInstanceAndWait(scope *scope.MachineScope) error {
 	op, err := s.instances.Delete(s.scope.Project(), scope.Zone(), scope.Name()).Do()
 	if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {

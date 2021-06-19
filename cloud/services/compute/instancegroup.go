@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
 )
 
+// ReconcileInstanceGroups reconciles the instances groups and apply changes if needed.
 func (s *Service) ReconcileInstanceGroups() error {
 	// Get each available zone.
 	zones, err := s.GetZones()
@@ -55,6 +56,7 @@ func (s *Service) ReconcileInstanceGroups() error {
 	return nil
 }
 
+// DeleteInstanceGroups deletes a instance group.
 func (s *Service) DeleteInstanceGroups() error {
 	for zone, groupSelfLink := range s.scope.Network().APIServerInstanceGroups {
 		name := path.Base(groupSelfLink)
@@ -67,6 +69,7 @@ func (s *Service) DeleteInstanceGroups() error {
 	return nil
 }
 
+// GetOrCreateInstanceGroup retrieve an instance group or create it.
 func (s *Service) GetOrCreateInstanceGroup(zone, name string) (*compute.InstanceGroup, error) {
 	group, err := s.instancegroups.Get(s.scope.Project(), zone, name).Do()
 	if gcperrors.IsNotFound(err) {
@@ -98,6 +101,7 @@ func (s *Service) GetOrCreateInstanceGroup(zone, name string) (*compute.Instance
 	return group, nil
 }
 
+// GetInstanceGroupMembers retrieves the instances for a group.
 func (s *Service) GetInstanceGroupMembers(zone, name string) ([]*compute.InstanceWithNamedPorts, error) {
 	members, err := s.instancegroups.
 		ListInstances(s.scope.Project(), zone, name, &compute.InstanceGroupsListInstancesRequest{}).
@@ -109,6 +113,7 @@ func (s *Service) GetInstanceGroupMembers(zone, name string) ([]*compute.Instanc
 	return members.Items, nil
 }
 
+// EnsureInstanceGroupMember ensure the instance are part of a group.
 func (s *Service) EnsureInstanceGroupMember(zone, name string, i *compute.Instance) error {
 	members, err := s.GetInstanceGroupMembers(zone, name)
 	if err != nil {

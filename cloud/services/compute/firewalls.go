@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
 )
 
+// ReconcileFirewalls reconciles the firewalls and apply changes if needed.
 func (s *Service) ReconcileFirewalls() error {
 	for _, firewallSpec := range s.getFirewallSpecs() {
 		// Get or create the firewall rules.
@@ -58,6 +59,7 @@ func (s *Service) ReconcileFirewalls() error {
 	return nil
 }
 
+// DeleteFirewalls deletes all Firewall Rules.
 func (s *Service) DeleteFirewalls() error {
 	for name := range s.scope.Network().FirewallRules {
 		op, err := s.firewalls.Delete(s.scope.Project(), name).Do()

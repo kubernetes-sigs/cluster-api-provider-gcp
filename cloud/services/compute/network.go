@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/wait"
 )
 
-// InstanceIfExists returns the existing instance or nothing if it doesn't exist.
+// ReconcileNetwork reconciles the network and apply changes if needed.
 func (s *Service) ReconcileNetwork() error {
 	// Create Network
 	spec := s.getNetworkSpec()
@@ -80,6 +80,7 @@ func (s *Service) getNetworkSpec() *compute.Network {
 	return res
 }
 
+// DeleteNetwork deletes a network.
 func (s *Service) DeleteNetwork() error {
 	network, err := s.networks.Get(s.scope.Project(), s.scope.NetworkName()).Do()
 	if gcperrors.IsNotFound(err) {
@@ -98,10 +99,8 @@ func (s *Service) DeleteNetwork() error {
 		if opErr := s.checkOrWaitForDeleteOp(op, err); opErr != nil {
 			return errors.Wrapf(opErr, "failed to delete router")
 		}
-	} else {
-		if !gcperrors.IsNotFound(err) {
-			return errors.Wrapf(err, "failed to get router to delete")
-		}
+	} else if !gcperrors.IsNotFound(err) {
+		return errors.Wrapf(err, "failed to get router to delete")
 	}
 
 	// Delete Network.
