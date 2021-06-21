@@ -40,10 +40,10 @@ func Byf(format string, a ...interface{}) {
 func setupSpecNamespace(ctx context.Context, specName string, clusterProxy framework.ClusterProxy, artifactFolder string) (*corev1.Namespace, context.CancelFunc) {
 	Byf("Creating a namespace for hosting the %q test spec", specName)
 	namespace, cancelWatches := framework.CreateNamespaceAndWatchEvents(ctx, framework.CreateNamespaceAndWatchEventsInput{
-		Creator:   bootstrapClusterProxy.GetClient(),
-		ClientSet: bootstrapClusterProxy.GetClientSet(),
+		Creator:   clusterProxy.GetClient(),
+		ClientSet: clusterProxy.GetClientSet(),
 		Name:      fmt.Sprintf("%s-%s", specName, util.RandomString(6)),
-		LogFolder: filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName()),
+		LogFolder: filepath.Join(artifactFolder, "clusters", clusterProxy.GetName()),
 	})
 
 	return namespace, cancelWatches
@@ -57,9 +57,9 @@ func dumpSpecResourcesAndCleanup(ctx context.Context, specName string, clusterPr
 	By(fmt.Sprintf("Dumping all the Cluster API resources in the %q namespace", namespace.Name))
 	// Dump all Cluster API related resources to artifacts before deleting them.
 	framework.DumpAllResources(ctx, framework.DumpAllResourcesInput{
-		Lister:    bootstrapClusterProxy.GetClient(),
+		Lister:    clusterProxy.GetClient(),
 		Namespace: namespace.Name,
-		LogPath:   filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName(), "resources"),
+		LogPath:   filepath.Join(artifactFolder, "clusters", clusterProxy.GetName(), "resources"),
 	})
 
 	if !skipCleanup {
@@ -68,13 +68,13 @@ func dumpSpecResourcesAndCleanup(ctx context.Context, specName string, clusterPr
 		// that cluster variable is not set even if the cluster exists, so we are calling DeleteAllClustersAndWait
 		// instead of DeleteClusterAndWait
 		framework.DeleteAllClustersAndWait(ctx, framework.DeleteAllClustersAndWaitInput{
-			Client:    bootstrapClusterProxy.GetClient(),
+			Client:    clusterProxy.GetClient(),
 			Namespace: namespace.Name,
-		}, e2eConfig.GetIntervals(specName, "wait-delete-cluster")...)
+		}, intervalsGetter(specName, "wait-delete-cluster")...)
 
 		By(fmt.Sprintf("Deleting namespace used for hosting the %q test spec", specName))
 		framework.DeleteNamespace(ctx, framework.DeleteNamespaceInput{
-			Deleter: bootstrapClusterProxy.GetClient(),
+			Deleter: clusterProxy.GetClient(),
 			Name:    namespace.Name,
 		})
 	}
