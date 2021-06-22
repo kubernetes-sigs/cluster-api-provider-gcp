@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // Labels defines a map of tags.
@@ -108,6 +110,9 @@ const (
 
 	// APIServerRoleTagValue describes the value for the apiserver role.
 	APIServerRoleTagValue = "apiserver"
+
+	// NameKubernetesObjectUID is the tag name for the UID of the "creating" kubernetes object.
+	NameKubernetesObjectUID = "k8s-io-owner-uid"
 )
 
 // ClusterTagKey generates the key for resources associated with a cluster.
@@ -138,6 +143,17 @@ type BuildParams struct {
 	// Any additional tags to be added to the resource.
 	// +optional
 	Additional Labels
+
+	// KubernetesObject will add a label with the object UID.
+	// Prefer the "deepest" object; consumers can always walk the ownerRefs "up".
+	// +optional
+	KubernetesObject OwningObject
+}
+
+// OwningObject represents a kubernetes object that can create/own a GCP resource.
+type OwningObject interface {
+	// GetUID returns the UID of the object.
+	GetUID() types.UID
 }
 
 // Build builds tags including the cluster tag and returns them in map form.
@@ -150,6 +166,10 @@ func Build(params BuildParams) Labels {
 	tags[ClusterTagKey(params.ClusterName)] = string(params.Lifecycle)
 	if params.Role != nil {
 		tags[NameGCPClusterAPIRole] = strings.ToLower(*params.Role)
+	}
+
+	if params.KubernetesObject != nil {
+		tags[NameKubernetesObjectUID] = string(params.KubernetesObject.GetUID())
 	}
 
 	return tags
