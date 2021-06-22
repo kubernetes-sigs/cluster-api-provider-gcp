@@ -33,3 +33,13 @@ func IsNotFound(err error) bool {
 
 	return ok && ae.Code == http.StatusNotFound
 }
+
+// IgnoreNotFound ignore Google API not found error and return nil.
+// Otherwise return the actual error.
+func IgnoreNotFound(err error) error {
+	if IsNotFound(err) {
+		return nil
+	}
+
+	return err
+}

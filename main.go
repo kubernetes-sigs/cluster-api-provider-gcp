@@ -133,7 +133,6 @@ func main() {
 
 	if err = (&controllers.GCPMachineReconciler{
 		Client:           mgr.GetClient(),
-		Log:              ctrl.Log.WithName("controllers").WithName("GCPMachine"),
 		ReconcileTimeout: reconcileTimeout,
 		WatchFilterValue: watchFilterValue,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
@@ -142,7 +141,6 @@ func main() {
 	}
 	if err = (&controllers.GCPClusterReconciler{
 		Client:           mgr.GetClient(),
-		Log:              ctrl.Log.WithName("controllers").WithName("GCPCluster"),
 		ReconcileTimeout: reconcileTimeout,
 		WatchFilterValue: watchFilterValue,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
