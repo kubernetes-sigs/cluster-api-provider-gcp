@@ -135,7 +135,7 @@ To use [Tilt](https://tilt.dev/) for a simplified development workflow, follow t
 
 > you may wish to checkout out the correct version of CAPI to match the [version used in CAPG][go.mod]
 
-Note that `tilt up` will be run from the `cluster-api repository` directory and the `tilt-settings.json` file will point back to the `cluster-api-provider-azure` repository directory.  Any changes you make to the source code in `cluster-api` or `cluster-api-provider-azure` repositories will automatically redeployed to the `kind` cluster.
+Note that `tilt up` will be run from the `cluster-api repository` directory and the `tilt-settings.json` file will point back to the `cluster-api-provider-gcp` repository directory.  Any changes you make to the source code in `cluster-api` or `cluster-api-provider-gcp` repositories will automatically redeployed to the `kind` cluster.
 
 After you have cloned both repositories, your folder structure should look like:
 
