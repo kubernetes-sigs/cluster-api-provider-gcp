@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 )
@@ -38,7 +37,6 @@ var _ = Describe("GCPMachineReconciler", func() {
 		It("should not error with minimal set up", func() {
 			reconciler := &GCPMachineReconciler{
 				Client: k8sClient,
-				Log:    log.Log,
 			}
 			By("Calling reconcile")
 			ctx := context.Background()

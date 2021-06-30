@@ -17,10 +17,47 @@ limitations under the License.
 package scope
 
 import (
+	"context"
+	"time"
+
+	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
+	computebeta "google.golang.org/api/compute/v0.beta"
 	"google.golang.org/api/compute/v1"
+
+	"k8s.io/client-go/util/flowcontrol"
 )
 
-// GCPClients contains all the gcp clients used by the scopes.
-type GCPClients struct {
-	Compute *compute.Service
+// GCPServices contains all the gcp services used by the scopes.
+type GCPServices struct {
+	Compute     *compute.Service
+	ComputeBeta *computebeta.Service
+}
+
+// GCPRateLimiter implements cloud.RateLimiter.
+type GCPRateLimiter struct{}
+
+// Accept blocks until the operation can be performed.
+func (rl *GCPRateLimiter) Accept(ctx context.Context, key *cloud.RateLimitKey) error {
+	if key.Operation == "Get" && key.Service == "Operations" {
+		// Wait a minimum amount of time regardless of rate limiter.
+		rl := &cloud.MinimumRateLimiter{
+			// Convert flowcontrol.RateLimiter into cloud.RateLimiter
+			RateLimiter: &cloud.AcceptRateLimiter{
+				Acceptor: flowcontrol.NewTokenBucketRateLimiter(5, 5), // 5
+			},
+			Minimum: time.Second,
+		}
+
+		return rl.Accept(ctx, key)
+	}
+	return nil
+}
+
+func newCloud(project string, service GCPServices) cloud.Cloud {
+	return cloud.NewGCE(&cloud.Service{
+		GA:            service.Compute,
+		Beta:          service.ComputeBeta,
+		ProjectRouter: &cloud.SingleProjectRouter{ID: project},
+		RateLimiter:   &GCPRateLimiter{},
+	})
 }

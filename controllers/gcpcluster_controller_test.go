@@ -26,7 +26,6 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var _ = Describe("GCPClusterReconciler", func() {
@@ -39,7 +38,6 @@ var _ = Describe("GCPClusterReconciler", func() {
 
 			reconciler := &GCPClusterReconciler{
 				Client: k8sClient,
-				Log:    log.Log,
 			}
 
 			instance := &infrav1.GCPCluster{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}

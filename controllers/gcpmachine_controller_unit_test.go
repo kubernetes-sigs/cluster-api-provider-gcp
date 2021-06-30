@@ -24,8 +24,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog/v2/klogr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
@@ -84,9 +84,10 @@ func TestGCPMachineReconciler_GCPClusterToGCPMachines(t *testing.T) {
 
 	reconciler := &GCPMachineReconciler{
 		Client: client,
-		Log:    klogr.New(),
 	}
-	requests := reconciler.GCPClusterToGCPMachines(&infrav1.GCPCluster{
+
+	fn := reconciler.GCPClusterToGCPMachines(ctrl.SetupSignalHandler())
+	rr := fn(&infrav1.GCPCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName,
 			Namespace: "default",
@@ -99,5 +100,5 @@ func TestGCPMachineReconciler_GCPClusterToGCPMachines(t *testing.T) {
 			},
 		},
 	})
-	g.Expect(requests).To(HaveLen(2))
+	g.Expect(rr).To(HaveLen(2))
 }

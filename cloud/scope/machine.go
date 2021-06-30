@@ -19,16 +19,20 @@ package scope
 
 import (
 	"context"
+	"fmt"
+	"path"
+	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	"golang.org/x/mod/semver"
+	"google.golang.org/api/compute/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
 	"k8s.io/utils/pointer"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
 	"sigs.k8s.io/cluster-api/controllers/noderefutil"
@@ -40,13 +44,10 @@ import (
 
 // MachineScopeParams defines the input parameters used to create a new MachineScope.
 type MachineScopeParams struct {
-	GCPClients
-	Client     client.Client
-	Logger     logr.Logger
-	Cluster    *clusterv1.Cluster
-	Machine    *clusterv1.Machine
-	GCPCluster *infrav1.GCPCluster
-	GCPMachine *infrav1.GCPMachine
+	Client        client.Client
+	ClusterGetter cloud.ClusterGetter
+	Machine       *clusterv1.Machine
+	GCPMachine    *infrav1.GCPMachine
 }
 
 // NewMachineScope creates a new MachineScope from the supplied parameters.
@@ -58,18 +59,8 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 	if params.Machine == nil {
 		return nil, errors.New("machine is required when creating a MachineScope")
 	}
-	if params.Cluster == nil {
-		return nil, errors.New("cluster is required when creating a MachineScope")
-	}
-	if params.GCPCluster == nil {
-		return nil, errors.New("gcp cluster is required when creating a MachineScope")
-	}
 	if params.GCPMachine == nil {
 		return nil, errors.New("gcp machine is required when creating a MachineScope")
-	}
-
-	if params.Logger == nil {
-		params.Logger = klogr.New()
 	}
 
 	helper, err := patch.NewHelper(params.GCPMachine, params.Client)
@@ -78,31 +69,28 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 	}
 
 	return &MachineScope{
-		client:      params.Client,
-		Cluster:     params.Cluster,
-		Machine:     params.Machine,
-		GCPCluster:  params.GCPCluster,
-		GCPMachine:  params.GCPMachine,
-		Logger:      params.Logger,
-		patchHelper: helper,
+		client:        params.Client,
+		Machine:       params.Machine,
+		GCPMachine:    params.GCPMachine,
+		ClusterGetter: params.ClusterGetter,
+		patchHelper:   helper,
 	}, nil
 }
 
 // MachineScope defines a scope defined around a machine and its cluster.
 type MachineScope struct {
-	logr.Logger
-	client      client.Client
-	patchHelper *patch.Helper
-
-	Cluster    *clusterv1.Cluster
-	Machine    *clusterv1.Machine
-	GCPCluster *infrav1.GCPCluster
-	GCPMachine *infrav1.GCPMachine
+	client        client.Client
+	patchHelper   *patch.Helper
+	ClusterGetter cloud.ClusterGetter
+	Machine       *clusterv1.Machine
+	GCPMachine    *infrav1.GCPMachine
 }
 
-// Region returns the GCPMachine region.
-func (m *MachineScope) Region() string {
-	return m.GCPCluster.Spec.Region
+// ANCHOR: MachineGetter
+
+// Cloud returns initialized cloud.
+func (m *MachineScope) Cloud() cloud.Cloud {
+	return m.ClusterGetter.Cloud()
 }
 
 // Zone returns the FailureDomain for the GCPMachine.
@@ -122,6 +110,11 @@ func (m *MachineScope) Name() string {
 // Namespace returns the namespace name.
 func (m *MachineScope) Namespace() string {
 	return m.GCPMachine.Namespace
+}
+
+// ControlPlaneGroupName returns the control-plane instance group name.
+func (m *MachineScope) ControlPlaneGroupName() string {
+	return fmt.Sprintf("%s-%s-%s", m.ClusterGetter.Name(), infrav1.APIServerRoleTagValue, m.Zone())
 }
 
 // IsControlPlane returns true if the machine is a control plane.
@@ -157,9 +150,14 @@ func (m *MachineScope) GetProviderID() string {
 	return ""
 }
 
+// ANCHOR_END: MachineGetter
+
+// ANCHOR: MachineSetter
+
 // SetProviderID sets the GCPMachine providerID in spec.
-func (m *MachineScope) SetProviderID(v string) {
-	m.GCPMachine.Spec.ProviderID = pointer.StringPtr(v)
+func (m *MachineScope) SetProviderID() {
+	providerID := cloud.ProviderIDPrefix + path.Join(m.ClusterGetter.Project(), m.Zone(), m.Name())
+	m.GCPMachine.Spec.ProviderID = pointer.StringPtr(providerID)
 }
 
 // GetInstanceStatus returns the GCPMachine instance status.
@@ -199,6 +197,151 @@ func (m *MachineScope) SetAnnotation(key, value string) {
 func (m *MachineScope) SetAddresses(addressList []corev1.NodeAddress) {
 	m.GCPMachine.Status.Addresses = addressList
 }
+
+// ANCHOR_END: MachineSetter
+
+// ANCHOR: MachineInstanceSpec
+
+// InstanceImageSpec returns compute instance image attched-disk spec.
+func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
+	image := "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(*m.Machine.Spec.Version), ".", "-")
+	sourceImage := path.Join("projects", m.ClusterGetter.Project(), "global", "images", "family", image)
+	if m.GCPMachine.Spec.Image != nil {
+		sourceImage = *m.GCPMachine.Spec.Image
+	} else if m.GCPMachine.Spec.ImageFamily != nil {
+		sourceImage = *m.GCPMachine.Spec.ImageFamily
+	}
+
+	diskType := infrav1.PdStandardDiskType
+	if t := m.GCPMachine.Spec.RootDeviceType; t != nil {
+		diskType = *t
+	}
+
+	return &compute.AttachedDisk{
+		AutoDelete: true,
+		Boot:       true,
+		InitializeParams: &compute.AttachedDiskInitializeParams{
+			DiskSizeGb:  m.GCPMachine.Spec.RootDeviceSize,
+			DiskType:    path.Join("zones", m.Zone(), "diskTypes", string(diskType)),
+			SourceImage: sourceImage,
+		},
+	}
+}
+
+// InstanceAdditionalDiskSpec returns compute instance additional attched-disk spec.
+func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
+	additionalDisks := make([]*compute.AttachedDisk, 0, len(m.GCPMachine.Spec.AdditionalDisks))
+	for _, disk := range m.GCPMachine.Spec.AdditionalDisks {
+		additionalDisk := &compute.AttachedDisk{
+			AutoDelete: true,
+			InitializeParams: &compute.AttachedDiskInitializeParams{
+				DiskSizeGb: pointer.Int64PtrDerefOr(disk.Size, 30),
+				DiskType:   path.Join("zones", m.Zone(), "diskTypes", string(*disk.DeviceType)),
+			},
+		}
+		if additionalDisk.InitializeParams.DiskType == string(infrav1.LocalSsdDiskType) {
+			additionalDisk.Type = "SCRATCH" // Default is PERSISTENT.
+			// Override the Disk size
+			additionalDisk.InitializeParams.DiskSizeGb = 375
+			// For local SSDs set interface to NVME (instead of default SCSI) which is faster.
+			// Most OS images would work with both NVME and SCSI disks but some may work
+			// considerably faster with NVME.
+			// https://cloud.google.com/compute/docs/disks/local-ssd#choose_an_interface
+			additionalDisk.Interface = "NVME"
+		}
+		additionalDisks = append(additionalDisks, additionalDisk)
+	}
+
+	return additionalDisks
+}
+
+// InstanceNetworkInterfaceSpec returns compute network interface spec.
+func (m *MachineScope) InstanceNetworkInterfaceSpec() *compute.NetworkInterface {
+	networkInterface := &compute.NetworkInterface{
+		Network: path.Join("projects", m.ClusterGetter.Project(), "global", "networks", m.ClusterGetter.NetworkName()),
+	}
+
+	if m.GCPMachine.Spec.PublicIP != nil && *m.GCPMachine.Spec.PublicIP {
+		networkInterface.AccessConfigs = []*compute.AccessConfig{
+			{
+				Type: "ONE_TO_ONE_NAT",
+				Name: "External NAT",
+			},
+		}
+	}
+
+	if m.GCPMachine.Spec.Subnet != nil {
+		networkInterface.Subnetwork = path.Join("regions", m.ClusterGetter.Region(), "subnetworks", *m.GCPMachine.Spec.Subnet)
+	}
+
+	return networkInterface
+}
+
+// InstanceServiceAccountsSpec returns service-account spec.
+func (m *MachineScope) InstanceServiceAccountsSpec() *compute.ServiceAccount {
+	serviceAccount := &compute.ServiceAccount{
+		Email: "default",
+		Scopes: []string{
+			compute.CloudPlatformScope,
+		},
+	}
+
+	if m.GCPMachine.Spec.ServiceAccount != nil {
+		serviceAccount.Email = m.GCPMachine.Spec.ServiceAccount.Email
+		serviceAccount.Scopes = m.GCPMachine.Spec.ServiceAccount.Scopes
+	}
+
+	return serviceAccount
+}
+
+// InstanceAdditionalMetadataSpec returns additional metadata spec.
+func (m *MachineScope) InstanceAdditionalMetadataSpec() *compute.Metadata {
+	metadata := new(compute.Metadata)
+	for _, additionalMetadata := range m.GCPMachine.Spec.AdditionalMetadata {
+		metadata.Items = append(metadata.Items, &compute.MetadataItems{
+			Key:   additionalMetadata.Key,
+			Value: additionalMetadata.Value,
+		})
+	}
+
+	return metadata
+}
+
+// InstanceSpec returns instance spec.
+func (m *MachineScope) InstanceSpec() *compute.Instance {
+	instance := &compute.Instance{
+		Name:         m.Name(),
+		Zone:         m.Zone(),
+		MachineType:  path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
+		CanIpForward: true,
+		Tags: &compute.Tags{
+			Items: append(
+				m.GCPMachine.Spec.AdditionalNetworkTags,
+				fmt.Sprintf("%s-%s", m.ClusterGetter.Name(), m.Role()),
+				m.ClusterGetter.Name(),
+			),
+		},
+		Labels: infrav1.Build(infrav1.BuildParams{
+			ClusterName: m.ClusterGetter.Name(),
+			Lifecycle:   infrav1.ResourceLifecycleOwned,
+			Role:        pointer.StringPtr(m.Role()),
+			// TODO(vincepri): Check what needs to be added for the cloud provider label.
+			Additional: m.ClusterGetter.AdditionalLabels().AddLabels(m.GCPMachine.Spec.AdditionalLabels),
+		}),
+		Scheduling: &compute.Scheduling{
+			Preemptible: m.GCPMachine.Spec.Preemptible,
+		},
+	}
+
+	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
+	instance.Disks = append(instance.Disks, m.InstanceAdditionalDiskSpec()...)
+	instance.Metadata = m.InstanceAdditionalMetadataSpec()
+	instance.ServiceAccounts = append(instance.ServiceAccounts, m.InstanceServiceAccountsSpec())
+	instance.NetworkInterfaces = append(instance.NetworkInterfaces, m.InstanceNetworkInterfaceSpec())
+	return instance
+}
+
+// ANCHOR_END: MachineInstanceSpec
 
 // GetBootstrapData returns the bootstrap data from the secret in the Machine's bootstrap.dataSecretName.
 func (m *MachineScope) GetBootstrapData() (string, error) {
