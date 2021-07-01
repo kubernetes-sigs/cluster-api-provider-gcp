@@ -8,6 +8,19 @@
 - Make to use `Makefile` targets
 - Install `coreutils` (for timeout) on *OSX*
 
+### Setup environment variables
+
+```bash
+export GCP_REGION="<GCP_REGION>"
+export GCP_PROJECT="<GCP_PROJECT>"
+# Make sure to use same kubernetes version here as building the GCE image 
+export KUBERNETES_VERSION=1.19.10
+export GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2
+export GCP_NODE_MACHINE_TYPE=n1-standard-2
+export GCP_NETWORK_NAME=<GCP_NETWORK_NAME or default>
+export CLUSTER_NAME="<CLUSTER_NAME>"
+```
+
 ### Setup a Network and Cloud NAT
 
 Google Cloud accounts come with a `default` network which can be found under
@@ -22,6 +35,25 @@ Kubernetes nodes, to communicate with the control plane, pull container images f
 By default, the provider creates Machines without a public IP.
 
 To make sure your cluster can communicate with the outside world, and the load balancer, you can create a [Cloud NAT](https://cloud.google.com/nat/docs/overview) in the region you'd like your Kubernetes cluster to live in by following [these instructions](https://cloud.google.com/nat/docs/using-nat#create_nat).
+
+> NB: The following commands needs to be run if `${GCP_NETWORK_NAME}` is set to `default`
+
+```bash
+# Ensure if network list contains default network
+gcloud compute networks list --project="${GCP_PROJECT}"
+
+gcloud compute networks describe "${GCP_NETWORK_NAME}" --project="${GCP_PROJECT}"
+
+# Ensure if firewall rules are enabled
+$ gcloud compute firewall-rules list --project "$GCP_PROJECT"
+
+# Create routers
+gcloud compute routers create "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" --region="${GCP_REGION}" --network="default"
+
+# Create NAT 
+gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" --router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter"
+--nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
+```
 
 ### Create a Service Account
 
@@ -53,3 +85,17 @@ make build-gce-ubuntu-1804
 gcloud compute images list --project ${GCP_PROJECT_ID} --no-standard-images --filter="family:capi-ubuntu-1804-k8s"
 ```
 
+
+### Clean-up
+
+Delete the NAT gateway
+```bash
+gcloud compute routers nats delete "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" \
+--router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter" --quiet || true
+```
+
+Delete the router
+```bash
+gcloud compute routers delete "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
+--region="${GCP_REGION}" --quiet || true
+```
