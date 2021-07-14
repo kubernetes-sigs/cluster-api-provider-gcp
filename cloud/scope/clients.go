@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
-	computebeta "google.golang.org/api/compute/v0.beta"
 	"google.golang.org/api/compute/v1"
 
 	"k8s.io/client-go/util/flowcontrol"
@@ -29,8 +28,7 @@ import (
 
 // GCPServices contains all the gcp services used by the scopes.
 type GCPServices struct {
-	Compute     *compute.Service
-	ComputeBeta *computebeta.Service
+	Compute *compute.Service
 }
 
 // GCPRateLimiter implements cloud.RateLimiter.
@@ -56,7 +54,6 @@ func (rl *GCPRateLimiter) Accept(ctx context.Context, key *cloud.RateLimitKey) e
 func newCloud(project string, service GCPServices) cloud.Cloud {
 	return cloud.NewGCE(&cloud.Service{
 		GA:            service.Compute,
-		Beta:          service.ComputeBeta,
 		ProjectRouter: &cloud.SingleProjectRouter{ID: project},
 		RateLimiter:   &GCPRateLimiter{},
 	})

@@ -21,7 +21,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
-	computebeta "google.golang.org/api/compute/v0.beta"
 	"google.golang.org/api/compute/v1"
 
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -60,8 +59,8 @@ type instancegroupsInterface interface {
 }
 
 type targettcpproxiesInterface interface {
-	Get(ctx context.Context, key *meta.Key) (*computebeta.TargetTcpProxy, error)
-	Insert(ctx context.Context, key *meta.Key, obj *computebeta.TargetTcpProxy) error
+	Get(ctx context.Context, key *meta.Key) (*compute.TargetTcpProxy, error)
+	Insert(ctx context.Context, key *meta.Key, obj *compute.TargetTcpProxy) error
 	Delete(ctx context.Context, key *meta.Key) error
 }
 
@@ -73,7 +72,7 @@ type Scope interface {
 	ForwardingRuleSpec() *compute.ForwardingRule
 	HealthCheckSpec() *compute.HealthCheck
 	InstanceGroupSpec(zone string) *compute.InstanceGroup
-	TargetTCPProxySpec() *computebeta.TargetTcpProxy
+	TargetTCPProxySpec() *compute.TargetTcpProxy
 }
 
 // Service implements loadbalancers reconciler.
@@ -98,6 +97,6 @@ func New(scope Scope) *Service {
 		forwardingrules:  scope.Cloud().GlobalForwardingRules(),
 		healthchecks:     scope.Cloud().HealthChecks(),
 		instancegroups:   scope.Cloud().InstanceGroups(),
-		targettcpproxies: scope.Cloud().BetaTargetTcpProxies(), // This is temporary to use beta API.
+		targettcpproxies: scope.Cloud().TargetTcpProxies(),
 	}
 }
