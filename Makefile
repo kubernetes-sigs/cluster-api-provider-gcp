@@ -199,7 +199,7 @@ $(GINKGO): ## Build ginkgo.
 $(KUBECTL): ## Build kubectl
 	mkdir -p $(TOOLS_BIN_DIR)
 	rm -f "$(KUBECTL)*"
-	curl --retry $(CURL_RETRIES) -fsL https://storage.googleapis.com/kubernetes-release/release/$(KUBECTL_VER)/bin/$(GOOS)/$(GOARCH)/kubectl -o $(KUBECTL)
+	curl --retry $(CURL_RETRIES) -fsL https://dl.k8s.io/release/$(KUBECTL_VER)/bin/$(GOOS)/$(GOARCH)/kubectl -o $(KUBECTL)
 	ln -sf "$(KUBECTL)" "$(TOOLS_BIN_DIR)/$(KUBECTL_BIN)"
 	chmod +x "$(TOOLS_BIN_DIR)/$(KUBECTL_BIN)" "$(KUBECTL)"
 
