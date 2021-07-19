@@ -207,7 +207,7 @@ init_image() {
   "build_timestamp": "0",
   "kubernetes_source_type": "http",
   "kubernetes_cni_source_type": "http",
-  "kubernetes_http_source": "https://storage.googleapis.com/kubernetes-release-dev/ci",
+  "kubernetes_http_source": "https://dl.k8s.io/ci",
   "kubernetes_series": "v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}",
   "kubernetes_semver": "${KUBERNETES_VERSION}"
 }
