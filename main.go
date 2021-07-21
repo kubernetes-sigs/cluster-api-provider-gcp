@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
+	infrav1controllersexp "sigs.k8s.io/cluster-api-provider-gcp/controllers/exp"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 )
@@ -116,21 +117,40 @@ func main() {
 	record.InitFromRecorder(mgr.GetEventRecorderFor("gcp-controller"))
 
 	if webhookPort == 0 {
-		if err = (&controllers.GCPMachineReconciler{
-			Client:           mgr.GetClient(),
-			Log:              ctrl.Log.WithName("controllers").WithName("GCPMachine"),
-			ReconcileTimeout: reconcileTimeout,
-		}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
-			os.Exit(1)
-		}
-		if err = (&controllers.GCPClusterReconciler{
-			Client:           mgr.GetClient(),
-			Log:              ctrl.Log.WithName("controllers").WithName("GCPCluster"),
-			ReconcileTimeout: reconcileTimeout,
-		}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
-			os.Exit(1)
+		if (false) {
+			if err = (&controllers.GCPMachineReconciler{
+				Client:           mgr.GetClient(),
+				Log:              ctrl.Log.WithName("controllers").WithName("GCPMachine"),
+				ReconcileTimeout: reconcileTimeout,
+			}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
+				os.Exit(1)
+			}
+			if err = (&controllers.GCPClusterReconciler{
+				Client:           mgr.GetClient(),
+				Log:              ctrl.Log.WithName("controllers").WithName("GCPCluster"),
+				ReconcileTimeout: reconcileTimeout,
+			}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
+				os.Exit(1)
+			}
+		} else {
+			if err = (&infrav1controllersexp.GKEMachinePoolReconciler{
+				Client: mgr.GetClient(),
+				Log:              ctrl.Log.WithName("controllers").WithName("GKEMachine"),
+				ReconcileTimeout: reconcileTimeout,
+			}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "GKEMachine")
+				os.Exit(1)
+			}
+			if err = (&infrav1controllersexp.GKEClusterReconciler{
+				Client:           mgr.GetClient(),
+				Log:              ctrl.Log.WithName("controllers").WithName("GKECluster"),
+				ReconcileTimeout: reconcileTimeout,
+			}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "GKECluster")
+				os.Exit(1)
+			}
 		}
 	} else {
 		if err = (&infrav1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
