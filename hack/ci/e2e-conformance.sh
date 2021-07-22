@@ -268,12 +268,18 @@ create_cluster() {
   # actually create the cluster
   KIND_IS_UP=true
 
-  filter="name~cluster-api-ubuntu-1804-${KUBERNETES_VERSION//[.+]/-}"
-  image_id=$(gcloud compute images list --project "$GCP_PROJECT" \
-    --no-standard-images --filter="${filter}" --format="table[no-heading](name)")
-  if [[ -z "$image_id" ]]; then
-    echo "unable to find image using : $filter $GCP_PROJECT ... bailing out!"
-    exit 1
+  if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
+    echo "Using prebuilt node image"
+    export IMAGE_TO_USE="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-1804-${KUBERNETES_VERSION//[.+]/-}-nightly"
+  else
+    filter="name~cluster-api-ubuntu-1804-${KUBERNETES_VERSION//[.+]/-}"
+    image_id=$(gcloud compute images list --project "$GCP_PROJECT" \
+      --no-standard-images --filter="${filter}" --format="table[no-heading](name)")
+    if [[ -z "$image_id" ]]; then
+      echo "unable to find image using : $filter $GCP_PROJECT ... bailing out!"
+      exit 1
+    fi
+    export IMAGE_TO_USE="projects/${GCP_PROJECT}/global/images/${image_id}"
   fi
 
   tracestate="$(shopt -po xtrace)"
@@ -291,7 +297,7 @@ create_cluster() {
   GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS") \
   CLUSTER_NAME="${CLUSTER_NAME}" \
   CI_VERSION=${CI_VERSION:-} \
-  IMAGE_ID="projects/${GCP_PROJECT}/global/images/${image_id}" \
+  IMAGE_ID="${IMAGE_TO_USE}" \
     make create-cluster)
 
   eval "$tracestate"
@@ -404,6 +410,10 @@ add_kustomize_patch() {
 
 # setup kind, build kubernetes, create a cluster, run the e2es
 main() {
+  # skip the build image by default for CI
+  # locally if want to build the image pass the flag --init-image
+  SKIP_INIT_IMAGE="1"
+
   for arg in "$@"
   do
     if [[ "$arg" == "--verbose" ]]; then
@@ -415,9 +425,11 @@ main() {
     fi
     if [[ "$arg" == "--use-ci-artifacts" ]]; then
       USE_CI_ARTIFACTS="1"
+      # when running the conformance that uses CI artifacts we need to build the node imade
+      unset SKIP_INIT_IMAGE
     fi
-    if [[ "$arg" == "--skip-init-image" ]]; then
-      SKIP_INIT_IMAGE="1"
+    if [[ "$arg" == "--init-image" ]]; then
+      unset SKIP_INIT_IMAGE
     fi
   done
 

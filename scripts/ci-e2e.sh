@@ -48,6 +48,8 @@ export KUBERNETES_MAJOR_VERSION="1"
 export KUBERNETES_MINOR_VERSION="19"
 export KUBERNETES_PATCH_VERSION="10"
 export KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
+# using prebuilt image from image-builder project the image is built everyday and the job is available here https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
+export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-1804-${KUBERNETES_VERSION//[.+]/-}-nightly"
 
 init_image() {
   if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then
@@ -159,8 +161,12 @@ cleanup() {
       --quiet "${GCP_NETWORK_NAME}" || true
   fi
 
-  # removing the image created
-  gcloud compute images delete "${image_id}" --project "${GCP_PROJECT}" --quiet || true
+  if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
+    echo "Skipping GCP image deletion..."
+  else
+    # removing the image created
+    gcloud compute images delete "${image_id}" --project "${GCP_PROJECT}" --quiet || true
+  fi
 
   # stop boskos heartbeat
   [[ -z ${HEART_BEAT_PID:-} ]] || kill -9 "${HEART_BEAT_PID}" || true
@@ -174,13 +180,17 @@ exit-handler() {
 
 # setup gcp network, build image run the e2es
 main() {
+  # skip the build image by default for CI
+  # locally if want to build the image pass the flag --init-image
+  SKIP_INIT_IMAGE="1"
+
   for arg in "$@"
   do
     if [[ "$arg" == "--verbose" ]]; then
       set -o xtrace
     fi
-    if [[ "$arg" == "--skip-init-image" ]]; then
-      SKIP_INIT_IMAGE="1"
+    if [[ "$arg" == "--init-image" ]]; then
+      unset SKIP_INIT_IMAGE
     fi
     if [[ "$arg" == "--build-image-only" ]]; then
       BUILD_IMAGE_ONLY="1"
