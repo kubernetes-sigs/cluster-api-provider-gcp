@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
-	computebeta "google.golang.org/api/compute/v0.beta"
 	"google.golang.org/api/compute/v1"
 
 	"k8s.io/utils/pointer"
@@ -203,7 +202,7 @@ func (s *Service) createOrGetBackendService(ctx context.Context, instancegroups 
 	return backendsvc, nil
 }
 
-func (s *Service) createOrGetTargetTCPProxy(ctx context.Context, service *compute.BackendService) (*computebeta.TargetTcpProxy, error) {
+func (s *Service) createOrGetTargetTCPProxy(ctx context.Context, service *compute.BackendService) (*compute.TargetTcpProxy, error) {
 	log := log.FromContext(ctx)
 	targetSpec := s.scope.TargetTCPProxySpec()
 	targetSpec.Service = service.SelfLink
@@ -260,7 +259,7 @@ func (s *Service) createOrGetAddress(ctx context.Context) (*compute.Address, err
 	return addr, nil
 }
 
-func (s *Service) createForwardingRule(ctx context.Context, target *computebeta.TargetTcpProxy, addr *compute.Address) error {
+func (s *Service) createForwardingRule(ctx context.Context, target *compute.TargetTcpProxy, addr *compute.Address) error {
 	log := log.FromContext(ctx)
 	spec := s.scope.ForwardingRuleSpec()
 	key := meta.GlobalKey(spec.Name)

@@ -23,6 +23,6 @@ require (
 )
 
 replace (
-	github.com/GoogleCloudPlatform/k8s-cloud-provider => github.com/GoogleCloudPlatform/k8s-cloud-provider v1.16.1-0.20210622065854-abbfeadc9fda
+	github.com/GoogleCloudPlatform/k8s-cloud-provider => github.com/GoogleCloudPlatform/k8s-cloud-provider v1.16.1-0.20210702162410-39a62816f3fa
 	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v0.4.0
 )

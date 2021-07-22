@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	computebeta "google.golang.org/api/compute/v0.beta"
 	"google.golang.org/api/compute/v1"
 
 	"k8s.io/utils/pointer"
@@ -58,17 +57,8 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 		return nil, errors.Errorf("failed to create gcp compute client: %v", err)
 	}
 
-	computeBetaSvc, err := computebeta.NewService(context.TODO())
-	if err != nil {
-		return nil, errors.Errorf("failed to create gcp compute beta client: %v", err)
-	}
-
 	if params.GCPServices.Compute == nil {
 		params.GCPServices.Compute = computeSvc
-	}
-
-	if params.GCPServices.ComputeBeta == nil {
-		params.GCPServices.ComputeBeta = computeBetaSvc
 	}
 
 	helper, err := patch.NewHelper(params.GCPCluster, params.Client)
@@ -317,8 +307,8 @@ func (s *ClusterScope) InstanceGroupSpec(zone string) *compute.InstanceGroup {
 }
 
 // TargetTCPProxySpec returns google compute target-tcp-proxy spec.
-func (s *ClusterScope) TargetTCPProxySpec() *computebeta.TargetTcpProxy {
-	return &computebeta.TargetTcpProxy{
+func (s *ClusterScope) TargetTCPProxySpec() *compute.TargetTcpProxy {
+	return &compute.TargetTcpProxy{
 		Name:        fmt.Sprintf("%s-%s", s.Name(), infrav1.APIServerRoleTagValue),
 		ProxyHeader: "NONE",
 	}
