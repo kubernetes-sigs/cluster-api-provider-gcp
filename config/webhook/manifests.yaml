@@ -33,6 +33,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpclustertemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.gcpclustertemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpclustertemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpmachine
   failurePolicy: Fail
   matchPolicy: Equivalent
@@ -76,6 +97,27 @@ webhooks:
     - UPDATE
     resources:
     - gcpclusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpclustertemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.gcpclustertemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1alpha4
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpclustertemplates
   sideEffects: None
 - admissionReviewVersions:
   - v1beta1

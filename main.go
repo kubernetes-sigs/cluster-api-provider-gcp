@@ -152,6 +152,10 @@ func main() {
 		setupLog.Error(err, "unable to create webhook", "webhook", "GCPCluster")
 		os.Exit(1)
 	}
+	if err = (&infrav1alpha4.GCPClusterTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "GCPClusterTemplate")
+		os.Exit(1)
+	}
 	if err = (&infrav1alpha4.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
 		os.Exit(1)
