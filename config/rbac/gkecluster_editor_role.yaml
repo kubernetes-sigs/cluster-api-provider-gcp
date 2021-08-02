@@ -1,0 +1,24 @@
+# permissions for end users to edit gkeclusters.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gkecluster-editor-role
+rules:
+- apiGroups:
+  - infra.cluster.x-k8s.io
+  resources:
+  - gkeclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infra.cluster.x-k8s.io
+  resources:
+  - gkeclusters/status
+  verbs:
+  - get

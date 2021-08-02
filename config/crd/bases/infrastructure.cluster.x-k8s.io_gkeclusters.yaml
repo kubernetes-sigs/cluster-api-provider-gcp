@@ -1,0 +1,91 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: gkeclusters.infrastructure.cluster.x-k8s.io
+spec:
+  group: infrastructure.cluster.x-k8s.io
+  names:
+    kind: GKECluster
+    listKind: GKEClusterList
+    plural: gkeclusters
+    singular: gkecluster
+  scope: Namespaced
+  versions:
+  - name: v1alpha3
+    schema:
+      openAPIV3Schema:
+        description: GKECluster is the Schema for the gkeclusters API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: GKEClusterSpec defines the desired state of GKECluster
+            properties:
+              additionalLabels:
+                additionalProperties:
+                  type: string
+                description: AdditionalLabels is an optional set of tags to add to
+                  GCP resources managed by the GCP provider, in addition to the ones
+                  added by default.
+                type: object
+              controlPlaneEndpoint:
+                description: ControlPlaneEndpoint represents the endpoint used to
+                  communicate with the control plane.
+                properties:
+                  host:
+                    description: The hostname on which the API server is serving.
+                    type: string
+                  port:
+                    description: The port on which the API server is serving.
+                    format: int32
+                    type: integer
+                required:
+                - host
+                - port
+                type: object
+              project:
+                description: Project is the name of the project to deploy the cluster
+                  to.
+                type: string
+              region:
+                description: The GCP Region the cluster lives in.
+                type: string
+            required:
+            - project
+            - region
+            type: object
+          status:
+            description: GKEClusterStatus defines the observed state of GKECluster
+            properties:
+              ready:
+                description: Bastion Instance `json:"bastion,omitempty"`
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

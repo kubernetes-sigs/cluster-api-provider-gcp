@@ -44,6 +44,26 @@ rules:
   - list
   - watch
 - apiGroups:
+  - infra.cluster.x-k8s.io
+  resources:
+  - gkeclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infra.cluster.x-k8s.io
+  resources:
+  - gkeclusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
   - gcpclusters
