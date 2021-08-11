@@ -13,8 +13,8 @@
 ```bash
 export GCP_REGION="<GCP_REGION>"
 export GCP_PROJECT="<GCP_PROJECT>"
-# Make sure to use same kubernetes version here as building the GCE image 
-export KUBERNETES_VERSION=1.19.10
+# Make sure to use same kubernetes version here as building the GCE image
+export KUBERNETES_VERSION=1.20.9
 export GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2
 export GCP_NODE_MACHINE_TYPE=n1-standard-2
 export GCP_NETWORK_NAME=<GCP_NETWORK_NAME or default>
@@ -50,7 +50,7 @@ $ gcloud compute firewall-rules list --project "$GCP_PROJECT"
 # Create routers
 gcloud compute routers create "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" --region="${GCP_REGION}" --network="default"
 
-# Create NAT 
+# Create NAT
 gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" --router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter"
 --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
 ```
