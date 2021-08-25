@@ -37,21 +37,21 @@ This provider's versions are compatible with the following versions of Cluster A
 
 |  | Cluster API `v1alpha2` (`v0.2.x`) | Cluster API `v1alpha3` (`v0.3.x`) | Cluster API `v1alpha4` (`v0.4.x`) |
 |---|---|---|---|
-|GCP Provider `v0.1.x` |  |  | ✓ |
-|GCP Provider `v0.2.x` |  |  | ✓ |
-|GCP Provider `v0.3.x` |  |  | ✓ |
+|GCP Provider `v0.1.x` |  |  |  |
+|GCP Provider `v0.2.x` | ✓ |  |  |
+|GCP Provider `v0.3.x` |  | ✓ | ✓ |
 
 This provider's versions are able to install and manage the following versions of Kubernetes:
 
 |  | GCP Provider `v0.1.x` | GCP Provider `v0.2.x` | GCP Provider `v0.3.x` |
 |---|---|---|---|
-| Kubernetes 1.15 | ✓ |  |  |
-| Kubernetes 1.16 | ✓ | ✓ |  |
-| Kubernetes 1.17 |  |  |  |
-| Kubernetes 1.18 |  |  |  |
-| Kubernetes 1.19 |  |  |  |
-| Kubernetes 1.20 |  |  |  |
-| Kubernetes 1.21 |  |  |  |
+| Kubernetes 1.15 | ✓ |  | ✓ |
+| Kubernetes 1.16 |  |  | ✓ |
+| Kubernetes 1.17 |  |  | ✓ |
+| Kubernetes 1.18 |  |  | ✓ |
+| Kubernetes 1.19 |  |  | ✓ |
+| Kubernetes 1.20 |  |  | ✓ |
+| Kubernetes 1.21 |  |  | ✓ |
 | Kubernetes 1.22 |  |  |  |
 
 
