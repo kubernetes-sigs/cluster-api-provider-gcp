@@ -14,6 +14,11 @@ The Cluster API is a Kubernetes project to bring declarative, Kubernetes-style
 APIs to cluster creation, configuration, and management. It provides optional,
 additive functionality on top of core Kubernetes.
 
+## Quick Start
+
+Checkout our [Cluster API Quick Start] to create your first Kubernetes cluster
+on Google Cloud Platform using Cluster API.
+
 
 ## Community, discussion, contribution, and support
 
@@ -35,6 +40,7 @@ See also: our own [contributor guide] and the Kubernetes [community page].
 
 Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct].
 
+[Cluster API Quick Start]: https://cluster-api.sigs.k8s.io/user/quick-start.html
 [community page]: https://kubernetes.io/community
 [Kubernetes Code of Conduct]: code-of-conduct.md
 [notes]: https://docs.google.com/document/d/1Ys-DOR5UsgbMEeciuG0HOgDQc8kZsaWIWJeKJ1-UfbY/edit
