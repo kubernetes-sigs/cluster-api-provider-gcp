@@ -40,16 +40,16 @@ We also encourage ALL active community participants to act as if they are mainta
 If you have an active interest and you want to get involved, you have real power!
 
 
-## Community, discussion, and support
+### Office hours
 
-- Chat with us on [Slack](http://slack.k8s.io/) in the _#cluster-api_ channel
-- Join the [SIG Cluster Lifecycle](https://groups.google.com/forum/#!forum/kubernetes-sig-cluster-lifecycle) Google Group for access to documents and calendars
-- Join our Cluster API working group sessions
-    - Weekly on Wednesdays @ 10:00 PT on [Zoom][zoomMeeting]
-    - Previous meetings: \[ [notes][notes] | [recordings][recordings] \]
-- Provider implementers office hours
+- Join the [SIG Cluster Lifecycle](https://groups.google.com/forum/#!forum/kubernetes-sig-cluster-lifecycle) Google Group for access to documents and calendars.
+- Provider implementers office hours (CAPI)
     - Weekly on Tuesdays @ 12:00 PT ([Zoom](providerZoomMeetingTues)) and Wednesdays @ 15:00 CET ([Zoom](providerZoomMeetingWed))
     - Previous meetings: \[ [notes][implementerNotes] \]
+
+### Other ways to communicate with the contributors
+
+Please check in with us in the [#cluster-api-gcp] on Slack. 
 
 ### Code of conduct
 
@@ -58,14 +58,11 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 [Cluster API Quick Start]: https://cluster-api.sigs.k8s.io/user/quick-start.html
 [prerequisites]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/prerequisites.md
 [development guide]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/development.md
-[good-first-issue]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
+[good_first_issue]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
 [issue tracker]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues
 [contributor guide]: CONTRIBUTING.md 
 [community page]: https://kubernetes.io/community
 [Kubernetes Code of Conduct]: code-of-conduct.md
-[notes]: https://docs.google.com/document/d/1Ys-DOR5UsgbMEeciuG0HOgDQc8kZsaWIWJeKJ1-UfbY/edit
-[recordings]: https://www.youtube.com/playlist?list=PL69nYSiGNLP29D0nYgAGWt1ZFqS9Z7lw4
-[zoomMeeting]: https://zoom.us/j/861487554
-[implementerNotes]: https://docs.google.com/document/d/1IZ2-AZhe4r3CYiJuttyciS7bGZTTx4iMppcA8_Pr3xE/edit
 [providerZoomMeetingTues]: https://zoom.us/j/140808484
 [providerZoomMeetingWed]: https://zoom.us/j/424743530
+[#cluster-api-gcp]: https://sigs.k8s.io/cluster-api-provider-gcp
