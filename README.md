@@ -45,11 +45,33 @@ If you have an active interest and you want to get involved, you have real power
 - Join the [SIG Cluster Lifecycle](https://groups.google.com/forum/#!forum/kubernetes-sig-cluster-lifecycle) Google Group for access to documents and calendars.
 - Provider implementers office hours (CAPI)
     - Weekly on Tuesdays @ 12:00 PT ([Zoom](providerZoomMeetingTues)) and Wednesdays @ 15:00 CET ([Zoom](providerZoomMeetingWed))
-    - Previous meetings: \[ [notes][implementerNotes] \]
+    - Previous meetings: \[ [notes][notes] | [recordings][recordings] \]
 
 ### Other ways to communicate with the contributors
 
 Please check in with us in the [#cluster-api-gcp] on Slack. 
+
+## Github Issues
+
+### Bugs
+
+If you think you have found a bug please follow the instruction below.
+
+- Please give a small amount of time giving due diligence to the issue tracker. Your issue might be a duplicate.
+- Get the logs from the custom controllers and please paste them in the issue.
+- Open a [bug report].
+- Remember users might be searching the issue in future, so please make sure to give it a meaningful title to help others.
+- Feel free to reach out to the community on slack.
+
+### Tracking new feature
+
+We also have a issue tracker to track features. If you think you have a feature idea, that could make Cluster API provider GCP become even more awesome, then follow these steps.
+
+- Open a [feature request].
+- Remember users might be searching for the issue in future, so please make sure to give it a meaningful title to help others.
+- Clearly define the use case with concrete examples. Example: type `this` and cluster-api-provider-gcp does `that`.
+- Some of our larger features will require some design. If you would like to include a techincal design to your feature, please go ahead.
+- After the new feature is well understood, and the design is agreed upon we can start coding the feature. We would love for you to code it. So please open up a **WIP** *(work in progress)* PR and happy coding!
 
 ### Code of conduct
 
@@ -65,4 +87,9 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 [Kubernetes Code of Conduct]: code-of-conduct.md
 [providerZoomMeetingTues]: https://zoom.us/j/140808484
 [providerZoomMeetingWed]: https://zoom.us/j/424743530
+[implementerNotes]: https://docs.google.com/document/d/1IZ2-AZhe4r3CYiJuttyciS7bGZTTx4iMppcA8_Pr3xE/edit
+[notes]: https://docs.google.com/document/d/1LdooNTbb9PZMFWy3_F-XAsl7Og5F2lvG3tCgQvoB5e4
+[recordings]: https://www.youtube.com/playlist?list=PL69nYSiGNLP29D0nYgAGWt1ZFqS9Z7lw4
 [#cluster-api-gcp]: https://sigs.k8s.io/cluster-api-provider-gcp
+[bug report]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=bug_report.md
+[feature request]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=feature_request.md
