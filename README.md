@@ -8,16 +8,18 @@
 
 Kubernetes-native declarative infrastructure for GCP.
 
-## What is the Cluster API?
+## What is the Cluster API Provider GCP?
 
-The Cluster API is a Kubernetes project to bring declarative, Kubernetes-style
-APIs to cluster creation, configuration, and management. It provides optional,
-additive functionality on top of core Kubernetes.
+The [Cluster API](https://github.com/kubernetes-sigs/cluster-api) brings declarative Kubernetes-style APIs to cluster creation, configuration and management. The API itself is shared across multiple cloud providers allowing for true Google Cloud hybrid deployments of Kubernetes.
 
 ## Quick Start
 
 Checkout our [Cluster API Quick Start] to create your first Kubernetes cluster
 on Google Cloud Platform using Cluster API.
+
+## Documentation
+
+Presently our docs can be found [here](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/tree/main/docs).
 
 ## Getting Involved and Contributing
 
