@@ -1,4 +1,4 @@
-# Prerequisites
+sites
 
 ## Requirements
 
@@ -99,3 +99,4 @@ Delete the router
 gcloud compute routers delete "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJECT}" \
 --region="${GCP_REGION}" --quiet || true
 ```
+
