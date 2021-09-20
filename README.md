@@ -4,6 +4,8 @@
 <img alt="Build Status" src="https://prow.k8s.io/badge.svg?jobs=ci-cluster-api-provider-gcp">
 </a> <a href="https://godoc.org/sigs.k8s.io/cluster-api-provider-gcp"><img src="https://godoc.org/sigs.k8s.io/cluster-api-provider-gcp?status.svg"></a> <a href="https://goreportcard.com/report/sigs.k8s.io/cluster-api-provider-gcp"><img alt="Go Report Card" src="https://goreportcard.com/badge/sigs.k8s.io/cluster-api-provider-gcp" /></a></p>
 
+----
+
 # Kubernetes Cluster API Provider GCP
 
 Kubernetes-native declarative infrastructure for GCP.
@@ -16,6 +18,37 @@ The [Cluster API](https://github.com/kubernetes-sigs/cluster-api) brings declara
 
 Checkout our [Cluster API Quick Start] to create your first Kubernetes cluster
 on Google Cloud Platform using Cluster API.
+
+----
+
+## Support Policy
+
+This provider's versions are compatible with the following versions of Cluster API:
+
+|  | Cluster API `v1alpha2` (`v0.2.x`) | Cluster API `v1alpha3` (`v0.3.x`) | Cluster API `v1alpha4` (`v0.4.x`) |
+|---|---|---|---|
+|Google Cloud Provider `v0.2.x` | ✓ |  |  |
+|Google Cloud Provider `v0.3.x` |  | ✓ |  |
+|Google Cloud Provider `v0.4.x` |  |  | ✓ |
+
+This provider's versions are able to install and manage the following versions of Kubernetes:
+
+|  | Google Cloud Provider `v0.2.x` | Google Cloud Provider `v0.3.x` | Google Cloud Provider `v0.4.x` |
+|---|---|---|---|
+| Kubernetes 1.15 | ✓ | ✓ |  |
+| Kubernetes 1.16 |  | ✓ | ✓ |
+| Kubernetes 1.17 |  |  | ✓ |
+| Kubernetes 1.18 |  |  | ✓ |
+| Kubernetes 1.19 |  |  | ✓ |
+| Kubernetes 1.20 |  |  | ✓ |
+| Kubernetes 1.21 |  |  | ✓ |
+| Kubernetes 1.22 |  |  |  |
+ 
+Each version of Cluster API for Google Cloud will attempt to support atleast two version of Kubernetes versions e.g., Cluster API for GCP `v0.1` may support Kubernetes 1.13 and Kubernetes 1.14.
+
+**NOTE:** As the versioning for this project is tied to the versioning of Cluster API, future modifications to this policy may be made to more closely align with other providers in the Cluster API ecosystem. 
+
+----
 
 ## Documentation
 
