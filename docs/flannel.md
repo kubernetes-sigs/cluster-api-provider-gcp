@@ -6,7 +6,7 @@ This document describes how to use [Flannel](https://github.com/flannel-io/flann
 
 Before deploying the cluster, change the `KubeadmControlPlane` value at `spec.kubeadmConfigSpec.clusterConfiguration.controllerManager.extraArgs.allocate-node-cidrs` to `"true"`
 
-```sh
+```yaml
 apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
 kind: KubeadmControlPlane
 spec:
@@ -25,7 +25,7 @@ You need to make an adjustment to the default flannel configuration so that the 
 
 View your capi-cluster.yaml and make note of the Cluster Network CIDR Block. For example:
 
-```sh
+```yaml
 apiVersion: cluster.x-k8s.io/v1alpha4
 kind: Cluster
 spec:
@@ -43,7 +43,7 @@ wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-
 
 Edit kube-flannel.yml and change this section so that the Network section matches your Cluster CIDR
 
-```sh
+```yaml
 kind: ConfigMap
 apiVersion: v1
 metadata:
