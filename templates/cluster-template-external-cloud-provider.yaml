@@ -1,0 +1,143 @@
+---
+apiVersion: cluster.x-k8s.io/v1alpha4
+kind: Cluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: ["192.168.0.0/16"] # CIDR block used by Calico.
+    serviceDomain: "cluster.local"
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+    kind: GCPCluster
+    name: ${CLUSTER_NAME}
+  controlPlaneRef:
+    kind: KubeadmControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
+    name: ${CLUSTER_NAME}-control-plane
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+kind: GCPCluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  cloudName: ${GCP_CLOUD}
+  identityRef:
+    name: ${CLUSTER_NAME}-cloud-config
+    kind: Secret
+  managedAPIServerLoadBalancer: true
+  managedSecurityGroups: true
+  nodeCidr: 10.6.0.0/24
+  dnsNameservers:
+  - ${GCP_DNS_NAMESERVERS}
+  externalNetworkId: ${GCP_EXTERNAL_NETWORK_ID}
+---
+kind: KubeadmControlPlane
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  machineTemplate:
+    infrastructureRef:
+      kind: GCPMachineTemplate
+      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+      name: "${CLUSTER_NAME}-control-plane"
+  kubeadmConfigSpec:
+    initConfiguration:
+      nodeRegistration:
+        name: '{{ local_hostname }}'
+        kubeletExtraArgs:
+          cloud-provider: external
+    clusterConfiguration:
+      imageRepository: k8s.gcr.io
+      apiServer:
+        extraArgs:
+          cloud-provider: external
+      controllerManager:
+        extraArgs:
+          cloud-provider: external
+    joinConfiguration:
+      nodeRegistration:
+        name: '{{ local_hostname }}'
+        kubeletExtraArgs:
+          cloud-provider: external
+  version: "${KUBERNETES_VERSION}"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+kind: GCPMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+spec:
+  template:
+    spec:
+      flavor: ${GCP_CONTROL_PLANE_MACHINE_FLAVOR}
+      image: ${GCP_IMAGE_NAME}
+      sshKeyName: ${GCP_SSH_KEY_NAME}
+      cloudName: ${GCP_CLOUD}
+      identityRef:
+        name: ${CLUSTER_NAME}-cloud-config
+        kind: Secret
+---
+apiVersion: cluster.x-k8s.io/v1alpha4
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  clusterName: "${CLUSTER_NAME}"
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+  template:
+    spec:
+      clusterName: "${CLUSTER_NAME}"
+      version: "${KUBERNETES_VERSION}"
+      failureDomain: ${GCP_FAILURE_DOMAIN}
+      bootstrap:
+        configRef:
+          name: "${CLUSTER_NAME}-md-0"
+          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
+          kind: KubeadmConfigTemplate
+      infrastructureRef:
+        name: "${CLUSTER_NAME}-md-0"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+        kind: GCPMachineTemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+kind: GCPMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+spec:
+  template:
+    spec:
+      cloudName: ${GCP_CLOUD}
+      identityRef:
+        name: ${CLUSTER_NAME}-cloud-config
+        kind: Secret
+      flavor: ${GCP_NODE_MACHINE_FLAVOR}
+      image: ${GCP_IMAGE_NAME}
+      sshKeyName: ${GCP_SSH_KEY_NAME}
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
+kind: KubeadmConfigTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+spec:
+  template:
+    spec:
+      joinConfiguration:
+        nodeRegistration:
+          name: '{{ local_hostname }}'
+          kubeletExtraArgs:
+            cloud-provider: external
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${CLUSTER_NAME}-cloud-config
+  labels:
+    clusterctl.cluster.x-k8s.io/move: "true"
+data:
+  clouds.yaml: ${GCP_CLOUD_YAML_B64}
+  cacert: ${GCP_CLOUD_CACERT_B64}
