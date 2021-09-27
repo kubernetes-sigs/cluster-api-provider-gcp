@@ -18,7 +18,7 @@ settings = {
     "kind_cluster_name": "capg",
     "capi_version": "v0.4.3",
     "cert_manager_version": "v1.1.0",
-    "kubernetes_version": "v1.20.9",
+    "kubernetes_version": "v1.21.4",
 }
 
 keys = ["GCP_B64ENCODED_CREDENTIALS"]
