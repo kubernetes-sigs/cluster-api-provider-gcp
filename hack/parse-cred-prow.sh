@@ -1,6 +1,5 @@
 #!/bin/bash
-
-# Copyright 2018 The Kubernetes Authors.
+# Copyright 2020 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,12 +17,15 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-# shellcheck source=hack/ensure-go.sh
-source "${REPO_ROOT}/hack/ensure-go.sh"
+parse_cred() {
+    grep -E -o "$1[[:blank:]]*=[[:blank:]]*\"[^[:space:]\"]+\"" | cut -d '"' -f 2
+}
 
-cd "${REPO_ROOT}" && \
-	source ./scripts/fetch_ext_bins.sh && \
-	fetch_tools && \
-	setup_envs && \
-	make generate test
+# for Prow we use the provided GCP_CREDENTIALS file.
+# the file is expected to be in toml format.
+
+if [[ -n "${GCP_CREDENTIALS:-}" ]]; then
+      GCP_CREDENTIALS="$(parse_cred Credentials < "${GCP_CREDENTIALS}")"
+
+      export GCP_CREDENTIALS
+fi
