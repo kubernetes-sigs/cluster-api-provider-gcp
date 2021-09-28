@@ -46,18 +46,6 @@ export CLUSTER_TEMPLATE="${CLUSTER_TEMPLATE:-cluster-template.yaml}"
 #identity settings
 export GCP_NETWORK_NAME="default"
 
-# Generate GPG key.
-GPG_KEY_FILE=${GPG_KEY_FILE:-""}
-if [ -z "$GPG_KEY_FILE" ]; then
-   GPG_KEY_FILE=.gpg
-   rm -f "${GPG_KEY_FILE}" 2>/dev/null
-   gpg --default-new-key-algo rsa4096 -f "${GPG_KEY_FILE}" -N '' 1>/dev/null
-   echo "Machine GPG key generated in ${GPG_KEY_FILE}"
-fi
-
-GCP_GPG_PUBLIC_KEY_B64=$(base64 "${GPG_KEY_FILE}.pub" | tr -d '\r\n')
-export GCP_GPG_PUBLIC_KEY_B64
-
 echo "================ DOCKER BUILD ==============="
 PULL_POLICY=IfNotPresent make modules docker-build
 
