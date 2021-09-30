@@ -113,8 +113,8 @@ We also have a issue tracker to track features. If you think you have a feature 
 Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct].
 
 [Cluster API Quick Start]: https://cluster-api.sigs.k8s.io/user/quick-start.html
-[prerequisites]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/prerequisites.md
-[development guide]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/development.md
+[prerequisites]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/topics/prerequisites.md
+[development guide]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md
 [good_first_issue]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
 [issue tracker]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues
 [contributor guide]: CONTRIBUTING.md 
