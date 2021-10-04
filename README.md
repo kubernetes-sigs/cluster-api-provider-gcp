@@ -78,8 +78,9 @@ If you have an active interest and you want to get involved, you have real power
 ### Office hours
 
 - Join the [SIG Cluster Lifecycle](https://groups.google.com/forum/#!forum/kubernetes-sig-cluster-lifecycle) Google Group for access to documents and calendars.
+- Participate in the conversations on [Kubernetes Discuss][kubernetes discuss]
 - Provider implementers office hours (CAPI)
-    - Weekly on Tuesdays @ 12:00 PT ([Zoom](providerZoomMeetingTues)) and Wednesdays @ 15:00 CET ([Zoom](providerZoomMeetingWed))
+    - Weekly on Wednesdays @ 10:00 PT on [Zoom](https://zoom.us/j/861487554)
     - Previous meetings: \[ [notes][notes] | [recordings][recordings] \]
 
 ### Other ways to communicate with the contributors
@@ -120,10 +121,9 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 [contributor guide]: CONTRIBUTING.md 
 [community page]: https://kubernetes.io/community
 [Kubernetes Code of Conduct]: code-of-conduct.md
-[providerZoomMeetingTues]: https://zoom.us/j/140808484
-[providerZoomMeetingWed]: https://zoom.us/j/424743530
 [notes]: https://docs.google.com/document/d/1LdooNTbb9PZMFWy3_F-XAsl7Og5F2lvG3tCgQvoB5e4
 [recordings]: https://www.youtube.com/playlist?list=PL69nYSiGNLP29D0nYgAGWt1ZFqS9Z7lw4
 [#cluster-api-gcp]: https://sigs.k8s.io/cluster-api-provider-gcp
 [bug report]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=bug_report.md
 [feature request]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=feature_request.md
+[kubernetes discuss]: https://discuss.kubernetes.io/c/contributors/cluster-api
