@@ -1,4 +1,4 @@
-<p align="center"><img alt="capi" src="https://github.com/kubernetes-sigs/cluster-api/raw/master/docs/book/src/images/introduction.png" width="160x" /><img alt="capi" src="https://cloud.google.com/_static/cloud/images/favicons/onecloud/super_cloud.png" width="192x" /></p>
+<p align="center"><img alt="capi" src="https://github.com/kubernetes-sigs/cluster-api/raw/main/docs/book/src/images/introduction.png" width="160x" /><img alt="capi" src="https://cloud.google.com/_static/cloud/images/favicons/onecloud/super_cloud.png" width="192x" /></p>
 <p align="center"><a href="https://prow.k8s.io/?job=ci-cluster-api-provider-gcp-build">
 <!-- prow build badge, godoc, and go report card-->
 <img alt="Build Status" src="https://prow.k8s.io/badge.svg?jobs=ci-cluster-api-provider-gcp">
@@ -34,14 +34,14 @@ This provider's versions are compatible with the following versions of Cluster A
 This provider's versions are able to install and manage the following versions of Kubernetes:
 
 |  | Google Cloud Provider `v0.2.x` | Google Cloud Provider `v0.3.x` | Google Cloud Provider `v0.4.x` |
-|---|---|---|---|
-| Kubernetes 1.15 | ✓ | ✓ |  |
-| Kubernetes 1.16 |  | ✓ | ✓ |
-| Kubernetes 1.17 |  |  | ✓ |
-| Kubernetes 1.18 |  |  | ✓ |
-| Kubernetes 1.19 |  |  | ✓ |
-| Kubernetes 1.20 |  |  | ✓ |
-| Kubernetes 1.21 |  |  | ✓ |
+|---|:---:|:---:|:---:|
+| Kubernetes 1.15 | ✓ |  |  |
+| Kubernetes 1.16 | ✓ | ✓ |  |
+| Kubernetes 1.17 |  | ✓ |  |
+| Kubernetes 1.18 |  | ✓ | ✓ |
+| Kubernetes 1.19 |  | ✓ | ✓ |
+| Kubernetes 1.20 |  | ✓ | ✓ |
+| Kubernetes 1.21 |  | ✓ | ✓ |
 | Kubernetes 1.22 |  |  | ✓ |
  
 Each version of Cluster API for Google Cloud will attempt to support atleast two version of Kubernetes versions e.g., Cluster API for GCP `v0.1` may support Kubernetes 1.13 and Kubernetes 1.14.
@@ -78,8 +78,9 @@ If you have an active interest and you want to get involved, you have real power
 ### Office hours
 
 - Join the [SIG Cluster Lifecycle](https://groups.google.com/forum/#!forum/kubernetes-sig-cluster-lifecycle) Google Group for access to documents and calendars.
+- Participate in the conversations on [Kubernetes Discuss][kubernetes discuss]
 - Provider implementers office hours (CAPI)
-    - Weekly on Tuesdays @ 12:00 PT ([Zoom](providerZoomMeetingTues)) and Wednesdays @ 15:00 CET ([Zoom](providerZoomMeetingWed))
+    - Weekly on Wednesdays @ 10:00 PT on [Zoom](https://zoom.us/j/861487554)
     - Previous meetings: \[ [notes][notes] | [recordings][recordings] \]
 
 ### Other ways to communicate with the contributors
@@ -113,17 +114,16 @@ We also have a issue tracker to track features. If you think you have a feature 
 Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct].
 
 [Cluster API Quick Start]: https://cluster-api.sigs.k8s.io/user/quick-start.html
-[prerequisites]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/prerequisites.md
-[development guide]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/development.md
+[prerequisites]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/topics/prerequisites.md
+[development guide]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md
 [good_first_issue]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
 [issue tracker]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues
 [contributor guide]: CONTRIBUTING.md 
 [community page]: https://kubernetes.io/community
 [Kubernetes Code of Conduct]: code-of-conduct.md
-[providerZoomMeetingTues]: https://zoom.us/j/140808484
-[providerZoomMeetingWed]: https://zoom.us/j/424743530
 [notes]: https://docs.google.com/document/d/1LdooNTbb9PZMFWy3_F-XAsl7Og5F2lvG3tCgQvoB5e4
 [recordings]: https://www.youtube.com/playlist?list=PL69nYSiGNLP29D0nYgAGWt1ZFqS9Z7lw4
 [#cluster-api-gcp]: https://sigs.k8s.io/cluster-api-provider-gcp
 [bug report]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=bug_report.md
 [feature request]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=feature_request.md
+[kubernetes discuss]: https://discuss.kubernetes.io/c/contributors/cluster-api
