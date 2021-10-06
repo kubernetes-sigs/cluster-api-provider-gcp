@@ -9,22 +9,27 @@
 2. Install [tilt][tilt]
 3. Install [jq][jq]
    - `brew install jq` on macOS.
-   - `chocolatey install jq` on Windows.
+   - `sudo apt install jq` on Windows + WSL2.
    - `sudo apt install jq` on Ubuntu Linux.
 4. Install [gettext][gettext] package
    - `brew install gettext && brew link --force gettext` on macOS.
-   - [install instructions][gettextwindows] on Windows.
+   - `sudo apt install gettext` on Windows + WSL2.
    - `sudo apt install gettext` on Ubuntu Linux.
 5. Install [KIND][kind]
    - `GO111MODULE="on" go get sigs.k8s.io/kind@v0.11.1`.
 6. Install [Kustomize][kustomize]
    - `brew install kustomize` on macOS.
-   - `choco install kustomize` on Windows.
+   - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2.
    - [install instructions][kustomizelinux] on Linux
 7. Install Python 3.x or 2.7.x, if neither is already installed.
 8. Install make.
+   - `brew install make` on MacOS.
+   - `sudo apt install make` on Windows + WSL2.
+   - `sudo apt install make` on Linux.
 9. Install [timeout][timeout]
    - `brew install coreutils` on macOS.
+
+When developing on Windows, it is suggested to set up the project on Windows + WSL2 and the file should be checked out on as wsl file system for better results.
 
 ### Get the source
 
