@@ -6,27 +6,26 @@
 
 1. Install [go][go]
    - Get the latest patch version for go v1.16.
-2. Install [tilt][tilt]
-3. Install [jq][jq]
+2. Install [jq][jq]
    - `brew install jq` on macOS.
    - `sudo apt install jq` on Windows + WSL2.
    - `sudo apt install jq` on Ubuntu Linux.
-4. Install [gettext][gettext] package
+3. Install [gettext][gettext] package
    - `brew install gettext && brew link --force gettext` on macOS.
    - `sudo apt install gettext` on Windows + WSL2.
    - `sudo apt install gettext` on Ubuntu Linux.
-5. Install [KIND][kind]
+4. Install [KIND][kind]
    - `GO111MODULE="on" go get sigs.k8s.io/kind@v0.11.1`.
-6. Install [Kustomize][kustomize]
+5. Install [Kustomize][kustomize]
    - `brew install kustomize` on macOS.
    - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2.
    - [install instructions][kustomizelinux] on Linux
-7. Install Python 3.x or 2.7.x, if neither is already installed.
-8. Install make.
+6. Install Python 3.x or 2.7.x, if neither is already installed.
+7. Install make.
    - `brew install make` on MacOS.
    - `sudo apt install make` on Windows + WSL2.
    - `sudo apt install make` on Linux.
-9. Install [timeout][timeout]
+8. Install [timeout][timeout]
    - `brew install coreutils` on macOS.
 
 When developing on Windows, it is suggested to set up the project on Windows + WSL2 and the file should be checked out on as wsl file system for better results.
@@ -64,14 +63,50 @@ Please refer to the image-builder documentation in order to get the latest requi
 
 To build the node images for GCP: [https://image-builder.sigs.k8s.io/capi/providers/gcp.html](https://image-builder.sigs.k8s.io/capi/providers/gcp.html)
 
+## Developing
+
+Change some code!
+
+### Modules and Dependencies
+
+This repository uses [Go Modules](https://github.com/golang/go/wiki/Modules) to track vendor dependencies.
+
+To pin a new dependecy:
+
+- Run `go get <repository>@<version>`
+- (Optional) Add a replace statement in `go.mod`
+
+Makefile targets and scripts are offered to work with go modules:
+
+- `make verify-modules` checks whether go modules are out of date.
+- `make modules` runs `go mod tidy` to ensure proper vendoring.
+- `hack/ensure-go.sh` checks that the Go version and enviornment variables are properly set.
 
 ### Setting up the environment
 
 Your environment must have the GCP credentials, check [Authentication Getting Started](https://cloud.google.com/docs/authentication/getting-started)
 
+### Tilt Requirements
+
+Install [Tilt][tilt]:
+
+- `brew install tilt-dev/tap/tilt` on macOS or Linux
+- `scoop bucket add tilt-dev https://github.com/tilt-dev/scoop-bucket` & `scoop install tilt` on Windows
+
+After the installation is done, verify that you have installed it correctly with: `tilt version`
+
+Install [Helm](https://helm.sh/docs/intro/install/):
+
+- `brew install helm` on MacOS
+- `choco install kubernetes-helm` on Windows
+- [Install instructions](https://helm.sh/docs/intro/install/#from-source-linux-macos) for Linux
+
+As the project lacks a lot of feature for windows, it would be suggested to follow the above steps on Windows + WSL2
+rather than Windows.
+
 ### Using Tilt
 
-Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster.
+Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster.The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPZ and CAPI, then follow the [CAPI and CAPZ instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
 
 #### Tilt for dev in CAPG
 
@@ -105,6 +140,11 @@ $ export CLUSTER_NAME="<CLUSTER_NAME>" \
 
 To build a kind cluster and start Tilt, just run:
 
+```shell
+make tilt-up
+```
+
+Alternatively, you can also run:
 ```shell
 $ ./scripts/setup-dev-enviroment.sh
 ```
