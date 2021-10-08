@@ -52,7 +52,7 @@ After you create and attach the new disk to a VM, you must format and mount the 
 
 ## EXAMPLE
 ---
-The below example shows how to create and attach a custom disk "my_disk" at instance-1 for every control plane machine, in addition to the etcd disk. NOTE: the same can be applied to the worker machine.
+The below example shows how to create and attach a custom disk "my_disk" at vm-instance-1 for every control plane machine, in addition to the etcd disk. NOTE: the same can be applied to the worker machine.
 
 ```yaml
 kind: KubeadmControlPlane
@@ -66,14 +66,14 @@ spec:
         - device: gcloud compute --project \
                   "project-1" ssh \
                   --zone us-central-a \
-                  instance-1
+                  vm-instance-1
           type: bq
           layout: true
           overwrite: false
         - device: gcloud compute --project \
                   "project-1" ssh \
                   --zone us-central-b \
-                  instance-2
+                  vm-instance-2
           type: bq
           layout: true 
           overwrite: false
@@ -83,13 +83,13 @@ spec:
           device: gcloud compute --project \
                   "project-1" ssh \
                   --zone us-central-b \
-                  instance-2
+                  vm-instance-2
         - label: my_disk
           filesystem: ext4
           device: gcloud compute --project \
                   "project-1" ssh \
                   --zone us-central-a \
-                  instance-1
+                  vm-instance-1
     mounts:
       - - LABEL=etcd_disk
         - /var/lib/etcddisk
