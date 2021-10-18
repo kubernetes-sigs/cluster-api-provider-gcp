@@ -62,34 +62,45 @@ metadata:
 spec:
     [...]
     diskSetup:
-      partitions:
-        - device: gcloud compute --project \
-                  "project-1" ssh \
-                  --zone us-central-a \
-                  vm-instance-1
-          type: bq
+      resources:
+        - name: vm-instance-1
+          type: compute.v1.instance
+          properties:
+            zone: us-central1-f
+            machineType: n1-standard-2
+          disks:
+          - deviceName: my_disk
+            type: PERSISTENT
+            boot: true
+            autoDelete: false
+          networkInterfaces:
+          - network: https://www.googleapis.com/compute/v1/projects/"${GCP_PROJECT}"/global/networks/default
+            accessConfigs:
+            - name: External NAT
+              type: ONE_TO_ONE_NAT
           layout: true
           overwrite: false
-        - device: gcloud compute --project \
-                  "project-1" ssh \
-                  --zone us-central-b \
-                  vm-instance-2
-          type: bq
-          layout: true 
+        - name: vm-instance-2
+          type: compute.v1.instance
+          properties:
+            zone: us-central1-f
+            machineType: n1-standard-2
+          disks:
+          - deviceName: etcd_disk
+          networkInterfaces:
+          - network: https://www.googleapis.com/compute/v1/projects/"${GCP_PROJECT}"/global/networks/default
+            accessConfigs:
+            - name: External NAT
+              type: ONE_TO_ONE_NAT
+          layout: true
           overwrite: false
       filesystems:
         - label: etcd_disk
           filesystem: ext4
-          device: gcloud compute --project \
-                  "project-1" ssh \
-                  --zone us-central-b \
-                  vm-instance-2
+          name: vm-instance-2
         - label: my_disk
           filesystem: ext4
-          device: gcloud compute --project \
-                  "project-1" ssh \
-                  --zone us-central-a \
-                  vm-instance-1
+          device: vm-instance-1
     mounts:
       - - LABEL=etcd_disk
         - /var/lib/etcddisk
