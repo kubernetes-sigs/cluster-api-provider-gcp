@@ -116,7 +116,7 @@ spec:
     spec:
       [...]
       dataDisks:
-        - nameSuffix: etcddisk
+        - nameSuffix: etcd_disk
           diskSizeGB: 256
         - nameSuffix: my_disk
           diskSizeGB: 128
