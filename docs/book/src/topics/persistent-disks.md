@@ -100,7 +100,7 @@ spec:
           name: vm-instance-2
         - label: my_disk
           filesystem: ext4
-          device: vm-instance-1
+          name: vm-instance-1
     mounts:
       - - LABEL=etcd_disk
         - /var/lib/etcddisk
