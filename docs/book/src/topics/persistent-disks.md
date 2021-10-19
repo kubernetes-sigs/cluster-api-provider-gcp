@@ -70,7 +70,7 @@ spec:
             machineType: n1-standard-2
           disks:
           - deviceName: my_disk
-            type: PERSISTENT
+            type: pd-standard
             boot: true
             autoDelete: false
           networkInterfaces:
