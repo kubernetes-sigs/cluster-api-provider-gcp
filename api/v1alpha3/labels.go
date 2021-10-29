@@ -77,6 +77,9 @@ func (in Labels) Difference(other Labels) Labels {
 // AddLabels adds (and overwrites) the current labels with the ones passed in.
 func (in Labels) AddLabels(other Labels) Labels {
 	for key, value := range other {
+		if in == nil {
+			in = make(map[string]string, len(other))
+		}
 		in[key] = value
 	}
 

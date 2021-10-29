@@ -19,11 +19,11 @@ package instances
 import (
 	"context"
 	"net/http"
-	"reflect"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 
@@ -91,7 +91,11 @@ var fakeGCPMachine = &infrav1.GCPMachine{
 		Name:      "my-machine",
 		Namespace: "default",
 	},
-	Spec: infrav1.GCPMachineSpec{},
+	Spec: infrav1.GCPMachineSpec{
+		AdditionalLabels: map[string]string{
+			"foo": "bar",
+		},
+	},
 }
 
 func TestService_createOrGetInstance(t *testing.T) {
@@ -176,6 +180,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 				Labels: map[string]string{
 					"capg-role":               "node",
 					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
 				},
 				MachineType: "zones/us-central1-c/machineTypes",
 				Metadata: &compute.Metadata{
@@ -220,8 +225,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Service.createOrGetInstance() = %v, want %v", got, tt.want)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Errorf("Service.createOrGetInstance() mismatch (-want +got):\n%s", d)
 			}
 		})
 	}
