@@ -26,12 +26,11 @@ import (
 	"google.golang.org/api/compute/v1"
 
 	"k8s.io/utils/pointer"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 )
 
 // ClusterScopeParams defines the input parameters used to create a new Scope.

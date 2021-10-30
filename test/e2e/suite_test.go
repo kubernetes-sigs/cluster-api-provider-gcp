@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -40,7 +41,7 @@ import (
 	"sigs.k8s.io/cluster-api/test/framework/bootstrap"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 
-	"sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 const (
@@ -160,11 +161,11 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 func initScheme() *runtime.Scheme {
-	sc := runtime.NewScheme()
-	framework.TryAddDefaultSchemes(sc)
-	Expect(v1alpha4.AddToScheme(sc)).To(Succeed())
+	scheme := runtime.NewScheme()
+	framework.TryAddDefaultSchemes(scheme)
+	Expect(infrav1.AddToScheme(scheme)).To(Succeed())
 
-	return sc
+	return scheme
 }
 
 func loadE2EConfig(configPath string) *clusterctl.E2EConfig {

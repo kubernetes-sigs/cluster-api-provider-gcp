@@ -14,6 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha4
+package v1beta1
 
-// +k8s:conversion-gen=sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1
+// Hub marks GCPMachineTemplate as a conversion hub.
+func (*GCPMachineTemplate) Hub() {}
+
+// Hub marks GCPMachineTemplateList as a conversion hub.
+func (*GCPMachineTemplateList) Hub() {}
