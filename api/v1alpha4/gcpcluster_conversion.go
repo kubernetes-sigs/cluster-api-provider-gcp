@@ -16,8 +16,31 @@ limitations under the License.
 
 package v1alpha4
 
-// Hub marks GCPCluster as a conversion hub.
-func (*GCPCluster) Hub() {}
+import (
+	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/conversion"
+)
 
-// Hub marks GCPClusterList as a conversion hub.
-func (*GCPClusterList) Hub() {}
+// ConvertTo converts this GCPCluster to the Hub version (v1beta1).
+func (src *GCPCluster) ConvertTo(dstRaw conversion.Hub) error { // nolint
+	dst := dstRaw.(*infrav1beta1.GCPCluster)
+	return Convert_v1alpha4_GCPCluster_To_v1beta1_GCPCluster(src, dst, nil)
+}
+
+// ConvertFrom converts from the Hub version (v1beta1) to this version.
+func (dst *GCPCluster) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+	src := srcRaw.(*infrav1beta1.GCPCluster)
+	return Convert_v1beta1_GCPCluster_To_v1alpha4_GCPCluster(src, dst, nil)
+}
+
+// ConvertTo converts this GCPClusterList to the Hub version (v1beta1).
+func (src *GCPClusterList) ConvertTo(dstRaw conversion.Hub) error { // nolint
+	dst := dstRaw.(*infrav1beta1.GCPClusterList)
+	return Convert_v1alpha4_GCPClusterList_To_v1beta1_GCPClusterList(src, dst, nil)
+}
+
+// ConvertFrom converts from the Hub version (v1beta1) to this version.
+func (dst *GCPClusterList) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+	src := srcRaw.(*infrav1beta1.GCPClusterList)
+	return Convert_v1beta1_GCPClusterList_To_v1alpha4_GCPClusterList(src, dst, nil)
+}

@@ -12,7 +12,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpcluster
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpcluster
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: default.gcpcluster.infrastructure.cluster.x-k8s.io
@@ -20,7 +20,7 @@ webhooks:
   - apiGroups:
     - infrastructure.cluster.x-k8s.io
     apiVersions:
-    - v1alpha4
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -33,7 +33,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpclustertemplate
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpclustertemplate
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: default.gcpclustertemplate.infrastructure.cluster.x-k8s.io
@@ -41,7 +41,7 @@ webhooks:
   - apiGroups:
     - infrastructure.cluster.x-k8s.io
     apiVersions:
-    - v1alpha4
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -54,7 +54,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpmachine
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachine
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: default.gcpmachine.infrastructure.cluster.x-k8s.io
@@ -62,12 +62,33 @@ webhooks:
   - apiGroups:
     - infrastructure.cluster.x-k8s.io
     apiVersions:
-    - v1alpha4
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
     resources:
     - gcpmachines
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinetemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: default.gcpmachinetemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpmachinetemplates
   sideEffects: None
 
 ---
@@ -83,7 +104,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpcluster
+      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpcluster
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.gcpcluster.infrastructure.cluster.x-k8s.io
@@ -91,7 +112,7 @@ webhooks:
   - apiGroups:
     - infrastructure.cluster.x-k8s.io
     apiVersions:
-    - v1alpha4
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -104,7 +125,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpclustertemplate
+      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpclustertemplate
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.gcpclustertemplate.infrastructure.cluster.x-k8s.io
@@ -112,7 +133,7 @@ webhooks:
   - apiGroups:
     - infrastructure.cluster.x-k8s.io
     apiVersions:
-    - v1alpha4
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -125,7 +146,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-infrastructure-cluster-x-k8s-io-v1alpha4-gcpmachine
+      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachine
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: validation.gcpmachine.infrastructure.cluster.x-k8s.io
@@ -133,10 +154,31 @@ webhooks:
   - apiGroups:
     - infrastructure.cluster.x-k8s.io
     apiVersions:
-    - v1alpha4
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
     resources:
     - gcpmachines
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinetemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: validation.gcpmachinetemplate.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpmachinetemplates
   sideEffects: None

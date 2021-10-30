@@ -16,8 +16,46 @@ limitations under the License.
 
 package v1alpha4
 
-// Hub marks GCPMachineTemplate as a conversion hub.
-func (*GCPMachineTemplate) Hub() {}
+import (
+	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
+	"sigs.k8s.io/controller-runtime/pkg/conversion"
+)
 
-// Hub marks GCPMachineTemplateList as a conversion hub.
-func (*GCPMachineTemplateList) Hub() {}
+// ConvertTo converts this GCPMachineTemplate to the Hub version (v1beta1).
+func (src *GCPMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolint
+	dst := dstRaw.(*infrav1beta1.GCPMachineTemplate)
+
+	if err := Convert_v1alpha4_GCPMachineTemplate_To_v1beta1_GCPMachineTemplate(src, dst, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ConvertFrom converts from the Hub version (v1beta1) to this version.
+func (dst *GCPMachineTemplate) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+	src := srcRaw.(*infrav1beta1.GCPMachineTemplate)
+	if err := Convert_v1beta1_GCPMachineTemplate_To_v1alpha4_GCPMachineTemplate(src, dst, nil); err != nil {
+		return err
+	}
+
+	// Preserve Hub data on down-conversion.
+	if err := utilconversion.MarshalData(src, dst); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ConvertTo converts this GCPMachineTemplateList to the Hub version (v1beta1).
+func (src *GCPMachineTemplateList) ConvertTo(dstRaw conversion.Hub) error { // nolint
+	dst := dstRaw.(*infrav1beta1.GCPMachineTemplateList)
+	return Convert_v1alpha4_GCPMachineTemplateList_To_v1beta1_GCPMachineTemplateList(src, dst, nil)
+}
+
+// ConvertFrom converts from the Hub version (v1beta1) to this version.
+func (dst *GCPMachineTemplateList) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+	src := srcRaw.(*infrav1beta1.GCPMachineTemplateList)
+	return Convert_v1beta1_GCPMachineTemplateList_To_v1alpha4_GCPMachineTemplateList(src, dst, nil)
+}

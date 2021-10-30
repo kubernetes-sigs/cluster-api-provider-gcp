@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha4
+package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,8 +30,9 @@ type GCPClusterTemplateResource struct {
 	Spec GCPClusterSpec `json:"spec"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:resource:path=gcpclustertemplates,scope=Namespaced,categories=cluster-api,shortName=gcpct
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:path=gcpclustertemplates,scope=Namespaced,categories=cluster-api,shortName=gcpct
+// +kubebuilder:storageversion
 
 // GCPClusterTemplate is the Schema for the gcpclustertemplates API.
 type GCPClusterTemplate struct {
