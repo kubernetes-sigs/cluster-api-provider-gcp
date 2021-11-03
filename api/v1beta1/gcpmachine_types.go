@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha4
+package v1beta1
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -196,6 +196,7 @@ type GCPMachineStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:path=gcpmachines,scope=Namespaced,categories=cluster-api
+// +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels.cluster\\.x-k8s\\.io/cluster-name",description="Cluster to which this GCPMachine belongs"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.instanceState",description="GCE instance state"

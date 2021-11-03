@@ -13,7 +13,7 @@ A Preemptible VM works best for applications or systems that distribute processe
 To enable a machine to be backed by Preemptible Virtual Machine, add `preemptible` option to `GCPMachineTemplate` and set it to True.
 
 ```yaml
-apiVersion: infrastructure.cluster.x-k8s.io/v1Alpha4
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
   name: capg-md-0

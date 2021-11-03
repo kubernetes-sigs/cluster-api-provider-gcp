@@ -21,11 +21,12 @@ import (
 	. "github.com/onsi/gomega"
 
 	"golang.org/x/net/context"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 var _ = Describe("GCPClusterReconciler", func() {
