@@ -16,8 +16,32 @@ limitations under the License.
 
 package v1alpha4
 
-// Hub marks GCPMachine as a conversion hub.
-func (*GCPMachine) Hub() {}
+import (
+	v1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/conversion"
+)
 
-// Hub marks GCPMachineList as a conversion hub.
-func (*GCPMachineList) Hub() {}
+// ConvertTo converts this GCPMachine to the Hub version (v1beta1).
+func (src *GCPMachine) ConvertTo(dstRaw conversion.Hub) error { // nolint
+	dst := dstRaw.(*v1beta1.GCPMachine)
+
+	return Convert_v1alpha4_GCPMachine_To_v1beta1_GCPMachine(src, dst, nil)
+}
+
+// ConvertFrom converts from the Hub version (v1beta1) to this version.
+func (dst *GCPMachine) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+	src := srcRaw.(*v1beta1.GCPMachine)
+	return Convert_v1beta1_GCPMachine_To_v1alpha4_GCPMachine(src, dst, nil)
+}
+
+// ConvertTo converts this GCPMachineList to the Hub version (v1beta1).
+func (src *GCPMachineList) ConvertTo(dstRaw conversion.Hub) error { // nolint
+	dst := dstRaw.(*v1beta1.GCPMachineList)
+	return Convert_v1alpha4_GCPMachineList_To_v1beta1_GCPMachineList(src, dst, nil)
+}
+
+// ConvertFrom converts from the Hub version (v1beta1) to this version.
+func (dst *GCPMachineList) ConvertFrom(srcRaw conversion.Hub) error { // nolint
+	src := srcRaw.(*v1beta1.GCPMachineList)
+	return Convert_v1beta1_GCPMachineList_To_v1alpha4_GCPMachineList(src, dst, nil)
+}
