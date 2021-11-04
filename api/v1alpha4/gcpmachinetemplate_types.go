@@ -27,7 +27,6 @@ type GCPMachineTemplateSpec struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:path=gcpmachinetemplates,scope=Namespaced,categories=cluster-api
-// +kubebuilder:storageversion
 
 // GCPMachineTemplate is the Schema for the gcpmachinetemplates API.
 type GCPMachineTemplate struct {

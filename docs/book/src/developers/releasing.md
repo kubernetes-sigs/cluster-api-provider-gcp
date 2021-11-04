@@ -36,7 +36,7 @@ Promote image
    - Example PR: https://github.com/kubernetes/k8s.io/pull/1462
  - Location of image: https://console.cloud.google.com/gcr/images/k8s-staging-cluster-api-gcp/GLOBAL/cluster-api-gcp-controller?rImageListsize=30
 
-To promote the image you should use a tool called `cip-mm`, please refer: https://github.com/kubernetes/release/tree/master/cmd/cip-mm
+To promote the image you should use a tool called `cip-mm`, please refer: https://github.com/kubernetes-sigs/promo-tools/tree/main/cmd/cip-mm
 
 For example, we want to promote v0.3.1 release, we can run the following command:
 

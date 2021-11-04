@@ -32,7 +32,6 @@ type GCPClusterTemplateResource struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:path=gcpclustertemplates,scope=Namespaced,categories=cluster-api,shortName=gcpct
-//+kubebuilder:storageversion
 
 // GCPClusterTemplate is the Schema for the gcpclustertemplates API.
 type GCPClusterTemplate struct {
