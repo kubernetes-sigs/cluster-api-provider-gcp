@@ -56,7 +56,7 @@ The below example shows how to create and attach a custom disk "my_disk" at vm-i
 
 ```yaml
 kind: KubeadmControlPlane
-apiVersion: controlplane.cluster.x-k8s.io/v1alpha4
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 metadata:
   name: "${CLUSTER_NAME}-control-plane"
 spec:
@@ -108,7 +108,7 @@ spec:
         - /var/lib/mydir
 ---
 kind: GCPMachineTemplate
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 metadata:
   name: "${CLUSTER_NAME}-control-plane"
 spec:
