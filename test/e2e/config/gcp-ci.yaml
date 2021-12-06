@@ -61,6 +61,8 @@ providers:
       targetName: "metadata.yaml"
     - sourcePath: "${PWD}/templates/test/cluster-template-ci.yaml"
       targetName: "cluster-template.yaml"
+    - sourcePath: "${PWD}/templates/test/cluster-template-prow-ci-version.yaml"
+      targetName: "cluster-template-conformance-ci-artifacts.yaml"
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.22.3}"
@@ -69,6 +71,10 @@ variables:
   CNI: "${PWD}/test/e2e/data/cni/calico/calico.yaml"
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
+  CONFORMANCE_CI_ARTIFACTS_KUBERNETES_VERSION: "v1.22.3"
+  CONFORMANCE_WORKER_MACHINE_COUNT: "5"
+  CONFORMANCE_CONTROL_PLANE_MACHINE_COUNT: "1"
+  CONFORMANCE_NODES: "${CONFORMANCE_NODES:-4}"
   IMAGE_ID: "${IMAGE_ID}"
   IP_FAMILY: "IPv4"
 

@@ -50,6 +50,8 @@ BIN_DIR := $(abspath $(ROOT_DIR)/bin)
 GO_INSTALL = ./scripts/go_install.sh
 E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/gcp-ci.yaml
 E2E_CONF_FILE_ENVSUBST := $(ROOT_DIR)/test/e2e/config/gcp-ci-envsubst.yaml
+E2E_DATA_DIR ?= $(ROOT_DIR)/test/e2e/data
+KUBETEST_CONF_PATH ?= $(abspath $(E2E_DATA_DIR)/kubetest/conformance.yaml)
 
 # Binaries.
 CLUSTERCTL := $(BIN_DIR)/clusterctl
@@ -147,15 +149,24 @@ ARTIFACTS ?= $(ROOT_DIR)/_artifacts
 SKIP_CLEANUP ?= false
 SKIP_CREATE_MGMT_CLUSTER ?= false
 
-.PHONY: test-e2e
-test-e2e: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end tests
+.PHONY: test-e2e-run
+test-e2e-run: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end tests
 	$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
 	time $(GINKGO) -v -trace -progress -v -tags=e2e -focus=$(GINKGO_FOCUS) -nodes=$(GINKGO_NODES) --noColor=$(GINKGO_NOCOLOR) ./test/e2e -- \
 		-e2e.artifacts-folder="$(ARTIFACTS)" \
 		-e2e.config="$(E2E_CONF_FILE_ENVSUBST)" \
 		-e2e.skip-resource-cleanup=$(SKIP_CLEANUP) \
-		-e2e.use-existing-cluster=$(SKIP_CREATE_MGMT_CLUSTER)
+		-e2e.use-existing-cluster=$(SKIP_CREATE_MGMT_CLUSTER) $(E2E_ARGS)
 
+.PHONY: test-e2e
+test-e2e: ## Run the end-to-end tests
+	$(MAKE) test-e2e-run
+
+CONFORMANCE_E2E_ARGS ?= -kubetest.config-file=$(KUBETEST_CONF_PATH)
+CONFORMANCE_E2E_ARGS += $(E2E_ARGS)
+.PHONY: test-conformance
+test-conformance: ## Run conformance test on workload cluster.
+	$(MAKE) test-e2e-run GINKGO_FOCUS="Conformance Tests" E2E_ARGS='$(CONFORMANCE_E2E_ARGS)' GINKGO_ARGS='$(LOCAL_GINKGO_ARGS)'
 
 ## --------------------------------------
 ## Binaries
@@ -274,7 +285,7 @@ docker-push: ## Push the docker image
 
 .PHONY: e2e-image
 e2e-image:
-	docker build --tag=gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller:e2e .
+	docker build --build-arg LDFLAGS="$(LDFLAGS)" --tag=gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller:e2e .
 
 ## --------------------------------------
 ## Docker — All ARCH
