@@ -6,8 +6,7 @@ For creating a cluster with clusterctl, checkout our [Cluster API Quick Start](h
 ## For creating a Management cluster
 
 1. Build required images by using the following commands:
-   
-   - `docker pull gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller:v20211110-v0.4.0-18-gba203a6a`
+
    - `docker build --tag=gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller:e2e .`
    - `make docker-build-all`
 
