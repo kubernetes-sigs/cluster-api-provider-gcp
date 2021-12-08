@@ -1,1 +1,172 @@
-apiVersion:
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  labels:
+    cni: calico-ipv6
+  name: "${CLUSTER_NAME}"
+  namespace: default
+spec:
+  clusterNetwork:
+    pods:
+       cidrBlocks:
+       - 2001:1234:5678:9a40::/58
+    services:
+      cidrBlocks:
+      - fd00::/108
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: GCPCluster
+    name: "${CLUSTER_NAME}"
+  controlPlaneRef:
+    kind: KubeadmControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    name: "${CLUSTER_NAME}-control-plane"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPCluster
+metadata:
+  name: "${CLUSTER_NAME}"
+  namespace: default
+spec:
+  project: "${GCP_PROJECT}"
+  region: "${GCP_REGION}"
+  network:
+    name: "${GCP_NETWORK_NAME}"
+    subnets:
+    - cidrBlocks:
+      - 10.0.0.0/16
+      - 2001:1234:5678:9abc::/64
+      name: control-plane-subnet
+      role: control-plane
+    - cidrBlocks:
+      - 10.1.0.0/16
+      - 2001:1234:5678:9abd::/64
+      name: node-subnet
+      role: node
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: KubeadmControlPlane
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+  namespace: default
+spec:
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  machineTemplate:
+    infrastructureRef:
+      kind: GCPMachineTemplate
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      name: "${CLUSTER_NAME}-control-plane"
+  KubeadmConfigSpec:
+    initConfiguration:
+      localAPIEndpoint:
+        advertiseAddress: '::'
+        bindPort: 6443
+      nodeRegistration:
+        name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
+        kubeletExtraArgs:
+          cloud-provider: gce
+          cluster-dns: fd00::10
+          node-ip: '::'
+    clusterConfiguration:
+      apiServer:
+        timeoutForControlPlane: 20m
+        extraArgs:
+          bind-address: '::'
+          cloud-provider: gce
+      controllerManager:
+        extraArgs:
+          cloud-provider: gce
+          bind-address: '::'
+          allocate-node-cidrs: "true"
+          cluster-cidr: 2001:1234:5678:9a40::/58
+          cluster-name: "${CLUSTER_NAME}"
+          configure-cloud-routes: "true"
+      scheduler:
+        extraArgs:
+          bind-address: '::'
+    joinConfiguration:
+      controlPlane:
+        localAPIEndpoint:
+          advertiseAddress: '::'
+          bindPort: 6443
+      nodeRegistration:
+        name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
+        kubeletExtraArgs:
+          cloud-provider: gce
+          cluster-dns: fd00::10
+          node-ip: '::'
+  version: "${KUBERNETES_VERSION}"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
+      image: "${IMAGE_ID}"
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  clusterName: "${CLUSTER_NAME}"
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+  template:
+    spec:
+      clusterName: "${CLUSTER_NAME}"
+      failureDomain: "${GCP_REGION}-a"
+      version: "${KUBERNETES_VERSION}"
+      bootstrap:
+        configRef:
+          name: "${CLUSTER_NAME}-md-0"
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+      infrastructureRef:
+        name: "${CLUSTER_NAME}-md-0"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: GCPMachineTemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+  namespace: default
+spec:
+  template:
+    spec:
+      enableIPForwarding: true
+      instanceType: "${GCP_NODE_MACHINE_TYPE}"
+      image: "${IMAGE_ID}"
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+  namespace: default
+spec:
+  template:
+    spec:
+      clusterConfiguration:
+        apiServer:
+          extraArgs:
+            bind-address: '::'
+        controllerManager:
+          extraArgs:
+            bind-address: '::'
+      joinConfiguration:
+        nodeRegistration:
+          name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
+          kubeletExtraArgs:
+            cloud-provider: gce
+            cluster-dns: '[fd00::10]'
+            node-ip: '::'
+      postKubeadmCommands:
+      - echo "DNSStubListener=no" >> /etc/systemd/resolved.conf
+      -  mv /etc/resolv.conf /etc/resolv.conf.OLD && ln -s /run/systemd/resolve/resolv.conf
+        /etc/resolv.conf
+      - systemctl restart systemd-resolved
