@@ -375,9 +375,6 @@ release-notes: $(RELEASE_NOTES)
 ## Development
 ## --------------------------------------
 
-# This is used in the get-kubeconfig call below in the create-cluster target. It may be overridden by the
-# e2e-conformance.sh script, which is why we need it as a variable here.
-
 CLUSTER_NAME ?= test1
 
 .PHONY: create-management-cluster
