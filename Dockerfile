@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Build the manager binary
-FROM golang:1.16.9 as builder
+FROM golang:1.16.11 as builder
 WORKDIR /workspace
 
 # Run this with docker build --build_arg $(go env GOPROXY) to override the goproxy
@@ -34,7 +34,7 @@ COPY ./ ./
 ARG ARCH
 ARG LDFLAGS
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} \
-    go build -a -ldflags "${LDFLAGS} -extldflags '-static'" \
+    go build -a -trimpath -ldflags "${LDFLAGS} -extldflags '-static'" \
     -o manager .
 
 # Copy the controller-manager into a thin image

@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	cgrecord "k8s.io/client-go/tools/record"
-	"k8s.io/component-base/version"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 
@@ -44,6 +43,7 @@ import (
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	"sigs.k8s.io/cluster-api-provider-gcp/version"
 )
 
 var (
@@ -177,7 +177,7 @@ func main() {
 	}
 
 	// +kubebuilder:scaffold:builder
-	setupLog.Info("starting manager", "version", version.Get().String())
+	setupLog.Info("starting manager", "version", version.Get().String(), "extended_info", version.Get())
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
@@ -188,7 +188,7 @@ func initFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&metricsAddr,
 		"metrics-bind-addr",
-		":8080",
+		"localhost:8080",
 		"The address the metric endpoint binds to.",
 	)
 
