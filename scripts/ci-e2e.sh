@@ -45,7 +45,8 @@ mkdir -p "${ARTIFACTS}/logs/"
 export GCP_REGION=${GCP_REGION:-"us-east4"}
 export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
-export GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS")
+GCP_B64ENCODED_CREDENTIALS=$(base64 "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
+export GCP_B64ENCODED_CREDENTIALS
 export KUBERNETES_MAJOR_VERSION="1"
 export KUBERNETES_MINOR_VERSION="20"
 export KUBERNETES_PATCH_VERSION="9"
@@ -277,7 +278,7 @@ EOF
   echo "${test_status}"
 
   # If Boskos is being used then release the GCP project back to Boskos.
-  [ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> $ARTIFACTS/logs/boskos.log 2>&1
+  [ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> "$ARTIFACTS/logs/boskos.log" 2>&1
 }
 
 main "$@"

@@ -74,10 +74,10 @@ if [ -n "${BOSKOS_HOST:-}" ]; then
   HEART_BEAT_PID=$(echo $!)
 fi
 
-hack/ci/e2e-conformance.sh --verbose $*
+hack/ci/e2e-conformance.sh --verbose "$*"
 test_status="${?}"
 
 # If Boskos is being used then release the GCP project back to Boskos.
-[ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> $ARTIFACTS/logs/boskos.log 2>&1
+[ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> "$ARTIFACTS/logs/boskos.log" 2>&1
 
 exit "${test_status}"
