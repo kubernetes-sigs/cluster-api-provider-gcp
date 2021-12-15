@@ -70,7 +70,7 @@ done < <(find . -name "*.sh" \
     -path ./.git\*   -o \
     -path ./vendor\* -o \
     \( -path ./third_party\* -a -not -path ./third_party/forked\* \) \
-\)
+\))
 # Detect if the host machine has the required shellcheck version installed
 # if so, we will use that instead.
 
