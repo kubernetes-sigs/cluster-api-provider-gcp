@@ -375,9 +375,6 @@ release-notes: $(RELEASE_NOTES)
 ## Development
 ## --------------------------------------
 
-# This is used in the get-kubeconfig call below in the create-cluster target. It may be overridden by the
-# e2e-conformance.sh script, which is why we need it as a variable here.
-
 CLUSTER_NAME ?= test1
 
 .PHONY: create-management-cluster
@@ -392,7 +389,7 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST)
 	kubectl wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-webhook
 
 	# Deploy CAPI
-	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.0/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
+	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.2/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
 
 	# Deploy CAPG
 	kind load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
