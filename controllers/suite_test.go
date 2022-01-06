@@ -70,7 +70,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	var err error
 	cfg, err = testEnv.Start()
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
 
 	Expect(clusterv1.AddToScheme(scheme.Scheme)).To(Succeed())
@@ -79,7 +79,7 @@ var _ = BeforeSuite(func(done Done) {
 	// +kubebuilder:scaffold:scheme
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
 	close(done)
@@ -88,5 +88,5 @@ var _ = BeforeSuite(func(done Done) {
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 })
