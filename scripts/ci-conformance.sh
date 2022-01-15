@@ -25,13 +25,13 @@ set -o pipefail
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 cd "${REPO_ROOT}" || exit 1
 
-# shellcheck source=../hack/ensure-go.sh
+# shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
-# shellcheck source=../hack/ensure-kind.sh
+# shellcheck source=hack/ensure-kind.sh
 source "${REPO_ROOT}/hack/ensure-kind.sh"
-# shellcheck source=../hack/ensure-kubectl.sh
+# shellcheck source=hack/ensure-kubectl.sh
 source "${REPO_ROOT}/hack/ensure-kubectl.sh"
-# shellcheck source=../hack/ensure-kustomize.sh
+# shellcheck source=hack/ensure-kustomize.sh
 source "${REPO_ROOT}/hack/ensure-kustomize.sh"
 
 ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
@@ -43,7 +43,8 @@ mkdir -p "${ARTIFACTS}/logs/"
 export GCP_REGION=${GCP_REGION:-"us-east4"}
 export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
-export GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS")
+GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS")
+export GCP_B64ENCODED_CREDENTIALS
 export KUBERNETES_MAJOR_VERSION="1"
 export KUBERNETES_MINOR_VERSION="22"
 export KUBERNETES_PATCH_VERSION="3"
@@ -232,6 +233,7 @@ main() {
     # run the heart beat process to tell boskos that we are still
     # using the checked out account periodically
     python -u hack/heartbeat_account.py >> "$ARTIFACTS/logs/boskos.log" 2>&1 &
+    # shellcheck disable=SC2116
     HEART_BEAT_PID=$(echo $!)
   fi
 
@@ -289,7 +291,7 @@ EOF
   echo "${test_status}"
 
   # If Boskos is being used then release the GCP project back to Boskos.
-  [ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> $ARTIFACTS/logs/boskos.log 2>&1
+  [ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> "$ARTIFACTS"/logs/boskos.log 2>&1
 }
 
 main "$@"

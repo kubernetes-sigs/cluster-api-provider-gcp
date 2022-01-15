@@ -477,11 +477,15 @@ clean-release: ## Remove the release folder
 	rm -rf $(RELEASE_DIR)
 
 .PHONY: verify
-verify: verify-boilerplate verify-modules verify-gen
+verify: verify-boilerplate verify-modules verify-gen verify-shellcheck
 
 .PHONY: verify-boilerplate
 verify-boilerplate:
 	./hack/verify-boilerplate.sh
+
+.PHONY: verify-shellcheck
+verify-shellcheck:
+	./hack/verify-shellcheck.sh
 
 .PHONY: verify-modules
 verify-modules: modules
