@@ -44,7 +44,9 @@ This provider's versions can install and manage the following versions of Kubern
 | Kubernetes 1.21 |  | ✓ | ✓ |
 | Kubernetes 1.22 |  |  | ✓ |
  
+
 Each version of Cluster API for Google Cloud will attempt to support at least two versions of Kubernetes versions e.g., Cluster API for GCP `v0.1` may support Kubernetes 1.13 and Kubernetes 1.14.
+
 
 **NOTE:** As the versioning for this project is tied to the versioning of Cluster API, future modifications to this policy may be made to more closely align with other providers in the Cluster API ecosystem. 
 
@@ -52,20 +54,26 @@ Each version of Cluster API for Google Cloud will attempt to support at least tw
 
 ## Documentation
 
-Presently our docs can be found [here](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/tree/main/docs).
+Presently, our docs can be found [here](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/tree/main/docs).
 
 ## Getting Involved and Contributing
 
+
 Are you interested in contributing to cluster-api-provider-gcp? We, the maintainers, and the community would love your suggestions, support, and contributions! The maintainers
-of the project can be contacted anytime to learn about how to get involved.
+
+Are you interested in contributing to cluster-api-provider-gcp? We, the maintainers 
+and the community would love your suggestions, support and contributions! The maintainers
+
 
 Before starting with the contribution, please go through [prerequisites] of the project.
+
 
 To set up the development environment check out the [development guide].
 
 In the interest of getting new people involved, we have issues marked as [`good first issue`][good_first_issue]. Although
 These issues have a smaller scope but are very helpful in getting acquainted with the codebase.
 For more see the [issue tracker]. If you're unsure where to start, feel free to reach out to discuss.
+
 
 See also: Our own [contributor guide] and the Kubernetes [community page].
 
@@ -90,7 +98,7 @@ Please check in with us in the [#cluster-api-gcp] on Slack.
 
 ### Bugs
 
-If you think you have found a bug please follow the instruction below.
+If you think you have found a bug, please follow the instruction below.
 
 - Please give a small amount of time giving due diligence to the issue tracker. Your issue might be a duplicate.
 - Get the logs from the custom controllers and please paste them in the issue.
@@ -100,13 +108,17 @@ If you think you have found a bug please follow the instruction below.
 
 ### Tracking new feature
 
+
 We also have an issue tracker to track features. If you think you have a feature idea, that could make Cluster API provider GCP even more awesome, then follow these steps.
+
 
 - Open a [feature request].
 - Remember users might be searching for the issue in the future, so please make sure to give it a meaningful title to help others.
 - Clearly define the use case with concrete examples. Example: type `this` and cluster-api-provider-gcp does `that`.
 - Some of our larger features will require some design. If you would like to include a technical design in your feature, please go ahead.
+
 - After the new feature is well understood, and the design is agreed upon we can start coding the feature. We would love for you to code it. So please open up a **WIP** *(work in progress)* PR and happy coding!
+
 
 ### Code of conduct
 
