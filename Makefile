@@ -168,6 +168,13 @@ CONFORMANCE_E2E_ARGS += $(E2E_ARGS)
 test-conformance: ## Run conformance test on workload cluster.
 	$(MAKE) test-e2e-run GINKGO_FOCUS="Conformance Tests" E2E_ARGS='$(CONFORMANCE_E2E_ARGS)' GINKGO_ARGS='$(LOCAL_GINKGO_ARGS)'
 
+.PHONY: test-cover
+test-cover: ## Run tests with code coverage and code generate  reports
+	$(MAKE) generate
+	source ./scripts/fetch_ext_bins.sh; fetch_tools; setup_envs; go test -v -coverprofile=coverage.out ./... $(TEST_ARGS)
+	go tool cover -func=coverage.out -o coverage.txt
+	go tool cover -html=coverage.out -o coverage.html
+
 ## --------------------------------------
 ## Binaries
 ## --------------------------------------
