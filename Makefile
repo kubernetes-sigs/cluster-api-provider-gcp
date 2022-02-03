@@ -85,8 +85,8 @@ GINKGO_BIN := ginkgo
 GINKGO := $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
 
 KUBECTL_VER := v1.22.3
-KUBECTL_BIN := $(TOOLS_BIN_DIR)/kubectl
-KUBECTL := $(KUBECTL_BIN)-$(KUBECTL_VER)
+KUBECTL_BIN := kubectl
+KUBECTL := $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)-$(KUBECTL_VER)
 
 TIMEOUT := $(shell command -v timeout || command -v gtimeout)
 
@@ -209,10 +209,10 @@ $(GINKGO): ## Build ginkgo.
 
 $(KUBECTL): ## Build kubectl
 	mkdir -p $(TOOLS_BIN_DIR)
-	rm -f "$(KUBECTL)*"
+	rm -f "$(TOOLS_BIN_DIR)/$(KUBECTL_BIN)*"
 	curl --retry $(CURL_RETRIES) -fsL https://dl.k8s.io/release/$(KUBECTL_VER)/bin/$(GOOS)/$(GOARCH)/kubectl -o $(KUBECTL)
-	ln -sf "$(KUBECTL)" "$(KUBECTL_BIN)"
-	chmod +x "$(KUBECTL_BIN)" "$(KUBECTL)"
+	ln -sf $(KUBECTL) $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)
+	chmod +x $(KUBECTL) $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)
 
 .PHONY: $(KUBECTL_BIN)
 $(KUBECTL_BIN): $(KUBECTL) ## Building kubectl from tools folder
