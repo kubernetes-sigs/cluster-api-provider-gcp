@@ -17,9 +17,9 @@ require (
 	k8s.io/component-base v0.22.2
 	k8s.io/klog/v2 v2.10.0
 	k8s.io/utils v0.0.0-20210820185131-d34e5cb4466e
-	sigs.k8s.io/cluster-api v0.4.4
-	sigs.k8s.io/cluster-api/test v0.4.4
+	sigs.k8s.io/cluster-api v0.4.7
+	sigs.k8s.io/cluster-api/test v0.4.7
 	sigs.k8s.io/controller-runtime v0.10.2
 )
 
-replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v0.4.4
+replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v0.4.7
