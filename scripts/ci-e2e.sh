@@ -19,18 +19,19 @@
 #  This program runs the e2e tests.
 ################################################################################
 
+set -o errexit
 set -o nounset
 set -o pipefail
 
+# install kubectl
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-cd "${REPO_ROOT}" || exit 1
+KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
+cd "${REPO_ROOT}" && make "${KUBECTL##*/}"
 
 # shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
 # shellcheck source=hack/ensure-kind.sh
 source "${REPO_ROOT}/hack/ensure-kind.sh"
-# shellcheck source=hack/ensure-kubectl.sh
-source "${REPO_ROOT}/hack/ensure-kubectl.sh"
 # shellcheck source=hack/ensure-kustomize.sh
 source "${REPO_ROOT}/hack/ensure-kustomize.sh"
 

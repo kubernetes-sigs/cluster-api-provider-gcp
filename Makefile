@@ -209,10 +209,13 @@ $(GINKGO): ## Build ginkgo.
 
 $(KUBECTL): ## Build kubectl
 	mkdir -p $(TOOLS_BIN_DIR)
-	rm -f "$(KUBECTL)*"
+	rm -f "$(TOOLS_BIN_DIR)/$(KUBECTL_BIN)*"
 	curl --retry $(CURL_RETRIES) -fsL https://dl.k8s.io/release/$(KUBECTL_VER)/bin/$(GOOS)/$(GOARCH)/kubectl -o $(KUBECTL)
-	ln -sf "$(KUBECTL)" "$(TOOLS_BIN_DIR)/$(KUBECTL_BIN)"
-	chmod +x "$(TOOLS_BIN_DIR)/$(KUBECTL_BIN)" "$(KUBECTL)"
+	ln -sf $(KUBECTL) $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)
+	chmod +x $(KUBECTL) $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)
+
+.PHONY: $(KUBECTL_BIN)
+$(KUBECTL_BIN): $(KUBECTL) ## Building kubectl from tools folder
 
 
 ## --------------------------------------
