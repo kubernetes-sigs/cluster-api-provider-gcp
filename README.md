@@ -126,4 +126,4 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 [#cluster-api-gcp]: https://sigs.k8s.io/cluster-api-provider-gcp
 [bug report]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=bug_report.md
 [feature request]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=feature_request.md
-[kubernetes discuss]: https://discuss.kubernetes.io/c/contributors/cluster-api
+[kubernetes discuss]: https://groups.google.com/forum/#!forum/kubernetes-sig-cluster-lifecycle
