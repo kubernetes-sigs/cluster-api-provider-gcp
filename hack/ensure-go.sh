@@ -22,7 +22,7 @@ set -o pipefail
 verify_go_version() {
   if [[ -z "$(command -v go)" ]]; then
     if [[ "${INSTALL_GO:-"true"}" == "true" ]]; then
-      curl -sSL https://golang.org/dl/go${GO_VERSION:-"1.16.5"}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+      curl -sSL https://golang.org/dl/go${GO_VERSION:-"1.16.13"}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
       export PATH=/usr/local/go/bin:$PATH
       export PATH=$(go env GOPATH)/bin:$PATH
     else
