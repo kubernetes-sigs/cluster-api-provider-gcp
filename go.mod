@@ -120,3 +120,5 @@ require (
 )
 
 replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.1.0
+
+replace sigs.k8s.io/cluster-api/test => sigs.k8s.io/cluster-api/test v1.1.0-beta.2.0.20220211164825-cca725c1ca50
