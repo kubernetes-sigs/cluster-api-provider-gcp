@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"k8s.io/utils/pointer"
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
 )
 
@@ -67,4 +68,20 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 			}
 		})
 	})
+
+	Context("Running KCP upgrade in a HA cluster [K8s-Upgrade]", func() {
+		capi_e2e.ClusterUpgradeConformanceSpec(ctx, func() capi_e2e.ClusterUpgradeConformanceSpecInput {
+			return capi_e2e.ClusterUpgradeConformanceSpecInput{
+				E2EConfig:                e2eConfig,
+				ClusterctlConfigPath:     clusterctlConfigPath,
+				BootstrapClusterProxy:    bootstrapClusterProxy,
+				ArtifactFolder:           artifactFolder,
+				ControlPlaneMachineCount: pointer.Int64(3),
+				WorkerMachineCount:       pointer.Int64(0),
+				SkipCleanup:              skipCleanup,
+				SkipConformanceTests:     true,
+			}
+		})
+	})
+
 })

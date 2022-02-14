@@ -142,6 +142,7 @@ test: ## Run tests
 
 # Allow overriding the e2e configurations
 GINKGO_FOCUS ?= Workload cluster creation
+GINKGO_SKIP ?= API Version Upgrade
 GINKGO_NODES ?= 3
 GINKGO_NOCOLOR ?= false
 GINKGO_ARGS ?=
@@ -152,7 +153,7 @@ SKIP_CREATE_MGMT_CLUSTER ?= false
 .PHONY: test-e2e-run
 test-e2e-run: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end tests
 	$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
-	time $(GINKGO) -v -trace -progress -v -tags=e2e -focus=$(GINKGO_FOCUS) -nodes=$(GINKGO_NODES) --noColor=$(GINKGO_NOCOLOR) ./test/e2e -- \
+	time $(GINKGO) -v -trace -progress -v -tags=e2e -focus="$(GINKGO_FOCUS)" -skip="$(GINKGO_SKIP)" -nodes=$(GINKGO_NODES) --noColor=$(GINKGO_NOCOLOR) $(GINKGO_ARGS) ./test/e2e -- \
 		-e2e.artifacts-folder="$(ARTIFACTS)" \
 		-e2e.config="$(E2E_CONF_FILE_ENVSUBST)" \
 		-e2e.skip-resource-cleanup=$(SKIP_CLEANUP) \
@@ -161,6 +162,15 @@ test-e2e-run: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end t
 .PHONY: test-e2e
 test-e2e: ## Run the end-to-end tests
 	$(MAKE) test-e2e-run
+
+LOCAL_GINKGO_ARGS ?= -stream --progress
+LOCAL_GINKGO_ARGS += $(GINKGO_ARGS)
+.PHONY: test-e2e-local
+test-e2e-local: ## Run e2e tests
+	PULL_POLICY=IfNotPresent MANAGER_IMAGE=$(CONTROLLER_IMG)-$(ARCH):$(TAG) \
+	$(MAKE) docker-build \
+	GINKGO_ARGS='$(LOCAL_GINKGO_ARGS)' \
+	test-e2e-run
 
 CONFORMANCE_E2E_ARGS ?= -kubetest.config-file=$(KUBETEST_CONF_PATH)
 CONFORMANCE_E2E_ARGS += $(E2E_ARGS)
