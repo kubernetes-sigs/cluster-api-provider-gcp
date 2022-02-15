@@ -91,10 +91,13 @@ KUBECTL := $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)-$(KUBECTL_VER)
 
 TIMEOUT := $(shell command -v timeout || command -v gtimeout)
 
+SETUP_ENVTEST_VER := v0.0.0-20211110210527-619e6b92dab9
 SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)
 
-GOTESTSUM := $(TOOLS_BIN_DIR)/gotestsum
+GOTESTSUM_VER := v1.6.4
+GOTESTSUM_BIN := gotestsum
+GOTESTSUM := $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)
 
 # Define Docker related variables. Releases should modify and double check these vars.
 export GCP_PROJECT ?= $(shell gcloud config get-value project)
@@ -207,13 +210,13 @@ $(GOLANGCI_LINT): ## Build golangci-lint from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/golangci/golangci-lint/cmd/golangci-lint $(GOLANGCI_LINT_BIN) $(GOLANGCI_LINT_VER)
 
 $(GOTESTSUM): go.mod # Build gotestsum from tools folder.
-	 GOBIN=$(TOOLS_BIN_DIR); go build -tags=tools -o $(TOOLS_BIN_DIR)/gotestsum gotest.tools/gotestsum
+	 GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) gotest.tools/gotestsum $(GOTESTSUM_BIN) $(GOTESTSUM_VER)
 
 $(KUSTOMIZE): ## Build kustomize from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/kustomize/kustomize/v3 $(KUSTOMIZE_BIN) $(KUSTOMIZE_VER)
 
 $(SETUP_ENVTEST): go.mod # Build setup-envtest from tools folder.
-	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-runtime/tools/setup-envtest $(SETUP_ENVTEST_BIN)
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-runtime/tools/setup-envtest $(SETUP_ENVTEST_BIN) $(SETUP_ENVTEST_VER)
 
 $(CONTROLLER_GEN): ## Build controller-gen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-tools/cmd/controller-gen $(CONTROLLER_GEN_BIN) $(CONTROLLER_GEN_VER)
