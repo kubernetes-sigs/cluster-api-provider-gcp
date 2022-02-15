@@ -91,7 +91,10 @@ KUBECTL := $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)-$(KUBECTL_VER)
 
 TIMEOUT := $(shell command -v timeout || command -v gtimeout)
 
-SETUP_ENVTEST := $(TOOLS_BIN_DIR)/setup-envtest
+SETUP_ENVTEST_BIN := setup-envtest
+SETUP_ENVTEST := $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)
+
+GOTESTSUM := $(TOOLS_BIN_DIR)/gotestsum
 
 # Define Docker related variables. Releases should modify and double check these vars.
 export GCP_PROJECT ?= $(shell gcloud config get-value project)
@@ -163,6 +166,12 @@ test-e2e-run: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end t
 		-e2e.skip-resource-cleanup=$(SKIP_CLEANUP) \
 		-e2e.use-existing-cluster=$(SKIP_CREATE_MGMT_CLUSTER) $(E2E_ARGS)
 
+.PHONY: test-junit
+test-junit: $(SETUP_ENVTEST) $(GOTESTSUM) ## Run tests with verbose setting and generate a junit report
+	set +o errexit; (KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" go test -json ./... $(TEST_ARGS); echo $$? > $(ARTIFACTS)/junit.exitcode) | tee $(ARTIFACTS)/junit.stdout
+	$(GOTESTSUM) --junitfile $(ARTIFACTS)/junit.xml --raw-command cat $(ARTIFACTS)/junit.stdout
+	exit $$(cat $(ARTIFACTS)/junit.exitcode)
+
 .PHONY: test-e2e
 test-e2e: ## Run the end-to-end tests
 	$(MAKE) test-e2e-run
@@ -197,11 +206,14 @@ $(ENVSUBST): ## Build envsubst from tools folder.
 $(GOLANGCI_LINT): ## Build golangci-lint from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/golangci/golangci-lint/cmd/golangci-lint $(GOLANGCI_LINT_BIN) $(GOLANGCI_LINT_VER)
 
+$(GOTESTSUM): go.mod # Build gotestsum from tools folder.
+	 GOBIN=$(TOOLS_BIN_DIR); go build -tags=tools -o $(TOOLS_BIN_DIR)/gotestsum gotest.tools/gotestsum
+
 $(KUSTOMIZE): ## Build kustomize from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/kustomize/kustomize/v3 $(KUSTOMIZE_BIN) $(KUSTOMIZE_VER)
 
-$(SETUP_ENVTEST): $(TOOLS_BIN_DIR)/go.mod # Build setup-envtest from tools folder.
-	cd $(TOOLS_BIN_DIR); go build -tags=tools -o $(BIN_DIR)/setup-envtest sigs.k8s.io/controller-runtime/tools/setup-envtest
+$(SETUP_ENVTEST): go.mod # Build setup-envtest from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-runtime/tools/setup-envtest $(SETUP_ENVTEST_BIN)
 
 $(CONTROLLER_GEN): ## Build controller-gen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-tools/cmd/controller-gen $(CONTROLLER_GEN_BIN) $(CONTROLLER_GEN_VER)
