@@ -64,6 +64,8 @@ providers:
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-prow-ci-version.yaml"
       targetName: "cluster-template-conformance-ci-artifacts.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-upgrades.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-md-remediation.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-kcp-remediation.yaml"
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.23.3}"
@@ -98,3 +100,4 @@ intervals:
   default/wait-deployment: ["5m", "10s"]
   default/wait-job: ["5m", "10s"]
   default/wait-service: ["3m", "10s"]
+  node-drain/wait-machine-deleted: [ "10m", "10s" ]

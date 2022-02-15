@@ -56,6 +56,18 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 		})
 	})
 
+	Context("Should successfully remediate unhealthy machines with MachineHealthCheck", func() {
+		capi_e2e.MachineRemediationSpec(ctx, func() capi_e2e.MachineRemediationSpecInput {
+			return capi_e2e.MachineRemediationSpecInput{
+				E2EConfig:             e2eConfig,
+				ClusterctlConfigPath:  clusterctlConfigPath,
+				BootstrapClusterProxy: bootstrapClusterProxy,
+				ArtifactFolder:        artifactFolder,
+				SkipCleanup:           skipCleanup,
+			}
+		})
+	})
+
 	Context("Running the workload cluster upgrade spec [K8s-Upgrade]", func() {
 		capi_e2e.ClusterUpgradeConformanceSpec(ctx, func() capi_e2e.ClusterUpgradeConformanceSpecInput {
 			return capi_e2e.ClusterUpgradeConformanceSpecInput{
