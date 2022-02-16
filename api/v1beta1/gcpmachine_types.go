@@ -56,8 +56,27 @@ type AttachedDiskSpec struct {
 	Size *int64 `json:"size,omitempty"`
 }
 
+// GCPAcceleratorConfig describes type and count of accelerator cards attached to the instance on GCP.
+type GCPAcceleratorConfig struct {
+	// AcceleratorCount is number of AcceleratorType accelerator (GPUs) to be attached to an instance
+	AcceleratorCount int64 `json:"acceleratorCount,omitempty"`
+	// AcceleratorType is the type of accelerator (GPU) to be attached to an instance.
+	// Supported accelerator types are: nvidia-tesla-k80, nvidia-tesla-p100, nvidia-tesla-v100, nvidia-tesla-a100, nvidia-tesla-p4, nvidia-tesla-t4
+	AcceleratorType string `json:"acceleratorType,omitempty"`
+}
+
 // GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// UserDataSecret contains a local reference to a secret that contains the
+	// UserData to apply to the instance
+	UserDataSecret *corev1.LocalObjectReference `json:"userDataSecret,omitempty"`
+
+	// CredentialsSecret is a reference to the secret with GCP credentials.
+	CredentialsSecret *corev1.LocalObjectReference `json:"credentialsSecret,omitempty"`
+
 	// InstanceType is the type of instance to create. Example: n1.standard-2
 	InstanceType string `json:"instanceType"`
 
@@ -129,9 +148,25 @@ type GCPMachineSpec struct {
 	// +optional
 	ServiceAccount *ServiceAccount `json:"serviceAccounts,omitempty"`
 
+	// Additional changes for GPU support
+	// +optional
+	CanIPForward bool `json:"canIPForward"`
+	DeletionProtection bool `json:"deletionProtection"`
+	NetworkInterfaces *NetworkInterface `json:"networkInterfaces,omitempty"`
+	Tags []string `json:"tags,omitempty"`
+	TargetPools []string `json:"targetPools,omitempty"`
+	Region string `json:"region"`
+	Zone string `json:"zone"`
+	ProjectID string `json:"projectID,omitempty"`
+	GuestAccelerators []GCPAcceleratorConfig `json:"guestAccelerators,omitempty"`
+
 	// Preemptible defines if instance is preemptible
 	// +optional
 	Preemptible bool `json:"preemptible,omitempty"`
+
+	// GPU settings
+	OnHostMaintenance string `json:"onHostMaintenance,omitempty"`
+	AutomaticRestart  *bool  `json:"automaticRestart,omitempty"`
 }
 
 // MetadataItem defines a single piece of metadata associated with an instance.
