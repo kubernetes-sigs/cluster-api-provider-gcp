@@ -23,10 +23,5 @@ aliases:
 
   cluster-api-gcp-maintainers:
     - cpanato
-    - detiber
-    - gab-satchi
-    - justinsb
-    - krousey
-    - rsmitty
-    - vincepri
     - dims
+    - vincepri
