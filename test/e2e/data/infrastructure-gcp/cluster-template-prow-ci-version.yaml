@@ -132,7 +132,6 @@ spec:
     postKubeadmCommands: []
     preKubeadmCommands:
     - bash -c /tmp/kubeadm-bootstrap.sh
-    useExperimentalRetryJoin: true
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
