@@ -12,8 +12,8 @@ require (
 	golang.org/x/mod v0.5.1
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	google.golang.org/api v0.69.0
-	k8s.io/api v0.23.3
-	k8s.io/apimachinery v0.23.3
+	k8s.io/api v0.23.4
+	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v0.23.3
 	k8s.io/klog/v2 v2.40.1
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed
