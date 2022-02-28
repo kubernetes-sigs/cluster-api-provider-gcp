@@ -9,6 +9,7 @@
       "api",
       "cloud",
       "controllers"
-    ]
+    ],
+    "label": "CAPG"
   }
 }
