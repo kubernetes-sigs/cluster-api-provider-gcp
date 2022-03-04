@@ -95,6 +95,10 @@ SETUP_ENVTEST_VER := v0.0.0-20211110210527-619e6b92dab9
 SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)
 
+GO_APIDIFF_VER := v0.1.0
+GO_APIDIFF_BIN := go-apidiff
+GO_APIDIFF := $(TOOLS_BIN_DIR)/$(GO_APIDIFF_BIN)
+
 GOTESTSUM_VER := v1.6.4
 GOTESTSUM_BIN := gotestsum
 GOTESTSUM := $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)
@@ -225,6 +229,7 @@ $(GOTESTSUM): go.mod # Build gotestsum from tools folder.
 $(KUSTOMIZE): ## Build kustomize from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/kustomize/kustomize/v4 $(KUSTOMIZE_BIN) $(KUSTOMIZE_VER)
 
+
 $(SETUP_ENVTEST): go.mod # Build setup-envtest from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-runtime/tools/setup-envtest $(SETUP_ENVTEST_BIN) $(SETUP_ENVTEST_VER)
 
@@ -236,6 +241,9 @@ $(CONVERSION_GEN): ## Build conversion-gen.
 
 $(RELEASE_NOTES): ## Build release notes.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/release/cmd/release-notes $(RELEASE_NOTES_BIN) $(RELEASE_NOTES_VER)
+
+$(GO_APIDIFF): ## Build go-apidiff from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/joelanford/go-apidiff $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
 
 $(GINKGO): ## Build ginkgo.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/onsi/ginkgo/ginkgo $(GINKGO_BIN) $(GINKGO_VER)
@@ -249,6 +257,9 @@ $(KUBECTL): ## Build kubectl
 
 .PHONY: $(KUBECTL_BIN)
 $(KUBECTL_BIN): $(KUBECTL) ## Building kubectl from tools folder
+
+.PHONY: $(GO_APIDIFF_BIN)
+$(GO_APIDIFF_BIN): $(GO_APIDIFF)
 
 
 ## --------------------------------------
@@ -508,6 +519,10 @@ clean-temporary: ## Remove all temporary files and folders
 .PHONY: clean-release
 clean-release: ## Remove the release folder
 	rm -rf $(RELEASE_DIR)
+
+.PHONY: apidiff
+apidiff: $(GO_APIDIFF) ## Check for API differences.
+	$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible
 
 .PHONY: verify
 verify: verify-boilerplate verify-modules verify-gen verify-shellcheck
