@@ -1,4 +1,4 @@
-<p align="center"><img alt="capi" src="https://github.com/kubernetes-sigs/cluster-api/raw/main/docs/book/src/images/introduction.png" width="160x" /><img alt="capi" src="https://cloud.google.com/_static/cloud/images/favicons/onecloud/super_cloud.png" width="192x" /></p>
+<p align="center"><img alt="capi" src="https://github.com/kubernetes-sigs/cluster-api/raw/main/docs/book/src/images/introduction.png" width="800x" height="300x" /></p>
 <p align="center"><a href="https://prow.k8s.io/?job=ci-cluster-api-provider-gcp-build">
 <!-- prow build badge, godoc, and go report card-->
 <img alt="Build Status" src="https://prow.k8s.io/badge.svg?jobs=ci-cluster-api-provider-gcp">
@@ -43,7 +43,7 @@ This provider's versions are able to install and manage the following versions o
 | Kubernetes 1.20 | ✓ | ✓ | ✓ |
 | Kubernetes 1.21 |  | ✓ | ✓ |
 | Kubernetes 1.22 |  |  | ✓ |
- 
+<p align="center"><img alt="capi" src="https://cloud.google.com/_static/cloud/images/favicons/onecloud/super_cloud.png" width="200x" /></p> 
 Each version of Cluster API for Google Cloud will attempt to support at least two versions of Kubernetes e.g., Cluster API for GCP `v0.1` may support Kubernetes 1.13 and Kubernetes 1.14.
 
 **NOTE:** As the versioning for this project is tied to the versioning of Cluster API, future modifications to this policy may be made to more closely align with other providers in the Cluster API ecosystem. 
