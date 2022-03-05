@@ -270,6 +270,10 @@ $(GO_APIDIFF_BIN): $(GO_APIDIFF)
 lint: $(GOLANGCI_LINT) ## Lint codebase
 	$(GOLANGCI_LINT) run -v --fast=false
 
+.PHONY: lint-fix
+lint-fix: $(GOLANGCI_LINT) ## Lint the codebase and run auto-fixers if supported by the linter
+	GOLANGCI_LINT_EXTRA_ARGS=--fix $(MAKE) lint
+
 ## --------------------------------------
 ## Generate
 ## --------------------------------------
