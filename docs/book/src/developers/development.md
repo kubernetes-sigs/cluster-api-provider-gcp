@@ -5,7 +5,7 @@
 ### Base requirements
 
 1. Install [go][go]
-   - Get the latest patch version for go v1.16.
+   - Get the latest patch version for go v1.17.
 2. Install [jq][jq]
    - `brew install jq` on macOS.
    - `sudo apt install jq` on Windows + WSL2.
@@ -131,7 +131,7 @@ $ export GCP_REGION="<GCP_REGION>" \
 $ export GCP_PROJECT="<GCP_PROJECT>" \
 $ export CONTROL_PLANE_MACHINE_COUNT=1 \
 $ export WORKER_MACHINE_COUNT=1 \
-$ export KUBERNETES_VERSION=1.22.3 \
+$ export KUBERNETES_VERSION=1.23.3 \
 $ export GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2 \
 $ export GCP_NODE_MACHINE_TYPE=n1-standard-2 \
 $ export GCP_NETWORK_NAME=<GCP_NETWORK_NAME or default> \

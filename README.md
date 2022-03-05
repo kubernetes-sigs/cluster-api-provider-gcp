@@ -21,22 +21,22 @@ on Google Cloud Platform using Cluster API.
 
 This provider's versions are compatible with the following versions of Cluster API:
 
-|  | Cluster API `v1alpha2` (`v0.2.x`) | Cluster API `v1alpha3` (`v0.3.x`) | Cluster API `v1alpha4` (`v0.4.x`) |
+|  | Cluster API `v1alpha3` (`v0.3.x`) | Cluster API `v1alpha4` (`v0.4.x`) | Cluster API `v1beta1` (`v1.0.x`) |
 |---|---|---|---|
-|Google Cloud Provider `v0.2.x` | ✓ |  |  |
-|Google Cloud Provider `v0.3.x` |  | ✓ |  |
-|Google Cloud Provider `v0.4.x` |  |  | ✓ |
+|Google Cloud Provider `v0.3.x` | ✓ |  |  |
+|Google Cloud Provider `v0.4.x` |  | ✓ |  |
+|Google Cloud Provider `v1.0.x` |  |  | ✓ |
 
 This provider's versions can install and manage the following versions of Kubernetes:
 
-|  | Google Cloud Provider `v0.2.x` | Google Cloud Provider `v0.3.x` | Google Cloud Provider `v0.4.x` |
+|  | Google Cloud Provider `v0.3.x` | Google Cloud Provider `v0.4.x` | Google Cloud Provider `v1.0.x` |
 |---|:---:|:---:|:---:|
-| Kubernetes 1.15 | ✓ |  |  |
-| Kubernetes 1.16 | ✓ | ✓ |  |
-| Kubernetes 1.17 |  | ✓ |  |
-| Kubernetes 1.18 |  | ✓ | ✓ |
-| Kubernetes 1.19 |  | ✓ | ✓ |
-| Kubernetes 1.20 |  | ✓ | ✓ |
+| Kubernetes 1.15 |  |  |  |
+| Kubernetes 1.16 | ✓ |  |  |
+| Kubernetes 1.17 | ✓ | ✓ |  |
+| Kubernetes 1.18 | ✓ | ✓ | ✓ |
+| Kubernetes 1.19 | ✓ | ✓ | ✓ |
+| Kubernetes 1.20 | ✓ | ✓ | ✓ |
 | Kubernetes 1.21 |  | ✓ | ✓ |
 | Kubernetes 1.22 |  |  | ✓ |
  
@@ -119,4 +119,4 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
 [#cluster-api-gcp]: https://sigs.k8s.io/cluster-api-provider-gcp
 [bug report]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=bug_report.md
 [feature request]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/new?assignees=&labels=&template=feature_request.md
-[kubernetes discuss]: https://discuss.kubernetes.io/c/contributors/cluster-api
+[kubernetes discuss]: https://groups.google.com/forum/#!forum/kubernetes-sig-cluster-lifecycle

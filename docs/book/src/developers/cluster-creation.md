@@ -11,7 +11,7 @@ For creating a cluster with clusterctl, checkout our [Cluster API Quick Start](h
    - `make docker-build-all`
 
 2. Set the required environment variables. For example:
-   
+
    ```sh
    export GCP_REGION=us-east4
    export GCP_PROJECT=k8s-staging-cluster-api-gcp
@@ -25,7 +25,7 @@ For creating a cluster with clusterctl, checkout our [Cluster API Quick Start](h
    export CLUSTER_NAME="capg-test"
    export IMAGE_ID=projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-1804-v1-20-9-nightly
    ```
-  
+
   You can check for other images to set the `IMAGE_ID` of your choice.
 
 3. Run `make create-management-cluster` from root directory.

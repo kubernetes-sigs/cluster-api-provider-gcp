@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-    - name: v1.0.2
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.2/core-components.yaml
+    - name: v1.1.2
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.2/core-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-    - name: v1.0.2
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.2/bootstrap-components.yaml
+    - name: v1.1.2
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.2/bootstrap-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -41,8 +41,8 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-    - name: v1.0.2
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.2/control-plane-components.yaml
+    - name: v1.1.2
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.2/control-plane-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -54,27 +54,37 @@ providers:
   - name: gcp
     type: InfrastructureProvider
     versions:
-    - name: v1.0.99 # next; use manifest from source files
+    - name: v1.1.99 # next; use manifest from source files
       value: "${PWD}/config/default"
     files:
     - sourcePath: "${PWD}/metadata.yaml"
       targetName: "metadata.yaml"
-    - sourcePath: "${PWD}/templates/test/cluster-template-ci.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci.yaml"
       targetName: "cluster-template.yaml"
-    - sourcePath: "${PWD}/templates/test/cluster-template-prow-ci-version.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-prow-ci-version.yaml"
       targetName: "cluster-template-conformance-ci-artifacts.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-upgrades.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-md-remediation.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-kcp-remediation.yaml"
 
 variables:
-  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.22.3}"
+  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.23.3}"
+  ETCD_VERSION_UPGRADE_TO: "3.5.1-0"
+  COREDNS_VERSION_UPGRADE_TO: "v1.8.6"
+  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-1804-v1-22-6-nightly"
+  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-1804-v1-23-3-nightly"
+  MACHINE_TEMPLATE_UPGRADE_TO: "k8s-upgrade-and-conformance"
+  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.23.3}"
+  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.22.6}"
   EXP_CLUSTER_RESOURCE_SET: "true"
   # Cluster Addons
   CNI: "${PWD}/test/e2e/data/cni/calico/calico.yaml"
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
-  CONFORMANCE_CI_ARTIFACTS_KUBERNETES_VERSION: "v1.22.3"
-  CONFORMANCE_WORKER_MACHINE_COUNT: "5"
-  CONFORMANCE_CONTROL_PLANE_MACHINE_COUNT: "1"
+  CONFORMANCE_WORKER_MACHINE_COUNT: "2"
+  CONFORMANCE_CONTROL_PLANE_MACHINE_COUNT: "${CONFORMANCE_CONTROL_PLANE_MACHINE_COUNT:-1}"
   CONFORMANCE_NODES: "${CONFORMANCE_NODES:-4}"
+  KUBETEST_CONFIGURATION: "${PWD}/test/e2e/data/kubetest/conformance.yaml"
   IMAGE_ID: "${IMAGE_ID}"
   IP_FAMILY: "IPv4"
 
@@ -89,3 +99,4 @@ intervals:
   default/wait-deployment: ["5m", "10s"]
   default/wait-job: ["5m", "10s"]
   default/wait-service: ["3m", "10s"]
+  node-drain/wait-machine-deleted: [ "10m", "10s" ]

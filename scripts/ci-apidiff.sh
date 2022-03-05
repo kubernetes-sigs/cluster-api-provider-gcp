@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Copyright 2018 The Kubernetes Authors.
+# Copyright 2022 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@ set -o nounset
 set -o pipefail
 
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-# shellcheck source=hack/ensure-go.sh
-source "${REPO_ROOT}/hack/ensure-go.sh"
 
-cd "${REPO_ROOT}" && \
-	make test-junit
+APIDIFF="${REPO_ROOT}/hack/tools/bin/go-apidiff"
+
+cd "${REPO_ROOT}" && make "${APIDIFF##*/}"
+echo "*** Running go-apidiff ***"
+
+${APIDIFF} "${PULL_BASE_SHA}" --print-compatible
