@@ -33,8 +33,8 @@ When developing on Windows, it is suggested to set up the project on Windows + W
 ### Get the source
 
 ```shell
-go get -d sigs.k8s.io/cluster-api-provider-gcp
-cd "$(go env GOPATH)/src/sigs.k8s.io/cluster-api-provider-gcp"
+git clone https://github.com/kubernetes-sigs/cluster-api-provider-gcp
+cd cluster-api-provider-gcp
 ```
 
 ### Get familiar with basic concepts
