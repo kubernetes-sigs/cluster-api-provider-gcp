@@ -18,8 +18,7 @@
    - `GO111MODULE="on" go get sigs.k8s.io/kind@v0.11.1`.
 5. Install [Kustomize][kustomize]
    - `brew install kustomize` on macOS.
-   - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2.
-   - [install instructions][kustomizelinux] on Linux
+   - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2, Linux and macOS. 
 6. Install Python 3.x or 2.7.x, if neither is already installed.
 7. Install make.
    - `brew install make` on MacOS.
@@ -33,8 +32,8 @@ When developing on Windows, it is suggested to set up the project on Windows + W
 ### Get the source
 
 ```shell
-go get -d sigs.k8s.io/cluster-api-provider-gcp
-cd "$(go env GOPATH)/src/sigs.k8s.io/cluster-api-provider-gcp"
+git clone https://github.com/kubernetes-sigs/cluster-api-provider-gcp
+cd cluster-api-provider-gcp
 ```
 
 ### Get familiar with basic concepts
@@ -245,5 +244,4 @@ Kubernetes cluster, nor do they have external dependencies.
 [go.mod]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/master/go.mod
 [kind]: https://sigs.k8s.io/kind
 [kustomize]: https://github.com/kubernetes-sigs/kustomize
-[kustomizelinux]: https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md
 [timeout]: http://man7.org/linux/man-pages/man1/timeout.1.html
