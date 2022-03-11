@@ -142,9 +142,19 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: k8s-upgrade-and-conformance
+  name: cp-k8s-upgrade-and-conformance
 spec:
   template:
     spec:
       instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
+      image: "${KUBERNETES_IMAGE_UPGRADE_TO}"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: worker-k8s-upgrade-and-conformance
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_NODE_MACHINE_TYPE}"
       image: "${KUBERNETES_IMAGE_UPGRADE_TO}"
