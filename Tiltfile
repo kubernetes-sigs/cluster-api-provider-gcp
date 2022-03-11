@@ -16,9 +16,9 @@ settings = {
     "deploy_cert_manager": True,
     "preload_images_for_kind": True,
     "kind_cluster_name": "capg",
-    "capi_version": "v1.0.4",
+    "capi_version": "v1.0.5",
     "cert_manager_version": "v1.1.0",
-    "kubernetes_version": "v1.21.4",
+    "kubernetes_version": "v1.22.6",
 }
 
 keys = ["GCP_B64ENCODED_CREDENTIALS"]

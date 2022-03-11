@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-    - name: v1.0.4
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.4/core-components.yaml
+    - name: v1.0.5
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.5/core-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-    - name: v1.0.4
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.4/bootstrap-components.yaml
+    - name: v1.0.5
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.5/bootstrap-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -41,8 +41,8 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-    - name: v1.0.4
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.4/control-plane-components.yaml
+    - name: v1.0.5
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.0.5/control-plane-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -65,13 +65,13 @@ providers:
       targetName: "cluster-template-conformance-ci-artifacts.yaml"
 
 variables:
-  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.20.9}"
+  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.22.6}"
   EXP_CLUSTER_RESOURCE_SET: "true"
   # Cluster Addons
   CNI: "${PWD}/test/e2e/data/cni/calico/calico.yaml"
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
-  CONFORMANCE_CI_ARTIFACTS_KUBERNETES_VERSION: "v1.22.3"
+  CONFORMANCE_CI_ARTIFACTS_KUBERNETES_VERSION: "v1.22.6"
   CONFORMANCE_WORKER_MACHINE_COUNT: "5"
   CONFORMANCE_CONTROL_PLANE_MACHINE_COUNT: "1"
   CONFORMANCE_NODES: "${CONFORMANCE_NODES:-4}"
