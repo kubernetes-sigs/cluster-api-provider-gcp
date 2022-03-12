@@ -22,8 +22,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/instances"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
@@ -37,11 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/instances"
-	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 )
 
 // GCPMachineReconciler reconciles a GCPMachine object.
