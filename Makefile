@@ -53,6 +53,7 @@ E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/gcp-ci.yaml
 E2E_CONF_FILE_ENVSUBST := $(ROOT_DIR)/test/e2e/config/gcp-ci-envsubst.yaml
 E2E_DATA_DIR ?= $(ROOT_DIR)/test/e2e/data
 KUBETEST_CONF_PATH ?= $(abspath $(E2E_DATA_DIR)/kubetest/conformance.yaml)
+CONVERSION_VERIFIER:= $(TOOLS_BIN_DIR)/conversion-verifier
 
 # Binaries.
 CLUSTERCTL := $(BIN_DIR)/clusterctl
@@ -248,8 +249,13 @@ $(CONVERSION_GEN): ## Build conversion-gen.
 $(RELEASE_NOTES): ## Build release notes.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/release/cmd/release-notes $(RELEASE_NOTES_BIN) $(RELEASE_NOTES_VER)
 
+
 $(GO_APIDIFF): ## Build go-apidiff from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/joelanford/go-apidiff $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
+
+conversion-verifier: $(CONVERSION_VERIFIER) go.mod go.sum ## fetch CAPI's conversion verifier
+$(CONVERSION_VERIFIER): go.mod
+	cd $(TOOLS_DIR); go build -tags=tools -o $@ sigs.k8s.io/cluster-api/hack/tools/conversion-verifier
 
 $(GINKGO): ## Build ginkgo.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/onsi/ginkgo/ginkgo $(GINKGO_BIN) $(GINKGO_VER)
@@ -535,7 +541,7 @@ apidiff: $(GO_APIDIFF) ## Check for API differences.
 	$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible
 
 .PHONY: verify
-verify: verify-boilerplate verify-modules verify-gen verify-shellcheck
+verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-conversions
 
 .PHONY: verify-boilerplate
 verify-boilerplate:
@@ -545,11 +551,16 @@ verify-boilerplate:
 verify-shellcheck:
 	./hack/verify-shellcheck.sh
 
+.PHONY: verify-conversions
+verify-conversions: $(CONVERSION_VERIFIER) ## verifies expected API conversion are in place
+	$(CONVERSION_VERIFIER)
+
 .PHONY: verify-modules
 verify-modules: modules
+	cd $(TOOLS_DIR); go mod tidy
 	@if !(git diff --quiet HEAD -- go.sum go.mod hack/tools/go.mod hack/tools/go.sum); then \
 		echo "go module files are out of date"; exit 1; \
-	fi
+	fi	
 
 .PHONY: verify-gen
 verify-gen: generate
