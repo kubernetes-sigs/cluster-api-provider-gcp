@@ -20,10 +20,8 @@ import (
 	"context"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
-
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Reconcile reconcile cluster firewall compoenents.
