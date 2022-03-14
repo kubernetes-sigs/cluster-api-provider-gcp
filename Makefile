@@ -534,8 +534,12 @@ clean-release: ## Remove the release folder
 apidiff: $(GO_APIDIFF) ## Check for API differences.
 	$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible
 
+.PHONY: format-tiltfile
+format-tiltfile: ## Format the Tiltfile.
+	./hack/verify-starlark.sh fix
+
 .PHONY: verify
-verify: verify-boilerplate verify-modules verify-gen verify-shellcheck
+verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile
 
 .PHONY: verify-boilerplate
 verify-boilerplate:
@@ -544,6 +548,10 @@ verify-boilerplate:
 .PHONY: verify-shellcheck
 verify-shellcheck:
 	./hack/verify-shellcheck.sh
+
+.PHONY: verify-tiltfile
+verify-tiltfile: ## Verify Tiltfile format.
+	./hack/verify-starlark.sh
 
 .PHONY: verify-modules
 verify-modules: modules
