@@ -8,6 +8,7 @@ linters:
   - dogsled
   - errcheck
   - exportloopref
+  - gci
   - goconst
   - gocritic
   - gocyclo
@@ -24,16 +25,20 @@ linters:
   - misspell
   - nakedret
   - nilerr
+  - noctx
   - nolintlint
   - prealloc
+  - predeclared
   - revive
   - rowserrcheck
   - staticcheck
   - structcheck
   - stylecheck
+  - thelper
   - typecheck
   - unconvert
   - unparam
+  - unused
   - varcheck
   - whitespace
 

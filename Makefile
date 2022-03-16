@@ -280,11 +280,14 @@ $(GO_APIDIFF_BIN): $(GO_APIDIFF)
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT) ## Lint codebase
-	$(GOLANGCI_LINT) run -v --fast=false
+	$(GOLANGCI_LINT) run -v $(GOLANGCI_LINT_EXTRA_ARGS)
 
 .PHONY: lint-fix
 lint-fix: $(GOLANGCI_LINT) ## Lint the codebase and run auto-fixers if supported by the linter
 	GOLANGCI_LINT_EXTRA_ARGS=--fix $(MAKE) lint
+
+lint-full: $(GOLANGCI_LINT) ## Run slower linters to detect possible issues
+	$(GOLANGCI_LINT) run -v --fast=false
 
 ## --------------------------------------
 ## Generate
@@ -540,8 +543,12 @@ clean-release: ## Remove the release folder
 apidiff: $(GO_APIDIFF) ## Check for API differences.
 	$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible
 
+.PHONY: format-tiltfile
+format-tiltfile: ## Format the Tiltfile.
+	./hack/verify-starlark.sh fix
+
 .PHONY: verify
-verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-conversions
+verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile verify-conversions
 
 .PHONY: verify-boilerplate
 verify-boilerplate:
@@ -551,9 +558,14 @@ verify-boilerplate:
 verify-shellcheck:
 	./hack/verify-shellcheck.sh
 
+
 .PHONY: verify-conversions
 verify-conversions: $(CONVERSION_VERIFIER) ## verifies expected API conversion are in place
 	$(CONVERSION_VERIFIER)
+
+.PHONY: verify-tiltfile
+verify-tiltfile: ## Verify Tiltfile format.
+	./hack/verify-starlark.sh
 
 .PHONY: verify-modules
 verify-modules: modules

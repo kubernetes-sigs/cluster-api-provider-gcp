@@ -4,14 +4,14 @@ envsubst_cmd = "./hack/tools/bin/envsubst"
 tools_bin = "./hack/tools/bin"
 
 #Add tools to path
-os.putenv('PATH', os.getenv('PATH') + ':' + tools_bin)
+os.putenv("PATH", os.getenv("PATH") + ":" + tools_bin)
 
-update_settings(k8s_upsert_timeout_secs=60)  # on first tilt up, often can take longer than 30 seconds
+update_settings(k8s_upsert_timeout_secs = 60)  # on first tilt up, often can take longer than 30 seconds
 
 # set defaults
 settings = {
     "allowed_contexts": [
-        "kind-capg"
+        "kind-capg",
     ],
     "deploy_cert_manager": True,
     "preload_images_for_kind": True,
@@ -43,7 +43,7 @@ def deploy_capi():
     version = settings.get("capi_version")
     capi_uri = "https://github.com/kubernetes-sigs/cluster-api/releases/download/{}/cluster-api-components.yaml".format(version)
     cmd = "curl -sSL {} | {} | kubectl apply -f -".format(capi_uri, envsubst_cmd)
-    local(cmd, quiet=True)
+    local(cmd, quiet = True)
     if settings.get("extra_args"):
         extra_args = settings.get("extra_args")
         if extra_args.get("core"):
@@ -57,7 +57,7 @@ def deploy_capi():
                 patch_args_with_extra_args("capi-kubeadm-bootstrap-system", "capi-kubeadm-bootstrap-controller-manager", kb_extra_args)
 
 def patch_args_with_extra_args(namespace, name, extra_args):
-    args_str = str(local('kubectl get deployments {} -n {} -o jsonpath={{.spec.template.spec.containers[1].args}}'.format(name, namespace)))
+    args_str = str(local("kubectl get deployments {} -n {} -o jsonpath={{.spec.template.spec.containers[1].args}}".format(name, namespace)))
     args_to_add = [arg for arg in extra_args if arg not in args_str]
     if args_to_add:
         args = args_str[1:-1].split()
@@ -69,14 +69,12 @@ def patch_args_with_extra_args(namespace, name, extra_args):
         }]
         local("kubectl patch deployment {} -n {} --type json -p='{}'".format(name, namespace, str(encode_json(patch)).replace("\n", "")))
 
-
 # Users may define their own Tilt customizations in tilt.d. This directory is excluded from git and these files will
 # not be checked in to version control.
 def include_user_tilt_files():
     user_tiltfiles = listdir("tilt.d")
     for f in user_tiltfiles:
         include(f)
-
 
 def append_arg_for_container_in_deployment(yaml_stream, name, namespace, contains_image_name, args):
     for item in yaml_stream:
@@ -86,11 +84,9 @@ def append_arg_for_container_in_deployment(yaml_stream, name, namespace, contain
                 if contains_image_name in container.get("image"):
                     container.get("args").extend(args)
 
-
 def fixup_yaml_empty_arrays(yaml_str):
     yaml_str = yaml_str.replace("conditions: null", "conditions: []")
     return yaml_str.replace("storedVersions: null", "storedVersions: []")
-
 
 def validate_auth():
     substitutions = settings.get("kustomize_substitutions", {})
@@ -120,6 +116,7 @@ def capg():
     # Apply the kustomized yaml for this provider
     substitutions = settings.get("kustomize_substitutions", {})
     os.environ.update(substitutions)
+
     # yaml = str(kustomizesub("./hack/observability")) # build an observable kind deployment by default
     yaml = str(kustomizesub("./config/default"))
 
@@ -136,7 +133,7 @@ def capg():
     local_resource(
         "manager",
         cmd = 'mkdir -p .tiltbuild;CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags \'-extldflags "-static"\' -o .tiltbuild/manager',
-        deps = ["api", "cloud", "config", "controllers", "exp", "feature", "pkg", "go.mod", "go.sum", "main.go"]
+        deps = ["api", "cloud", "config", "controllers", "exp", "feature", "pkg", "go.mod", "go.sum", "main.go"],
     )
 
     dockerfile_contents = "\n".join([
@@ -162,29 +159,29 @@ def capg():
             sync(".tiltbuild/manager", "/manager"),
             run("sh /restart.sh"),
         ],
-        ignore = ["templates"]
+        ignore = ["templates"],
     )
 
     k8s_yaml(blob(yaml))
 
 def base64_encode(to_encode):
-    encode_blob = local("echo '{}' | tr -d '\n' | base64 - | tr -d '\n'".format(to_encode), quiet=True)
+    encode_blob = local("echo '{}' | tr -d '\n' | base64 - | tr -d '\n'".format(to_encode), quiet = True)
     return str(encode_blob)
 
 def base64_encode_file(path_to_encode):
-    encode_blob = local("cat {} | tr -d '\n' | base64 - | tr -d '\n'".format(path_to_encode), quiet=True)
+    encode_blob = local("cat {} | tr -d '\n' | base64 - | tr -d '\n'".format(path_to_encode), quiet = True)
     return str(encode_blob)
 
 def read_file_from_path(path_to_read):
-    str_blob = local("cat {} | tr -d '\n'".format(path_to_read), quiet=True)
+    str_blob = local("cat {} | tr -d '\n'".format(path_to_read), quiet = True)
     return str(str_blob)
 
 def base64_decode(to_decode):
-    decode_blob = local("echo '{}' | base64 --decode -".format(to_decode), quiet=True)
+    decode_blob = local("echo '{}' | base64 --decode -".format(to_decode), quiet = True)
     return str(decode_blob)
 
 def kustomizesub(folder):
-    yaml = local('hack/kustomize-sub.sh {}'.format(folder), quiet=True)
+    yaml = local("hack/kustomize-sub.sh {}".format(folder), quiet = True)
     return yaml
 
 def waitforsystem():

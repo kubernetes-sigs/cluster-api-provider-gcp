@@ -22,7 +22,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"google.golang.org/api/compute/v1"
-
 	"k8s.io/client-go/util/flowcontrol"
 )
 
