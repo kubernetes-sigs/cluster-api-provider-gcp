@@ -27,7 +27,7 @@ metadata:
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: test-selfdesigned
+  name: test-selfsigned
   namespace: cert-manager-test
 spec:
   selfSigned: {}
@@ -52,7 +52,7 @@ KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
 cd "${REPO_ROOT}" && make "${KUBECTL##*/}"
 
 ## Install cert manager and wait for availability
-"${KUBECTL}" apply -f https://github.com/jetstack/cert-manager/releases/download/v1.5.0/cert-manager.yaml
+"${KUBECTL}" apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
 "${KUBECTL}" wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager
 "${KUBECTL}" wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-cainjector
 "${KUBECTL}" wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-webhook
