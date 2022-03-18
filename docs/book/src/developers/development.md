@@ -105,7 +105,7 @@ rather than Windows.
 
 ### Using Tilt
 
-Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster.The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPZ and CAPI, then follow the [CAPI and CAPZ instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
+Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster.The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPG and CAPI, then follow the [CAPI and CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
 
 #### Tilt for dev in CAPG
 
