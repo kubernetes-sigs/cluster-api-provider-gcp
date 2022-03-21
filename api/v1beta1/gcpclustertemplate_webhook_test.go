@@ -35,18 +35,20 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 			name: "GCPClusterTemplated with immutable spec",
 			newTemplate: &GCPClusterTemplate{
 				Spec: GCPClusterTemplateSpec{
-					Template: GCPClusterTemplateResource{GCPClusterSpec{
-						Project: "test-gcp-cluster",
-						Region:  "ap-south-1",
-					}},
+					Template: GCPClusterTemplateResource{
+						Spec: GCPClusterSpec{
+							Project: "test-gcp-cluster",
+							Region:  "ap-south-1",
+						}},
 				},
 			},
 			oldTemplate: &GCPClusterTemplate{
 				Spec: GCPClusterTemplateSpec{
-					Template: GCPClusterTemplateResource{GCPClusterSpec{
-						Project: "test-gcp-cluster",
-						Region:  "ap-south-1",
-					}},
+					Template: GCPClusterTemplateResource{
+						Spec: GCPClusterSpec{
+							Project: "test-gcp-cluster",
+							Region:  "ap-south-1",
+						}},
 				},
 			},
 			wantErr: false,
@@ -55,18 +57,20 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 			name: "GCPClusterTemplated with mutable spec",
 			newTemplate: &GCPClusterTemplate{
 				Spec: GCPClusterTemplateSpec{
-					Template: GCPClusterTemplateResource{GCPClusterSpec{
-						Project: "test-gcp-cluster",
-						Region:  "ap-south-1",
-					}},
+					Template: GCPClusterTemplateResource{
+						Spec: GCPClusterSpec{
+							Project: "test-gcp-cluster",
+							Region:  "ap-south-1",
+						}},
 				},
 			},
 			oldTemplate: &GCPClusterTemplate{
 				Spec: GCPClusterTemplateSpec{
-					Template: GCPClusterTemplateResource{GCPClusterSpec{
-						Project: "test-gcp-cluster",
-						Region:  "ap-east-1",
-					}},
+					Template: GCPClusterTemplateResource{
+						Spec: GCPClusterSpec{
+							Project: "test-gcp-cluster",
+							Region:  "ap-east-1",
+						}},
 				},
 			},
 			wantErr: true,
