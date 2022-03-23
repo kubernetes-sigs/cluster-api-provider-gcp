@@ -66,6 +66,8 @@ providers:
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-upgrades.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-md-remediation.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-kcp-remediation.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-topology.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-quick-start.yaml"
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.23.3}"
@@ -78,6 +80,7 @@ variables:
   KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.23.3}"
   KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.22.6}"
   EXP_CLUSTER_RESOURCE_SET: "true"
+  CLUSTER_TOPOLOGY: "true"
   # Cluster Addons
   CNI: "${PWD}/test/e2e/data/cni/calico/calico.yaml"
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
