@@ -57,6 +57,19 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 		})
 	})
 
+	Context("Running the quick-start spec with ClusterClass", func() {
+		capi_e2e.QuickStartSpec(ctx, func() capi_e2e.QuickStartSpecInput {
+			return capi_e2e.QuickStartSpecInput{
+				E2EConfig:             e2eConfig,
+				ClusterctlConfigPath:  clusterctlConfigPath,
+				BootstrapClusterProxy: bootstrapClusterProxy,
+				ArtifactFolder:        artifactFolder,
+				SkipCleanup:           skipCleanup,
+				Flavor:                pointer.String("topology"),
+			}
+		})
+	})
+
 	Context("Should successfully remediate unhealthy machines with MachineHealthCheck", func() {
 		capi_e2e.MachineRemediationSpec(ctx, func() capi_e2e.MachineRemediationSpecInput {
 			return capi_e2e.MachineRemediationSpecInput{
