@@ -1,6 +1,6 @@
 module sigs.k8s.io/cluster-api-provider-gcp
 
-go 1.17
+go 1.18
 
 require (
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.18.0
