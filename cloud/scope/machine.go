@@ -307,10 +307,9 @@ func (m *MachineScope) InstanceAdditionalMetadataSpec() *compute.Metadata {
 // InstanceSpec returns instance spec.
 func (m *MachineScope) InstanceSpec() *compute.Instance {
 	instance := &compute.Instance{
-		Name:         m.Name(),
-		Zone:         m.Zone(),
-		MachineType:  path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
-		CanIpForward: true,
+		Name:        m.Name(),
+		Zone:        m.Zone(),
+		MachineType: path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
 		Tags: &compute.Tags{
 			Items: append(
 				m.GCPMachine.Spec.AdditionalNetworkTags,
@@ -328,6 +327,11 @@ func (m *MachineScope) InstanceSpec() *compute.Instance {
 		Scheduling: &compute.Scheduling{
 			Preemptible: m.GCPMachine.Spec.Preemptible,
 		},
+	}
+
+	instance.CanIpForward = true
+	if m.GCPMachine.Spec.IPForwarding != nil && *m.GCPMachine.Spec.IPForwarding == infrav1.IPForwardingDisabled {
+		instance.CanIpForward = false
 	}
 
 	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
