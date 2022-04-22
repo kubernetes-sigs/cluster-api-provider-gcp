@@ -18,7 +18,7 @@
    - `GO111MODULE="on" go get sigs.k8s.io/kind@v0.11.1`.
 5. Install [Kustomize][kustomize]
    - `brew install kustomize` on macOS.
-   - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2, Linux and macOS. 
+   - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2, Linux and macOS.
 6. Install Python 3.x or 2.7.x, if neither is already installed.
 7. Install make.
    - `brew install make` on MacOS.
@@ -225,6 +225,8 @@ $ make delete-workload-cluster
 
 Pull requests and issues are highly encouraged!
 If you're interested in submitting PRs to the project, please be sure to run some initial checks prior to submission:
+
+Do make sure to set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable with the path to your JSON file. Check out the this [doc](https://cloud.google.com/docs/authentication/production) to generate the credential.
 
 ```shell
 $ make lint # Runs a suite of quick scripts to check code structure
