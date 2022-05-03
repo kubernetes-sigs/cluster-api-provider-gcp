@@ -73,7 +73,7 @@ GOLANGCI_LINT_VER := v1.45.2
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
 
-KUSTOMIZE_VER := v4.4.0
+KUSTOMIZE_VER := v4.5.2
 KUSTOMIZE_BIN := kustomize
 KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
 
@@ -158,7 +158,7 @@ test: $(SETUP_ENVTEST) ## Run unit and integration tests
 # Allow overriding the e2e configurations
 GINKGO_FOCUS ?= Workload cluster creation
 GINKGO_SKIP ?= API Version Upgrade
-GINKGO_NODES ?= 3
+GINKGO_NODES ?= 1
 GINKGO_NOCOLOR ?= false
 GINKGO_ARGS ?=
 ARTIFACTS ?= $(ROOT_DIR)/_artifacts
