@@ -11,7 +11,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/mod v0.5.1
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5
-	google.golang.org/api v0.75.0
+	google.golang.org/api v0.77.0
 	k8s.io/api v0.23.6
 	k8s.io/apimachinery v0.23.6
 	k8s.io/client-go v0.23.6
