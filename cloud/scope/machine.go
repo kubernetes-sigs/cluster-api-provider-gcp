@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -93,9 +94,14 @@ func (m *MachineScope) Cloud() cloud.Cloud {
 // Zone returns the FailureDomain for the GCPMachine.
 func (m *MachineScope) Zone() string {
 	if m.Machine.Spec.FailureDomain == nil {
-		return ""
+		fd := m.ClusterGetter.FailureDomains()
+		zones := make([]string, 0, len(fd))
+		for zone := range fd {
+			zones = append(zones, zone)
+		}
+		sort.Strings(zones)
+		return zones[0]
 	}
-
 	return *m.Machine.Spec.FailureDomain
 }
 
