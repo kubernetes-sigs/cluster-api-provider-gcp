@@ -99,6 +99,11 @@ func (m *MachineScope) Zone() string {
 	return *m.Machine.Spec.FailureDomain
 }
 
+// Project return the project for the GCPMachine's cluster.
+func (m *MachineScope) Project() string {
+	return m.ClusterGetter.Project()
+}
+
 // Name returns the GCPMachine name.
 func (m *MachineScope) Name() string {
 	return m.GCPMachine.Name

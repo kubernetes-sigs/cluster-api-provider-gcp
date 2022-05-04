@@ -71,6 +71,7 @@ type MachineGetter interface {
 	Name() string
 	Namespace() string
 	Zone() string
+	Project() string
 	Role() string
 	IsControlPlane() bool
 	ControlPlaneGroupName() string
