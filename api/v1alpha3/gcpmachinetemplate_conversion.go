@@ -32,6 +32,16 @@ func (src *GCPMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 		return err
 	}
 
+	// Manually restore data.
+	restored := &infrav1beta1.GCPMachineTemplate{}
+	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
+		return err
+	}
+
+	if restored.Spec.Template.Spec.IPForwarding != nil {
+		dst.Spec.Template.Spec.IPForwarding = restored.Spec.Template.Spec.IPForwarding
+	}
+
 	return nil
 }
 

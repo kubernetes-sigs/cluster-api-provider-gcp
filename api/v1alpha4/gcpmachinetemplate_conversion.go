@@ -39,6 +39,10 @@ func (src *GCPMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 
 	dst.Spec.Template.ObjectMeta = restored.Spec.Template.ObjectMeta
 
+	if restored.Spec.Template.Spec.IPForwarding != nil {
+		dst.Spec.Template.Spec.IPForwarding = restored.Spec.Template.Spec.IPForwarding
+	}
+
 	return nil
 }
 
