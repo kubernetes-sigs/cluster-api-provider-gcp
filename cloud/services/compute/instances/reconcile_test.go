@@ -171,7 +171,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
 							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+							SourceImage: "projects/my-proj/global/images/capi-ubuntu-1804-k8s-v1-19-11",
 						},
 					},
 				},
@@ -231,7 +231,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
 							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+							SourceImage: "projects/my-proj/global/images/capi-ubuntu-1804-k8s-v1-19-11",
 						},
 					},
 				},
