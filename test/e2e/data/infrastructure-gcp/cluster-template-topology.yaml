@@ -19,7 +19,6 @@ spec:
         - class: "default-worker"
           name: "md-0"
           replicas: ${WORKER_MACHINE_COUNT}
-          failureDomain: ${GCP_REGION}-a
     variables:
       - name: region
         value: ${GCP_REGION}
