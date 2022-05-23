@@ -1,4 +1,4 @@
-<p align="center"><img alt="capi" src="https://github.com/kubernetes-sigs/cluster-api/raw/main/docs/book/src/images/introduction.png" width="160x" /><img alt="capi" src="https://cloud.google.com/_static/cloud/images/favicons/onecloud/super_cloud.png" width="192x" /></p>
+<p align="center"><img alt="capi" src="https://github.com/kubernetes-sigs/cluster-api/raw/main/docs/book/src/images/introduction.svg" width="160x" /><img alt="capi" src="https://cloud.google.com/_static/cloud/images/favicons/onecloud/super_cloud.png" width="192x" /></p>
 <p align="center"><a href="https://prow.k8s.io/?job=ci-cluster-api-provider-gcp-build">
 <!-- prow build badge, godoc, and go report card-->
 <img alt="Build Status" src="https://prow.k8s.io/badge.svg?jobs=ci-cluster-api-provider-gcp">
