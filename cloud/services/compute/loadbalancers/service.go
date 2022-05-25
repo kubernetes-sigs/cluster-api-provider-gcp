@@ -22,7 +22,6 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"google.golang.org/api/compute/v1"
-
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 )
 

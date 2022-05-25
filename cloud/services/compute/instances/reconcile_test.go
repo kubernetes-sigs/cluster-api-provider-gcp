@@ -26,14 +26,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
-
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -125,14 +123,14 @@ func TestService_createOrGetInstance(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		scope        Scope
+		scope        func() Scope
 		mockInstance *cloud.MockInstances
 		want         *compute.Instance
 		wantErr      bool
 	}{
 		{
 			name:  "instance already exist (should return existing instance)",
-			scope: machineScope,
+			scope: func() Scope { return machineScope },
 			mockInstance: &cloud.MockInstances{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects: map[meta.Key]*cloud.MockInstancesObj{
@@ -147,7 +145,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 		},
 		{
 			name:  "error getting instance with non 404 error code (should return an error)",
-			scope: machineScope,
+			scope: func() Scope { return machineScope },
 			mockInstance: &cloud.MockInstances{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
@@ -159,7 +157,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 		},
 		{
 			name:  "instance does not exist (should create instance)",
-			scope: machineScope,
+			scope: func() Scope { return machineScope },
 			mockInstance: &cloud.MockInstances{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
@@ -213,11 +211,71 @@ func TestService_createOrGetInstance(t *testing.T) {
 				Zone: "us-central1-c",
 			},
 		},
+		{
+			name: "instance does not exist (should create instance) and ipForwarding disabled",
+			scope: func() Scope {
+				ipForwardingDisabled := infrav1.IPForwardingDisabled
+				machineScope.GCPMachine.Spec.IPForwarding = &ipForwardingDisabled
+				return machineScope
+			},
+			mockInstance: &cloud.MockInstances{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
+			},
+			want: &compute.Instance{
+				Name:         "my-machine",
+				CanIpForward: false,
+				Disks: []*compute.AttachedDisk{
+					{
+						AutoDelete: true,
+						Boot:       true,
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+						},
+					},
+				},
+				Labels: map[string]string{
+					"capg-role":               "node",
+					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
+				},
+				MachineType: "zones/us-central1-c/machineTypes",
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{
+							Key:   "user-data",
+							Value: pointer.String("Zm9vCg=="),
+						},
+					},
+				},
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network: "projects/my-proj/global/networks/default",
+					},
+				},
+				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{},
+				ServiceAccounts: []*compute.ServiceAccount{
+					{
+						Email:  "default",
+						Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
+					},
+				},
+				Tags: &compute.Tags{
+					Items: []string{
+						"my-cluster-node",
+						"my-cluster",
+					},
+				},
+				Zone: "us-central1-c",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			s := New(tt.scope)
+			s := New(tt.scope())
 			s.instances = tt.mockInstance
 			got, err := s.createOrGetInstance(ctx)
 			if (err != nil) != tt.wantErr {

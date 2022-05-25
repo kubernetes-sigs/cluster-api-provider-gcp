@@ -38,7 +38,8 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.KubernetesVersionUpgradeFrom))
 		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.KubernetesVersionUpgradeTo))
-		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.MachineTemplateUpgradeTo))
+		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.CPMachineTemplateUpgradeTo))
+		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.WorkersMachineTemplateUpgradeTo))
 	})
 
 	AfterEach(func() {
@@ -52,6 +53,19 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 				BootstrapClusterProxy: bootstrapClusterProxy,
 				ArtifactFolder:        artifactFolder,
 				SkipCleanup:           skipCleanup,
+			}
+		})
+	})
+
+	Context("Running the quick-start spec with ClusterClass", func() {
+		capi_e2e.QuickStartSpec(ctx, func() capi_e2e.QuickStartSpecInput {
+			return capi_e2e.QuickStartSpecInput{
+				E2EConfig:             e2eConfig,
+				ClusterctlConfigPath:  clusterctlConfigPath,
+				BootstrapClusterProxy: bootstrapClusterProxy,
+				ArtifactFolder:        artifactFolder,
+				SkipCleanup:           skipCleanup,
+				Flavor:                pointer.String("topology"),
 			}
 		})
 	})

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha3
 
 import (
+	apiconversion "k8s.io/apimachinery/pkg/conversion"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
@@ -29,6 +30,16 @@ func (src *GCPMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 
 	if err := Convert_v1alpha3_GCPMachineTemplate_To_v1beta1_GCPMachineTemplate(src, dst, nil); err != nil {
 		return err
+	}
+
+	// Manually restore data.
+	restored := &infrav1beta1.GCPMachineTemplate{}
+	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
+		return err
+	}
+
+	if restored.Spec.Template.Spec.IPForwarding != nil {
+		dst.Spec.Template.Spec.IPForwarding = restored.Spec.Template.Spec.IPForwarding
 	}
 
 	return nil
@@ -59,4 +70,9 @@ func (src *GCPMachineTemplateList) ConvertTo(dstRaw conversion.Hub) error { // n
 func (dst *GCPMachineTemplateList) ConvertFrom(srcRaw conversion.Hub) error { // nolint
 	src := srcRaw.(*infrav1beta1.GCPMachineTemplateList)
 	return Convert_v1beta1_GCPMachineTemplateList_To_v1alpha3_GCPMachineTemplateList(src, dst, nil)
+}
+
+func Convert_v1beta1_GCPMachineTemplateResource_To_v1alpha3_GCPMachineTemplateResource(in *infrav1beta1.GCPMachineTemplateResource, out *GCPMachineTemplateResource, s apiconversion.Scope) error {
+	// NOTE: custom conversion func is required because spec.template.metadata has been added in v1beta1.
+	return autoConvert_v1beta1_GCPMachineTemplateResource_To_v1alpha3_GCPMachineTemplateResource(in, out, s)
 }

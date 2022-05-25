@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
-
 	corev1 "k8s.io/api/core/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -72,6 +71,7 @@ type MachineGetter interface {
 	Name() string
 	Namespace() string
 	Zone() string
+	Project() string
 	Role() string
 	IsControlPlane() bool
 	ControlPlaneGroupName() string

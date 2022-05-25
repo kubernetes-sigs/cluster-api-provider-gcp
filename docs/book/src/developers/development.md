@@ -18,8 +18,7 @@
    - `GO111MODULE="on" go get sigs.k8s.io/kind@v0.11.1`.
 5. Install [Kustomize][kustomize]
    - `brew install kustomize` on macOS.
-   - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2.
-   - [install instructions][kustomizelinux] on Linux
+   - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2, Linux and macOS.
 6. Install Python 3.x or 2.7.x, if neither is already installed.
 7. Install make.
    - `brew install make` on MacOS.
@@ -33,8 +32,8 @@ When developing on Windows, it is suggested to set up the project on Windows + W
 ### Get the source
 
 ```shell
-go get -d sigs.k8s.io/cluster-api-provider-gcp
-cd "$(go env GOPATH)/src/sigs.k8s.io/cluster-api-provider-gcp"
+git clone https://github.com/kubernetes-sigs/cluster-api-provider-gcp
+cd cluster-api-provider-gcp
 ```
 
 ### Get familiar with basic concepts
@@ -106,7 +105,7 @@ rather than Windows.
 
 ### Using Tilt
 
-Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster.The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPZ and CAPI, then follow the [CAPI and CAPZ instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
+Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster.The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPG and CAPI, then follow the [CAPI and CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
 
 #### Tilt for dev in CAPG
 
@@ -227,6 +226,8 @@ $ make delete-workload-cluster
 Pull requests and issues are highly encouraged!
 If you're interested in submitting PRs to the project, please be sure to run some initial checks prior to submission:
 
+Do make sure to set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable with the path to your JSON file. Check out the this [doc](https://cloud.google.com/docs/authentication/production) to generate the credential.
+
 ```shell
 $ make lint # Runs a suite of quick scripts to check code structure
 $ make test # Runs tests on the Go code
@@ -245,5 +246,4 @@ Kubernetes cluster, nor do they have external dependencies.
 [go.mod]: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/master/go.mod
 [kind]: https://sigs.k8s.io/kind
 [kustomize]: https://github.com/kubernetes-sigs/kustomize
-[kustomizelinux]: https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md
 [timeout]: http://man7.org/linux/man-pages/man1/timeout.1.html

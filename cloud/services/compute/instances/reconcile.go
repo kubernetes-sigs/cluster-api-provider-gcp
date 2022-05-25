@@ -18,19 +18,18 @@ package instances
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Reconcile reconcile machine instance.
@@ -56,6 +55,31 @@ func (s *Service) Reconcile(ctx context.Context) error {
 			})
 		}
 	}
+
+	machineName := s.scope.Name()
+	zone := s.scope.Zone()
+	project := s.scope.Project()
+
+	// Since we don't know when the project was created, we must account for
+	// both types of internal-dns:
+	// https://cloud.google.com/compute/docs/internal-dns#instance-fully-qualified-domain-names
+	// [INSTANCE_NAME].[ZONE].c.[PROJECT_ID].internal (newer)
+	addresses = append(addresses, corev1.NodeAddress{
+		Type:    corev1.NodeInternalDNS,
+		Address: fmt.Sprintf("%s.%s.c.%s.internal", machineName, zone, project),
+	})
+	// [INSTANCE_NAME].c.[PROJECT_ID].internal
+	addresses = append(addresses, corev1.NodeAddress{
+		Type:    corev1.NodeInternalDNS,
+		Address: fmt.Sprintf("%s.c.%s.internal", machineName, project),
+	})
+	// Add the machine's name as a known NodeInternalDNS because GCP platform
+	// provides search paths to resolve those.
+	// https://cloud.google.com/compute/docs/internal-dns#resolv.conf
+	addresses = append(addresses, corev1.NodeAddress{
+		Type:    corev1.NodeInternalDNS,
+		Address: machineName,
+	})
 
 	s.scope.SetProviderID()
 	s.scope.SetAddresses(addresses)

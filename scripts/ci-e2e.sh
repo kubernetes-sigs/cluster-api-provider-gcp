@@ -35,6 +35,8 @@ source "${REPO_ROOT}/hack/ensure-kind.sh"
 # shellcheck source=hack/ensure-kustomize.sh
 source "${REPO_ROOT}/hack/ensure-kustomize.sh"
 
+# Configure e2e tests
+export GINKGO_NODES=3
 ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
 mkdir -p "${ARTIFACTS}/logs/"
 

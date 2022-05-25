@@ -354,6 +354,27 @@ spec:
                 description: GCPMachineTemplateResource describes the data needed
                   to create am GCPMachine from a template.
                 properties:
+                  metadata:
+                    description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata'
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: 'Annotations is an unstructured key value map
+                          stored with a resource that may be set by external tools
+                          to store and retrieve arbitrary metadata. They are not queryable
+                          and should be preserved when modifying objects. More info:
+                          http://kubernetes.io/docs/user-guide/annotations'
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: 'Map of string keys and values that can be used
+                          to organize and categorize (scope and select) objects. May
+                          match selectors of replication controllers and services.
+                          More info: http://kubernetes.io/docs/user-guide/labels'
+                        type: object
+                    type: object
                   spec:
                     description: Spec is the specification of the desired behavior
                       of the machine.
@@ -429,6 +450,16 @@ spec:
                       instanceType:
                         description: 'InstanceType is the type of instance to create.
                           Example: n1.standard-2'
+                        type: string
+                      ipForwarding:
+                        default: Enabled
+                        description: IPForwarding Allows this instance to send and
+                          receive packets with non-matching destination or source
+                          IPs. This is required if you plan to use this instance to
+                          forward routes. Defaults to enabled.
+                        enum:
+                        - Enabled
+                        - Disabled
                         type: string
                       preemptible:
                         description: Preemptible defines if instance is preemptible

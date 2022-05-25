@@ -26,14 +26,11 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	"google.golang.org/api/compute/v1"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
-
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	capierrors "sigs.k8s.io/cluster-api/errors"
@@ -100,6 +97,11 @@ func (m *MachineScope) Zone() string {
 	}
 
 	return *m.Machine.Spec.FailureDomain
+}
+
+// Project return the project for the GCPMachine's cluster.
+func (m *MachineScope) Project() string {
+	return m.ClusterGetter.Project()
 }
 
 // Name returns the GCPMachine name.
@@ -204,7 +206,11 @@ func (m *MachineScope) SetAddresses(addressList []corev1.NodeAddress) {
 
 // InstanceImageSpec returns compute instance image attched-disk spec.
 func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
-	image := "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(*m.Machine.Spec.Version), ".", "-")
+	version := ""
+	if m.Machine.Spec.Version != nil {
+		version = *m.Machine.Spec.Version
+	}
+	image := "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
 	sourceImage := path.Join("projects", m.ClusterGetter.Project(), "global", "images", "family", image)
 	if m.GCPMachine.Spec.Image != nil {
 		sourceImage = *m.GCPMachine.Spec.Image
@@ -310,10 +316,9 @@ func (m *MachineScope) InstanceAdditionalMetadataSpec() *compute.Metadata {
 // InstanceSpec returns instance spec.
 func (m *MachineScope) InstanceSpec() *compute.Instance {
 	instance := &compute.Instance{
-		Name:         m.Name(),
-		Zone:         m.Zone(),
-		MachineType:  path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
-		CanIpForward: true,
+		Name:        m.Name(),
+		Zone:        m.Zone(),
+		MachineType: path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
 		Tags: &compute.Tags{
 			Items: append(
 				m.GCPMachine.Spec.AdditionalNetworkTags,
@@ -331,6 +336,11 @@ func (m *MachineScope) InstanceSpec() *compute.Instance {
 		Scheduling: &compute.Scheduling{
 			Preemptible: m.GCPMachine.Spec.Preemptible,
 		},
+	}
+
+	instance.CanIpForward = true
+	if m.GCPMachine.Spec.IPForwarding != nil && *m.GCPMachine.Spec.IPForwarding == infrav1.IPForwardingDisabled {
+		instance.CanIpForward = false
 	}
 
 	instance.Disks = append(instance.Disks, m.InstanceImageSpec())

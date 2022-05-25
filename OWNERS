@@ -6,9 +6,15 @@ approvers:
   - cluster-api-admins
   - cluster-api-maintainers
   - cluster-api-gcp-maintainers
-emeritus_approvers:
-  - roberthbailey
 
 reviewers:
   - cluster-api-maintainers
   - cluster-api-gcp-maintainers
+
+emeritus_approvers:
+  - detiber
+  - gab-satchi
+  - justinsb
+  - krousey
+  - roberthbailey
+  - rsmitty

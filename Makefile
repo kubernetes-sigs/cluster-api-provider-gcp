@@ -69,11 +69,11 @@ ENVSUBST_VER := v1.2.0
 ENVSUBST_BIN := envsubst
 ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
 
-GOLANGCI_LINT_VER := v1.43.0
+GOLANGCI_LINT_VER := v1.45.2
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
 
-KUSTOMIZE_VER := v4.4.0
+KUSTOMIZE_VER := v4.5.2
 KUSTOMIZE_BIN := kustomize
 KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
 
@@ -94,6 +94,10 @@ TIMEOUT := $(shell command -v timeout || command -v gtimeout)
 SETUP_ENVTEST_VER := v0.0.0-20211110210527-619e6b92dab9
 SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)
+
+GO_APIDIFF_VER := v0.1.0
+GO_APIDIFF_BIN := go-apidiff
+GO_APIDIFF := $(TOOLS_BIN_DIR)/$(GO_APIDIFF_BIN)
 
 GOTESTSUM_VER := v1.6.4
 GOTESTSUM_BIN := gotestsum
@@ -154,7 +158,7 @@ test: $(SETUP_ENVTEST) ## Run unit and integration tests
 # Allow overriding the e2e configurations
 GINKGO_FOCUS ?= Workload cluster creation
 GINKGO_SKIP ?= API Version Upgrade
-GINKGO_NODES ?= 3
+GINKGO_NODES ?= 1
 GINKGO_NOCOLOR ?= false
 GINKGO_ARGS ?=
 ARTIFACTS ?= $(ROOT_DIR)/_artifacts
@@ -169,6 +173,12 @@ test-e2e-run: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end t
 		-e2e.config="$(E2E_CONF_FILE_ENVSUBST)" \
 		-e2e.skip-resource-cleanup=$(SKIP_CLEANUP) \
 		-e2e.use-existing-cluster=$(SKIP_CREATE_MGMT_CLUSTER) $(E2E_ARGS)
+
+.PHONY: test-cover
+test-cover:  ## Run unit and integration tests and generate a coverage report
+	$(MAKE) test TEST_ARGS="$(TEST_ARGS) -coverprofile=out/coverage.out"
+	go tool cover -func=out/coverage.out -o out/coverage.txt
+	go tool cover -html=out/coverage.out -o out/coverage.html
 
 .PHONY: test-junit
 test-junit: $(SETUP_ENVTEST) $(GOTESTSUM) ## Run tests with verbose setting and generate a junit report
@@ -225,6 +235,7 @@ $(GOTESTSUM): go.mod # Build gotestsum from tools folder.
 $(KUSTOMIZE): ## Build kustomize from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/kustomize/kustomize/v4 $(KUSTOMIZE_BIN) $(KUSTOMIZE_VER)
 
+
 $(SETUP_ENVTEST): go.mod # Build setup-envtest from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-runtime/tools/setup-envtest $(SETUP_ENVTEST_BIN) $(SETUP_ENVTEST_VER)
 
@@ -236,6 +247,9 @@ $(CONVERSION_GEN): ## Build conversion-gen.
 
 $(RELEASE_NOTES): ## Build release notes.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/release/cmd/release-notes $(RELEASE_NOTES_BIN) $(RELEASE_NOTES_VER)
+
+$(GO_APIDIFF): ## Build go-apidiff from tools folder.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/joelanford/go-apidiff $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
 
 $(GINKGO): ## Build ginkgo.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/onsi/ginkgo/ginkgo $(GINKGO_BIN) $(GINKGO_VER)
@@ -250,6 +264,9 @@ $(KUBECTL): ## Build kubectl
 .PHONY: $(KUBECTL_BIN)
 $(KUBECTL_BIN): $(KUBECTL) ## Building kubectl from tools folder
 
+.PHONY: $(GO_APIDIFF_BIN)
+$(GO_APIDIFF_BIN): $(GO_APIDIFF)
+
 
 ## --------------------------------------
 ## Linting
@@ -257,6 +274,13 @@ $(KUBECTL_BIN): $(KUBECTL) ## Building kubectl from tools folder
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT) ## Lint codebase
+	$(GOLANGCI_LINT) run -v $(GOLANGCI_LINT_EXTRA_ARGS)
+
+.PHONY: lint-fix
+lint-fix: $(GOLANGCI_LINT) ## Lint the codebase and run auto-fixers if supported by the linter
+	GOLANGCI_LINT_EXTRA_ARGS=--fix $(MAKE) lint
+
+lint-full: $(GOLANGCI_LINT) ## Run slower linters to detect possible issues
 	$(GOLANGCI_LINT) run -v --fast=false
 
 ## --------------------------------------
@@ -422,7 +446,7 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST)
 	./hack/install-cert-manager.sh
 
 	# Deploy CAPI
-	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.0/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
+	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.3/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
 
 	# Deploy CAPG
 	kind load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
@@ -509,8 +533,16 @@ clean-temporary: ## Remove all temporary files and folders
 clean-release: ## Remove the release folder
 	rm -rf $(RELEASE_DIR)
 
+.PHONY: apidiff
+apidiff: $(GO_APIDIFF) ## Check for API differences.
+	$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible
+
+.PHONY: format-tiltfile
+format-tiltfile: ## Format the Tiltfile.
+	./hack/verify-starlark.sh fix
+
 .PHONY: verify
-verify: verify-boilerplate verify-modules verify-gen verify-shellcheck
+verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile
 
 .PHONY: verify-boilerplate
 verify-boilerplate:
@@ -519,6 +551,10 @@ verify-boilerplate:
 .PHONY: verify-shellcheck
 verify-shellcheck:
 	./hack/verify-shellcheck.sh
+
+.PHONY: verify-tiltfile
+verify-tiltfile: ## Verify Tiltfile format.
+	./hack/verify-starlark.sh
 
 .PHONY: verify-modules
 verify-modules: modules
