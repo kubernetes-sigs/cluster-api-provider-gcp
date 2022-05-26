@@ -149,6 +149,10 @@ type GCPMachineSpec struct {
 	// +kubebuilder:default=Enabled
 	// +optional
 	IPForwarding *IPForwarding `json:"ipForwarding,omitempty"`
+
+	// FailureDomain is the GCP failure domain for the instance. Core machine failure domain takes precedence over this
+	// field if specified.
+	FailureDomain *string `json:"failureDomain,omitempty"`
 }
 
 // MetadataItem defines a single piece of metadata associated with an instance.

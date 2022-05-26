@@ -42,6 +42,10 @@ func (src *GCPMachine) ConvertTo(dstRaw conversion.Hub) error { // nolint
 		dst.Spec.IPForwarding = restored.Spec.IPForwarding
 	}
 
+	if restored.Spec.FailureDomain != nil {
+		dst.Spec.FailureDomain = restored.Spec.FailureDomain
+	}
+
 	return nil
 }
 

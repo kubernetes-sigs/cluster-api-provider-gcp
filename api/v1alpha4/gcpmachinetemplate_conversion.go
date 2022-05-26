@@ -43,6 +43,10 @@ func (src *GCPMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 		dst.Spec.Template.Spec.IPForwarding = restored.Spec.Template.Spec.IPForwarding
 	}
 
+	if restored.Spec.Template.Spec.FailureDomain != nil {
+		dst.Spec.Template.Spec.FailureDomain = restored.Spec.Template.Spec.FailureDomain
+	}
+
 	return nil
 }
 

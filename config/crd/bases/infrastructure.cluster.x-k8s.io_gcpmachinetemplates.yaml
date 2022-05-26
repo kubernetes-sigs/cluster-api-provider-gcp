@@ -439,6 +439,11 @@ spec:
                         items:
                           type: string
                         type: array
+                      failureDomain:
+                        description: FailureDomain is the GCP failure domain for the
+                          instance. Core machine failure domain takes precedence over
+                          this field if specified.
+                        type: string
                       image:
                         description: Image is the full reference to a valid image
                           to be used for this machine. Takes precedence over ImageFamily.

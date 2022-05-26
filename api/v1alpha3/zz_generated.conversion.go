@@ -572,6 +572,7 @@ func autoConvert_v1beta1_GCPMachineSpec_To_v1alpha3_GCPMachineSpec(in *v1beta1.G
 	out.ServiceAccount = (*ServiceAccount)(unsafe.Pointer(in.ServiceAccount))
 	out.Preemptible = in.Preemptible
 	// WARNING: in.IPForwarding requires manual conversion: does not exist in peer-type
+	// WARNING: in.FailureDomain requires manual conversion: does not exist in peer-type
 	return nil
 }
 

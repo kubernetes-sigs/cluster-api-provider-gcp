@@ -92,11 +92,15 @@ func (m *MachineScope) Cloud() cloud.Cloud {
 
 // Zone returns the FailureDomain for the GCPMachine.
 func (m *MachineScope) Zone() string {
-	if m.Machine.Spec.FailureDomain == nil {
-		return ""
+	if m.Machine.Spec.FailureDomain != nil {
+		return *m.Machine.Spec.FailureDomain
 	}
 
-	return *m.Machine.Spec.FailureDomain
+	if m.GCPMachine.Spec.FailureDomain != nil {
+		return *m.GCPMachine.Spec.FailureDomain
+	}
+
+	return ""
 }
 
 // Project return the project for the GCPMachine's cluster.
