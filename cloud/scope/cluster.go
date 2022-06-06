@@ -115,6 +115,11 @@ func (s *ClusterScope) NetworkName() string {
 	return pointer.StringDeref(s.GCPCluster.Spec.Network.Name, "default")
 }
 
+// NetworkLink returns the partial URL for the network.
+func (s *ClusterScope) NetworkLink() string {
+	return fmt.Sprintf("projects/%s/global/networks/%s", s.Project(), s.NetworkName())
+}
+
 // Network returns the cluster network object.
 func (s *ClusterScope) Network() *infrav1.Network {
 	return &s.GCPCluster.Status.Network
@@ -193,11 +198,10 @@ func (s *ClusterScope) NatRouterSpec() *compute.Router {
 
 // FirewallRulesSpec returns google compute firewall spec.
 func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
-	network := s.Network()
 	firewallRules := []*compute.Firewall{
 		{
 			Name:    fmt.Sprintf("allow-%s-healthchecks", s.Name()),
-			Network: *network.SelfLink,
+			Network: s.NetworkLink(),
 			Allowed: []*compute.FirewallAllowed{
 				{
 					IPProtocol: "TCP",
@@ -217,7 +221,7 @@ func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 		},
 		{
 			Name:    fmt.Sprintf("allow-%s-cluster", s.Name()),
-			Network: *network.SelfLink,
+			Network: s.NetworkLink(),
 			Allowed: []*compute.FirewallAllowed{
 				{
 					IPProtocol: "all",

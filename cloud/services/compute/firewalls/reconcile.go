@@ -49,7 +49,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 // Delete delete cluster firewall compoenents.
 func (s *Service) Delete(ctx context.Context) error {
 	log := log.FromContext(ctx)
-	log.Info("Deleting network resources")
+	log.Info("Deleting firewall resources")
 	for _, spec := range s.scope.FirewallRulesSpec() {
 		log.V(2).Info("Deleting firewall", "name", spec.Name)
 		firewallKey := meta.GlobalKey(spec.Name)
