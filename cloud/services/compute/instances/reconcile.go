@@ -206,7 +206,11 @@ func (s *Service) deregisterControlPlaneInstance(ctx context.Context, instance *
 		InstanceState: "RUNNING",
 	}, filter.None)
 	if err != nil {
-		return err
+		if !gcperrors.IsNotFound(err) {
+			return err
+		}
+
+		return nil
 	}
 
 	instanceSets := sets.NewString()
@@ -224,7 +228,11 @@ func (s *Service) deregisterControlPlaneInstance(ctx context.Context, instance *
 				},
 			},
 		}); err != nil {
-			return err
+			if !gcperrors.IsNotFound(err) {
+				return err
+			}
+
+			return nil
 		}
 	}
 
