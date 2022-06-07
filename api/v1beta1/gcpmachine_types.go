@@ -56,6 +56,16 @@ type AttachedDiskSpec struct {
 	Size *int64 `json:"size,omitempty"`
 }
 
+// IPForwarding represents the IP forwarding configuration for the GCP machine.
+type IPForwarding string
+
+const (
+	// IPForwardingEnabled enables the IP forwarding configuration for the GCP machine.
+	IPForwardingEnabled IPForwarding = "Enabled"
+	// IPForwardingDisabled disables the IP forwarding configuration for the GCP machine.
+	IPForwardingDisabled IPForwarding = "Disabled"
+)
+
 // GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
@@ -132,6 +142,13 @@ type GCPMachineSpec struct {
 	// Preemptible defines if instance is preemptible
 	// +optional
 	Preemptible bool `json:"preemptible,omitempty"`
+
+	// IPForwarding Allows this instance to send and receive packets with non-matching destination or source IPs.
+	// This is required if you plan to use this instance to forward routes. Defaults to enabled.
+	// +kubebuilder:validation:Enum=Enabled;Disabled
+	// +kubebuilder:default=Enabled
+	// +optional
+	IPForwarding *IPForwarding `json:"ipForwarding,omitempty"`
 }
 
 // MetadataItem defines a single piece of metadata associated with an instance.
