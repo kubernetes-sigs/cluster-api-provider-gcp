@@ -157,7 +157,6 @@ spec:
         nodepool: pool1
     spec:
       clusterName: "${CLUSTER_NAME}"
-      failureDomain: "${GCP_REGION}-a"
       version: "${KUBERNETES_VERSION}"
       bootstrap:
         configRef:
