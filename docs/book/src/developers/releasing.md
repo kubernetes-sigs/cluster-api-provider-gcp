@@ -14,7 +14,7 @@
  - Create tag with git
    - `export RELEASE_TAG=v0.4.6` (the tag of the release to be cut)
    - `git tag -s ${RELEASE_TAG} -m "${RELEASE_TAG}"`
-	 - `-s` creates a signed tag, you must have a GPG key [added to your GitHub account](https://docs.github.com/en/enterprise/2.16/user/github/authenticating-to-github/generating-a-new-gpg-key)
+	 - `-s` creates a signed tag, you must have a GPG key [added to your GitHub account](https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key)
    - `git push upstream ${RELEASE_TAG}`
  - `make release` from repo, this will create the release artifacts in the `out/` folder
  - Install the `release-notes` tool according to [instructions](https://github.com/kubernetes/release/blob/master/cmd/release-notes/README.md)

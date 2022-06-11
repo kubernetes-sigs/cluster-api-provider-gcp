@@ -31,7 +31,7 @@ If you prefer to create a new Network, follow [these instructions](https://cloud
 This infrastructure provider sets up Kubernetes clusters using a
 [Global Load Balancer](https://cloud.google.com/load-balancing/) with a public ip address.
 
-Kubernetes nodes, to communicate with the control plane, pull container images from registried (e.g. gcr.io or dockerhub) need to have NAT access or a public ip.
+Kubernetes nodes, to communicate with the control plane, pull container images from registered (e.g. gcr.io or dockerhub) need to have NAT access or a public ip.
 By default, the provider creates Machines without a public IP.
 
 To make sure your cluster can communicate with the outside world, and the load balancer, you can create a [Cloud NAT](https://cloud.google.com/nat/docs/overview) in the region you'd like your Kubernetes cluster to live in by following [these instructions](https://cloud.google.com/nat/docs/using-nat#create_nat).
@@ -57,7 +57,7 @@ gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJ
 
 ### Create a Service Account
 
-To create and manager clusters, this infrastructure providers uses a service account to authenticate with GCP's APIs.
+To create and manage clusters, this infrastructure provider uses a service account to authenticate with GCP's APIs.
 
 From your cloud console, follow [these instructions](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) to create a new service account with `Editor` permissions. Afterwards, generate a JSON Key and store it somewhere safe.
 
