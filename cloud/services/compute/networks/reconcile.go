@@ -52,7 +52,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 // Delete delete cluster network components.
 func (s *Service) Delete(ctx context.Context) error {
 	log := log.FromContext(ctx)
-	log.Info("Deleting firewall resources")
+	log.Info("Deleting network resources")
 	networkKey := meta.GlobalKey(s.scope.NetworkName())
 	log.V(2).Info("Looking for network before deleting", "name", networkKey)
 	network, err := s.networks.Get(ctx, networkKey)
