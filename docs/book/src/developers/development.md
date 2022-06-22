@@ -176,11 +176,11 @@ $ ./scripts/setup-dev-enviroment.sh --clean-network
 
 If you want to develop in both CAPI and CAPG at the same time, then this is the path for you.
 
-To use [Tilt](https://tilt.dev/) for a simplified development workflow, follow the [instructions](https://cluster-api.sigs.k8s.io/developer/tilt.html) in the cluster-api repo.  The instructions will walk you through cloning the Cluster API (CAPI) repository and configuring Tilt to use `kind` to deploy the cluster api management components.
+To use [Tilt](https://tilt.dev/) for a simplified development workflow, follow the [instructions](https://cluster-api.sigs.k8s.io/developer/tilt.html) in the cluster-api repo. The instructions will walk you through cloning the Cluster API (CAPI) repository and configuring Tilt to use `kind` to deploy the cluster api management components.
 
 > you may wish to checkout out the correct version of CAPI to match the [version used in CAPG][go.mod]
 
-Note that `tilt up` will be run from the `cluster-api repository` directory and the `tilt-settings.json` file will point back to the `cluster-api-provider-gcp` repository directory.  Any changes you make to the source code in `cluster-api` or `cluster-api-provider-gcp` repositories will automatically redeployed to the `kind` cluster.
+Note that `tilt up` will be run from the `cluster-api repository` directory and the `tilt-settings.json` file will point back to the `cluster-api-provider-gcp` repository directory. Any changes you make to the source code in `cluster-api` or `cluster-api-provider-gcp` repositories will automatically redeployed to the `kind` cluster.
 
 After you have cloned both repositories, your folder structure should look like:
 
@@ -207,6 +207,57 @@ EOF
 > `$REGISTRY` should be in the format `docker.io/<dockerhub-username>`
 
 The cluster-api management components that are deployed are configured at the `/config` folder of each repository respectively. Making changes to those files will trigger a redeploy of the management cluster components.
+
+#### Debugging
+
+If you would like to debug CAPG you can run the provider with delve. This will then allow you to attach to delve and debug.
+
+To do this you need to use the debug configuration in tilt-settings.json. Full details of the options can be seen [here](https://cluster-api.sigs.k8s.io/developer/tilt.html).
+
+An example tilt-settings.json:
+
+```shell
+{
+  "default_registry": "gcr.io/your-project-name-her",
+  "provider_repos": ["../cluster-api-provider-gcp"],
+  "enable_providers": ["gcp", "kubeadm-bootstrap", "kubeadm-control-plane"],
+  "debug": {
+    "gcp": {
+      "continue": true,
+      "port": 30000,
+      "profiler_port": 40000,
+      "metrics_port": 40001
+    }
+  },
+  "kustomize_substitutions": {
+      "GCP_B64ENCODED_CREDENTIALS": "$(cat PATH_FOR_GCP_CREDENTIALS_JSON | base64 -w0)"
+  }
+}
+```
+
+Once you have run tilt (see section below) you will be able to connect to the running instance of delve.
+
+For vscode, you can use the a launch configuration like this:
+
+```shell
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Core CAPI Controller GCP",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "remotePath": "",
+      "port": 30000,
+      "host": "127.0.0.1",
+      "showLog": true,
+      "trace": "log",
+      "logOutput": "rpc"
+    }
+  ]
+}
+```
 
 #### Deploying a workload cluster
 
