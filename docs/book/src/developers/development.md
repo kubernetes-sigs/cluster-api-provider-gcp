@@ -15,7 +15,7 @@
    - `sudo apt install gettext` on Windows + WSL2.
    - `sudo apt install gettext` on Ubuntu Linux.
 4. Install [KIND][kind]
-   - `GO111MODULE="on" go get sigs.k8s.io/kind@v0.11.1`.
+   - `GO111MODULE="on" go get sigs.k8s.io/kind@v0.14.0`.
 5. Install [Kustomize][kustomize]
    - `brew install kustomize` on macOS.
    - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2, Linux and macOS.
