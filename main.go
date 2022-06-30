@@ -36,6 +36,7 @@ import (
 	infrav1alpha4 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
+	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -295,4 +296,6 @@ func initFlags(fs *pflag.FlagSet) {
 		reconciler.DefaultLoopTimeout,
 		"The maximum duration a reconcile loop can run (e.g. 90m)",
 	)
+
+	feature.MutableGates.AddFlag(fs)
 }
