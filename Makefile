@@ -438,7 +438,7 @@ release-notes: $(RELEASE_NOTES)
 CLUSTER_NAME ?= test1
 
 .PHONY: create-management-cluster
-create-management-cluster: $(KUSTOMIZE) $(ENVSUBST)
+create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	## Create kind management cluster.
 	kind create cluster --name=clusterapi
 
@@ -446,39 +446,39 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST)
 	./hack/install-cert-manager.sh
 
 	# Deploy CAPI
-	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.4/cluster-api-components.yaml | $(ENVSUBST) | kubectl apply -f -
+	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.4/cluster-api-components.yaml | $(ENVSUBST) | $(KUBECTL) apply -f -
 
 	# Deploy CAPG
 	kind load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
-	$(KUSTOMIZE) build config/default | $(ENVSUBST) | kubectl apply -f -
+	$(KUSTOMIZE) build config/default | $(ENVSUBST) | $(KUBECTL) apply -f -
 
 	# Wait for CAPI pods
-	kubectl wait --for=condition=Available --timeout=5m -n capi-system deployment -l cluster.x-k8s.io/provider=cluster-api
-	kubectl wait --for=condition=Available --timeout=5m -n capi-kubeadm-bootstrap-system deployment -l cluster.x-k8s.io/provider=bootstrap-kubeadm
-	kubectl wait --for=condition=Available --timeout=5m -n capi-kubeadm-control-plane-system deployment -l cluster.x-k8s.io/provider=control-plane-kubeadm
+	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-system deployment -l cluster.x-k8s.io/provider=cluster-api
+	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-kubeadm-bootstrap-system deployment -l cluster.x-k8s.io/provider=bootstrap-kubeadm
+	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-kubeadm-control-plane-system deployment -l cluster.x-k8s.io/provider=control-plane-kubeadm
 
 	# Wait for CAPG pods
-	kubectl wait --for=condition=Ready --timeout=5m -n capg-system pod -l cluster.x-k8s.io/provider=infrastructure-gcp
+	$(KUBECTL) wait --for=condition=Ready --timeout=5m -n capg-system pod -l cluster.x-k8s.io/provider=infrastructure-gcp
 
 	# required sleep for when creating management and workload cluster simultaneously
 	sleep 10
-	@echo 'Set kubectl context to the kind management cluster by running "kubectl config set-context kind-clusterapi"'
+	@echo 'Set kubectl context to the kind management cluster by running "$(KUBECTL) config set-context kind-clusterapi"'
 
 .PHONY: create-workload-cluster
-create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST)
+create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	# Create workload Cluster.
-	$(KUSTOMIZE) build templates | $(ENVSUBST) | kubectl apply -f -
+	$(KUSTOMIZE) build templates | $(ENVSUBST) | $(KUBECTL) apply -f -
 
 	# Wait for the kubeconfig to become available.
-	${TIMEOUT} 5m bash -c "while ! kubectl get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
+	${TIMEOUT} 5m bash -c "while ! $(KUBECTL) get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
 	# Get kubeconfig and store it locally.
-	kubectl get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > $(CAPG_WORKER_CLUSTER_KUBECONFIG)
-	${TIMEOUT} 15m bash -c "while ! kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep master; do sleep 1; done"
+	$(KUBECTL) get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > $(CAPG_WORKER_CLUSTER_KUBECONFIG)
+	${TIMEOUT} 15m bash -c "while ! $(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep master; do sleep 1; done"
 
 	# Deploy calico
-	kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://docs.projectcalico.org/manifests/calico.yaml
+	$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
-	@echo 'run "kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) ..." to work with the new target cluster'
+	@echo 'run "$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) ..." to work with the new target cluster'
 
 .PHONY: create-cluster
 create-cluster: create-management-cluster create-workload-cluster ## Create a development Kubernetes cluster on GCP in a KIND management cluster.
@@ -486,7 +486,7 @@ create-cluster: create-management-cluster create-workload-cluster ## Create a de
 .PHONY: delete-workload-cluster
 delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 	@echo 'Your GCP resources will now be deleted, this can take up to 20 minutes'
-	kubectl delete cluster $(CLUSTER_NAME)
+	$(KUBECTL) delete cluster $(CLUSTER_NAME)
 
 .PHONY: kind-reset
 kind-reset: ## Destroys the kind clusters.

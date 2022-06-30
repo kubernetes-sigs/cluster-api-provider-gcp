@@ -2,6 +2,7 @@
 
 envsubst_cmd = "./hack/tools/bin/envsubst"
 tools_bin = "./hack/tools/bin"
+kubectl_cmd = "./hack/tools/bin/kubectl"
 
 #Add tools to path
 os.putenv("PATH", os.getenv("PATH") + ":" + tools_bin)
@@ -42,7 +43,7 @@ if "default_registry" in settings:
 def deploy_capi():
     version = settings.get("capi_version")
     capi_uri = "https://github.com/kubernetes-sigs/cluster-api/releases/download/{}/cluster-api-components.yaml".format(version)
-    cmd = "curl -sSL {} | {} | kubectl apply -f -".format(capi_uri, envsubst_cmd)
+    cmd = "curl -sSL {} | {} | {} apply -f -".format(capi_uri, envsubst_cmd, kubectl_cmd)
     local(cmd, quiet = True)
     if settings.get("extra_args"):
         extra_args = settings.get("extra_args")
@@ -57,7 +58,7 @@ def deploy_capi():
                 patch_args_with_extra_args("capi-kubeadm-bootstrap-system", "capi-kubeadm-bootstrap-controller-manager", kb_extra_args)
 
 def patch_args_with_extra_args(namespace, name, extra_args):
-    args_str = str(local("kubectl get deployments {} -n {} -o jsonpath={{.spec.template.spec.containers[1].args}}".format(name, namespace)))
+    args_str = str(local("{} get deployments {} -n {} -o jsonpath={{.spec.template.spec.containers[1].args}}".format(kubectl_cmd, name, namespace)))
     args_to_add = [arg for arg in extra_args if arg not in args_str]
     if args_to_add:
         args = args_str[1:-1].split()
@@ -67,7 +68,7 @@ def patch_args_with_extra_args(namespace, name, extra_args):
             "path": "/spec/template/spec/containers/1/args",
             "value": args,
         }]
-        local("kubectl patch deployment {} -n {} --type json -p='{}'".format(name, namespace, str(encode_json(patch)).replace("\n", "")))
+        local("{} patch deployment {} -n {} --type json -p='{}'".format(kubectl_cmd, name, namespace, str(encode_json(patch)).replace("\n", "")))
 
 # Users may define their own Tilt customizations in tilt.d. This directory is excluded from git and these files will
 # not be checked in to version control.
@@ -185,9 +186,9 @@ def kustomizesub(folder):
     return yaml
 
 def waitforsystem():
-    local("kubectl wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-bootstrap-system")
-    local("kubectl wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-control-plane-system")
-    local("kubectl wait --for=condition=ready --timeout=300s pod --all -n capi-system")
+    local(kubectl_cmd + "wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-bootstrap-system")
+    local(kubectl_cmd + "wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-control-plane-system")
+    local(kubectl_cmd + "wait --for=condition=ready --timeout=300s pod --all -n capi-system")
 
 ##############################
 # Actual work happens here
