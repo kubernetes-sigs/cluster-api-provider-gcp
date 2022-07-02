@@ -17,16 +17,16 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# install kubectl
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
-cd "${REPO_ROOT}" && make "${KUBECTL##*/}"
+KIND="${REPO_ROOT}/hack/tools/bin/kind"
+make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}"
 
 # desired cluster name; default is "kind"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-capg}"
 export KIND_EXPERIMENTAL_DOCKER_NETWORK="bridge"
 
-if [[ "$(kind get clusters)" =~ .*"${KIND_CLUSTER_NAME}".* ]]; then
+if [[ "$("$(KIND)" get clusters)" =~ .*"${KIND_CLUSTER_NAME}".* ]]; then
   echo "cluster already exists, moving on"
   exit 0
 fi
@@ -52,7 +52,7 @@ fi
 echo "Registry Host: ${reg_host}"
 
 # create a cluster with the local registry enabled in containerd
-cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --config=-
+cat <<EOF | "$(KIND)" create cluster --name "${KIND_CLUSTER_NAME}" --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 containerdConfigPatches:
@@ -76,7 +76,7 @@ nodes:
     protocol: TCP
 EOF
 
-for node in $(kind get nodes --name "${KIND_CLUSTER_NAME}"); do
+for node in $("$(KIND)" get nodes --name "${KIND_CLUSTER_NAME}"); do
   "${KUBECTL}" annotate node "${node}" tilt.dev/registry=localhost:${reg_port};
 done
 
