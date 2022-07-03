@@ -2,6 +2,7 @@
 
 envsubst_cmd = "./hack/tools/bin/envsubst"
 tools_bin = "./hack/tools/bin"
+kind_cmd = "./hack/tools/bin/kind"
 
 #Add tools to path
 os.putenv("PATH", os.getenv("PATH") + ":" + tools_bin)
