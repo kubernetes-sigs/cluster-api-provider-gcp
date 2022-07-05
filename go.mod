@@ -18,7 +18,7 @@ require (
 	k8s.io/klog/v2 v2.70.0
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed
 	sigs.k8s.io/cluster-api v1.1.4
-	sigs.k8s.io/cluster-api/test v1.1.4
+	sigs.k8s.io/cluster-api/test v1.1.5
 	sigs.k8s.io/controller-runtime v0.11.2
 )
 
@@ -39,9 +39,9 @@ require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/coredns/caddy v1.1.0 // indirect
-	github.com/coredns/corefile-migration v1.0.14 // indirect
+	github.com/coredns/corefile-migration v1.0.17 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/distribution v2.7.1+incompatible // indirect
+	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.16+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
