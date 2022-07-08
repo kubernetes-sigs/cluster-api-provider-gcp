@@ -145,14 +145,15 @@ make tilt-up
 ```
 
 Alternatively, you can also run:
+
 ```shell
-$ ./scripts/setup-dev-enviroment.sh
+./scripts/setup-dev-enviroment.sh
 ```
 
 It will setup the network, if you already setup the network you can skip this step for that just run:
 
 ```shell
-$ ./scripts/setup-dev-enviroment.sh --skip-init-network
+./scripts/setup-dev-enviroment.sh --skip-init-network
 ```
 
 By default, the Cluster API components deployed by Tilt have experimental features turned off.
@@ -163,13 +164,13 @@ Once your kind management cluster is up and running, you can [deploy a workload 
 To tear down the kind cluster built by the command above, just run:
 
 ```shell
-$ make kind-reset
+make kind-reset
 ```
 
 And if you need to cleanup the network setup you can run:
 
 ```shell
-$ ./scripts/setup-dev-enviroment.sh --clean-network
+./scripts/setup-dev-enviroment.sh --clean-network
 ```
 
 #### Tilt for dev in both CAPG and CAPI
@@ -210,7 +211,7 @@ The cluster-api management components that are deployed are configured at the `/
 
 #### Debugging
 
-If you would like to debug CAPG you can run the provider with delve. This will then allow you to attach to delve and debug.
+If you would like to debug CAPG you can run the provider with [delve](https://github.com/go-delve/delve), a Go debugger tool. This will then allow you to attach to delve and troubleshoot the processes.
 
 To do this you need to use the debug configuration in tilt-settings.json. Full details of the options can be seen [here](https://cluster-api.sigs.k8s.io/developer/tilt.html).
 
@@ -259,18 +260,26 @@ For vscode, you can use the a launch configuration like this:
 }
 ```
 
+Create a new configuration and add it to the "Debug" menu to configure debugging in GoLand/IntelliJ following [these instructions](https://www.jetbrains.com/help/go/attach-to-running-go-processes-with-debugger.html#step-3-create-the-remote-run-debug-configuration-on-the-client-computer).
+
+Alternatively, you may use delve straight from the CLI by executing a command like this:
+
+```shell
+delve -a tcp://localhost:30000
+```
+
 #### Deploying a workload cluster
 
 After your kind management cluster is up and running with Tilt, you can [configure workload cluster settings](#customizing-the-cluster-deployment) and deploy a workload cluster with the following:
 
 ```shell
-$ make create-workload-cluster
+make create-workload-cluster
 ```
 
 To delete the cluster:
 
 ```shell
-$ make delete-workload-cluster
+make delete-workload-cluster
 ```
 
 ### Submitting PRs and testing
@@ -281,15 +290,14 @@ If you're interested in submitting PRs to the project, please be sure to run som
 Do make sure to set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable with the path to your JSON file. Check out the this [doc](https://cloud.google.com/docs/authentication/production) to generate the credential.
 
 ```shell
-$ make lint # Runs a suite of quick scripts to check code structure
-$ make test # Runs tests on the Go code
+make lint # Runs a suite of quick scripts to check code structure
+make test # Runs tests on the Go code
 ```
 
 #### Executing unit tests
 
 `make test` executes the project's unit tests. These tests do not stand up a
 Kubernetes cluster, nor do they have external dependencies.
-
 
 [go]: https://golang.org/doc/install
 [tilt]: https://docs.tilt.dev/install.html
