@@ -89,6 +89,21 @@ type GCPMachineSpec struct {
 	// +optional
 	Image *string `json:"image,omitempty"`
 
+	// AccleratorType is the full reference to a valid GPU to be used for this machine
+	// +optional
+	AccleratorType *string `json:"AccleratorType,omitempty"`
+
+	// AcceleratorCount is the number of GPUs to be available at the instance creation time
+	// default=1
+	// +optional
+	AcceleratorCount *string `json:"AcceleratorCount,omitempty"`
+
+	// OnHostMaintenance is an option to set the behaviour of selected Google Cloud virtual machine
+	// instance during a maintenance event
+	// default=TERMINATE
+	// +optional
+	OnHostMaintenance *string `json:"OnHostMaintenance,omitempty"`
+
 	// AdditionalLabels is an optional set of tags to add to an instance, in addition to the ones added by default by the
 	// GCP provider. If both the GCPCluster and the GCPMachine specify the same tag name with different values, the
 	// GCPMachine's value takes precedence.
