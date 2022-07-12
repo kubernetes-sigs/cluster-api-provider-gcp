@@ -66,6 +66,18 @@ const (
 	IPForwardingDisabled IPForwarding = "Disabled"
 )
 
+// AcceleratorConfig defines the type & number of accelerator required
+type AcceleratorConfig struct {
+	// AccleratorType is the full reference to a valid GPU to be used for this machine
+	// +required
+	Type string `json:"type,omitempty"`
+
+	// AcceleratorCount is the number of GPUs to be available at the instance creation time
+	// default=1
+	// +optional
+	Count int64 `json:"count,omitempty"`
+}
+
 // GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
@@ -89,20 +101,19 @@ type GCPMachineSpec struct {
 	// +optional
 	Image *string `json:"image,omitempty"`
 
-	// AccleratorType is the full reference to a valid GPU to be used for this machine
-	// +optional
-	AccleratorType *string `json:"AccleratorType,omitempty"`
-
-	// AcceleratorCount is the number of GPUs to be available at the instance creation time
-	// default=1
-	// +optional
-	AcceleratorCount *string `json:"AcceleratorCount,omitempty"`
+	// Accelerator is the reference to a valid GPU Accelerator
+	Accelerator *AcceleratorConfig `json:"accelerator,omitempty"`
 
 	// OnHostMaintenance is an option to set the behaviour of selected Google Cloud virtual machine
 	// instance during a maintenance event
-	// default=TERMINATE
+	// default=MIGRATE
 	// +optional
-	OnHostMaintenance *string `json:"OnHostMaintenance,omitempty"`
+	OnHostMaintenance string `json:"onHostMaintenance,omitempty"`
+
+	// AutomaticRestart defines if the instance should be restarted when it is
+	// default=True
+	// +optional
+	AutomaticRestart bool `json:"automaticRestart,omitempty"`
 
 	// AdditionalLabels is an optional set of tags to add to an instance, in addition to the ones added by default by the
 	// GCP provider. If both the GCPCluster and the GCPMachine specify the same tag name with different values, the
