@@ -23,15 +23,13 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# install kubectl
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
-cd "${REPO_ROOT}" && make "${KUBECTL##*/}"
+KIND="${REPO_ROOT}/hack/tools/bin/kind"
+make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}"
 
 # shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
-# shellcheck source=hack/ensure-kind.sh
-source "${REPO_ROOT}/hack/ensure-kind.sh"
 # shellcheck source=hack/ensure-kustomize.sh
 source "${REPO_ROOT}/hack/ensure-kustomize.sh"
 
@@ -48,10 +46,10 @@ GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS")
 export GCP_B64ENCODED_CREDENTIALS
 export KUBERNETES_MAJOR_VERSION="1"
 export KUBERNETES_MINOR_VERSION="23"
-export KUBERNETES_PATCH_VERSION="6"
+export KUBERNETES_PATCH_VERSION="8"
 export KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
 # using prebuilt image from image-builder project the image is built everyday and the job is available here https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
-export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-1804-${KUBERNETES_VERSION//[.+]/-}-nightly"
+export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-${KUBERNETES_VERSION//[.+]/-}-nightly"
 
 init_image() {
   if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then

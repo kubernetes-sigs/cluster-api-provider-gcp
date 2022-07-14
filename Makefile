@@ -73,6 +73,10 @@ GOLANGCI_LINT_VER := v1.46.2
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
 
+KIND_VER := v0.14.0
+KIND_BIN := kind
+KIND := $(TOOLS_BIN_DIR)/$(KIND_BIN)-$(KIND_VER)
+
 KUSTOMIZE_VER := v4.5.2
 KUSTOMIZE_BIN := kustomize
 KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
@@ -261,11 +265,17 @@ $(KUBECTL): ## Build kubectl
 	ln -sf $(KUBECTL) $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)
 	chmod +x $(KUBECTL) $(TOOLS_BIN_DIR)/$(KUBECTL_BIN)
 
+$(KIND): ## Build kind into tools folder
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/kind $(KIND_BIN) $(KIND_VER)
+
 .PHONY: $(KUBECTL_BIN)
 $(KUBECTL_BIN): $(KUBECTL) ## Building kubectl from tools folder
 
 .PHONY: $(GO_APIDIFF_BIN)
 $(GO_APIDIFF_BIN): $(GO_APIDIFF)
+
+.PHONY: $(KIND_BIN)
+$(KIND_BIN): $(KIND) ## Building Kind from tools folder
 
 
 ## --------------------------------------
@@ -437,8 +447,13 @@ release-notes: $(RELEASE_NOTES)
 
 CLUSTER_NAME ?= test1
 
+.PHONY: install-tools # populate hack/tools/bin
+install-tools: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(GINKGO) $(KIND)
+
 .PHONY: create-management-cluster
-create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
+
+create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KIND) $(KUBECTL)
+
 	## Create kind management cluster.
 	kind create cluster --name=clusterapi
 
@@ -449,7 +464,7 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.4/cluster-api-components.yaml | $(ENVSUBST) | $(KUBECTL) apply -f -
 
 	# Deploy CAPG
-	kind load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
+	$(KIND) load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
 	$(KUSTOMIZE) build config/default | $(ENVSUBST) | $(KUBECTL) apply -f -
 
 	# Wait for CAPI pods
@@ -490,9 +505,9 @@ delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 
 .PHONY: kind-reset
 kind-reset: ## Destroys the kind clusters.
-	kind delete cluster --name=capg || true
-	kind delete cluster --name=capg-e2e || true
-	kind delete cluster --name=clusterapi || true
+	$(KIND) delete cluster --name=capg || true
+	$(KIND) delete cluster --name=capg-e2e || true
+	$(KIND) delete cluster --name=clusterapi || true
 
 ## --------------------------------------
 ## Tilt / Kind

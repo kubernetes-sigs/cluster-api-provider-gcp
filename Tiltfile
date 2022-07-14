@@ -3,6 +3,7 @@
 envsubst_cmd = "./hack/tools/bin/envsubst"
 tools_bin = "./hack/tools/bin"
 kubectl_cmd = "./hack/tools/bin/kubectl"
+kind_cmd = "./hack/tools/bin/kind"
 
 #Add tools to path
 os.putenv("PATH", os.getenv("PATH") + ":" + tools_bin)
@@ -17,9 +18,9 @@ settings = {
     "deploy_cert_manager": True,
     "preload_images_for_kind": True,
     "kind_cluster_name": "capg",
-    "capi_version": "v1.1.4",
+    "capi_version": "v1.1.5",
     "cert_manager_version": "v1.1.0",
-    "kubernetes_version": "v1.22.3",
+    "kubernetes_version": "v1.22.11",
 }
 
 keys = ["GCP_B64ENCODED_CREDENTIALS"]
