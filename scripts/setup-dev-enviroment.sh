@@ -26,8 +26,7 @@ cd "${REPO_ROOT}" || exit 1
 
 # shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
-# shellcheck source=hack/ensure-kubectl.sh
-source "${REPO_ROOT}/hack/ensure-kubectl.sh"
+
 
 # Verify the required Environment Variables are present.
 : "${GCP_REGION:?Environment variable empty or not defined.}"
