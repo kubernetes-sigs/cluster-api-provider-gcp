@@ -36,6 +36,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+var (
+	fakeBoolFalse = false
+	fakeBoolTrue  = true
+)
+
 func init() {
 	_ = clusterv1.AddToScheme(scheme.Scheme)
 	_ = infrav1.AddToScheme(scheme.Scheme)
@@ -127,6 +132,24 @@ var fakeGCPMachine = &infrav1.GCPMachine{
 	},
 }
 
+var fakeGCPMachineWithAcceleratorConfig = &infrav1.GCPMachine{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-machine",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPMachineSpec{
+		AdditionalLabels: map[string]string{
+			"foo": "bar",
+		},
+		AcceleratorConfigs: &infrav1.AcceleratorConfig{
+			Type:  "nvidia-tesla-t4",
+			Count: 1,
+		},
+		OnHostMaintenance: "TERMINATE",
+		AutomaticRestart:  true,
+	},
+}
+
 func TestService_createOrGetInstance(t *testing.T) {
 	fakec := fake.NewClientBuilder().
 		WithScheme(scheme.Scheme).
@@ -146,6 +169,16 @@ func TestService_createOrGetInstance(t *testing.T) {
 		Client:        fakec,
 		Machine:       fakeMachine,
 		GCPMachine:    fakeGCPMachine,
+		ClusterGetter: clusterScope,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	machineScopeWithAcceleratorConfig, err := scope.NewMachineScope(scope.MachineScopeParams{
+		Client:        fakec,
+		Machine:       fakeMachine,
+		GCPMachine:    fakeGCPMachineWithAcceleratorConfig,
 		ClusterGetter: clusterScope,
 	})
 	if err != nil {
@@ -244,8 +277,10 @@ func TestService_createOrGetInstance(t *testing.T) {
 						Network: "projects/my-proj/global/networks/default",
 					},
 				},
-				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
-				Scheduling: &compute.Scheduling{},
+				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{
+					AutomaticRestart: &fakeBoolFalse,
+				},
 				ServiceAccounts: []*compute.ServiceAccount{
 					{
 						Email:  "default",
@@ -304,8 +339,10 @@ func TestService_createOrGetInstance(t *testing.T) {
 						Network: "projects/my-proj/global/networks/default",
 					},
 				},
-				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
-				Scheduling: &compute.Scheduling{},
+				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{
+					AutomaticRestart: &fakeBoolFalse,
+				},
 				ServiceAccounts: []*compute.ServiceAccount{
 					{
 						Email:  "default",
@@ -361,8 +398,10 @@ func TestService_createOrGetInstance(t *testing.T) {
 						Network: "projects/my-proj/global/networks/default",
 					},
 				},
-				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instances/my-machine",
-				Scheduling: &compute.Scheduling{},
+				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instances/my-machine",
+				Scheduling: &compute.Scheduling{
+					AutomaticRestart: &fakeBoolFalse,
+				},
 				ServiceAccounts: []*compute.ServiceAccount{
 					{
 						Email:  "default",
@@ -376,6 +415,72 @@ func TestService_createOrGetInstance(t *testing.T) {
 					},
 				},
 				Zone: "us-central1-a",
+			},
+		},
+		{
+			name:  "Accelerator Config exist should create accelerator enable instance",
+			scope: func() Scope { return machineScopeWithAcceleratorConfig },
+			mockInstance: &cloud.MockInstances{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
+			},
+			wantErr: false,
+			want: &compute.Instance{
+				Name:         "my-machine",
+				CanIpForward: true,
+				Disks: []*compute.AttachedDisk{
+					{
+						AutoDelete: true,
+						Boot:       true,
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-gpu-1804-k8s-v1-19",
+						},
+					},
+				},
+				Labels: map[string]string{
+					"capg-role":               "node",
+					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
+				},
+				MachineType: "zones/us-central1-c/machineTypes",
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{
+							Key:   "user-data",
+							Value: pointer.String("Zm9vCg=="),
+						},
+					},
+				},
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network: "projects/my-proj/global/networks/default",
+					},
+				},
+				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{
+					AutomaticRestart:  &fakeBoolTrue,
+					OnHostMaintenance: "TERMINATE",
+				},
+				ServiceAccounts: []*compute.ServiceAccount{
+					{
+						Email:  "default",
+						Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
+					},
+				},
+				Tags: &compute.Tags{
+					Items: []string{
+						"my-cluster-node",
+						"my-cluster",
+					},
+				},
+				Zone: "us-central1-c",
+				GuestAccelerators: []*compute.AcceleratorConfig{
+					{
+						AcceleratorType:  "projects/my-proj/zones/us-central1-c/acceleratorTypes/nvidia-tesla-t4",
+						AcceleratorCount: 1,
+					},
+				},
 			},
 		},
 	}

@@ -492,6 +492,30 @@ spec:
           spec:
             description: GCPMachineSpec defines the desired state of GCPMachine.
             properties:
+              acceleratorConfigs:
+                description: AcceleratorConfigs is the gpuAccelerator configuration
+                  for the GCP machine.
+                properties:
+                  count:
+                    default: 1
+                    description: Count is the number of accelerators to be used for
+                      the GCP machine.
+                    minimum: 1
+                    type: integer
+                  type:
+                    description: Type is the type of the GPU accelerator to be used
+                      for the GCP machine.
+                    enum:
+                    - nvidia-tesla-k80
+                    - nvidia-tesla-p100
+                    - nvidia-tesla-v100
+                    - nvidia-tesla-a100
+                    - nvidia-tesla-p4
+                    - nvidia-tesla-t4
+                    type: string
+                required:
+                - type
+                type: object
               additionalDisks:
                 description: AdditionalDisks are optional non-boot attached disks.
                 items:
@@ -548,6 +572,11 @@ spec:
                 items:
                   type: string
                 type: array
+              automaticRestart:
+                default: true
+                description: AutomaticRestart is whether the instance should be automatically
+                  restarted if it is terminated by GCP.
+                type: boolean
               image:
                 description: Image is the full reference to a valid image to be used
                   for this machine. Takes precedence over ImageFamily.
@@ -569,6 +598,15 @@ spec:
                 enum:
                 - Enabled
                 - Disabled
+                type: string
+              onHostMaintenance:
+                default: MIGRATE
+                description: OnHostMaintenance is the action to take when the host
+                  machine is being upgraded. It is either "TERMINATE" or "MIGRATE"
+                  depending on the machine type and preemptibility.
+                enum:
+                - TERMINATE
+                - MIGRATE
                 type: string
               preemptible:
                 description: Preemptible defines if instance is preemptible

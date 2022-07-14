@@ -215,11 +215,19 @@ func (m *MachineScope) SetAddresses(addressList []corev1.NodeAddress) {
 
 // InstanceImageSpec returns compute instance image attched-disk spec.
 func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
+	var image string
+
 	version := ""
 	if m.Machine.Spec.Version != nil {
 		version = *m.Machine.Spec.Version
 	}
-	image := "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
+
+	if m.GCPMachine.Spec.AcceleratorConfigs != nil {
+		image = "capi-ubuntu-gpu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
+	} else {
+		image = "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
+	}
+
 	sourceImage := path.Join("projects", m.ClusterGetter.Project(), "global", "images", "family", image)
 	if m.GCPMachine.Spec.Image != nil {
 		sourceImage = *m.GCPMachine.Spec.Image
@@ -343,8 +351,19 @@ func (m *MachineScope) InstanceSpec() *compute.Instance {
 			Additional: m.ClusterGetter.AdditionalLabels().AddLabels(m.GCPMachine.Spec.AdditionalLabels),
 		}),
 		Scheduling: &compute.Scheduling{
-			Preemptible: m.GCPMachine.Spec.Preemptible,
+			Preemptible:       m.GCPMachine.Spec.Preemptible,
+			AutomaticRestart:  &m.GCPMachine.Spec.AutomaticRestart,
+			OnHostMaintenance: m.GCPMachine.Spec.OnHostMaintenance,
 		},
+	}
+
+	if m.GCPMachine.Spec.AcceleratorConfigs != nil {
+		instance.GuestAccelerators = []*compute.AcceleratorConfig{
+			{
+				AcceleratorType:  fmt.Sprintf("projects/%s/zones/%s/acceleratorTypes/%s", m.Project(), m.Zone(), string(m.GCPMachine.Spec.AcceleratorConfigs.Type)),
+				AcceleratorCount: int64(m.GCPMachine.Spec.AcceleratorConfigs.Count),
+			},
+		}
 	}
 
 	instance.CanIpForward = true

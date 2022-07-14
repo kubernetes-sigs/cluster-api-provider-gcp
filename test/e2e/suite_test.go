@@ -89,6 +89,9 @@ var (
 
 	// kubetestRepoListPath
 	kubetestRepoListPath string
+
+	// gcpCredentials is the path to the GCP credentials file.
+	gcpCredentials string
 )
 
 func init() {
@@ -117,6 +120,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(configPath).To(BeAnExistingFile(), "Invalid test suite argument. e2e.config should be an existing file.")
 	Expect(os.MkdirAll(artifactFolder, 0755)).To(Succeed(), "Invalid test suite argument. Can't create e2e.artifacts-folder %q", artifactFolder)
 
+	By("Creating the compute service")
+	gcpCredentials = os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+	Expect(gcpCredentials).ToNot(BeEmpty(), "the GOOGLE_APPLICATION_CREDENTIALS is not set to the gcp credentials file")
+	
 	By("Initializing a runtime.Scheme with all the GVK relevant for this test")
 	scheme := initScheme()
 

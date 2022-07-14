@@ -43,6 +43,13 @@ func (src *GCPMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 		dst.Spec.Template.Spec.IPForwarding = restored.Spec.Template.Spec.IPForwarding
 	}
 
+	if restored.Spec.Template.Spec.AcceleratorConfigs != nil {
+		dst.Spec.Template.Spec.AcceleratorConfigs = restored.Spec.Template.Spec.AcceleratorConfigs
+	}
+
+	dst.Spec.Template.Spec.AutomaticRestart = restored.Spec.Template.Spec.AutomaticRestart
+	dst.Spec.Template.Spec.OnHostMaintenance = restored.Spec.Template.Spec.OnHostMaintenance
+
 	return nil
 }
 

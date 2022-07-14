@@ -46,6 +46,14 @@ var _ webhook.Validator = &GCPMachine{}
 func (m *GCPMachine) ValidateCreate() error {
 	clusterlog.Info("validate create", "name", m.Name)
 
+	if m.Spec.AcceleratorConfigs != nil {
+		if m.Spec.OnHostMaintenance == "MIGRATE" {
+			return errors.New("OnHostMaintenance cannot be set to MIGRATE when AcceleratorConfig is set")
+		}
+		if !m.Spec.AutomaticRestart {
+			return errors.New("AutomaticRestart cannot be set to false when AcceleratorConfig is set")
+		}
+	}
 	return nil
 }
 
@@ -79,13 +87,32 @@ func (m *GCPMachine) ValidateUpdate(old runtime.Object) error {
 	delete(oldGCPMachineSpec, "additionalNetworkTags")
 	delete(newGCPMachineSpec, "additionalNetworkTags")
 
+	// allow changes to OnHostMaintenance
+	delete(oldGCPMachineSpec, "onHostMaintenance")
+	delete(newGCPMachineSpec, "onHostMaintenance")
+
+	// allow changes to AutomaticRestart
+	delete(oldGCPMachineSpec, "automaticRestart")
+	delete(newGCPMachineSpec, "automaticRestart")
+
 	if !reflect.DeepEqual(oldGCPMachineSpec, newGCPMachineSpec) {
 		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.Forbidden(field.NewPath("spec"), "cannot be modified"),
 		})
 	}
 
-	return nil
+	errs := field.ErrorList{}
+	if !reflect.DeepEqual(oldGCPMachineSpec, newGCPMachineSpec) {
+		errs = append(errs, field.Invalid(field.NewPath("spec", "AcceleratorConfig"),
+			m.Spec.AcceleratorConfigs, "cannot be modified"),
+		)
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, errs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.

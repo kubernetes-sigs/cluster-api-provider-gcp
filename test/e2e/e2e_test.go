@@ -147,4 +147,49 @@ var _ = Describe("Workload cluster creation", func() {
 			}, result)
 		})
 	})
+
+	Context("Creating a GPU enabled cluster", func() {
+		It("should create a cluster with GPU enabled worker nodes", func() {
+			clusterName := fmt.Sprintf("capg-e2e-%s", util.RandomString(6))
+
+			By("Initialize a 1 worker node cluster with GPUs attached")
+			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "gpu",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: pointer.Int64Ptr(1),
+					WorkerMachineCount:       pointer.Int64Ptr(1),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+			}, result)
+
+			workerMachines := framework.GetMachinesByMachineDeployments(ctx, framework.GetMachinesByMachineDeploymentsInput{
+				Lister:            bootstrapClusterProxy.GetClient(),
+				ClusterName:       clusterName,
+				Namespace:         namespace.Name,
+				MachineDeployment: *result.MachineDeployments[0],
+			})
+
+			Expect(workerMachines).To(HaveLen(1), "expecting 1 worker machine")
+
+			By("Verifying that the GPUs are attached to the worker node")
+			gcpProjectID := result.GCPCluster.Spec.ProjectID
+			VerifyMachineGPUAttachedSpec(ctx, VerifyMachineGPUAttachedSpecInput{
+				GCPProjectID:          gcpProjectID,
+				GCPCredentials:        gcpCredentials,
+				BootstrapClusterProxy: bootstrapClusterProxy,
+				Machine:               &workerMachines[0],
+				GPUType:               "nvidia-tesla-t4",
+				GPUCount: 1,
+			})
+		})
+	})
 })

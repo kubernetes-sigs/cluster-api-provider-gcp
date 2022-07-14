@@ -61,6 +61,8 @@ providers:
       targetName: "metadata.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci.yaml"
       targetName: "cluster-template.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gpu.yaml"
+      targetName: "cluster-template-gpu.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-prow-ci-version.yaml"
       targetName: "cluster-template-conformance-ci-artifacts.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-upgrades.yaml"

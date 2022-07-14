@@ -66,6 +66,41 @@ const (
 	IPForwardingDisabled IPForwarding = "Disabled"
 )
 
+// AcceleratorType is a type to use to define which accelerator type will be used.
+type AcceleratorType string
+
+// All supported GPU accelerator types.
+const (
+	AcceleratorTypeNvidiaTeslaT4   AcceleratorType = "nvidia-tesla-t4"
+	AcceleratorTypeNvidiaTeslaP4   AcceleratorType = "nvidia-tesla-p4"
+	AcceleratorTypeNvidiaTeslaP100 AcceleratorType = "nvidia-tesla-p100"
+	AcceleratorTypeNvidiaTeslaA100 AcceleratorType = "nvidia-tesla-a100"
+	AcceleratorTypeNvidiaTeslaV100 AcceleratorType = "nvidia-tesla-v100"
+	AcceleratorTypeNvidiaTeslaK80  AcceleratorType = "nvidia-tesla-k80"
+)
+
+// AcceleratorConfig is the GPU accelerator configuration for the GCP machine.
+type AcceleratorConfig struct {
+	// Type is the type of the GPU accelerator to be used for the GCP machine.
+	// +kubebuilder:validation:Enum=nvidia-tesla-k80;nvidia-tesla-p100;nvidia-tesla-v100;nvidia-tesla-a100;nvidia-tesla-p4;nvidia-tesla-t4
+	Type AcceleratorType `json:"type"`
+
+	// Count is the number of accelerators to be used for the GCP machine.
+	// +kubebuilder:default:=1
+	// +kubebuilder:validation:Minimum=1
+	Count int `json:"count,omitempty"`
+}
+
+// OnHostMaintenance determines the behavior when a maintenance event occurs that might the machine to reboot.
+type OnHostMaintenance string
+
+const (
+	// OnHostMaintenanceMigrate is the on-host maintenance action to migrate the VM to a new host when the host is down.
+	OnHostMaintenanceMigrate OnHostMaintenance = "MIGRATE"
+	// OnHostMaintenanceTerminate is the on-host maintenance action to terminate the VM when the preemptible VM host is down.
+	OnHostMaintenanceTerminate OnHostMaintenance = "TERMINATE"
+)
+
 // GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
@@ -88,6 +123,22 @@ type GCPMachineSpec struct {
 	// Takes precedence over ImageFamily.
 	// +optional
 	Image *string `json:"image,omitempty"`
+
+	// AcceleratorConfigs is the gpuAccelerator configuration for the GCP machine.
+	// +optional
+	AcceleratorConfigs *AcceleratorConfig `json:"acceleratorConfigs,omitempty"`
+
+	// OnHostMaintenance is the action to take when the host machine is being upgraded.
+	// It is either "TERMINATE" or "MIGRATE" depending on the machine type and preemptibility.
+	// +kubebuilder:validation:Enum=TERMINATE;MIGRATE
+	// +kubebuilder:default=MIGRATE
+	// +optional
+	OnHostMaintenance string `json:"onHostMaintenance,omitempty"`
+
+	// AutomaticRestart is whether the instance should be automatically restarted if it is terminated by GCP.
+	// +kubebuilder:default=true
+	// +optional
+	AutomaticRestart bool `json:"automaticRestart"`
 
 	// AdditionalLabels is an optional set of tags to add to an instance, in addition to the ones added by default by the
 	// GCP provider. If both the GCPCluster and the GCPMachine specify the same tag name with different values, the

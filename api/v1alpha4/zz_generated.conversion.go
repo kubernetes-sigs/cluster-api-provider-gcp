@@ -734,6 +734,9 @@ func autoConvert_v1beta1_GCPMachineSpec_To_v1alpha4_GCPMachineSpec(in *v1beta1.G
 	out.ProviderID = (*string)(unsafe.Pointer(in.ProviderID))
 	out.ImageFamily = (*string)(unsafe.Pointer(in.ImageFamily))
 	out.Image = (*string)(unsafe.Pointer(in.Image))
+	// WARNING: in.AcceleratorConfigs requires manual conversion: does not exist in peer-type
+	// WARNING: in.OnHostMaintenance requires manual conversion: does not exist in peer-type
+	// WARNING: in.AutomaticRestart requires manual conversion: does not exist in peer-type
 	out.AdditionalLabels = *(*Labels)(unsafe.Pointer(&in.AdditionalLabels))
 	out.AdditionalMetadata = *(*[]MetadataItem)(unsafe.Pointer(&in.AdditionalMetadata))
 	out.PublicIP = (*bool)(unsafe.Pointer(in.PublicIP))
