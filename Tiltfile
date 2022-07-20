@@ -50,7 +50,7 @@ def deploy_capi():
         if extra_args.get("core"):
             core_extra_args = extra_args.get("core")
             if core_extra_args:
-                for namespace in ["capi-system", "capi-webhook-system"]:
+                for namespace in ["capi-system"]:
                     patch_args_with_extra_args(namespace, "capi-controller-manager", core_extra_args)
         if extra_args.get("kubeadm-bootstrap"):
             kb_extra_args = extra_args.get("kubeadm-bootstrap")
