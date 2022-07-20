@@ -147,7 +147,7 @@ type SubnetSpec struct {
 	// If this field is not explicitly set, it will not appear in get
 	// listings. If not set the default behavior is to disable flow logging.
 	// +optional
-	EnableFlowLogs *bool `json:"routeTableId"`
+	EnableFlowLogs *bool `json:"enableFlowLogs"`
 }
 
 // String returns a string representation of the subnet.
