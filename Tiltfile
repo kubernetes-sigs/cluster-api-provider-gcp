@@ -58,14 +58,14 @@ def deploy_capi():
                 patch_args_with_extra_args("capi-kubeadm-bootstrap-system", "capi-kubeadm-bootstrap-controller-manager", kb_extra_args)
 
 def patch_args_with_extra_args(namespace, name, extra_args):
-    args_str = str(local("kubectl get deployments {} -n {} -o jsonpath={{.spec.template.spec.containers[1].args}}".format(name, namespace)))
+    args_str = str(local("kubectl get deployments {} -n {} -o jsonpath={{.spec.template.spec.containers[0].args}}".format(name, namespace)))
     args_to_add = [arg for arg in extra_args if arg not in args_str]
     if args_to_add:
         args = args_str[1:-1].split()
         args.extend(args_to_add)
         patch = [{
             "op": "replace",
-            "path": "/spec/template/spec/containers/1/args",
+            "path": "/spec/template/spec/containers/0/args",
             "value": args,
         }]
         local("kubectl patch deployment {} -n {} --type json -p='{}'".format(name, namespace, str(encode_json(patch)).replace("\n", "")))
