@@ -53,6 +53,7 @@ E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/gcp-ci.yaml
 E2E_CONF_FILE_ENVSUBST := $(ROOT_DIR)/test/e2e/config/gcp-ci-envsubst.yaml
 E2E_DATA_DIR ?= $(ROOT_DIR)/test/e2e/data
 KUBETEST_CONF_PATH ?= $(abspath $(E2E_DATA_DIR)/kubetest/conformance.yaml)
+CONVERSION_VERIFIER:= $(TOOLS_BIN_DIR)/conversion-verifier
 
 # Binaries.
 CLUSTERCTL := $(BIN_DIR)/clusterctl
@@ -255,6 +256,9 @@ $(RELEASE_NOTES): ## Build release notes.
 $(GO_APIDIFF): ## Build go-apidiff from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/joelanford/go-apidiff $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
 
+$(CONVERSION_VERIFIER): go.mod
+	cd $(TOOLS_DIR); go build -tags=tools -o $@ sigs.k8s.io/cluster-api/hack/tools/conversion-verifier
+
 $(GINKGO): ## Build ginkgo.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/onsi/ginkgo/ginkgo $(GINKGO_BIN) $(GINKGO_VER)
 
@@ -300,6 +304,7 @@ lint-full: $(GOLANGCI_LINT) ## Run slower linters to detect possible issues
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
 	go mod tidy
+	cd $(TOOLS_DIR); go mod tidy
 
 .PHONY: generate
 generate: ## Generate code
@@ -555,7 +560,7 @@ format-tiltfile: ## Format the Tiltfile.
 	./hack/verify-starlark.sh fix
 
 .PHONY: verify
-verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile
+verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile verify-conversions
 
 .PHONY: verify-boilerplate
 verify-boilerplate:
@@ -568,6 +573,10 @@ verify-shellcheck:
 .PHONY: verify-tiltfile
 verify-tiltfile: ## Verify Tiltfile format.
 	./hack/verify-starlark.sh
+
+.PHONY: verify-conversions
+verify-conversions: $(CONVERSION_VERIFIER) ## verifies expected API conversion are in place
+	cd $(ROOT_DIR); $(CONVERSION_VERIFIER)
 
 .PHONY: verify-modules
 verify-modules: modules

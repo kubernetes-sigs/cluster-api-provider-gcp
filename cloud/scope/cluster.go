@@ -172,6 +172,7 @@ func (s *ClusterScope) NetworkSpec() *compute.Network {
 		Name:                  s.NetworkName(),
 		Description:           infrav1.ClusterTagKey(s.Name()),
 		AutoCreateSubnetworks: createSubnet,
+		ForceSendFields:       []string{"AutoCreateSubnetworks"},
 	}
 
 	return network
