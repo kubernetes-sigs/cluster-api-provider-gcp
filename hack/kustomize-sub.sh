@@ -17,5 +17,10 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-root=$(dirname "${BASH_SOURCE[0]}")
-"$root/tools/bin/kustomize" build "$1" | "$root/tools/bin/envsubst"
+REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+KUSTOMIZE="${REPO_ROOT}/hack/tools/bin/kustomize"
+envsubst="${REPO_ROOT}/hack/tools/bin/envsubst"
+make --directory="${REPO_ROOT}" "${KUSTOMIZE##*/}" "${envsubst##*/}"
+
+"${KUSTOMIZE}" build "$1" | "${envsubst}"
+
