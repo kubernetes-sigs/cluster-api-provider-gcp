@@ -100,7 +100,7 @@ SETUP_ENVTEST_VER := v0.0.0-20211110210527-619e6b92dab9
 SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)
 
-GO_APIDIFF_VER := v0.1.0
+GO_APIDIFF_VER := v0.4.0
 GO_APIDIFF_BIN := go-apidiff
 GO_APIDIFF := $(TOOLS_BIN_DIR)/$(GO_APIDIFF_BIN)
 
@@ -553,7 +553,16 @@ clean-release: ## Remove the release folder
 
 .PHONY: apidiff
 apidiff: $(GO_APIDIFF) ## Check for API differences.
-	$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible
+	@$(call checkdiff) > /dev/null
+	@if ($(call checkdiff) | grep "api/"); then \
+		$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible; \
+	else \
+		echo "No changes to 'api/'. Nothing to do."; \
+	fi
+
+define checkdiff
+	git --no-pager diff --name-only FETCH_HEAD
+endef
 
 .PHONY: format-tiltfile
 format-tiltfile: ## Format the Tiltfile.
