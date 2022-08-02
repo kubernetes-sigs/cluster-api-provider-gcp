@@ -94,7 +94,7 @@ def validate_auth():
     substitutions = settings.get("kustomize_substitutions", {})
     missing = [k for k in keys if k not in substitutions]
     if missing:
-        fail("missing kustomize_substitutions keys {} in tilt-setting.json".format(missing))
+        fail("missing kustomize_substitutions keys {} in tilt-settings.json".format(missing))
 
 tilt_helper_dockerfile_header = """
 # Tilt image
@@ -187,9 +187,9 @@ def kustomizesub(folder):
     return yaml
 
 def waitforsystem():
-    local(kubectl_cmd + "wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-bootstrap-system")
-    local(kubectl_cmd + "wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-control-plane-system")
-    local(kubectl_cmd + "wait --for=condition=ready --timeout=300s pod --all -n capi-system")
+    local(kubectl_cmd + " wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-bootstrap-system")
+    local(kubectl_cmd + " wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-control-plane-system")
+    local(kubectl_cmd + " wait --for=condition=ready --timeout=300s pod --all -n capi-system")
 
 ##############################
 # Actual work happens here

@@ -105,13 +105,14 @@ rather than Windows.
 
 ### Using Tilt
 
-Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster.The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPG and CAPI, then follow the [CAPI and CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
+Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster. The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPG and CAPI, then follow the [CAPI and CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
 
 #### Tilt for dev in CAPG
 
 If you want to develop in CAPG and get a local development cluster working quickly, this is the path for you.
 
-From the root of the CAPG repository and after configuring the environment variables, you can run the following to generate your `tilt-settings.json` file:
+From the root of the CAPG repository, run the following to generate a `tilt-settings.json` file with your GCP
+service account credentials:
 
 ```shell
 $ cat <<EOF > tilt-settings.json
@@ -123,7 +124,7 @@ $ cat <<EOF > tilt-settings.json
 EOF
 ```
 
-Need setup some environment variables:
+Set the following environment variables with the appropriate values for your environment:
 
 ```shell
 $ export GCP_REGION="<GCP_REGION>" \
@@ -270,7 +271,8 @@ delve -a tcp://localhost:30000
 
 #### Deploying a workload cluster
 
-After your kind management cluster is up and running with Tilt, you can [configure workload cluster settings](#customizing-the-cluster-deployment) and deploy a workload cluster with the following:
+After your kind management cluster is up and running with Tilt, ensure you have all the environment variables set as
+described in [Tilt for dev in CAPG](#tilt-for-dev-in-capg), and deploy a workload cluster with the following:
 
 ```shell
 make create-workload-cluster
