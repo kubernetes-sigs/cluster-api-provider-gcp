@@ -195,6 +195,29 @@ func (s *ClusterScope) NatRouterSpec() *compute.Router {
 
 // ANCHOR_END: ClusterNetworkSpec
 
+// SubnetSpecs returns google compute subnets spec.
+func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
+	subnets := []*compute.Subnetwork{}
+	for _, subnetwork := range s.GCPCluster.Spec.Network.Subnets {
+		secondaryIPRanges := []*compute.SubnetworkSecondaryRange{}
+		for _, secondaryCidrBlock := range subnetwork.SecondaryCidrBlocks {
+			secondaryIPRanges = append(secondaryIPRanges, &compute.SubnetworkSecondaryRange{IpCidrRange: secondaryCidrBlock})
+		}
+		subnets = append(subnets, &compute.Subnetwork{
+			Name:                  subnetwork.Name,
+			Region:                subnetwork.Region,
+			EnableFlowLogs:        pointer.BoolDeref(subnetwork.EnableFlowLogs, false),
+			PrivateIpGoogleAccess: pointer.BoolDeref(subnetwork.PrivateGoogleAccess, false),
+			IpCidrRange:           subnetwork.CidrBlock,
+			SecondaryIpRanges:     secondaryIPRanges,
+			Description:           pointer.StringDeref(subnetwork.Description, infrav1.ClusterTagKey(s.Name())),
+			Network:               s.NetworkLink(),
+		})
+	}
+
+	return subnets
+}
+
 // ANCHOR: ClusterFirewallSpec
 
 // FirewallRulesSpec returns google compute firewall spec.
