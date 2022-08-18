@@ -95,6 +95,9 @@ func (m *MachineScope) Cloud() cloud.Cloud {
 func (m *MachineScope) Zone() string {
 	if m.Machine.Spec.FailureDomain == nil {
 		fd := m.ClusterGetter.FailureDomains()
+		if len(fd) == 0 {
+			return ""
+		}
 		zones := make([]string, 0, len(fd))
 		for zone := range fd {
 			zones = append(zones, zone)
