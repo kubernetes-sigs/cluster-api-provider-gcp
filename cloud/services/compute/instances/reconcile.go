@@ -105,7 +105,7 @@ func (s *Service) Delete(ctx context.Context) error {
 	instance, err := s.instances.Get(ctx, instanceKey)
 	if err != nil {
 		if !gcperrors.IsNotFound(err) {
-			log.Error(err, "Error looking for instnace before deleting", "name", instanceName)
+			log.Error(err, "Error looking for instance before deleting", "name", instanceName)
 			return err
 		}
 
@@ -143,13 +143,13 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 	instance, err := s.instances.Get(ctx, instanceKey)
 	if err != nil {
 		if !gcperrors.IsNotFound(err) {
-			log.Error(err, "Error looking for instnace", "name", instanceName, "zone", s.scope.Zone())
+			log.Error(err, "Error looking for instance", "name", instanceName, "zone", s.scope.Zone())
 			return nil, err
 		}
 
 		log.V(2).Info("Creating an instance", "name", instanceName, "zone", s.scope.Zone())
 		if err := s.instances.Insert(ctx, instanceKey, instanceSpec); err != nil {
-			log.Error(err, "Error creating an instnace", "name", instanceName, "zone", s.scope.Zone())
+			log.Error(err, "Error creating an instance", "name", instanceName, "zone", s.scope.Zone())
 			return nil, err
 		}
 
