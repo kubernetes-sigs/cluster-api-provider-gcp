@@ -13,7 +13,7 @@ require (
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
 	google.golang.org/api v0.93.0
 	k8s.io/api v0.24.2
-	k8s.io/apimachinery v0.24.2
+	k8s.io/apimachinery v0.24.4
 	k8s.io/client-go v0.24.2
 	k8s.io/klog/v2 v2.70.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
