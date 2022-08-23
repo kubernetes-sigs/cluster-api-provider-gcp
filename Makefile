@@ -276,7 +276,7 @@ $(KIND): ## Build kind into tools folder
 $(KUBECTL_BIN): $(KUBECTL) ## Building kubectl from tools folder
 
 .PHONY: $(KUSTOMIZE_BIN)
-	$(KUSTOMIZE_BIN): $(KUSTOMIZE) ## Building Kustomize from tools folder
+$(KUSTOMIZE_BIN): $(KUSTOMIZE) ## Building Kustomize from tools folder
 
 .PHONY: $(GO_APIDIFF_BIN)
 $(GO_APIDIFF_BIN): $(GO_APIDIFF)
