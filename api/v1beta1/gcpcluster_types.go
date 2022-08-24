@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
@@ -94,3 +95,85 @@ type GCPClusterList struct {
 func init() {
 	SchemeBuilder.Register(&GCPCluster{}, &GCPClusterList{})
 }
+
+func (c *Cluster) GetIPFamily() (ClusterIPFamily, error) {
+	var podCIDRs, serviceCIDRs []string
+	if c.Spec.ClusterNetwork != nil {
+		if c.Spec.ClusterNetwork.Pods != nil {
+			podCIDRs = c.Spec.ClusterNetwork.Pods.CIDRBlocks
+		}
+		if c.Spec.ClusterNetwork.Services != nil {
+			serviceCIDRs = c.Spec.ClusterNetwork.Services.CIDRBlocks
+		}
+	}
+	if len(podCIDRs) == 0 && len(serviceCIDRs) == 0 {
+		return IPv4IPFamily, nil
+	}
+
+	podsIPFamily, err := ipFamilyForCIDRStrings(podCIDRs)
+	if err != nil {
+		return InvalidIPFamily, fmt.Errorf("pods: %s", err)
+	}
+	if len(serviceCIDRs) == 0 {
+		return podsIPFamily, nil
+	}
+
+	servicesIPFamily, err := ipFamilyForCIDRStrings(serviceCIDRs)
+	if err != nil {
+		return InvalidIPFamily, fmt.Errorf("services: %s", err)
+	}
+	if len(podCIDRs) == 0 {
+		return servicesIPFamily, nil
+	}
+
+	if podsIPFamily == DualStackIPFamily {
+		return DualStackIPFamily, nil
+	} else if podsIPFamily != servicesIPFamily {
+		return InvalidIPFamily, errors.New("pods and services IP family mismatch")
+	}
+
+	return podsIPFamily, nil
+}
+
+func ipFamilyForCIDRStrings(cidrs []string) (ClusterIPFamily, error) {
+	if len(cidrs) > 2 {
+		return InvalidIPFamily, errors.New("too many CIDRs specified")
+	}
+	var foundIPv4 bool
+	var foundIPv6 bool
+	for _, cidr := range cidrs {
+		ip, _, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return InvalidIPFamily, fmt.Errorf("could not parse CIDR: %s", err)
+		}
+		if ip.To4() != nil {
+			foundIPv4 = true
+		} else {
+			foundIPv6 = true
+		}
+	}
+	switch {
+	case foundIPv4 && foundIPv6:
+		return DualStackIPFamily, nil
+	case foundIPv4:
+		return IPv4IPFamily, nil
+	case foundIPv6:
+		return IPv6IPFamily, nil
+	default:
+		return InvalidIPFamily, nil
+	}
+}
+
+type ClusterIPFamily int
+
+const (
+	InvalidIPFamily ClusterIPFamily = iota
+	IPv4IPFamily
+	IPv6IPFamily
+	DualStackIPFamily
+)
+
+func (f ClusterIPFamily) String() string {
+	return [...]string{"InvalidIPFamily", "IPv4IPFamily", "IPv6IPFamily", "DualStackIPFamily"}[f]
+}
+
