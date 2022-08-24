@@ -32,6 +32,10 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 )
 
+const (
+	IPFamily                     = "IP_FAMILY"
+)
+
 func Byf(format string, a ...interface{}) {
 	By(fmt.Sprintf(format, a...))
 }
