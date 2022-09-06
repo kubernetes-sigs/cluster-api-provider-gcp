@@ -57,7 +57,7 @@ var fakeGCPCluster = &infrav1.GCPCluster{
 		Region:  "us-central1",
 		Network: infrav1.NetworkSpec{
 			Subnets: infrav1.Subnets{
-				&infrav1.SubnetSpec{
+				infrav1.SubnetSpec{
 					Name:      "workers",
 					CidrBlock: "10.0.0.1/28",
 					Region:    "us-central1",

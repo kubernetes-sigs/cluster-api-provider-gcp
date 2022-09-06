@@ -149,13 +149,14 @@ func (s *SubnetSpec) String() string {
 }
 
 // Subnets is a slice of Subnet.
-type Subnets []*SubnetSpec
+type Subnets []SubnetSpec
 
 // ToMap returns a map from name to subnet.
 func (s Subnets) ToMap() map[string]*SubnetSpec {
 	res := make(map[string]*SubnetSpec)
-	for _, x := range s {
-		res[x.Name] = x
+	for i := range s {
+		x := s[i]
+		res[x.Name] = &x
 	}
 
 	return res
@@ -165,7 +166,7 @@ func (s Subnets) ToMap() map[string]*SubnetSpec {
 func (s Subnets) FindByName(name string) *SubnetSpec {
 	for _, x := range s {
 		if x.Name == name {
-			return x
+			return &x
 		}
 	}
 

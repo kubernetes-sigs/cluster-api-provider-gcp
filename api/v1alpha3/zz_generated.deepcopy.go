@@ -593,11 +593,7 @@ func (in *NetworkSpec) DeepCopyInto(out *NetworkSpec) {
 		in, out := &in.Subnets, &out.Subnets
 		*out = make(Subnets, len(*in))
 		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(SubnetSpec)
-				(*in).DeepCopyInto(*out)
-			}
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.LoadBalancerBackendPort != nil {
@@ -680,11 +676,7 @@ func (in Subnets) DeepCopyInto(out *Subnets) {
 		in := &in
 		*out = make(Subnets, len(*in))
 		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(SubnetSpec)
-				(*in).DeepCopyInto(*out)
-			}
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 }
