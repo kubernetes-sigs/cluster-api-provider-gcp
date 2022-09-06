@@ -99,28 +99,7 @@ func Convert_v1beta1_GCPClusterStatus_To_v1alpha3_GCPClusterStatus(in *v1beta1.G
 	return nil
 }
 
-// Convert_v1alpha3_NetworkSpec_To_v1beta1_NetworkSpec.
-func Convert_v1alpha3_NetworkSpec_To_v1beta1_NetworkSpec(in *NetworkSpec, out *v1beta1.NetworkSpec, s apiconversion.Scope) error { //nolint
-	out.Subnets = make(v1beta1.Subnets, len(in.Subnets))
-	for i := range in.Subnets {
-		out.Subnets[i] = &v1beta1.SubnetSpec{}
-		if err := Convert_v1alpha3_SubnetSpec_To_v1beta1_SubnetSpec(in.Subnets[i], out.Subnets[i], s); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// Convert_v1beta1_NetworkSpec_To_v1alpha3_NetworkSpec.
-func Convert_v1beta1_NetworkSpec_To_v1alpha3_NetworkSpec(in *v1beta1.NetworkSpec, out *NetworkSpec, s apiconversion.Scope) error { //nolint
-	out.Subnets = make(Subnets, len(in.Subnets))
-	for i := range in.Subnets {
-		out.Subnets[i] = &SubnetSpec{}
-		if err := Convert_v1beta1_SubnetSpec_To_v1alpha3_SubnetSpec(in.Subnets[i], out.Subnets[i], s); err != nil {
-			return err
-		}
-	}
-
-	return nil
+// Convert_v1beta1_SubnetSpec_To_v1alpha3_SubnetSpec.
+func Convert_v1beta1_SubnetSpec_To_v1alpha3_SubnetSpec(in *v1beta1.SubnetSpec, out *SubnetSpec, s apiconversion.Scope) error {
+	return autoConvert_v1beta1_SubnetSpec_To_v1alpha3_SubnetSpec(in, out, s)
 }
