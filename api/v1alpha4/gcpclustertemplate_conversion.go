@@ -39,6 +39,17 @@ func (src *GCPClusterTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 
 	dst.Spec.Template.ObjectMeta = restored.Spec.Template.ObjectMeta
 
+	for _, restoredSubnet := range restored.Spec.Template.Spec.Network.Subnets {
+		for i, dstSubnet := range dst.Spec.Template.Spec.Network.Subnets {
+			if dstSubnet.Name != restoredSubnet.Name {
+				continue
+			}
+			dst.Spec.Template.Spec.Network.Subnets[i].Purpose = restoredSubnet.Purpose
+
+			break
+		}
+	}
+
 	return nil
 }
 

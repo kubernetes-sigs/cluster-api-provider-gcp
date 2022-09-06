@@ -32,6 +32,23 @@ func (src *GCPCluster) ConvertTo(dstRaw conversion.Hub) error { // nolint
 		return err
 	}
 
+	// Manually restore data.
+	restored := &v1beta1.GCPCluster{}
+	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
+		return err
+	}
+
+	for _, restoredSubnet := range restored.Spec.Network.Subnets {
+		for i, dstSubnet := range dst.Spec.Network.Subnets {
+			if dstSubnet.Name != restoredSubnet.Name {
+				continue
+			}
+			dst.Spec.Network.Subnets[i].Purpose = restoredSubnet.Purpose
+
+			break
+		}
+	}
+
 	return nil
 }
 
