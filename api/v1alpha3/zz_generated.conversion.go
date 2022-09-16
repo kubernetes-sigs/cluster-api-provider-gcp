@@ -865,5 +865,6 @@ func autoConvert_v1beta1_SubnetSpec_To_v1alpha3_SubnetSpec(in *v1beta1.SubnetSpe
 	out.Region = in.Region
 	out.PrivateGoogleAccess = (*bool)(unsafe.Pointer(in.PrivateGoogleAccess))
 	out.EnableFlowLogs = (*bool)(unsafe.Pointer(in.EnableFlowLogs))
+	// WARNING: in.Purpose requires manual conversion: does not exist in peer-type
 	return nil
 }

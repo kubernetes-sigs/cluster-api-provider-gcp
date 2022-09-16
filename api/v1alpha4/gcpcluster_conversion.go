@@ -19,19 +19,52 @@ package v1alpha4
 import (
 	apiconversion "k8s.io/apimachinery/pkg/conversion"
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 )
 
 // ConvertTo converts this GCPCluster to the Hub version (v1beta1).
 func (src *GCPCluster) ConvertTo(dstRaw conversion.Hub) error { // nolint
 	dst := dstRaw.(*infrav1beta1.GCPCluster)
-	return Convert_v1alpha4_GCPCluster_To_v1beta1_GCPCluster(src, dst, nil)
+
+	if err := Convert_v1alpha4_GCPCluster_To_v1beta1_GCPCluster(src, dst, nil); err != nil {
+		return err
+	}
+
+	// Manually restore data.
+	restored := &infrav1beta1.GCPCluster{}
+	if ok, err := utilconversion.UnmarshalData(src, restored); err != nil || !ok {
+		return err
+	}
+
+	for _, restoredSubnet := range restored.Spec.Network.Subnets {
+		for i, dstSubnet := range dst.Spec.Network.Subnets {
+			if dstSubnet.Name != restoredSubnet.Name {
+				continue
+			}
+			dst.Spec.Network.Subnets[i].Purpose = restoredSubnet.Purpose
+
+			break
+		}
+	}
+
+	return nil
 }
 
 // ConvertFrom converts from the Hub version (v1beta1) to this version.
 func (dst *GCPCluster) ConvertFrom(srcRaw conversion.Hub) error { // nolint
 	src := srcRaw.(*infrav1beta1.GCPCluster)
-	return Convert_v1beta1_GCPCluster_To_v1alpha4_GCPCluster(src, dst, nil)
+
+	if err := Convert_v1beta1_GCPCluster_To_v1alpha4_GCPCluster(src, dst, nil); err != nil {
+		return err
+	}
+
+	// Preserve Hub data on down-conversion.
+	if err := utilconversion.MarshalData(src, dst); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ConvertTo converts this GCPClusterList to the Hub version (v1beta1).

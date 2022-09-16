@@ -28,6 +28,7 @@ import (
 	"google.golang.org/api/googleapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/pointer"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -61,6 +62,7 @@ var fakeGCPCluster = &infrav1.GCPCluster{
 					Name:      "workers",
 					CidrBlock: "10.0.0.1/28",
 					Region:    "us-central1",
+					Purpose:   pointer.String("INTERNAL_HTTPS_LOAD_BALANCER"),
 				},
 			},
 		},
@@ -127,7 +129,8 @@ func TestService_Reconcile(t *testing.T) {
 				}
 
 				if subnet.Name != fakeGCPCluster.Spec.Network.Subnets[0].Name ||
-					subnet.IpCidrRange != fakeGCPCluster.Spec.Network.Subnets[0].CidrBlock {
+					subnet.IpCidrRange != fakeGCPCluster.Spec.Network.Subnets[0].CidrBlock ||
+					subnet.Purpose != *fakeGCPCluster.Spec.Network.Subnets[0].Purpose {
 					return errors.New("subnet was created but with wrong values")
 				}
 

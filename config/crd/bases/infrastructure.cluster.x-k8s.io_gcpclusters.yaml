@@ -580,6 +580,26 @@ spec:
                             this subnet can access Google services without assigning
                             external IP addresses
                           type: boolean
+                        purpose:
+                          default: PRIVATE_RFC_1918
+                          description: "Purpose: The purpose of the resource. If unspecified,
+                            the purpose defaults to PRIVATE_RFC_1918. The enableFlowLogs
+                            field isn't supported with the purpose field set to INTERNAL_HTTPS_LOAD_BALANCER.
+                            \n Possible values: \"INTERNAL_HTTPS_LOAD_BALANCER\" -
+                            Subnet reserved for Internal HTTP(S) Load Balancing. \"PRIVATE\"
+                            - Regular user created or automatically created subnet.
+                            \"PRIVATE_RFC_1918\" - Regular user created or automatically
+                            created subnet. \"PRIVATE_SERVICE_CONNECT\" - Subnetworks
+                            created for Private Service Connect in the producer network.
+                            \"REGIONAL_MANAGED_PROXY\" - Subnetwork used for Regional
+                            Internal/External HTTP(S) Load Balancing."
+                          enum:
+                          - INTERNAL_HTTPS_LOAD_BALANCER
+                          - PRIVATE_RFC_1918
+                          - PRIVATE
+                          - PRIVATE_SERVICE_CONNECT
+                          - REGIONAL_MANAGED_PROXY
+                          type: string
                         region:
                           description: Region is the name of the region where the
                             Subnetwork resides.

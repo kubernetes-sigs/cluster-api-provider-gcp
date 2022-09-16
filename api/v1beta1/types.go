@@ -148,6 +148,25 @@ type SubnetSpec struct {
 	// listings. If not set the default behavior is to disable flow logging.
 	// +optional
 	EnableFlowLogs *bool `json:"enableFlowLogs"`
+
+	// Purpose: The purpose of the resource.
+	// If unspecified, the purpose defaults to PRIVATE_RFC_1918.
+	// The enableFlowLogs field isn't supported with the purpose field set to INTERNAL_HTTPS_LOAD_BALANCER.
+	//
+	// Possible values:
+	//   "INTERNAL_HTTPS_LOAD_BALANCER" - Subnet reserved for Internal
+	// HTTP(S) Load Balancing.
+	//   "PRIVATE" - Regular user created or automatically created subnet.
+	//   "PRIVATE_RFC_1918" - Regular user created or automatically created
+	// subnet.
+	//   "PRIVATE_SERVICE_CONNECT" - Subnetworks created for Private Service
+	// Connect in the producer network.
+	//   "REGIONAL_MANAGED_PROXY" - Subnetwork used for Regional
+	// Internal/External HTTP(S) Load Balancing.
+	// +kubebuilder:validation:Enum=INTERNAL_HTTPS_LOAD_BALANCER;PRIVATE_RFC_1918;PRIVATE;PRIVATE_SERVICE_CONNECT;REGIONAL_MANAGED_PROXY
+	// +kubebuilder:default=PRIVATE_RFC_1918
+	// +optional
+	Purpose *string `json:"purpose,omitempty"`
 }
 
 // String returns a string representation of the subnet.
