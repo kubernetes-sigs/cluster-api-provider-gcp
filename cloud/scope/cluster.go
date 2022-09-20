@@ -213,6 +213,7 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 			Description:           pointer.StringDeref(subnetwork.Description, infrav1.ClusterTagKey(s.Name())),
 			Network:               s.NetworkLink(),
 			Purpose:               pointer.StringDeref(subnetwork.Purpose, "PRIVATE_RFC_1918"),
+			Role:                  "ACTIVE",
 		})
 	}
 
