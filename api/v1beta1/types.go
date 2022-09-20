@@ -147,7 +147,7 @@ type SubnetSpec struct {
 	// If this field is not explicitly set, it will not appear in get
 	// listings. If not set the default behavior is to disable flow logging.
 	// +optional
-	EnableFlowLogs *bool `json:"enableFlowLogs"`
+	EnableFlowLogs *bool `json:"enableFlowLogs,omitempty"`
 
 	// Purpose: The purpose of the resource.
 	// If unspecified, the purpose defaults to PRIVATE_RFC_1918.
