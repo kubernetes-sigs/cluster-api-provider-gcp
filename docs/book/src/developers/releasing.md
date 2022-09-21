@@ -55,7 +55,7 @@ Create the GitHub release in the UI
 
 ## Versioning
 
-cluster-api-provider-gcp follows the [semantic versionining][semver] specification.
+cluster-api-provider-gcp follows the [semantic versioning][semver] specification.
 
 Example versions:
 - Pre-release: `v0.1.1-alpha.1`

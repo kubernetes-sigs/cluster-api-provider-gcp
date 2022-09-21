@@ -31,18 +31,18 @@ If you're new to the project and want to help, but don't know where to start, we
 
 1. If you haven't already done so, sign a Contributor License Agreement (see details above).
 2. Fork the desired repo, develop and test your code changes.
-3. Submit a pull request. 
+3. Submit a pull request.
     i. All code PR must be labeled with one of the following kinds
-	- `/kind feature` for PRs related to adding new features/tests 
-	- `/kind bug` for PRs releated to bug fixes and patches 
-	- `/kind api-change` for PRs releated to adding, removing, or otherwise changing an API 
-	- `/kind cleanup` for PRs releated to code refactoring and cleanup 
-	- `/kind deprecation` for PRs related to a feature/enhancement marked for deprecation 
-	- `/kind design` for PRs releated to design proposals 
-	- `/kind documentation` for PRs releated to documentation 
-	- `/kind failing-test` for PRs releated to to a consistently or frequently failing test 
-	- `/kind flake` for PRs related to a flaky test 
-	- `/kind other` for PRs releated to updating dependencies, minor changes or other 
+	- `/kind feature` for PRs related to adding new features/tests
+	- `/kind bug` for PRs related to bug fixes and patches
+	- `/kind api-change` for PRs related to adding, removing, or otherwise changing an API
+	- `/kind cleanup` for PRs related to code refactoring and cleanup
+	- `/kind deprecation` for PRs related to a feature/enhancement marked for deprecation
+	- `/kind design` for PRs related to design proposals
+	- `/kind documentation` for PRs related to documentation
+	- `/kind failing-test` for PRs related to to a consistently or frequently failing test
+	- `/kind flake` for PRs related to a flaky test
+	- `/kind other` for PRs related to updating dependencies, minor changes or other
     ii.If the PR requires additional action from users switching to a new release, include the string "action required" in the PR release-notes.
     iii.All code changes must be covered by unit tests and E2E tests. iv. All new features should come with user documentation.
 4. Once the PR has been reviewed and is ready to be merged, commits should be [squashed](https://github.com/kubernetes/community/blob/master/contributors/guide/github-workflow.md#squash-commits).
