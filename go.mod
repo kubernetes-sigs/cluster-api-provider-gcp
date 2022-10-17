@@ -6,7 +6,7 @@ require (
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.20.0
 	github.com/google/go-cmp v0.5.9
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.21.1
+	github.com/onsi/gomega v1.22.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
