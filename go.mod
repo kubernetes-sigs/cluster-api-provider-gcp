@@ -17,8 +17,8 @@ require (
 	k8s.io/client-go v0.24.4
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
-	sigs.k8s.io/cluster-api v1.2.3
-	sigs.k8s.io/cluster-api/test v1.2.3
+	sigs.k8s.io/cluster-api v1.2.4
+	sigs.k8s.io/cluster-api/test v1.2.4
 	sigs.k8s.io/controller-runtime v0.12.3
 )
 
@@ -129,4 +129,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.2.3
+replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.2.4
