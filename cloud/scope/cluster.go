@@ -50,12 +50,12 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 		return nil, errors.New("failed to generate new scope from nil GCPCluster")
 	}
 
-	computeSvc, err := compute.NewService(context.TODO())
-	if err != nil {
-		return nil, errors.Errorf("failed to create gcp compute client: %v", err)
-	}
-
 	if params.GCPServices.Compute == nil {
+		computeSvc, err := compute.NewService(context.TODO())
+		if err != nil {
+			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
+		}
+
 		params.GCPServices.Compute = computeSvc
 	}
 
