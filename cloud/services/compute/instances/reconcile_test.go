@@ -137,6 +137,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 		Client:     fakec,
 		Cluster:    fakeCluster,
 		GCPCluster: fakeGCPCluster,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -156,6 +159,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 		Client:     fakec,
 		Cluster:    fakeCluster,
 		GCPCluster: fakeGCPClusterWithOutFailureDomain,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
