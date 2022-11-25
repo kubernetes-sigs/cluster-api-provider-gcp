@@ -1,0 +1,99 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: gcpmanagedcontrolplanes.infrastructure.cluster.x-k8s.io
+spec:
+  group: infrastructure.cluster.x-k8s.io
+  names:
+    categories:
+    - cluster-api
+    kind: GCPManagedControlPlane
+    listKind: GCPManagedControlPlaneList
+    plural: gcpmanagedcontrolplanes
+    shortNames:
+    - gcpmcp
+    singular: gcpmanagedcontrolplane
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: GCPManagedControlPlane is the Schema for the gcpmanagedcontrolplanes
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane
+            properties:
+              controlPlaneVersion:
+                description: ControlPlaneVersion represents the control plane version
+                  of the GKE cluster If not specified, the default version currently
+                  supported by GKE will be used
+                type: string
+              enableAutopilot:
+                description: EnableAutopilot indicates whether to enable autopilot
+                  for this GKE cluster
+                type: boolean
+              endpoint:
+                description: Endpoint represents the endpoint used to communicate
+                  with the control plane.
+                properties:
+                  host:
+                    description: The hostname on which the API server is serving.
+                    type: string
+                  port:
+                    description: The port on which the API server is serving.
+                    format: int32
+                    type: integer
+                required:
+                - host
+                - port
+                type: object
+              location:
+                description: Location represents the location (region or zone) in
+                  which the GKE cluster will be created
+                type: string
+              releaseChannel:
+                description: ReleaseChannel represents the release channel of the
+                  GKE cluster
+                type: string
+            required:
+            - enableAutopilot
+            - endpoint
+            - location
+            type: object
+          status:
+            description: GCPManagedControlPlaneStatus defines the observed state of
+              GCPManagedControlPlane
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

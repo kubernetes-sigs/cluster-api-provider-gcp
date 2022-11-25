@@ -9,6 +9,10 @@ resources:
 - bases/infrastructure.cluster.x-k8s.io_gcpclusters.yaml
 - bases/infrastructure.cluster.x-k8s.io_gcpmachinetemplates.yaml
 - bases/infrastructure.cluster.x-k8s.io_gcpclustertemplates.yaml
+- bases/infrastructure.cluster.x-k8s.io_gcpmanagedclusters.yaml
+- bases/infrastructure.cluster.x-k8s.io_gcpmanagedcontrolplanes.yaml
+- bases/infrastructure.cluster.x-k8s.io_gcpmanagedmachinepools.yaml
+
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

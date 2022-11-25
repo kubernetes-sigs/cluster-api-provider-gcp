@@ -1,0 +1,130 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: gcpmanagedmachinepools.infrastructure.cluster.x-k8s.io
+spec:
+  group: infrastructure.cluster.x-k8s.io
+  names:
+    categories:
+    - cluster-api
+    kind: GCPManagedMachinePool
+    listKind: GCPManagedMachinePoolList
+    plural: gcpmanagedmachinepools
+    shortNames:
+    - gcpmmp
+    singular: gcpmanagedmachinepool
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.mode
+      name: Mode
+      type: string
+    name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: GCPManagedMachinePool is the Schema for the gcpmanagedmachinepools
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: GCPManagedMachinePoolSpec defines the desired state of GCPManagedMachinePool
+            properties:
+              additionalLabels:
+                additionalProperties:
+                  type: string
+                description: AdditionalLabels is an optional set of tags to add to
+                  GCP resources managed by the GCP provider, in addition to the ones
+                  added by default.
+                type: object
+              initialNodeCount:
+                description: InitialNodeCount represents the initial number of nodes
+                  for the pool. In regional or multi-zonal clusters, this is the number
+                  of nodes per zone.
+                format: int32
+                type: integer
+              kubernetesLabels:
+                additionalProperties:
+                  type: string
+                description: KubernetesLabels specifies the labels to apply to the
+                  nodes of the node pool
+                type: object
+              kubernetesTaints:
+                description: KubernetesTaints specifies the taints to apply to the
+                  nodes of the node pool
+                items:
+                  description: Taint represents a Kubernetes taint.
+                  properties:
+                    effect:
+                      description: Effect specifies the effect for the taint
+                      enum:
+                      - NoSchedule
+                      - NoExecute
+                      - PreferNoSchedule
+                      type: string
+                    key:
+                      description: Key is the key of the taint
+                      type: string
+                    value:
+                      description: Value is the value of the taint
+                      type: string
+                  required:
+                  - effect
+                  - key
+                  - value
+                  type: object
+                type: array
+              mode:
+                description: Mode represents mode of an machine pool. A cluster always
+                  requires 1 system pool
+                enum:
+                - system
+                - user
+                type: string
+              nodeVersion:
+                description: NodeVersion represents the node version of the node pool
+                  If not specified, the GKE cluster control plane version will be
+                  used
+                type: string
+            required:
+            - initialNodeCount
+            - mode
+            type: object
+          status:
+            description: GCPManagedMachinePoolStatus defines the observed state of
+              GCPManagedMachinePool
+            properties:
+              ready:
+                type: boolean
+              replicas:
+                description: Replicas is the most recently observed number of replicas.
+                format: int32
+                type: integer
+            required:
+            - ready
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
