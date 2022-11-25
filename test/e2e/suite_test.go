@@ -24,14 +24,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,6 +37,7 @@ import (
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/bootstrap"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
+	"sigs.k8s.io/cluster-api/test/framework/ginkgoextensions"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
@@ -60,6 +58,10 @@ var (
 
 	// artifactFolder is the folder to store e2e test artifacts.
 	artifactFolder string
+
+	// alsoLogToFile enables additional logging to the 'ginkgo-log.txt' file in the artifact folder.
+	// These logs also contain timestamps.
+	alsoLogToFile bool
 
 	// skipCleanup prevents cleanup of test resources e.g. for debug purposes.
 	skipCleanup bool
@@ -94,6 +96,7 @@ var (
 func init() {
 	flag.StringVar(&configPath, "e2e.config", "", "path to the e2e config file")
 	flag.StringVar(&artifactFolder, "e2e.artifacts-folder", "", "folder where e2e test artifact should be stored")
+	flag.BoolVar(&alsoLogToFile, "e2e.also-log-to-file", true, "if true, ginkgo logs are additionally written to the `ginkgo-log.txt` file in the artifacts folder (including timestamps)")
 	flag.BoolVar(&skipCleanup, "e2e.skip-resource-cleanup", false, "if true, the resource cleanup after tests will be skipped")
 	flag.BoolVar(&useExistingCluster, "e2e.use-existing-cluster", false, "if true, the test uses the current cluster instead of creating a new one (default discovery rules apply)")
 	flag.BoolVar(&useCIArtifacts, "kubetest.use-ci-artifacts", false, "use the latest build from the main branch of the Kubernetes repository. Set KUBERNETES_VERSION environment variable to latest-1.xx to use the build from 1.xx release branch.")
@@ -102,11 +105,25 @@ func init() {
 }
 
 func TestE2E(t *testing.T) {
-	RegisterFailHandler(Fail)
-	junitPath := path.Join(artifactFolder, fmt.Sprintf("junit.e2e_suite.%d.xml", config.GinkgoConfig.ParallelNode))
-	junitReporter := reporters.NewJUnitReporter(junitPath)
+	g := NewWithT(t)
 
-	RunSpecsWithDefaultAndCustomReporters(t, "capg-e2e", []Reporter{junitReporter})
+	// If running in prow, make sure to use the artifacts folder that will be reported in test grid (ignoring the value provided by flag).
+	if prowArtifactFolder, exists := os.LookupEnv("ARTIFACTS"); exists {
+		artifactFolder = prowArtifactFolder
+	}
+
+	// ensure the artifacts folder exists
+	g.Expect(os.MkdirAll(artifactFolder, 0o755)).To(Succeed(), "Invalid test suite argument. Can't create e2e.artifacts-folder %q", artifactFolder) //nolint:gosec
+
+	RegisterFailHandler(Fail)
+
+	if alsoLogToFile {
+		w, err := ginkgoextensions.EnableFileLogging(filepath.Join(artifactFolder, "ginkgo-log.txt"))
+		g.Expect(err).ToNot(HaveOccurred())
+		defer w.Close()
+	}
+
+	RunSpecs(t, "capg-e2e")
 }
 
 // Using a SynchronizedBeforeSuite for controlling how to create resources shared across ParallelNodes (~ginkgo threads).

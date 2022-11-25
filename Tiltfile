@@ -18,8 +18,8 @@ settings = {
     "deploy_cert_manager": True,
     "preload_images_for_kind": True,
     "kind_cluster_name": "capg",
-    "capi_version": "v1.2.6",
-    "cert_manager_version": "v1.1.0",
+    "capi_version": "v1.3.0-rc.1",
+    "cert_manager_version": "v1.10.1",
     "kubernetes_version": "v1.22.11",
 }
 

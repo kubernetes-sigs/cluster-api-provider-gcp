@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-    - name: v1.2.6
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.2.6/core-components.yaml
+    - name: v1.3.0
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0-rc.1/core-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-    - name: v1.2.6
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.2.6/bootstrap-components.yaml
+    - name: v1.3.0
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0-rc.1/bootstrap-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -41,8 +41,8 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-    - name: v1.2.6
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.2.6/control-plane-components.yaml
+    - name: v1.3.0
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0-rc.1/control-plane-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -54,7 +54,7 @@ providers:
   - name: gcp
     type: InfrastructureProvider
     versions:
-    - name: v1.2.99 # next; use manifest from source files
+    - name: v1.3.99 # next; use manifest from source files
       value: "${PWD}/config/default"
     files:
     - sourcePath: "${PWD}/metadata.yaml"
@@ -70,7 +70,7 @@ providers:
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-quick-start.yaml"
 
 variables:
-  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.23.8}"
+  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.25.1}"
   ETCD_VERSION_UPGRADE_TO: "3.5.1-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.8.6"
   KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-22-11-nightly"
@@ -103,4 +103,4 @@ intervals:
   default/wait-deployment: ["5m", "10s"]
   default/wait-job: ["5m", "10s"]
   default/wait-service: ["3m", "10s"]
-  node-drain/wait-machine-deleted: [ "10m", "10s" ]
+  node-drain/wait-machine-deleted: ["10m", "10s"]
