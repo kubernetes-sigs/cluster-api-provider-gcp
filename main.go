@@ -35,6 +35,8 @@ import (
 	infrav1alpha3 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
 	infrav1alpha4 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	expcontrollers "sigs.k8s.io/cluster-api-provider-gcp/exp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
@@ -155,6 +157,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
 		os.Exit(1)
 	}
+	if err = (&expcontrollers.GCPManagedControlPlaneReconciler{
+		Client:           mgr.GetClient(),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "GCPManagedControlPlane")
+		os.Exit(1)
+	}
 
 	if err = (&infrav1beta1.GCPCluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "GCPCluster")
@@ -170,6 +180,10 @@ func main() {
 	}
 	if err = (&infrav1beta1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
+		os.Exit(1)
+	}
+	if err = (&infrav1exp.GCPManagedControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "GCPManagedControlPlane")
 		os.Exit(1)
 	}
 
