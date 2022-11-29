@@ -29,20 +29,23 @@ const (
 
 // GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
 type GCPManagedControlPlaneSpec struct {
-	// EnableAutopilot indicates whether to enable autopilot for this GKE cluster.
-	EnableAutopilot bool `json:"enableAutopilot"`
+	// Project is the name of the project to deploy the cluster to.
+	Project string `json:"project"`
 	// Location represents the location (region or zone) in which the GKE cluster
 	// will be created.
 	Location string `json:"location"`
+	// EnableAutopilot indicates whether to enable autopilot for this GKE cluster.
+	EnableAutopilot bool `json:"enableAutopilot"`
 	// ReleaseChannel represents the release channel of the GKE cluster.
 	// +optional
-	ReleaseChannel *string `json:"releaseChannel,omitempty"`
+	ReleaseChannel *ReleaseChannel `json:"releaseChannel,omitempty"`
 	// ControlPlaneVersion represents the control plane version of the GKE cluster.
 	// If not specified, the default version currently supported by GKE will be
 	// used.
 	// +optional
 	ControlPlaneVersion *string `json:"controlPlaneVersion,omitempty"`
 	// Endpoint represents the endpoint used to communicate with the control plane.
+	// +optional
 	Endpoint clusterv1.APIEndpoint `json:"endpoint"`
 }
 
@@ -75,6 +78,26 @@ type GCPManagedControlPlaneList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []GCPManagedControlPlane `json:"items"`
+}
+
+// FeatureToggle is a simple flag with a string value denoting if a given param is "enabled" or "disabled"
+// +kubebuilder:validation:Enum=rapid;regular;stable
+type ReleaseChannel string
+
+const (
+	Rapid  ReleaseChannel = "rapid"
+	Regular ReleaseChannel = "regular"
+	Stable ReleaseChannel = "stable"
+)
+
+// GetConditions returns the control planes conditions.
+func (r *GCPManagedControlPlane) GetConditions() clusterv1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the status conditions for the GCPManagedControlPlane.
+func (r *GCPManagedControlPlane) SetConditions(conditions clusterv1.Conditions) {
+	r.Status.Conditions = conditions
 }
 
 func init() {

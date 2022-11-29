@@ -209,7 +209,7 @@ func (in *GCPManagedControlPlaneSpec) DeepCopyInto(out *GCPManagedControlPlaneSp
 	*out = *in
 	if in.ReleaseChannel != nil {
 		in, out := &in.ReleaseChannel, &out.ReleaseChannel
-		*out = new(string)
+		*out = new(ReleaseChannel)
 		**out = **in
 	}
 	if in.ControlPlaneVersion != nil {

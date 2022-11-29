@@ -68,14 +68,22 @@ spec:
                 description: Location represents the location (region or zone) in
                   which the GKE cluster will be created.
                 type: string
+              project:
+                description: Project is the name of the project to deploy the cluster
+                  to.
+                type: string
               releaseChannel:
                 description: ReleaseChannel represents the release channel of the
                   GKE cluster.
+                enum:
+                - rapid
+                - regular
+                - stable
                 type: string
             required:
             - enableAutopilot
-            - endpoint
             - location
+            - project
             type: object
           status:
             description: GCPManagedControlPlaneStatus defines the observed state of

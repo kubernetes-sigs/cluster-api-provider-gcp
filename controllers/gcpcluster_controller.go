@@ -105,6 +105,8 @@ func (r *GCPClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
 	defer cancel()
 
+	return ctrl.Result{}, nil
+
 	log := log.FromContext(ctx)
 	gcpCluster := &infrav1.GCPCluster{}
 	err := r.Get(ctx, req.NamespacedName, gcpCluster)

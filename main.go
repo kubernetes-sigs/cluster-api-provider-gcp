@@ -36,6 +36,8 @@ import (
 	infrav1alpha4 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	expcontrollers "sigs.k8s.io/cluster-api-provider-gcp/exp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
@@ -58,6 +60,7 @@ func init() {
 	_ = infrav1alpha4.AddToScheme(scheme)
 	_ = infrav1beta1.AddToScheme(scheme)
 	_ = clusterv1.AddToScheme(scheme)
+	_ = infrav1exp.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -139,14 +142,14 @@ func main() {
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
 
-	if err = (&controllers.GCPMachineReconciler{
-		Client:           mgr.GetClient(),
-		ReconcileTimeout: reconcileTimeout,
-		WatchFilterValue: watchFilterValue,
-	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
-		os.Exit(1)
-	}
+	//if err = (&controllers.GCPMachineReconciler{
+	//	Client:           mgr.GetClient(),
+	//	ReconcileTimeout: reconcileTimeout,
+	//	WatchFilterValue: watchFilterValue,
+	//}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+	//	setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
+	//	os.Exit(1)
+	//}
 	if err = (&controllers.GCPClusterReconciler{
 		Client:           mgr.GetClient(),
 		ReconcileTimeout: reconcileTimeout,
@@ -155,33 +158,45 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
 		os.Exit(1)
 	}
-
-	if err = (&infrav1beta1.GCPCluster{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPCluster")
-		os.Exit(1)
-	}
-	if err = (&infrav1beta1.GCPClusterTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPClusterTemplate")
-		os.Exit(1)
-	}
-	if err = (&infrav1beta1.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
-		os.Exit(1)
-	}
-	if err = (&infrav1beta1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
+	if err = (&expcontrollers.GCPManagedControlPlaneReconciler{
+		Client:           mgr.GetClient(),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "GCPManagedControlPlane")
 		os.Exit(1)
 	}
 
-	if err := mgr.AddReadyzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
-		setupLog.Error(err, "unable to create ready check")
-		os.Exit(1)
-	}
+	//if err = (&infrav1beta1.GCPCluster{}).SetupWebhookWithManager(mgr); err != nil {
+	//	setupLog.Error(err, "unable to create webhook", "webhook", "GCPCluster")
+	//	os.Exit(1)
+	//}
+	//if err = (&infrav1beta1.GCPClusterTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+	//	setupLog.Error(err, "unable to create webhook", "webhook", "GCPClusterTemplate")
+	//	os.Exit(1)
+	//}
+	//if err = (&infrav1beta1.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
+	//	setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
+	//	os.Exit(1)
+	//}
+	//if err = (&infrav1beta1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+	//	setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
+	//	os.Exit(1)
+	//}
+	//if err = (&infrav1exp.GCPManagedControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
+	//	setupLog.Error(err, "unable to create webhook", "webhook", "GCPManagedControlPlane")
+	//	os.Exit(1)
+	//}
 
-	if err := mgr.AddHealthzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
-		setupLog.Error(err, "unable to create health check")
-		os.Exit(1)
-	}
+	//if err := mgr.AddReadyzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
+	//	setupLog.Error(err, "unable to create ready check")
+	//	os.Exit(1)
+	//}
+	//
+	//if err := mgr.AddHealthzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
+	//	setupLog.Error(err, "unable to create health check")
+	//	os.Exit(1)
+	//}
 
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting manager", "version", version.Get().String(), "extended_info", version.Get())
