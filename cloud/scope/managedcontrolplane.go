@@ -18,9 +18,11 @@ package scope
 
 import (
 	"context"
+	"sigs.k8s.io/cluster-api/util/conditions"
+	"strings"
 
+	"cloud.google.com/go/container/apiv1"
 	"github.com/pkg/errors"
-	"google.golang.org/api/compute/v1"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -29,7 +31,7 @@ import (
 
 // ManagedControlPlaneScopeParams defines the input parameters used to create a new Scope.
 type ManagedControlPlaneScopeParams struct {
-	GCPServices
+	ManagedClusterClient *container.ClusterManagerClient
 	Client     client.Client
 	Cluster    *clusterv1.Cluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
@@ -38,20 +40,20 @@ type ManagedControlPlaneScopeParams struct {
 // NewManagedControlPlaneScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
 func NewManagedControlPlaneScope(params ManagedControlPlaneScopeParams) (*ManagedControlPlaneScope, error) {
-	if params.Cluster == nil {
-		return nil, errors.New("failed to generate new scope from nil Cluster")
-	}
+	//if params.Cluster == nil {
+	//	return nil, errors.New("failed to generate new scope from nil Cluster")
+	//}
 	if params.GCPManagedControlPlane == nil {
 		return nil, errors.New("failed to generate new scope from nil GCPManagedControlPlane")
 	}
 
-	if params.GCPServices.Compute == nil {
-		computeSvc, err := compute.NewService(context.TODO())
+	if params.ManagedClusterClient == nil {
+		managedClusterClient, err := container.NewClusterManagerClient(context.TODO())
 		if err != nil {
-			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
+			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
 		}
 
-		params.GCPServices.Compute = computeSvc
+		params.ManagedClusterClient = managedClusterClient
 	}
 
 	helper, err := patch.NewHelper(params.GCPManagedControlPlane, params.Client)
@@ -63,7 +65,7 @@ func NewManagedControlPlaneScope(params ManagedControlPlaneScopeParams) (*Manage
 		client:      params.Client,
 		Cluster:     params.Cluster,
 		GCPManagedControlPlane:  params.GCPManagedControlPlane,
-		GCPServices: params.GCPServices,
+		mcClient: params.ManagedClusterClient,
 		patchHelper: helper,
 	}, nil
 }
@@ -75,15 +77,70 @@ type ManagedControlPlaneScope struct {
 
 	Cluster    *clusterv1.Cluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
-	GCPServices
+	mcClient *container.ClusterManagerClient
 }
 
 // PatchObject persists the managed control plane configuration and status.
 func (s *ManagedControlPlaneScope) PatchObject() error {
-	return s.patchHelper.Patch(context.TODO(), s.GCPManagedControlPlane)
+	return s.patchHelper.Patch(
+		context.TODO(),
+		s.GCPManagedControlPlane,
+		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
+			infrav1exp.GKEControlPlaneReadyCondition,
+			infrav1exp.GKEControlPlaneCreatingCondition,
+			infrav1exp.GKEControlPlaneUpdatingCondition,
+			infrav1exp.GKEControlPlaneDeletingCondition,
+		}})
 }
 
 // Close closes the current scope persisting the managed control plane configuration and status.
 func (s *ManagedControlPlaneScope) Close() error {
+	s.mcClient.Close()
 	return s.PatchObject()
+}
+
+func (s *ManagedControlPlaneScope) ConditionSetter() conditions.Setter {
+	return s.GCPManagedControlPlane
+}
+
+func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.ClusterManagerClient {
+	return s.mcClient
+}
+
+func (s *ManagedControlPlaneScope) Name() string {
+	return s.GCPManagedControlPlane.Name
+}
+
+func (s *ManagedControlPlaneScope) Project() string {
+	return s.GCPManagedControlPlane.Spec.Project
+}
+
+func parseLocation(location string) (region string, zone *string) {
+	parts := strings.Split(location, "-")
+	region = strings.Join(parts[:2], "-")
+	if len(parts) == 3 {
+		return region, &parts[2]
+	} else {
+		return region, nil
+	}
+}
+
+func (s *ManagedControlPlaneScope) Region() string {
+	region, _ := parseLocation(s.GCPManagedControlPlane.Spec.Location)
+	return region
+}
+
+func (s *ManagedControlPlaneScope) EnableAutopilot() bool {
+	return s.GCPManagedControlPlane.Spec.EnableAutopilot
+}
+
+func (s *ManagedControlPlaneScope) SetReady(ready bool) {
+	s.GCPManagedControlPlane.Status.Ready = ready
+}
+
+func (s *ManagedControlPlaneScope) SetEndpoint(host string) {
+	s.GCPManagedControlPlane.Spec.Endpoint = clusterv1.APIEndpoint{
+		Host: host,
+		Port: 443,
+	}
 }

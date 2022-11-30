@@ -27,7 +27,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: GCPManagedMachinePool is the Schema for the gcpmanagedmachinepools
-          API
+          API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -42,7 +42,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: GCPManagedMachinePoolSpec defines the desired state of GCPManagedMachinePool
+            description: GCPManagedMachinePoolSpec defines the desired state of GCPManagedMachinePool.
             properties:
               additionalLabels:
                 additionalProperties:
@@ -61,16 +61,16 @@ spec:
                 additionalProperties:
                   type: string
                 description: KubernetesLabels specifies the labels to apply to the
-                  nodes of the node pool
+                  nodes of the node pool.
                 type: object
               kubernetesTaints:
                 description: KubernetesTaints specifies the taints to apply to the
-                  nodes of the node pool
+                  nodes of the node pool.
                 items:
                   description: Taint represents a Kubernetes taint.
                   properties:
                     effect:
-                      description: Effect specifies the effect for the taint
+                      description: Effect specifies the effect for the taint.
                       enum:
                       - NoSchedule
                       - NoExecute
@@ -90,15 +90,15 @@ spec:
                 type: array
               mode:
                 description: Mode represents mode of an machine pool. A cluster always
-                  requires 1 system pool
+                  requires 1 system pool.
                 enum:
                 - system
                 - user
                 type: string
               nodeVersion:
-                description: NodeVersion represents the node version of the node pool
+                description: NodeVersion represents the node version of the node pool.
                   If not specified, the GKE cluster control plane version will be
-                  used
+                  used.
                 type: string
             required:
             - initialNodeCount
@@ -106,7 +106,7 @@ spec:
             type: object
           status:
             description: GCPManagedMachinePoolStatus defines the observed state of
-              GCPManagedMachinePool
+              GCPManagedMachinePool.
             properties:
               ready:
                 type: boolean

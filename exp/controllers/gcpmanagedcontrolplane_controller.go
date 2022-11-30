@@ -21,14 +21,19 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
-	"sigs.k8s.io/cluster-api/util/annotations"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/predicates"
+	"sigs.k8s.io/cluster-api/util/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"time"
@@ -96,15 +101,15 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 		log.Error(err, "Failed to retrieve owner Cluster from the API Server")
 		return ctrl.Result{}, err
 	}
-	if cluster == nil {
-		log.Info("Cluster Controller has not yet set OwnerRef")
-		return ctrl.Result{}, nil
-	}
+	//if cluster == nil {
+	//	log.Info("Cluster Controller has not yet set OwnerRef")
+	//	return ctrl.Result{}, nil
+	//}
 
-	if annotations.IsPaused(cluster, gcpManagedControlPlane) {
-		log.Info("Reconciliation is paused for this object")
-		return ctrl.Result{}, nil
-	}
+	//if annotations.IsPaused(cluster, gcpManagedControlPlane) {
+	//	log.Info("Reconciliation is paused for this object")
+	//	return ctrl.Result{}, nil
+	//}
 
 	managedControlPlaneScope, err := scope.NewManagedControlPlaneScope(scope.ManagedControlPlaneScopeParams{
 		Client:     r.Client,
@@ -132,9 +137,52 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 }
 
 func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, managedControlPlaneScope *scope.ManagedControlPlaneScope) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+	log.Info("Reconciling GCPManagedControlPlane")
+
+	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1.ClusterFinalizer)
+	if err := managedControlPlaneScope.PatchObject(); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	reconcilers := []cloud.Reconciler{
+		clusters.New(managedControlPlaneScope),
+	}
+
+	for _, r := range reconcilers {
+		if err := r.Reconcile(ctx); err != nil {
+			log.Error(err, "Reconcile error")
+			record.Warnf(managedControlPlaneScope.GCPManagedControlPlane, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
+			return ctrl.Result{}, err
+		}
+	}
+
+	if conditions.IsTrue(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneCreatingCondition) {
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
 func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, managedControlPlaneScope *scope.ManagedControlPlaneScope) (ctrl.Result, error) {
-	return ctrl.Result{}, nil
+	log := log.FromContext(ctx)
+	log.Info("Deleting GCPManagedControlPlane")
+
+	reconcilers := []cloud.Reconciler{
+		clusters.New(managedControlPlaneScope),
+	}
+
+	for _, r := range reconcilers {
+		if err := r.Delete(ctx); err != nil {
+			log.Error(err, "Reconcile error")
+			record.Warnf(managedControlPlaneScope.GCPManagedControlPlane, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
+			return ctrl.Result{}, err
+		}
+	}
+
+	if conditions.Get(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneDeletingCondition).Reason == infrav1exp.GKEControlPlaneDeletedReason {
+		controllerutil.RemoveFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1.ClusterFinalizer)
+	}
+
+	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }

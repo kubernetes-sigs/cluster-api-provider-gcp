@@ -40,7 +40,7 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: GCPManagedCluster is the Schema for the gcpmanagedclusters API
+        description: GCPManagedCluster is the Schema for the gcpmanagedclusters API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -55,7 +55,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: GCPManagedClusterSpec defines the desired state of GCPManagedCluster
+            description: GCPManagedClusterSpec defines the desired state of GCPManagedCluster.
             properties:
               additionalLabels:
                 additionalProperties:
@@ -178,7 +178,7 @@ spec:
             - region
             type: object
           status:
-            description: GCPManagedClusterStatus defines the observed state of GCPManagedCluster
+            description: GCPManagedClusterStatus defines the observed state of GCPManagedCluster.
             properties:
               conditions:
                 description: Conditions specifies the conditions for the managed control

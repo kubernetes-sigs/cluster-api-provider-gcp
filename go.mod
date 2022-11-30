@@ -3,6 +3,7 @@ module sigs.k8s.io/cluster-api-provider-gcp
 go 1.18
 
 require (
+	cloud.google.com/go/container v1.6.0
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.20.0
 	github.com/google/go-cmp v0.5.9
 	github.com/onsi/ginkgo v1.16.5
