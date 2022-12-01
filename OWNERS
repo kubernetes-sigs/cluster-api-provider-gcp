@@ -8,7 +8,6 @@ approvers:
   - cluster-api-gcp-maintainers
 
 reviewers:
-  - cluster-api-maintainers
   - cluster-api-gcp-maintainers
 
 emeritus_approvers:
