@@ -75,6 +75,10 @@ spec:
               releaseChannel:
                 description: ReleaseChannel represents the release channel of the
                   GKE cluster.
+                enum:
+                - rapid
+                - regular
+                - stable
                 type: string
             required:
             - enableAutopilot

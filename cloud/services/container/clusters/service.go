@@ -18,23 +18,19 @@ package clusters
 
 import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 )
-
-// Scope is an interfaces that hold used methods.
-type Scope interface {
-	cloud.ManagedControlPlane
-}
 
 // Service implements clusters reconciler.
 type Service struct {
-	scope          Scope
+	scope *scope.ManagedControlPlaneScope
 }
 
 var _ cloud.Reconciler = &Service{}
 
 // New returns Service from given scope.
-func New(scope Scope) *Service {
+func New(scope *scope.ManagedControlPlaneScope) *Service {
 	return &Service{
-		scope:          scope,
+		scope: scope,
 	}
 }

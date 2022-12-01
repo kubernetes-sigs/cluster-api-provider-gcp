@@ -18,9 +18,6 @@ package cloud
 
 import (
 	"context"
-	"sigs.k8s.io/cluster-api/util/conditions"
-
-	"cloud.google.com/go/container/apiv1"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	corev1 "k8s.io/api/core/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -97,23 +94,4 @@ type MachineSetter interface {
 type Machine interface {
 	MachineGetter
 	MachineSetter
-}
-
-type ManagedControlPlaneGetter interface {
-	Name() string
-	Project() string
-	Region() string
-	EnableAutopilot() bool
-}
-
-type ManagedControlPlaneSetter interface {
-	SetReady(ready bool)
-	SetEndpoint(host string)
-}
-
-type ManagedControlPlane interface {
-	ConditionSetter() conditions.Setter
-	ManagedControlPlaneClient() *container.ClusterManagerClient
-	ManagedControlPlaneGetter
-	ManagedControlPlaneSetter
 }

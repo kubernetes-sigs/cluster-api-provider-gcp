@@ -38,7 +38,7 @@ type GCPManagedControlPlaneSpec struct {
 	EnableAutopilot bool `json:"enableAutopilot"`
 	// ReleaseChannel represents the release channel of the GKE cluster.
 	// +optional
-	ReleaseChannel *string `json:"releaseChannel,omitempty"`
+	ReleaseChannel *ReleaseChannel `json:"releaseChannel,omitempty"`
 	// ControlPlaneVersion represents the control plane version of the GKE cluster.
 	// If not specified, the default version currently supported by GKE will be
 	// used.
@@ -79,6 +79,16 @@ type GCPManagedControlPlaneList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []GCPManagedControlPlane `json:"items"`
 }
+
+// FeatureToggle is a simple flag with a string value denoting if a given param is "enabled" or "disabled"
+// +kubebuilder:validation:Enum=rapid;regular;stable
+type ReleaseChannel string
+
+const (
+	Rapid  ReleaseChannel = "rapid"
+	Regular ReleaseChannel = "regular"
+	Stable ReleaseChannel = "stable"
+)
 
 // GetConditions returns the control planes conditions.
 func (r *GCPManagedControlPlane) GetConditions() clusterv1.Conditions {

@@ -107,14 +107,6 @@ func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.Cluste
 	return s.mcClient
 }
 
-func (s *ManagedControlPlaneScope) Name() string {
-	return s.GCPManagedControlPlane.Name
-}
-
-func (s *ManagedControlPlaneScope) Project() string {
-	return s.GCPManagedControlPlane.Spec.Project
-}
-
 func parseLocation(location string) (region string, zone *string) {
 	parts := strings.Split(location, "-")
 	region = strings.Join(parts[:2], "-")
@@ -128,14 +120,6 @@ func parseLocation(location string) (region string, zone *string) {
 func (s *ManagedControlPlaneScope) Region() string {
 	region, _ := parseLocation(s.GCPManagedControlPlane.Spec.Location)
 	return region
-}
-
-func (s *ManagedControlPlaneScope) EnableAutopilot() bool {
-	return s.GCPManagedControlPlane.Spec.EnableAutopilot
-}
-
-func (s *ManagedControlPlaneScope) SetReady(ready bool) {
-	s.GCPManagedControlPlane.Status.Ready = ready
 }
 
 func (s *ManagedControlPlaneScope) SetEndpoint(host string) {
