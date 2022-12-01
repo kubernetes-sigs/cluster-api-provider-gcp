@@ -1,6 +1,6 @@
 module sigs.k8s.io/cluster-api-provider-gcp/hack/tools
 
-go 1.18
+go 1.19
 
 require sigs.k8s.io/cluster-api/hack/tools v0.0.0-20220202124422-fe7656c044e1
 
@@ -31,9 +31,4 @@ require (
 	sigs.k8s.io/controller-tools v0.8.0 // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.0 // indirect
-)
-
-replace (
-	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.1.3
-	sigs.k8s.io/cluster-api/test => sigs.k8s.io/cluster-api/test v1.1.3
 )

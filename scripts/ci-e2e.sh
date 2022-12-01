@@ -35,6 +35,7 @@ source "${REPO_ROOT}/hack/ensure-kustomize.sh"
 
 # Configure e2e tests
 export GINKGO_NODES=3
+export GINKGO_ARGS="--fail-fast" # Other ginkgo args that need to be appended to the command.
 ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
 mkdir -p "${ARTIFACTS}/logs/"
 
@@ -47,8 +48,8 @@ export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
 GCP_B64ENCODED_CREDENTIALS=$(base64 "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
 export GCP_B64ENCODED_CREDENTIALS
 export KUBERNETES_MAJOR_VERSION="1"
-export KUBERNETES_MINOR_VERSION="23"
-export KUBERNETES_PATCH_VERSION="8"
+export KUBERNETES_MINOR_VERSION="25"
+export KUBERNETES_PATCH_VERSION="1"
 export KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
 # using prebuilt image from image-builder project the image is built everyday and the job is available here https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
 export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-${KUBERNETES_VERSION//[.+]/-}-nightly"
