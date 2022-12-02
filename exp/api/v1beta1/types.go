@@ -16,6 +16,8 @@ limitations under the License.
 
 package v1beta1
 
+import "cloud.google.com/go/container/apiv1/containerpb"
+
 // TaintEffect is the effect for a Kubernetes taint.
 type TaintEffect string
 
@@ -42,3 +44,28 @@ const (
 	// MachinePoolModeUser represenyts a user machine pool.
 	MachinePoolModeUser MachinePoolMode = "user"
 )
+
+func convertToSdkTaintEffect(effect TaintEffect) containerpb.NodeTaint_Effect {
+	switch effect {
+	case "NoSchedule":
+		return containerpb.NodeTaint_NO_SCHEDULE
+	case "NoExecute":
+		return containerpb.NodeTaint_NO_EXECUTE
+	case "PreferNoSchedule":
+		return containerpb.NodeTaint_PREFER_NO_SCHEDULE
+	default:
+		return containerpb.NodeTaint_EFFECT_UNSPECIFIED
+	}
+}
+
+func ConvertToSdkTaint(taints Taints) []*containerpb.NodeTaint {
+	res := []*containerpb.NodeTaint{}
+	for _, taint := range taints {
+		res = append(res, &containerpb.NodeTaint{
+			Key: taint.Key,
+			Value: taint.Value,
+			Effect: convertToSdkTaintEffect(taint.Effect),
+		})
+	}
+	return res
+}

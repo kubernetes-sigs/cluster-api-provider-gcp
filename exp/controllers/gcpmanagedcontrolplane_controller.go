@@ -140,7 +140,7 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 	log := log.FromContext(ctx)
 	log.Info("Reconciling GCPManagedControlPlane")
 
-	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1.ClusterFinalizer)
+	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
 	if err := managedControlPlaneScope.PatchObject(); err != nil {
 		return ctrl.Result{}, err
 	}

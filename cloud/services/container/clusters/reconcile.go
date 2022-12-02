@@ -19,7 +19,6 @@ package clusters
 import (
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"context"
-	"fmt"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -59,6 +58,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	case containerpb.Cluster_PROVISIONING:
 		log.Info("Cluster provisioning in progress")
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
+		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition)
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 		return nil
 	case containerpb.Cluster_RECONCILING:
@@ -67,6 +67,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	case containerpb.Cluster_STOPPING:
 		log.Info("Cluster stopping in progress")
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
+		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneDeletingCondition)
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 		return nil
 	case containerpb.Cluster_ERROR, containerpb.Cluster_DEGRADED:
@@ -80,10 +81,10 @@ func (s *Service) Reconcile(ctx context.Context) error {
 		break
 	}
 
-	needUpdate, clusterUpdate := s.checkDiffAndPrepareUpdate(*cluster)
+	needUpdate, updateClusterRequest := s.checkDiffAndPrepareUpdate(*cluster)
 	if needUpdate {
 		log.Info("Update required")
-		err = s.updateCluster(ctx, clusterUpdate)
+		err = s.updateCluster(ctx, updateClusterRequest)
 		if err != nil {
 			return err
 		}
@@ -147,7 +148,7 @@ func (s *Service) describeCluster(ctx context.Context) (*containerpb.Cluster, er
 	log := log.FromContext(ctx)
 
 	getClusterRequest := &containerpb.GetClusterRequest{
-		Name: fmt.Sprintf("projects/%s/locations/%s/clusters/%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.Region(), s.scope.GCPManagedControlPlane.Name),
+		Name: s.scope.ClusterFullName(),
 	}
 	cluster, err := s.scope.ManagedControlPlaneClient().GetCluster(ctx, getClusterRequest)
 	if err != nil {
@@ -187,7 +188,7 @@ func (s *Service) createCluster(ctx context.Context) error {
 	}
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
-		Parent: fmt.Sprintf("projects/%s/locations/%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.Region()),
+		Parent: s.scope.ClusterLocation(),
 	}
 	_, err := s.scope.ManagedControlPlaneClient().CreateCluster(ctx, createClusterRequest)
 	if err != nil {
@@ -198,14 +199,10 @@ func (s *Service) createCluster(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) updateCluster(ctx context.Context, clusterUpdate containerpb.ClusterUpdate) error {
+func (s *Service) updateCluster(ctx context.Context, updateClusterRequest containerpb.UpdateClusterRequest) error {
 	log := log.FromContext(ctx)
 
-	updateClusterRequest := &containerpb.UpdateClusterRequest{
-		Name: fmt.Sprintf("projects/%s/locations/%s/clusters/%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.Region(), s.scope.GCPManagedControlPlane.Name),
-		Update: &clusterUpdate,
-	}
-	_, err := s.scope.ManagedControlPlaneClient().UpdateCluster(ctx, updateClusterRequest)
+	_, err := s.scope.ManagedControlPlaneClient().UpdateCluster(ctx, &updateClusterRequest)
 	if err != nil {
 		log.Error(err, "Error updating GKE cluster", "name", s.scope.GCPManagedControlPlane.Name)
 		return err
@@ -218,7 +215,7 @@ func (s *Service) deleteCluster(ctx context.Context) error {
 	log := log.FromContext(ctx)
 
 	deleteClusterRequest := &containerpb.DeleteClusterRequest{
-		Name: fmt.Sprintf("projects/%s/locations/%s/clusters/%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.Region(), s.scope.GCPManagedControlPlane.Name),
+		Name: s.scope.ClusterFullName(),
 	}
 	_, err := s.scope.ManagedControlPlaneClient().DeleteCluster(ctx, deleteClusterRequest)
 	if err != nil {
@@ -245,10 +242,11 @@ func convertReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.Relea
 	}
 }
 
-func (s *Service) checkDiffAndPrepareUpdate(existingCluster containerpb.Cluster) (bool, containerpb.ClusterUpdate) {
+func (s *Service) checkDiffAndPrepareUpdate(existingCluster containerpb.Cluster) (bool, containerpb.UpdateClusterRequest) {
 	needUpdate := false
 	clusterUpdate := containerpb.ClusterUpdate{
 	}
+	// Release channel
 	desiredReleaseChannel := convertReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel)
 	if desiredReleaseChannel != existingCluster.ReleaseChannel.Channel {
 		needUpdate = true
@@ -256,9 +254,14 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster containerpb.Cluster)
 			Channel: desiredReleaseChannel,
 		}
 	}
+	// Master version
 	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil && *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != existingCluster.InitialClusterVersion {
 		needUpdate = true
 		clusterUpdate.DesiredMasterVersion = *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
 	}
-	return needUpdate, clusterUpdate
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name: s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	return needUpdate, updateClusterRequest
 }

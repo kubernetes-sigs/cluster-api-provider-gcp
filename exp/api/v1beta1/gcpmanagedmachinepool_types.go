@@ -19,6 +19,7 @@ package v1beta1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 const (
@@ -33,9 +34,9 @@ type GCPManagedMachinePoolSpec struct {
 	// If not specified, the GKE cluster control plane version will be used.
 	// +optional
 	NodeVersion *string `json:"nodeVersion,omitempty"`
-	// InitialNodeCount represents the initial number of nodes for the pool.
+	// NodeCount represents the initial number of nodes for the pool.
 	// In regional or multi-zonal clusters, this is the number of nodes per zone.
-	InitialNodeCount int32 `json:"initialNodeCount"`
+	NodeCount int32 `json:"nodeCount"`
 	// KubernetesLabels specifies the labels to apply to the nodes of the node pool.
 	// +optional
 	KubernetesLabels infrav1.Labels `json:"kubernetesLabels,omitempty"`
@@ -46,9 +47,6 @@ type GCPManagedMachinePoolSpec struct {
 	// ones added by default.
 	// +optional
 	AdditionalLabels infrav1.Labels `json:"additionalLabels,omitempty"`
-	// Mode represents mode of an machine pool. A cluster always requires 1 system pool.
-	// +kubebuilder:validation:Enum=system;user
-	Mode string `json:"mode"`
 }
 
 // GCPManagedMachinePoolStatus defines the observed state of GCPManagedMachinePool.
@@ -57,6 +55,8 @@ type GCPManagedMachinePoolStatus struct {
 	// Replicas is the most recently observed number of replicas.
 	// +optional
 	Replicas int32 `json:"replicas"`
+	// Conditions specifies the cpnditions for the managed machine pool
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -81,6 +81,16 @@ type GCPManagedMachinePoolList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []GCPManagedMachinePool `json:"items"`
+}
+
+// GetConditions returns the machine pool conditions.
+func (r *GCPManagedMachinePool) GetConditions() clusterv1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the status conditions for the GCPManagedMachinePool.
+func (r *GCPManagedMachinePool) SetConditions(conditions clusterv1.Conditions) {
+	r.Status.Conditions = conditions
 }
 
 func init() {

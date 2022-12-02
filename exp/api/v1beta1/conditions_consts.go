@@ -40,4 +40,28 @@ const (
 	GKEControlPlaneErrorReason = "GKEControlPlaneError"
 	// GKEControlPlaneFailedReason used to report failures while reconciling GKE control plane.
 	GKEControlPlaneReconciliationFailedReason = "GKEControlPlaneReconciliationFailed"
+
+	// GKEMachinePoolReadyCondition condition reports on the successful reconciliation of GKE node pool.
+	GKEMachinePoolReadyCondition clusterv1.ConditionType = "GKEMachinePoolReady"
+	// GKEMachinePoolCreatingCondition condition reports on whether the GKE control plane is creating.
+	GKEMachinePoolCreatingCondition clusterv1.ConditionType = "GKEMachinePoolCreating"
+	// GKEMachinePoolUpdatingCondition condition reports on whether the GKE control plane is updating.
+	GKEMachinePoolUpdatingCondition clusterv1.ConditionType = "GKEMachinePoolUpdating"
+	// GKEMachinePoolDeletingCondition condition reports on whether the GKE control plane is deleting.
+	GKEMachinePoolDeletingCondition clusterv1.ConditionType = "GKEMachinePoolDeleting"
+
+	// WaitingForGKEControlPlaneReason used when the machine pool is waiting for GKE control plane infrastructure to be ready before proceeding.
+	WaitingForGKEControlPlaneReason = "WaitingForGKEControlPlane"
+	// GKEMachinePoolCreatingReason used to report GKE control plane being created.
+	GKEMachinePoolCreatingReason = "GKEMachinePoolCreating"
+	// GKEMachinePoolCreatedReason used to report GKE control plane is created.
+	GKEMachinePoolCreatedReason = "GKEMachinePoolCreating"
+	// GKEMachinePoolDeletingReason used to report GKE control plane being deleted.
+	GKEMachinePoolDeletingReason = "GKEMachinePoolDeleting"
+	// GKEMachinePoolDeletedReason used to report GKE control plane is deleted.
+	GKEMachinePoolDeletedReason = "GKEMachinePoolDeleting"
+	// GKEMachinePoolErrorReason used to report GKE control plane is in error state.
+	GKEMachinePoolErrorReason = "GKEMachinePoolError"
+	// GKEMachinePoolFailedReason used to report failures while reconciling GKE control plane.
+	GKEMachinePoolReconciliationFailedReason = "GKEMachinePoolReconciliationFailed"
 )

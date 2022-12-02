@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"sigs.k8s.io/cluster-api/util/conditions"
-	"strings"
 
 	"cloud.google.com/go/container/apiv1"
 	"github.com/pkg/errors"
@@ -30,22 +29,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ManagedControlPlaneScopeParams defines the input parameters used to create a new Scope.
-type ManagedControlPlaneScopeParams struct {
+// ManagedMachinePoolScopeParams defines the input parameters used to create a new Scope.
+type ManagedMachinePoolScopeParams struct {
 	ManagedClusterClient *container.ClusterManagerClient
 	Client     client.Client
 	Cluster    *clusterv1.Cluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
+	GCPManagedMachinePool *infrav1exp.GCPManagedMachinePool
 }
 
-// NewManagedControlPlaneScope creates a new Scope from the supplied parameters.
+// NewManagedMachinePoolScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
-func NewManagedControlPlaneScope(params ManagedControlPlaneScopeParams) (*ManagedControlPlaneScope, error) {
+func NewManagedMachinePoolScope(params ManagedMachinePoolScopeParams) (*ManagedMachinePoolScope, error) {
 	//if params.Cluster == nil {
 	//	return nil, errors.New("failed to generate new scope from nil Cluster")
 	//}
 	if params.GCPManagedControlPlane == nil {
 		return nil, errors.New("failed to generate new scope from nil GCPManagedControlPlane")
+	}
+	if params.GCPManagedMachinePool == nil {
+		return nil, errors.New("failed to generate new scope from nil GCPManagedMachinePool")
 	}
 
 	if params.ManagedClusterClient == nil {
@@ -57,83 +60,67 @@ func NewManagedControlPlaneScope(params ManagedControlPlaneScopeParams) (*Manage
 		params.ManagedClusterClient = managedClusterClient
 	}
 
-	helper, err := patch.NewHelper(params.GCPManagedControlPlane, params.Client)
+	helper, err := patch.NewHelper(params.GCPManagedMachinePool, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
 
-	return &ManagedControlPlaneScope{
+	return &ManagedMachinePoolScope{
 		client:      params.Client,
 		Cluster:     params.Cluster,
-		GCPManagedControlPlane:  params.GCPManagedControlPlane,
+		GCPManagedMachinePool:  params.GCPManagedMachinePool,
 		mcClient: params.ManagedClusterClient,
 		patchHelper: helper,
 	}, nil
 }
 
-// ManagedControlPlaneScope defines the basic context for an actuator to operate upon.
-type ManagedControlPlaneScope struct {
+// ManagedMachinePoolScope defines the basic context for an actuator to operate upon.
+type ManagedMachinePoolScope struct {
 	client      client.Client
 	patchHelper *patch.Helper
 
 	Cluster    *clusterv1.Cluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
+	GCPManagedMachinePool *infrav1exp.GCPManagedMachinePool
 	mcClient *container.ClusterManagerClient
 }
 
 // PatchObject persists the managed control plane configuration and status.
-func (s *ManagedControlPlaneScope) PatchObject() error {
+func (s *ManagedMachinePoolScope) PatchObject() error {
 	return s.patchHelper.Patch(
 		context.TODO(),
-		s.GCPManagedControlPlane,
+		s.GCPManagedMachinePool,
 		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
-			infrav1exp.GKEControlPlaneReadyCondition,
-			infrav1exp.GKEControlPlaneCreatingCondition,
-			infrav1exp.GKEControlPlaneUpdatingCondition,
-			infrav1exp.GKEControlPlaneDeletingCondition,
 		}})
 }
 
 // Close closes the current scope persisting the managed control plane configuration and status.
-func (s *ManagedControlPlaneScope) Close() error {
+func (s *ManagedMachinePoolScope) Close() error {
 	s.mcClient.Close()
 	return s.PatchObject()
 }
 
-func (s *ManagedControlPlaneScope) ConditionSetter() conditions.Setter {
-	return s.GCPManagedControlPlane
+func (s *ManagedMachinePoolScope) ConditionSetter() conditions.Setter {
+	return s.GCPManagedMachinePool
 }
 
-func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.ClusterManagerClient {
+func (s *ManagedMachinePoolScope) ManagedMachinePoolClient() *container.ClusterManagerClient {
 	return s.mcClient
 }
 
-func parseLocation(location string) (region string, zone *string) {
-	parts := strings.Split(location, "-")
-	region = strings.Join(parts[:2], "-")
-	if len(parts) == 3 {
-		return region, &parts[2]
-	} else {
-		return region, nil
-	}
+func (s *ManagedMachinePoolScope) SetReplicas(replicas int32) {
+	s.GCPManagedMachinePool.Status.Replicas = replicas
 }
 
-func (s *ManagedControlPlaneScope) Region() string {
+func (s *ManagedMachinePoolScope) Region() string {
 	region, _ := parseLocation(s.GCPManagedControlPlane.Spec.Location)
 	return region
 }
 
-func (s *ManagedControlPlaneScope) ClusterLocation() string {
-	return fmt.Sprintf("projects/%s/locations/%s", s.GCPManagedControlPlane.Spec.Project, s.Region())
+func (s *ManagedMachinePoolScope) NodePoolLocation() string {
+	return fmt.Sprintf("projects/%s/locations/%s/clusters/%s", s.GCPManagedControlPlane.Spec.Project, s.Region(), s.GCPManagedControlPlane.Name)
 }
 
-func (s *ManagedControlPlaneScope) ClusterFullName() string {
-	return fmt.Sprintf("%s/clusters/%s", s.ClusterLocation(), s.GCPManagedControlPlane.Name)
-}
-
-func (s *ManagedControlPlaneScope) SetEndpoint(host string) {
-	s.GCPManagedControlPlane.Spec.Endpoint = clusterv1.APIEndpoint{
-		Host: host,
-		Port: 443,
-	}
+func (s *ManagedMachinePoolScope) NodePoolFullName() string {
+	return fmt.Sprintf("%s/nodePools/%s", s.NodePoolLocation(), s.GCPManagedMachinePool.Name)
 }

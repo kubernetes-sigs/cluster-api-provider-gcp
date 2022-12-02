@@ -166,6 +166,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "GCPManagedControlPlane")
 		os.Exit(1)
 	}
+	if err = (&expcontrollers.GCPManagedMachinePoolReconciler{
+		Client:           mgr.GetClient(),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "GCPManagedMachinePool")
+		os.Exit(1)
+	}
 
 	//if err = (&infrav1beta1.GCPCluster{}).SetupWebhookWithManager(mgr); err != nil {
 	//	setupLog.Error(err, "unable to create webhook", "webhook", "GCPCluster")
