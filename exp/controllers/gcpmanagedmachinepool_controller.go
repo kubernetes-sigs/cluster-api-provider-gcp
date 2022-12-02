@@ -24,11 +24,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/nodepools"
 	expclusterv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/record"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -241,10 +240,10 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 		log.Error(err, "Failed to retrieve owner MachinePool from the API Server")
 		return ctrl.Result{}, err
 	}
-	//if machinePool == nil {
-	//	log.Info("MachinePool Controller has not yet set OwnerRef")
-	//	return ctrl.Result{}, nil
-	//}
+	if machinePool == nil {
+		log.Info("MachinePool Controller has not yet set OwnerRef")
+		return ctrl.Result{}, nil
+	}
 
 	// Get the cluster
 	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machinePool.ObjectMeta)
@@ -252,10 +251,10 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 		log.Info("Failed to retrieve Cluster from MachinePool")
 		return ctrl.Result{}, err
 	}
-	//if annotations.IsPaused(cluster, gcpManagedMachinePool) {
-	//	log.Info("Reconciliation is paused for this object")
-	//	return ctrl.Result{}, nil
-	//}
+	if annotations.IsPaused(cluster, gcpManagedMachinePool) {
+		log.Info("Reconciliation is paused for this object")
+		return ctrl.Result{}, nil
+	}
 
 	gcpManagedControlPlaneKey := client.ObjectKey{
 		Namespace: gcpManagedMachinePool.Namespace,

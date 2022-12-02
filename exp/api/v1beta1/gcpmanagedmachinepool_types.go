@@ -30,6 +30,10 @@ const (
 
 // GCPManagedMachinePoolSpec defines the desired state of GCPManagedMachinePool.
 type GCPManagedMachinePoolSpec struct {
+	// NodePoolName specifies the name of the GKE node pool corresponding to this MachinePool. If you don't specify a name
+	// then a default name will be created based on the namespace and name of the managed machine pool.
+	// +optional
+	NodePoolName string `json:"nodePoolName,omitempty"`
 	// NodeVersion represents the node version of the node pool.
 	// If not specified, the GKE cluster control plane version will be used.
 	// +optional

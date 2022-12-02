@@ -31,15 +31,17 @@ const (
 	// GKEControlPlaneCreatingReason used to report GKE control plane being created.
 	GKEControlPlaneCreatingReason = "GKEControlPlaneCreating"
 	// GKEControlPlaneCreatedReason used to report GKE control plane is created.
-	GKEControlPlaneCreatedReason = "GKEControlPlaneCreating"
+	GKEControlPlaneCreatedReason = "GKEControlPlaneCreated"
 	// GKEControlPlaneDeletingReason used to report GKE control plane being deleted.
 	GKEControlPlaneDeletingReason = "GKEControlPlaneDeleting"
 	// GKEControlPlaneDeletedReason used to report GKE control plane is deleted.
-	GKEControlPlaneDeletedReason = "GKEControlPlaneDeleting"
+	GKEControlPlaneDeletedReason = "GKEControlPlaneDeleted"
 	// GKEControlPlaneErrorReason used to report GKE control plane is in error state.
 	GKEControlPlaneErrorReason = "GKEControlPlaneError"
-	// GKEControlPlaneFailedReason used to report failures while reconciling GKE control plane.
+	// GKEControlPlaneReconciliationFailedReason used to report failures while reconciling GKE control plane.
 	GKEControlPlaneReconciliationFailedReason = "GKEControlPlaneReconciliationFailed"
+	// GKEControlPlaneRequiresAtLeastOneNodePoolReason used to report that no node pool is specified for the GKE control plane.
+	GKEControlPlaneRequiresAtLeastOneNodePoolReason = "GKEControlPlaneRequiresAtLeastOneNodePool"
 
 	// GKEMachinePoolReadyCondition condition reports on the successful reconciliation of GKE node pool.
 	GKEMachinePoolReadyCondition clusterv1.ConditionType = "GKEMachinePoolReady"
@@ -55,13 +57,13 @@ const (
 	// GKEMachinePoolCreatingReason used to report GKE control plane being created.
 	GKEMachinePoolCreatingReason = "GKEMachinePoolCreating"
 	// GKEMachinePoolCreatedReason used to report GKE control plane is created.
-	GKEMachinePoolCreatedReason = "GKEMachinePoolCreating"
+	GKEMachinePoolCreatedReason = "GKEMachinePoolCreated"
 	// GKEMachinePoolDeletingReason used to report GKE control plane being deleted.
 	GKEMachinePoolDeletingReason = "GKEMachinePoolDeleting"
 	// GKEMachinePoolDeletedReason used to report GKE control plane is deleted.
-	GKEMachinePoolDeletedReason = "GKEMachinePoolDeleting"
+	GKEMachinePoolDeletedReason = "GKEMachinePoolDeleted"
 	// GKEMachinePoolErrorReason used to report GKE control plane is in error state.
 	GKEMachinePoolErrorReason = "GKEMachinePoolError"
-	// GKEMachinePoolFailedReason used to report failures while reconciling GKE control plane.
+	// GKEMachinePoolReconciliationFailedReason used to report failures while reconciling GKE control plane.
 	GKEMachinePoolReconciliationFailedReason = "GKEMachinePoolReconciliationFailed"
 )

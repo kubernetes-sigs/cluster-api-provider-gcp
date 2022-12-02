@@ -17,6 +17,7 @@ limitations under the License.
 package scope
 
 import (
+	"cloud.google.com/go/container/apiv1/containerpb"
 	"context"
 	"fmt"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -68,6 +69,7 @@ func NewManagedMachinePoolScope(params ManagedMachinePoolScopeParams) (*ManagedM
 	return &ManagedMachinePoolScope{
 		client:      params.Client,
 		Cluster:     params.Cluster,
+		GCPManagedControlPlane: params.GCPManagedControlPlane,
 		GCPManagedMachinePool:  params.GCPManagedMachinePool,
 		mcClient: params.ManagedClusterClient,
 		patchHelper: helper,
@@ -91,6 +93,10 @@ func (s *ManagedMachinePoolScope) PatchObject() error {
 		context.TODO(),
 		s.GCPManagedMachinePool,
 		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
+			infrav1exp.GKEMachinePoolReadyCondition,
+			infrav1exp.GKEMachinePoolCreatingCondition,
+			infrav1exp.GKEMachinePoolUpdatingCondition,
+			infrav1exp.GKEMachinePoolDeletingCondition,
 		}})
 }
 
@@ -108,8 +114,44 @@ func (s *ManagedMachinePoolScope) ManagedMachinePoolClient() *container.ClusterM
 	return s.mcClient
 }
 
+func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool) *containerpb.NodePool {
+	nodePoolName := nodePool.Spec.NodePoolName
+	if len(nodePoolName) == 0 {
+		nodePoolName = nodePool.Name
+	}
+	sdkNodePool := containerpb.NodePool{
+		Name: nodePoolName,
+		InitialNodeCount: nodePool.Spec.NodeCount,
+		Config: &containerpb.NodeConfig{
+			Labels: nodePool.Spec.KubernetesLabels,
+			Taints: infrav1exp.ConvertToSdkTaint(nodePool.Spec.KubernetesTaints),
+			Metadata: nodePool.Spec.AdditionalLabels,
+		},
+	}
+	if nodePool.Spec.NodeVersion != nil {
+		sdkNodePool.Version = *nodePool.Spec.NodeVersion
+	}
+	return &sdkNodePool
+}
+
+func ConvertToSdkNodePools(nodePools []infrav1exp.GCPManagedMachinePool) []*containerpb.NodePool {
+	res := []*containerpb.NodePool{}
+	for _, nodePool := range nodePools {
+		res = append(res, ConvertToSdkNodePool(nodePool))
+	}
+	return res
+}
+
 func (s *ManagedMachinePoolScope) SetReplicas(replicas int32) {
 	s.GCPManagedMachinePool.Status.Replicas = replicas
+}
+
+func (s *ManagedMachinePoolScope) NodePoolName() string {
+	if len(s.GCPManagedMachinePool.Spec.NodePoolName) > 0 {
+		return s.GCPManagedMachinePool.Spec.NodePoolName
+	} else {
+		return s.GCPManagedMachinePool.Name
+	}
 }
 
 func (s *ManagedMachinePoolScope) Region() string {
@@ -122,5 +164,5 @@ func (s *ManagedMachinePoolScope) NodePoolLocation() string {
 }
 
 func (s *ManagedMachinePoolScope) NodePoolFullName() string {
-	return fmt.Sprintf("%s/nodePools/%s", s.NodePoolLocation(), s.GCPManagedMachinePool.Name)
+	return fmt.Sprintf("%s/nodePools/%s", s.NodePoolLocation(), s.NodePoolName())
 }

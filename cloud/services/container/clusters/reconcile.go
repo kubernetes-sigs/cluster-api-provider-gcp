@@ -22,6 +22,7 @@ import (
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -43,6 +44,20 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	if cluster == nil {
 		log.Info("Cluster not found, creating")
 		s.scope.GCPManagedControlPlane.Status.Ready = false
+
+		nodePools, err := s.scope.GetAllNodePools()
+		if err != nil {
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
+			return err
+		}
+		if len(nodePools) == 0 {
+			log.Info("At least 1 node pool is required to create GKE cluster")
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneRequiresAtLeastOneNodePoolReason, clusterv1.ConditionSeverityInfo, "")
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneRequiresAtLeastOneNodePoolReason, clusterv1.ConditionSeverityInfo, "")
+			return nil
+		}
+
 		if err = s.createCluster(ctx); err != nil {
 			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
 			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
@@ -168,19 +183,15 @@ func (s *Service) describeCluster(ctx context.Context) (*containerpb.Cluster, er
 func (s *Service) createCluster(ctx context.Context) error {
 	log := log.FromContext(ctx)
 
+	nodePools, _ := s.scope.GetAllNodePools()
 	cluster := &containerpb.Cluster{
 		Name: s.scope.GCPManagedControlPlane.Name,
 		Autopilot: &containerpb.Autopilot{
 			Enabled: false,
 		},
-		NodePools: []*containerpb.NodePool{
-			{
-				Name: "default",
-				InitialNodeCount: 1,
-			},
-		},
+		NodePools: scope.ConvertToSdkNodePools(nodePools),
 		ReleaseChannel: &containerpb.ReleaseChannel{
-			Channel: convertReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
+			Channel: convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
 		},
 	}
 	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
@@ -226,7 +237,7 @@ func (s *Service) deleteCluster(ctx context.Context) error {
 	return nil
 }
 
-func convertReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.ReleaseChannel_Channel {
+func convertToSdkReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.ReleaseChannel_Channel {
 	if channel == nil {
 		return containerpb.ReleaseChannel_UNSPECIFIED
 	}
@@ -247,7 +258,7 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster containerpb.Cluster)
 	clusterUpdate := containerpb.ClusterUpdate{
 	}
 	// Release channel
-	desiredReleaseChannel := convertReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel)
+	desiredReleaseChannel := convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel)
 	if desiredReleaseChannel != existingCluster.ReleaseChannel.Channel {
 		needUpdate = true
 		clusterUpdate.DesiredReleaseChannel = &containerpb.ReleaseChannel{

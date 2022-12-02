@@ -59,6 +59,9 @@ func convertToSdkTaintEffect(effect TaintEffect) containerpb.NodeTaint_Effect {
 }
 
 func ConvertToSdkTaint(taints Taints) []*containerpb.NodeTaint {
+	if taints == nil {
+		return nil
+	}
 	res := []*containerpb.NodeTaint{}
 	for _, taint := range taints {
 		res = append(res, &containerpb.NodeTaint{

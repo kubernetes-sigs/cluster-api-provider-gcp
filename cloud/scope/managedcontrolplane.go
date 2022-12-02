@@ -79,6 +79,8 @@ type ManagedControlPlaneScope struct {
 	Cluster    *clusterv1.Cluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	mcClient *container.ClusterManagerClient
+
+	AllNodePools []infrav1exp.GCPManagedMachinePool
 }
 
 // PatchObject persists the managed control plane configuration and status.
@@ -106,6 +108,23 @@ func (s *ManagedControlPlaneScope) ConditionSetter() conditions.Setter {
 
 func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.ClusterManagerClient {
 	return s.mcClient
+}
+
+func (s *ManagedControlPlaneScope) GetAllNodePools() ([]infrav1exp.GCPManagedMachinePool, error) {
+	if s.AllNodePools == nil {
+		opt1 := client.InNamespace(s.GCPManagedControlPlane.Namespace)
+		opt2 := client.MatchingLabels(map[string]string{
+			clusterv1.ClusterLabelName: s.Cluster.Name,
+		})
+
+		machinePoolList := &infrav1exp.GCPManagedMachinePoolList{}
+		if err := s.client.List(context.TODO(), machinePoolList, opt1, opt2); err != nil {
+			return nil, err
+		}
+		s.AllNodePools = machinePoolList.Items
+	}
+
+	return s.AllNodePools, nil
 }
 
 func parseLocation(location string) (region string, zone *string) {

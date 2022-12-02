@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"reflect"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -181,20 +182,8 @@ func (s *Service) describeNodePool(ctx context.Context) (*containerpb.NodePool, 
 func (s *Service) createNodePool(ctx context.Context) error {
 	log := log.FromContext(ctx)
 
-	nodePool := &containerpb.NodePool{
-		Name: s.scope.GCPManagedMachinePool.Name,
-		InitialNodeCount: s.scope.GCPManagedMachinePool.Spec.NodeCount,
-		Config: &containerpb.NodeConfig{
-			Labels: s.scope.GCPManagedMachinePool.Spec.KubernetesLabels,
-			Taints: infrav1exp.ConvertToSdkTaint(s.scope.GCPManagedMachinePool.Spec.KubernetesTaints),
-			Metadata: s.scope.GCPManagedMachinePool.Spec.AdditionalLabels,
-		},
-	}
-	if s.scope.GCPManagedMachinePool.Spec.NodeVersion != nil {
-		nodePool.Version = *s.scope.GCPManagedMachinePool.Spec.NodeVersion
-	}
 	createNodePoolRequest := &containerpb.CreateNodePoolRequest{
-		NodePool: nodePool,
+		NodePool: scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool),
 		Parent: s.scope.NodePoolLocation(),
 	}
 	_, err := s.scope.ManagedMachinePoolClient().CreateNodePool(ctx, createNodePoolRequest)
@@ -256,14 +245,10 @@ func (s *Service) checkDiffAndPrepareUpdateVersionOrImage(existingNodePool conta
 		updateNodePoolRequest.NodeVersion = *s.scope.GCPManagedMachinePool.Spec.NodeVersion
 	}
 	// Kubernetes labels
-	desiredKubernetesLabels := map[string]string{}
-	if s.scope.GCPManagedMachinePool.Spec.KubernetesLabels != nil {
-		desiredKubernetesLabels = s.scope.GCPManagedMachinePool.Spec.KubernetesLabels
-	}
-	if !reflect.DeepEqual(desiredKubernetesLabels, existingNodePool.Config.Labels) {
+	if !reflect.DeepEqual(map[string]string(s.scope.GCPManagedMachinePool.Spec.KubernetesLabels), existingNodePool.Config.Labels) {
 		needUpdate = true
 		updateNodePoolRequest.Labels = &containerpb.NodeLabels{
-			Labels: desiredKubernetesLabels,
+			Labels: s.scope.GCPManagedMachinePool.Spec.KubernetesLabels,
 		}
 	}
 	// Kubernetes taints
