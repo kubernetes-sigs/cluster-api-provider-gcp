@@ -16,7 +16,7 @@ providers:
     type: CoreProvider
     versions:
     - name: v1.3.0
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0-rc.1/core-components.yaml
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0/core-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -29,7 +29,7 @@ providers:
     type: BootstrapProvider
     versions:
     - name: v1.3.0
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0-rc.1/bootstrap-components.yaml
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0/bootstrap-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -42,7 +42,7 @@ providers:
     type: ControlPlaneProvider
     versions:
     - name: v1.3.0
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0-rc.1/control-plane-components.yaml
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0/control-plane-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -73,12 +73,12 @@ variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.25.1}"
   ETCD_VERSION_UPGRADE_TO: "3.5.1-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.8.6"
-  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-22-11-nightly"
-  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-23-8-nightly"
+  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-24-8-nightly"
+  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-25-4-nightly"
   CONTROL_PLANE_MACHINE_TEMPLATE_UPGRADE_TO: "cp-k8s-upgrade-and-conformance"
   WORKERS_MACHINE_TEMPLATE_UPGRADE_TO: "worker-k8s-upgrade-and-conformance"
-  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.23.8}"
-  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.22.11}"
+  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.25.4}"
+  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.24.8}"
   EXP_CLUSTER_RESOURCE_SET: "true"
   CLUSTER_TOPOLOGY: "true"
   # Cluster Addons
