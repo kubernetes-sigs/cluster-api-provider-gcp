@@ -113,7 +113,7 @@ GOTESTSUM := $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)
 export GCP_PROJECT ?= $(shell gcloud config get-value project)
 REGISTRY ?= gcr.io/$(GCP_PROJECT)
 STAGING_REGISTRY := gcr.io/k8s-staging-cluster-api-gcp
-PROD_REGISTRY := us.gcr.io/k8s-artifacts-prod/cluster-api-gcp
+PROD_REGISTRY := registry.k8s.io/cluster-api-gcp
 IMAGE_NAME ?= cluster-api-gcp-controller
 export CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
 export TAG ?= dev
@@ -469,7 +469,7 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KIND) $(KUBECTL)
 	./hack/install-cert-manager.sh
 
 	# Deploy CAPI
-	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0-rc.1/cluster-api-components.yaml | $(ENVSUBST) | $(KUBECTL) apply -f -
+	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0/cluster-api-components.yaml | $(ENVSUBST) | $(KUBECTL) apply -f -
 
 	# Deploy CAPG
 	$(KIND) load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
