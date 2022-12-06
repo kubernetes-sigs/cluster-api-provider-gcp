@@ -235,6 +235,22 @@ spec:
                         - host
                         - port
                         type: object
+                      credentialsRef:
+                        description: CredentialsRef is a reference to a Secret that
+                          contains the credentials to use for provisioning this cluster.
+                          If not supplied then the credentials of the controller will
+                          be used.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                            type: string
+                          namespace:
+                            description: 'Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
+                            type: string
+                        required:
+                        - name
+                        - namespace
+                        type: object
                       failureDomains:
                         description: FailureDomains is an optional field which is
                           used to assign selected availability zones to a cluster

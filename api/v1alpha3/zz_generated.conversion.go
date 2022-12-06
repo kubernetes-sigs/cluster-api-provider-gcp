@@ -414,6 +414,7 @@ func autoConvert_v1beta1_GCPClusterSpec_To_v1alpha3_GCPClusterSpec(in *v1beta1.G
 	}
 	out.FailureDomains = *(*[]string)(unsafe.Pointer(&in.FailureDomains))
 	out.AdditionalLabels = *(*Labels)(unsafe.Pointer(&in.AdditionalLabels))
+	// WARNING: in.CredentialsRef requires manual conversion: does not exist in peer-type
 	return nil
 }
 

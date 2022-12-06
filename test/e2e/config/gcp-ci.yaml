@@ -68,6 +68,7 @@ providers:
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-kcp-remediation.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-topology.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-quick-start.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-creds.yaml"
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.23.8}"

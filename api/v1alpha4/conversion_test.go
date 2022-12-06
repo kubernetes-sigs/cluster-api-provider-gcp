@@ -25,22 +25,22 @@ import (
 
 func TestFuzzyConversion(t *testing.T) {
 	t.Run("for GCPCluster", utilconversion.FuzzTestFunc(utilconversion.FuzzTestFuncInput{
-		Hub:    &v1beta1.GCPCluster{},
-		Spoke:  &GCPCluster{},
+		Hub:   &v1beta1.GCPCluster{},
+		Spoke: &GCPCluster{},
 	}))
 
 	t.Run("for GCPClusterTemplate", utilconversion.FuzzTestFunc(utilconversion.FuzzTestFuncInput{
-		Hub:    &v1beta1.GCPClusterTemplate{},
-		Spoke:  &GCPClusterTemplate{},
+		Hub:   &v1beta1.GCPClusterTemplate{},
+		Spoke: &GCPClusterTemplate{},
 	}))
 
 	t.Run("for GCPMachine", utilconversion.FuzzTestFunc(utilconversion.FuzzTestFuncInput{
-		Hub:    &v1beta1.GCPMachine{},
-		Spoke:  &GCPMachine{},
+		Hub:   &v1beta1.GCPMachine{},
+		Spoke: &GCPMachine{},
 	}))
 
 	t.Run("for GCPMachineTemplate", utilconversion.FuzzTestFunc(utilconversion.FuzzTestFuncInput{
-		Hub:    &v1beta1.GCPMachineTemplate{},
-		Spoke:  &GCPMachineTemplate{},
+		Hub:   &v1beta1.GCPMachineTemplate{},
+		Spoke: &GCPMachineTemplate{},
 	}))
 }

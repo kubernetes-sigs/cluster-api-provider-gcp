@@ -75,6 +75,13 @@ func (c *GCPCluster) ValidateUpdate(oldRaw runtime.Object) error {
 		)
 	}
 
+	if !reflect.DeepEqual(c.Spec.CredentialsRef, old.Spec.CredentialsRef) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "CredentialsRef"),
+				c.Spec.CredentialsRef, "field is immutable"),
+		)
+	}
+
 	if len(allErrs) == 0 {
 		return nil
 	}

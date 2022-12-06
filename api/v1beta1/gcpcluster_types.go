@@ -53,6 +53,11 @@ type GCPClusterSpec struct {
 	// ones added by default.
 	// +optional
 	AdditionalLabels Labels `json:"additionalLabels,omitempty"`
+
+	// CredentialsRef is a reference to a Secret that contains the credentials to use for provisioning this cluster. If not
+	// supplied then the credentials of the controller will be used.
+	// +optional
+	CredentialsRef *ObjectReference `json:"credentialsRef,omitempty"`
 }
 
 // GCPClusterStatus defines the observed state of GCPCluster.
