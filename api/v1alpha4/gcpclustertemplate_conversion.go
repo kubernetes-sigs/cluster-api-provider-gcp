@@ -50,6 +50,10 @@ func (src *GCPClusterTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 		}
 	}
 
+	if restored.Spec.Template.Spec.CredentialsRef != nil {
+		dst.Spec.Template.Spec.CredentialsRef = restored.Spec.Template.Spec.CredentialsRef.DeepCopy()
+	}
+
 	return nil
 }
 

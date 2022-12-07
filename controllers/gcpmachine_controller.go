@@ -180,7 +180,7 @@ func (r *GCPMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Create the cluster scope
-	clusterScope, err := scope.NewClusterScope(scope.ClusterScopeParams{
+	clusterScope, err := scope.NewClusterScope(ctx, scope.ClusterScopeParams{
 		Client:     r.Client,
 		Cluster:    cluster,
 		GCPCluster: gcpCluster,

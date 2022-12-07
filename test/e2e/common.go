@@ -27,6 +27,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/util"
@@ -46,6 +47,20 @@ func setupSpecNamespace(ctx context.Context, specName string, clusterProxy frame
 	})
 
 	return namespace, cancelWatches
+}
+
+func createSecret(ctx context.Context, name, namespace string, data map[string][]byte, clusterProxy framework.ClusterProxy) error {
+	Byf("Creating secret %s in namespace %s", name, namespace)
+
+	secret := &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: data,
+	}
+
+	return clusterProxy.GetClient().Create(ctx, secret)
 }
 
 type cleanupInput struct {

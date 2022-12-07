@@ -133,7 +133,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 		WithObjects(fakeBootstrapSecret).
 		Build()
 
-	clusterScope, err := scope.NewClusterScope(scope.ClusterScopeParams{
+	clusterScope, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
 		Client:     fakec,
 		Cluster:    fakeCluster,
 		GCPCluster: fakeGCPCluster,
@@ -155,7 +155,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	clusterScopeWithoutFailureDomain, err := scope.NewClusterScope(scope.ClusterScopeParams{
+	clusterScopeWithoutFailureDomain, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
 		Client:     fakec,
 		Cluster:    fakeCluster,
 		GCPCluster: fakeGCPClusterWithOutFailureDomain,

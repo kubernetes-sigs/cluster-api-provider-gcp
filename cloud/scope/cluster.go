@@ -24,6 +24,9 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/option"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -42,7 +45,7 @@ type ClusterScopeParams struct {
 
 // NewClusterScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
-func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
+func NewClusterScope(ctx context.Context, params ClusterScopeParams) (*ClusterScope, error) {
 	if params.Cluster == nil {
 		return nil, errors.New("failed to generate new scope from nil Cluster")
 	}
@@ -51,7 +54,7 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 	}
 
 	if params.GCPServices.Compute == nil {
-		computeSvc, err := compute.NewService(context.TODO())
+		computeSvc, err := createComputeService(ctx, params)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
 		}
@@ -71,6 +74,39 @@ func NewClusterScope(params ClusterScopeParams) (*ClusterScope, error) {
 		GCPServices: params.GCPServices,
 		patchHelper: helper,
 	}, nil
+}
+
+func createComputeService(ctx context.Context, params ClusterScopeParams) (*compute.Service, error) {
+	if params.GCPCluster.Spec.CredentialsRef == nil {
+		computeSvc, err := compute.NewService(ctx)
+		if err != nil {
+			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
+		}
+
+		return computeSvc, nil
+	}
+
+	secretRefName := types.NamespacedName{
+		Name:      params.GCPCluster.Spec.CredentialsRef.Name,
+		Namespace: params.GCPCluster.Spec.CredentialsRef.Namespace,
+	}
+
+	credSecret := &corev1.Secret{}
+	if err := params.Client.Get(ctx, secretRefName, credSecret); err != nil {
+		return nil, fmt.Errorf("getting credentials secret %s\\%s: %w", secretRefName.Namespace, secretRefName.Name, err)
+	}
+
+	rawData, ok := credSecret.Data["credentials"]
+	if !ok {
+		return nil, errors.New("no credentials key in secret")
+	}
+
+	computeSvc, err := compute.NewService(ctx, option.WithCredentialsJSON(rawData))
+	if err != nil {
+		return nil, errors.Errorf("failed to create gcp compute client with credentials secret: %v", err)
+	}
+
+	return computeSvc, nil
 }
 
 // ClusterScope defines the basic context for an actuator to operate upon.

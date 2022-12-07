@@ -49,6 +49,10 @@ func (src *GCPCluster) ConvertTo(dstRaw conversion.Hub) error { // nolint
 		}
 	}
 
+	if restored.Spec.CredentialsRef != nil {
+		dst.Spec.CredentialsRef = restored.Spec.CredentialsRef
+	}
+
 	return nil
 }
 
