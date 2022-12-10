@@ -169,7 +169,10 @@ func (s *ClusterScope) AdditionalLabels() infrav1.Labels {
 // ControlPlaneEndpoint returns the cluster control-plane endpoint.
 func (s *ClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 	endpoint := s.GCPCluster.Spec.ControlPlaneEndpoint
-	endpoint.Port = pointer.Int32Deref(s.Cluster.Spec.ClusterNetwork.APIServerPort, 443)
+	endpoint.Port = 443
+	if c := s.Cluster.Spec.ClusterNetwork; c != nil {
+		endpoint.Port = pointer.Int32Deref(c.APIServerPort, 443)
+	}
 	return endpoint
 }
 
@@ -330,7 +333,10 @@ func (s *ClusterScope) BackendServiceSpec() *compute.BackendService {
 
 // ForwardingRuleSpec returns google compute forwarding-rule spec.
 func (s *ClusterScope) ForwardingRuleSpec() *compute.ForwardingRule {
-	port := pointer.Int32Deref(s.Cluster.Spec.ClusterNetwork.APIServerPort, 443)
+	port := int32(443)
+	if c := s.Cluster.Spec.ClusterNetwork; c != nil {
+		port = pointer.Int32Deref(c.APIServerPort, 443)
+	}
 	portRange := fmt.Sprintf("%d-%d", port, port)
 	return &compute.ForwardingRule{
 		Name:                fmt.Sprintf("%s-%s", s.Name(), infrav1.APIServerRoleTagValue),
