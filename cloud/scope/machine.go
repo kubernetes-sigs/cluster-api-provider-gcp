@@ -351,6 +351,22 @@ func (m *MachineScope) InstanceSpec() *compute.Instance {
 	if m.GCPMachine.Spec.IPForwarding != nil && *m.GCPMachine.Spec.IPForwarding == infrav1.IPForwardingDisabled {
 		instance.CanIpForward = false
 	}
+	if m.GCPMachine.Spec.ShieldedInstanceConfig != nil {
+		instance.ShieldedInstanceConfig = &compute.ShieldedInstanceConfig{
+			EnableSecureBoot:          false,
+			EnableVtpm:                true,
+			EnableIntegrityMonitoring: true,
+		}
+		if m.GCPMachine.Spec.ShieldedInstanceConfig.SecureBoot == infrav1.SecureBootPolicyEnabled {
+			instance.ShieldedInstanceConfig.EnableSecureBoot = true
+		}
+		if m.GCPMachine.Spec.ShieldedInstanceConfig.VirtualizedTrustedPlatformModule == infrav1.VirtualizedTrustedPlatformModulePolicyDisabled {
+			instance.ShieldedInstanceConfig.EnableVtpm = false
+		}
+		if m.GCPMachine.Spec.ShieldedInstanceConfig.IntegrityMonitoring == infrav1.IntegrityMonitoringPolicyDisabled {
+			instance.ShieldedInstanceConfig.EnableIntegrityMonitoring = false
+		}
+	}
 
 	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
 	instance.Disks = append(instance.Disks, m.InstanceAdditionalDiskSpec()...)

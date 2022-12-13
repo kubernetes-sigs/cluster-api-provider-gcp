@@ -41,6 +41,10 @@ func (src *GCPMachine) ConvertTo(dstRaw conversion.Hub) error { // nolint
 		dst.Spec.IPForwarding = restored.Spec.IPForwarding
 	}
 
+	if restored.Spec.ShieldedInstanceConfig != nil {
+		dst.Spec.ShieldedInstanceConfig = restored.Spec.ShieldedInstanceConfig
+	}
+
 	return nil
 }
 
