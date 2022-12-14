@@ -5,6 +5,7 @@
 *.so
 *.dylib
 bin
+cluster-api-provider-gcp
 
 # Test binary, build with `go test -c`
 *.test
