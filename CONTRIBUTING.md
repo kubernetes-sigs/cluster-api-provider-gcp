@@ -40,7 +40,7 @@ If you're new to the project and want to help, but don't know where to start, we
 	- `/kind deprecation` for PRs related to a feature/enhancement marked for deprecation
 	- `/kind design` for PRs related to design proposals
 	- `/kind documentation` for PRs related to documentation
-	- `/kind failing-test` for PRs related to to a consistently or frequently failing test
+	- `/kind failing-test` for PRs related to a consistently or frequently failing test
 	- `/kind flake` for PRs related to a flaky test
 	- `/kind other` for PRs related to updating dependencies, minor changes or other
     ii.If the PR requires additional action from users switching to a new release, include the string "action required" in the PR release-notes.

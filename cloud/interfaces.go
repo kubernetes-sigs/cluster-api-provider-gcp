@@ -40,7 +40,7 @@ type Client interface {
 	Cloud() Cloud
 }
 
-// ClusterGetter is an interface which can get cluster informations.
+// ClusterGetter is an interface which can get cluster information.
 type ClusterGetter interface {
 	Client
 	Project() string
@@ -54,18 +54,18 @@ type ClusterGetter interface {
 	ControlPlaneEndpoint() clusterv1.APIEndpoint
 }
 
-// ClusterSetter is an interface which can set cluster informations.
+// ClusterSetter is an interface which can set cluster information.
 type ClusterSetter interface {
 	SetControlPlaneEndpoint(endpoint clusterv1.APIEndpoint)
 }
 
-// Cluster is an interface which can get and set cluster informations.
+// Cluster is an interface which can get and set cluster information.
 type Cluster interface {
 	ClusterGetter
 	ClusterSetter
 }
 
-// MachineGetter is an interface which can get machine informations.
+// MachineGetter is an interface which can get machine information.
 type MachineGetter interface {
 	Client
 	Name() string
@@ -81,7 +81,7 @@ type MachineGetter interface {
 	GetInstanceStatus() *infrav1.InstanceStatus
 }
 
-// MachineSetter is an interface which can set machine informations.
+// MachineSetter is an interface which can set machine information.
 type MachineSetter interface {
 	SetProviderID()
 	SetInstanceStatus(v infrav1.InstanceStatus)
@@ -91,7 +91,7 @@ type MachineSetter interface {
 	SetAddresses(addressList []corev1.NodeAddress)
 }
 
-// Machine is an interface which can get and set machine informations.
+// Machine is an interface which can get and set machine information.
 type Machine interface {
 	MachineGetter
 	MachineSetter
