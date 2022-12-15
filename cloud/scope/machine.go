@@ -254,7 +254,7 @@ func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
 				DiskType:   path.Join("zones", m.Zone(), "diskTypes", string(*disk.DeviceType)),
 			},
 		}
-		if additionalDisk.InitializeParams.DiskType == string(infrav1.LocalSsdDiskType) {
+		if strings.HasSuffix(additionalDisk.InitializeParams.DiskType, string(infrav1.LocalSsdDiskType)) {
 			additionalDisk.Type = "SCRATCH" // Default is PERSISTENT.
 			// Override the Disk size
 			additionalDisk.InitializeParams.DiskSizeGb = 375

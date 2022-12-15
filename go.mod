@@ -9,7 +9,8 @@ require (
 	github.com/onsi/gomega v1.24.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
+	github.com/stretchr/testify v1.8.1
+	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.4.0
 	google.golang.org/api v0.104.0
 	k8s.io/api v0.25.0
@@ -88,6 +89,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.13.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
