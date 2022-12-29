@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-    - name: v1.3.0
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0/core-components.yaml
+    - name: v1.3.1
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.1/core-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-    - name: v1.3.0
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0/bootstrap-components.yaml
+    - name: v1.3.1
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.1/bootstrap-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -41,8 +41,8 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-    - name: v1.3.0
-      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.0/control-plane-components.yaml
+    - name: v1.3.1
+      value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.1/control-plane-components.yaml
       type: url
       files:
       - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -71,15 +71,15 @@ providers:
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-creds.yaml"
 
 variables:
-  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.25.1}"
+  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.25.5}"
   ETCD_VERSION_UPGRADE_TO: "3.5.1-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.8.6"
-  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-24-8-nightly"
-  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-25-4-nightly"
+  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-24-9-nightly"
+  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-25-5-nightly"
   CONTROL_PLANE_MACHINE_TEMPLATE_UPGRADE_TO: "cp-k8s-upgrade-and-conformance"
   WORKERS_MACHINE_TEMPLATE_UPGRADE_TO: "worker-k8s-upgrade-and-conformance"
-  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.25.4}"
-  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.24.8}"
+  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.25.5}"
+  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.24.9}"
   EXP_CLUSTER_RESOURCE_SET: "true"
   CLUSTER_TOPOLOGY: "true"
   # Cluster Addons
