@@ -82,6 +82,9 @@ If you have an active interest and you want to get involved, you have real power
 - Provider implementers office hours (CAPI)
     - Weekly on Wednesdays @ 10:00 PT on [Zoom](https://zoom.us/j/861487554)
     - Previous meetings: \[ [notes][notes] | [recordings][recordings] \]
+- Cluster API Provider GCP office hours (CAPG)
+    - Monthly on first Thursday @ 10:00pm PT / 17:00 UTC on [Zoom](https://zoom.us/j/96963829102?pwd=WjBZcmwvZFZsUU93aVZieUk1L3FnZz09)
+    - Previous meetings: [ [notes](http://bit.ly/k8s-capg-agenda)|[recordings](https://www.youtube.com/playlist?list=PL69nYSiGNLP29D0nYgAGWt1ZFqS9Z7lw4) ]
 
 ### Other ways to communicate with the contributors
 
