@@ -18,10 +18,9 @@ package v1alpha3
 
 import (
 	apiconversion "k8s.io/apimachinery/pkg/conversion"
+	v1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
-
-	v1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 // ConvertTo converts this GCPMachine to the Hub version (v1beta1).
