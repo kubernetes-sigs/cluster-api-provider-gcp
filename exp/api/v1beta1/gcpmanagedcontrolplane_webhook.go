@@ -30,7 +30,7 @@ import (
 
 const (
 	maxClusterNameLength = 40
-	resourcePrefix       = "capg_"
+	resourcePrefix       = "capg-"
 )
 
 // log is for logging in this package.
@@ -89,8 +89,8 @@ func (r *GCPManagedControlPlane) ValidateDelete() error {
 }
 
 func generateGKEName(resourceName, namespace string, maxLength int) (string, error) {
-	escapedName := strings.ReplaceAll(resourceName, ".", "_")
-	gkeName := fmt.Sprintf("%s_%s", namespace, escapedName)
+	escapedName := strings.ReplaceAll(resourceName, ".", "-")
+	gkeName := fmt.Sprintf("%s-%s", namespace, escapedName)
 
 	if len(gkeName) < maxLength {
 		return gkeName, nil

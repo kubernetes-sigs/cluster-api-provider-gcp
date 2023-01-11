@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -50,7 +49,6 @@ import (
 type GCPManagedControlPlaneReconciler struct {
 	client.Client
 	ReconcileTimeout time.Duration
-	Scheme           *runtime.Scheme
 	WatchFilterValue string
 }
 

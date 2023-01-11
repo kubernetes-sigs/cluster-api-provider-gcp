@@ -51,7 +51,7 @@ func NewClusterScope(ctx context.Context, params ClusterScopeParams) (*ClusterSc
 	}
 
 	if params.GCPServices.Compute == nil {
-		computeSvc, err := createComputeService(ctx, params.GCPCluster.Spec.CredentialsRef, params.Client)
+		computeSvc, err := newComputeService(ctx, params.GCPCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
 		}

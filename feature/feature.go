@@ -20,12 +20,16 @@ import (
 )
 
 const (
-// Every capg-specific feature gate should add method here following this template:
-//
-// // owner: @username
-// // alpha: v1.X
-// MyFeature featuregate.Feature = "MyFeature".
+	// Every capg-specific feature gate should add method here following this template:
+	//
+	// // owner: @username
+	// // alpha: v1.X
+	// MyFeature featuregate.Feature = "MyFeature".
 
+	// GKE is used to enable GKE support
+	// owner: @richardchen331 & @richardcase
+	// alpha: v0.1
+	GKE featuregate.Feature = "GKE"
 )
 
 func init() {
@@ -35,6 +39,5 @@ func init() {
 // defaultCAPGFeatureGates consists of all known capg-specific feature keys.
 // To add a new feature, define a key for it above and add it here.
 var defaultCAPGFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
-	// Every feature should be initiated here:
-
+	GKE: {Default: false, PreRelease: featuregate.Alpha},
 }

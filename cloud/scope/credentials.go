@@ -23,8 +23,6 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"google.golang.org/api/compute/v1"
-	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -32,8 +30,9 @@ import (
 )
 
 const (
-	// ConfigFilePath is the path to GCP credential config.
-	ConfigFilePath = "/home/.gcp/credentials"
+	// ConfigFileEnvVar is the name of the environment variable
+	// that contains the path to the credentials file.
+	ConfigFileEnvVar = "GOOGLE_APPLICATION_CREDENTIALS"
 )
 
 // Credential is a struct to hold GCP credential data.
@@ -42,6 +41,22 @@ type Credential struct {
 	ProjectID   string `json:"project_id"`
 	ClientEmail string `json:"client_email"`
 	ClientID    string `json:"client_id"`
+}
+
+func getCredentials(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*Credential, error) {
+	var credentialData []byte
+	var err error
+
+	if credentialsRef != nil {
+		credentialData, err = getCredentialDataFromRef(ctx, credentialsRef, crClient)
+	} else {
+		credentialData, err = getCredentialDataUsingADC()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("getting credential data: %w", err)
+	}
+
+	return parseCredential(credentialData)
 }
 
 func getCredentialDataFromRef(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) ([]byte, error) {
@@ -63,10 +78,15 @@ func getCredentialDataFromRef(ctx context.Context, credentialsRef *infrav1.Objec
 	return rawData, nil
 }
 
-func getCredentialDataFromMount() ([]byte, error) {
-	byteValue, err := os.ReadFile(ConfigFilePath)
+func getCredentialDataUsingADC() ([]byte, error) {
+	credsPath := os.Getenv(ConfigFileEnvVar)
+	if credsPath == "" {
+		return nil, fmt.Errorf("no ADC environment variable found for credentials (expect %s)", ConfigFileEnvVar)
+	}
+
+	byteValue, err := os.ReadFile(credsPath) //nolint:gosec // We need to read a file here
 	if err != nil {
-		return nil, fmt.Errorf("error loading credential from file %s: %w", ConfigFilePath, err)
+		return nil, fmt.Errorf("reading credentials from file %s: %w", credsPath, err)
 	}
 	return byteValue, nil
 }
@@ -78,22 +98,4 @@ func parseCredential(rawData []byte) (*Credential, error) {
 		return nil, err
 	}
 	return &credential, nil
-}
-
-func createComputeService(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*compute.Service, error) {
-	var computeSvc *compute.Service
-	var err error
-	if credentialsRef == nil {
-		computeSvc, err = compute.NewService(ctx)
-	} else {
-		var rawData []byte
-		rawData, err = getCredentialDataFromRef(ctx, credentialsRef, crClient)
-		if err == nil {
-			computeSvc, err = compute.NewService(ctx, option.WithCredentialsJSON(rawData))
-		}
-	}
-	if err != nil {
-		return nil, errors.Errorf("failed to create gcp compute client: %v", err)
-	}
-	return computeSvc, nil
 }

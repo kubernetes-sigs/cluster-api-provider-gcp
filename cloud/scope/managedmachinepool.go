@@ -22,7 +22,6 @@ import (
 
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
-	"google.golang.org/api/option"
 	"sigs.k8s.io/cluster-api/util/conditions"
 
 	compute "cloud.google.com/go/compute/apiv1"
@@ -67,28 +66,15 @@ func NewManagedMachinePoolScope(ctx context.Context, params ManagedMachinePoolSc
 		return nil, errors.New("failed to generate new scope from nil GCPManagedMachinePool")
 	}
 
-	var credentialData []byte
-	var err error
-	if params.GCPManagedCluster.Spec.CredentialsRef != nil {
-		credentialData, err = getCredentialDataFromRef(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
-	} else {
-		credentialData, err = getCredentialDataFromMount()
-	}
-	if err != nil {
-		return nil, errors.Errorf("failed to get credential data: %v", err)
-	}
-
 	if params.ManagedClusterClient == nil {
-		var managedClusterClient *container.ClusterManagerClient
-		managedClusterClient, err = container.NewClusterManagerClient(ctx, option.WithCredentialsJSON(credentialData))
+		managedClusterClient, err := newClusterManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
 		}
 		params.ManagedClusterClient = managedClusterClient
 	}
 	if params.InstanceGroupManagersClient == nil {
-		var instanceGroupManagersClient *compute.InstanceGroupManagersClient
-		instanceGroupManagersClient, err = compute.NewInstanceGroupManagersRESTClient(ctx, option.WithCredentialsJSON(credentialData))
+		instanceGroupManagersClient, err := newInstanceGroupManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp instance group manager client: %v", err)
 		}
