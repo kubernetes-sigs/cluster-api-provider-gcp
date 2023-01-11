@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,38 +20,42 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/utils/pointer"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ClusterScopeParams defines the input parameters used to create a new Scope.
-type ClusterScopeParams struct {
+// ManagedClusterScopeParams defines the input parameters used to create a new Scope.
+type ManagedClusterScopeParams struct {
 	GCPServices
-	Client     client.Client
-	Cluster    *clusterv1.Cluster
-	GCPCluster *infrav1.GCPCluster
+	Client                 client.Client
+	Cluster                *clusterv1.Cluster
+	GCPManagedCluster      *infrav1exp.GCPManagedCluster
+	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 }
 
-// NewClusterScope creates a new Scope from the supplied parameters.
+// NewManagedClusterScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
-func NewClusterScope(ctx context.Context, params ClusterScopeParams) (*ClusterScope, error) {
+func NewManagedClusterScope(ctx context.Context, params ManagedClusterScopeParams) (*ManagedClusterScope, error) {
 	if params.Cluster == nil {
 		return nil, errors.New("failed to generate new scope from nil Cluster")
 	}
-	if params.GCPCluster == nil {
-		return nil, errors.New("failed to generate new scope from nil GCPCluster")
+	if params.GCPManagedCluster == nil {
+		return nil, errors.New("failed to generate new scope from nil GCPManagedCluster")
+	}
+	if params.GCPManagedControlPlane == nil {
+		return nil, errors.New("failed to generate new scope from nil GCPManagedControlPlane")
 	}
 
 	if params.GCPServices.Compute == nil {
-		computeSvc, err := createComputeService(ctx, params.GCPCluster.Spec.CredentialsRef, params.Client)
+		computeSvc, err := createComputeService(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
 		}
@@ -59,90 +63,89 @@ func NewClusterScope(ctx context.Context, params ClusterScopeParams) (*ClusterSc
 		params.GCPServices.Compute = computeSvc
 	}
 
-	helper, err := patch.NewHelper(params.GCPCluster, params.Client)
+	helper, err := patch.NewHelper(params.GCPManagedCluster, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
 
-	return &ClusterScope{
-		client:      params.Client,
-		Cluster:     params.Cluster,
-		GCPCluster:  params.GCPCluster,
-		GCPServices: params.GCPServices,
-		patchHelper: helper,
+	return &ManagedClusterScope{
+		client:                 params.Client,
+		Cluster:                params.Cluster,
+		GCPManagedCluster:      params.GCPManagedCluster,
+		GCPManagedControlPlane: params.GCPManagedControlPlane,
+		GCPServices:            params.GCPServices,
+		patchHelper:            helper,
 	}, nil
 }
 
-// ClusterScope defines the basic context for an actuator to operate upon.
-type ClusterScope struct {
+// ManagedClusterScope defines the basic context for an actuator to operate upon.
+type ManagedClusterScope struct {
 	client      client.Client
 	patchHelper *patch.Helper
 
-	Cluster    *clusterv1.Cluster
-	GCPCluster *infrav1.GCPCluster
+	Cluster                *clusterv1.Cluster
+	GCPManagedCluster      *infrav1exp.GCPManagedCluster
+	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	GCPServices
 }
 
 // ANCHOR: ClusterGetter
 
 // Cloud returns initialized cloud.
-func (s *ClusterScope) Cloud() cloud.Cloud {
+func (s *ManagedClusterScope) Cloud() cloud.Cloud {
 	return newCloud(s.Project(), s.GCPServices)
 }
 
 // Project returns the current project name.
-func (s *ClusterScope) Project() string {
-	return s.GCPCluster.Spec.Project
+func (s *ManagedClusterScope) Project() string {
+	return s.GCPManagedCluster.Spec.Project
 }
 
 // Region returns the cluster region.
-func (s *ClusterScope) Region() string {
-	return s.GCPCluster.Spec.Region
+func (s *ManagedClusterScope) Region() string {
+	return s.GCPManagedCluster.Spec.Region
 }
 
 // Name returns the cluster name.
-func (s *ClusterScope) Name() string {
+func (s *ManagedClusterScope) Name() string {
 	return s.Cluster.Name
 }
 
 // Namespace returns the cluster namespace.
-func (s *ClusterScope) Namespace() string {
+func (s *ManagedClusterScope) Namespace() string {
 	return s.Cluster.Namespace
 }
 
 // NetworkName returns the cluster network unique identifier.
-func (s *ClusterScope) NetworkName() string {
-	return pointer.StringDeref(s.GCPCluster.Spec.Network.Name, "default")
+func (s *ManagedClusterScope) NetworkName() string {
+	return pointer.StringDeref(s.GCPManagedCluster.Spec.Network.Name, "default")
 }
 
 // NetworkLink returns the partial URL for the network.
-func (s *ClusterScope) NetworkLink() string {
+func (s *ManagedClusterScope) NetworkLink() string {
 	return fmt.Sprintf("projects/%s/global/networks/%s", s.Project(), s.NetworkName())
 }
 
 // Network returns the cluster network object.
-func (s *ClusterScope) Network() *infrav1.Network {
-	return &s.GCPCluster.Status.Network
+func (s *ManagedClusterScope) Network() *infrav1.Network {
+	return &s.GCPManagedCluster.Status.Network
 }
 
 // AdditionalLabels returns the cluster additional labels.
-func (s *ClusterScope) AdditionalLabels() infrav1.Labels {
-	return s.GCPCluster.Spec.AdditionalLabels
+func (s *ManagedClusterScope) AdditionalLabels() infrav1.Labels {
+	return s.GCPManagedCluster.Spec.AdditionalLabels
 }
 
 // ControlPlaneEndpoint returns the cluster control-plane endpoint.
-func (s *ClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
-	endpoint := s.GCPCluster.Spec.ControlPlaneEndpoint
-	endpoint.Port = 443
-	if c := s.Cluster.Spec.ClusterNetwork; c != nil {
-		endpoint.Port = pointer.Int32Deref(c.APIServerPort, 443)
-	}
+func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
+	endpoint := s.GCPManagedCluster.Spec.ControlPlaneEndpoint
+	endpoint.Port = pointer.Int32Deref(s.Cluster.Spec.ClusterNetwork.APIServerPort, 443)
 	return endpoint
 }
 
 // FailureDomains returns the cluster failure domains.
-func (s *ClusterScope) FailureDomains() clusterv1.FailureDomains {
-	return s.GCPCluster.Status.FailureDomains
+func (s *ManagedClusterScope) FailureDomains() clusterv1.FailureDomains {
+	return s.GCPManagedCluster.Status.FailureDomains
 }
 
 // ANCHOR_END: ClusterGetter
@@ -150,18 +153,18 @@ func (s *ClusterScope) FailureDomains() clusterv1.FailureDomains {
 // ANCHOR: ClusterSetter
 
 // SetReady sets cluster ready status.
-func (s *ClusterScope) SetReady() {
-	s.GCPCluster.Status.Ready = true
+func (s *ManagedClusterScope) SetReady() {
+	s.GCPManagedCluster.Status.Ready = true
 }
 
 // SetFailureDomains sets cluster failure domains.
-func (s *ClusterScope) SetFailureDomains(fd clusterv1.FailureDomains) {
-	s.GCPCluster.Status.FailureDomains = fd
+func (s *ManagedClusterScope) SetFailureDomains(fd clusterv1.FailureDomains) {
+	s.GCPManagedCluster.Status.FailureDomains = fd
 }
 
 // SetControlPlaneEndpoint sets cluster control-plane endpoint.
-func (s *ClusterScope) SetControlPlaneEndpoint(endpoint clusterv1.APIEndpoint) {
-	s.GCPCluster.Spec.ControlPlaneEndpoint = endpoint
+func (s *ManagedClusterScope) SetControlPlaneEndpoint(endpoint clusterv1.APIEndpoint) {
+	s.GCPManagedCluster.Spec.ControlPlaneEndpoint = endpoint
 }
 
 // ANCHOR_END: ClusterSetter
@@ -169,8 +172,8 @@ func (s *ClusterScope) SetControlPlaneEndpoint(endpoint clusterv1.APIEndpoint) {
 // ANCHOR: ClusterNetworkSpec
 
 // NetworkSpec returns google compute network spec.
-func (s *ClusterScope) NetworkSpec() *compute.Network {
-	createSubnet := pointer.BoolDeref(s.GCPCluster.Spec.Network.AutoCreateSubnetworks, true)
+func (s *ManagedClusterScope) NetworkSpec() *compute.Network {
+	createSubnet := pointer.BoolDeref(s.GCPManagedCluster.Spec.Network.AutoCreateSubnetworks, true)
 	network := &compute.Network{
 		Name:                  s.NetworkName(),
 		Description:           infrav1.ClusterTagKey(s.Name()),
@@ -182,7 +185,7 @@ func (s *ClusterScope) NetworkSpec() *compute.Network {
 }
 
 // NatRouterSpec returns google compute nat router spec.
-func (s *ClusterScope) NatRouterSpec() *compute.Router {
+func (s *ManagedClusterScope) NatRouterSpec() *compute.Router {
 	networkSpec := s.NetworkSpec()
 	return &compute.Router{
 		Name: fmt.Sprintf("%s-%s", networkSpec.Name, "router"),
@@ -199,9 +202,9 @@ func (s *ClusterScope) NatRouterSpec() *compute.Router {
 // ANCHOR_END: ClusterNetworkSpec
 
 // SubnetSpecs returns google compute subnets spec.
-func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
+func (s *ManagedClusterScope) SubnetSpecs() []*compute.Subnetwork {
 	subnets := []*compute.Subnetwork{}
-	for _, subnetwork := range s.GCPCluster.Spec.Network.Subnets {
+	for _, subnetwork := range s.GCPManagedCluster.Spec.Network.Subnets {
 		secondaryIPRanges := []*compute.SubnetworkSecondaryRange{}
 		for _, secondaryCidrBlock := range subnetwork.SecondaryCidrBlocks {
 			secondaryIPRanges = append(secondaryIPRanges, &compute.SubnetworkSecondaryRange{IpCidrRange: secondaryCidrBlock})
@@ -226,7 +229,7 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 // ANCHOR: ClusterFirewallSpec
 
 // FirewallRulesSpec returns google compute firewall spec.
-func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
+func (s *ManagedClusterScope) FirewallRulesSpec() []*compute.Firewall {
 	firewallRules := []*compute.Firewall{
 		{
 			Name:    fmt.Sprintf("allow-%s-healthchecks", s.Name()),
@@ -273,89 +276,12 @@ func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 
 // ANCHOR_END: ClusterFirewallSpec
 
-// ANCHOR: ClusterControlPlaneSpec
-
-// AddressSpec returns google compute address spec.
-func (s *ClusterScope) AddressSpec() *compute.Address {
-	return &compute.Address{
-		Name:        fmt.Sprintf("%s-%s", s.Name(), infrav1.APIServerRoleTagValue),
-		AddressType: "EXTERNAL",
-		IpVersion:   "IPV4",
-	}
-}
-
-// BackendServiceSpec returns google compute backend-service spec.
-func (s *ClusterScope) BackendServiceSpec() *compute.BackendService {
-	return &compute.BackendService{
-		Name:                fmt.Sprintf("%s-%s", s.Name(), infrav1.APIServerRoleTagValue),
-		LoadBalancingScheme: "EXTERNAL",
-		PortName:            "apiserver",
-		Protocol:            "TCP",
-		TimeoutSec:          int64((10 * time.Minute).Seconds()),
-	}
-}
-
-// ForwardingRuleSpec returns google compute forwarding-rule spec.
-func (s *ClusterScope) ForwardingRuleSpec() *compute.ForwardingRule {
-	port := int32(443)
-	if c := s.Cluster.Spec.ClusterNetwork; c != nil {
-		port = pointer.Int32Deref(c.APIServerPort, 443)
-	}
-	portRange := fmt.Sprintf("%d-%d", port, port)
-	return &compute.ForwardingRule{
-		Name:                fmt.Sprintf("%s-%s", s.Name(), infrav1.APIServerRoleTagValue),
-		IPProtocol:          "TCP",
-		LoadBalancingScheme: "EXTERNAL",
-		PortRange:           portRange,
-	}
-}
-
-// HealthCheckSpec returns google compute health-check spec.
-func (s *ClusterScope) HealthCheckSpec() *compute.HealthCheck {
-	return &compute.HealthCheck{
-		Name: fmt.Sprintf("%s-%s", s.Name(), infrav1.APIServerRoleTagValue),
-		Type: "SSL",
-		SslHealthCheck: &compute.SSLHealthCheck{
-			Port:              6443,
-			PortSpecification: "USE_FIXED_PORT",
-		},
-		CheckIntervalSec:   10,
-		TimeoutSec:         5,
-		HealthyThreshold:   5,
-		UnhealthyThreshold: 3,
-	}
-}
-
-// InstanceGroupSpec returns google compute instance-group spec.
-func (s *ClusterScope) InstanceGroupSpec(zone string) *compute.InstanceGroup {
-	port := pointer.Int32Deref(s.GCPCluster.Spec.Network.LoadBalancerBackendPort, 6443)
-	return &compute.InstanceGroup{
-		Name: fmt.Sprintf("%s-%s-%s", s.Name(), infrav1.APIServerRoleTagValue, zone),
-		NamedPorts: []*compute.NamedPort{
-			{
-				Name: "apiserver",
-				Port: int64(port),
-			},
-		},
-	}
-}
-
-// TargetTCPProxySpec returns google compute target-tcp-proxy spec.
-func (s *ClusterScope) TargetTCPProxySpec() *compute.TargetTcpProxy {
-	return &compute.TargetTcpProxy{
-		Name:        fmt.Sprintf("%s-%s", s.Name(), infrav1.APIServerRoleTagValue),
-		ProxyHeader: "NONE",
-	}
-}
-
-// ANCHOR_END: ClusterControlPlaneSpec
-
 // PatchObject persists the cluster configuration and status.
-func (s *ClusterScope) PatchObject() error {
-	return s.patchHelper.Patch(context.TODO(), s.GCPCluster)
+func (s *ManagedClusterScope) PatchObject() error {
+	return s.patchHelper.Patch(context.TODO(), s.GCPManagedCluster)
 }
 
 // Close closes the current scope persisting the cluster configuration and status.
-func (s *ClusterScope) Close() error {
+func (s *ManagedClusterScope) Close() error {
 	return s.PatchObject()
 }
