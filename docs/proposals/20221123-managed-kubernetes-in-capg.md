@@ -132,8 +132,8 @@ type GCPManagedClusterSpec struct {
     Region string `json:"region"`
 
     // ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
-	// +optional
-	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+    // +optional
+    ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 
     // NetworkSpec encapsulates all things related to the GCP network.
     // +optional
@@ -180,8 +180,8 @@ type GCPManagedControlPlaneSpec struct {
 type GCPManagedControlPlaneStatus struct {
     Ready bool `json:"ready"`
 
-	// Conditions specifies the cpnditions for the managed control plane
-	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+    // Conditions specifies the cpnditions for the managed control plane
+    Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 }
 
 type GCPManagedMachinePoolSpec struct {
@@ -221,8 +221,8 @@ type GCPManagedMachinePoolStatus struct {
     // +optional
     Replicas int32 `json:"replicas"`
 
-	// Conditions specifies the cpnditions for the managed machine pool
-	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+    // Conditions specifies the cpnditions for the managed machine pool
+    Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 }
 ```
 
