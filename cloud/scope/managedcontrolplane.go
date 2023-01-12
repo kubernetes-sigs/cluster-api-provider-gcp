@@ -18,10 +18,11 @@ package scope
 
 import (
 	"context"
-	"sigs.k8s.io/cluster-api/util/conditions"
 	"strings"
 
-	"cloud.google.com/go/container/apiv1"
+	"sigs.k8s.io/cluster-api/util/conditions"
+
+	container "cloud.google.com/go/container/apiv1"
 	"github.com/pkg/errors"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -31,18 +32,18 @@ import (
 
 // ManagedControlPlaneScopeParams defines the input parameters used to create a new Scope.
 type ManagedControlPlaneScopeParams struct {
-	ManagedClusterClient *container.ClusterManagerClient
-	Client     client.Client
-	Cluster    *clusterv1.Cluster
+	ManagedClusterClient   *container.ClusterManagerClient
+	Client                 client.Client
+	Cluster                *clusterv1.Cluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 }
 
 // NewManagedControlPlaneScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
 func NewManagedControlPlaneScope(params ManagedControlPlaneScopeParams) (*ManagedControlPlaneScope, error) {
-	//if params.Cluster == nil {
-	//	return nil, errors.New("failed to generate new scope from nil Cluster")
-	//}
+	if params.Cluster == nil {
+		return nil, errors.New("failed to generate new scope from nil Cluster")
+	}
 	if params.GCPManagedControlPlane == nil {
 		return nil, errors.New("failed to generate new scope from nil GCPManagedControlPlane")
 	}
@@ -62,11 +63,11 @@ func NewManagedControlPlaneScope(params ManagedControlPlaneScopeParams) (*Manage
 	}
 
 	return &ManagedControlPlaneScope{
-		client:      params.Client,
-		Cluster:     params.Cluster,
-		GCPManagedControlPlane:  params.GCPManagedControlPlane,
-		mcClient: params.ManagedClusterClient,
-		patchHelper: helper,
+		client:                 params.Client,
+		Cluster:                params.Cluster,
+		GCPManagedControlPlane: params.GCPManagedControlPlane,
+		mcClient:               params.ManagedClusterClient,
+		patchHelper:            helper,
 	}, nil
 }
 
@@ -75,9 +76,9 @@ type ManagedControlPlaneScope struct {
 	client      client.Client
 	patchHelper *patch.Helper
 
-	Cluster    *clusterv1.Cluster
+	Cluster                *clusterv1.Cluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
-	mcClient *container.ClusterManagerClient
+	mcClient               *container.ClusterManagerClient
 }
 
 // PatchObject persists the managed control plane configuration and status.
@@ -99,10 +100,12 @@ func (s *ManagedControlPlaneScope) Close() error {
 	return s.PatchObject()
 }
 
+// ConditionSetter return a condition setter (which is GCPManagedControlPlane itself).
 func (s *ManagedControlPlaneScope) ConditionSetter() conditions.Setter {
 	return s.GCPManagedControlPlane
 }
 
+// ManagedControlPlaneClient returns a client used to interact with GKE.
 func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.ClusterManagerClient {
 	return s.mcClient
 }
@@ -112,16 +115,17 @@ func parseLocation(location string) (region string, zone *string) {
 	region = strings.Join(parts[:2], "-")
 	if len(parts) == 3 {
 		return region, &parts[2]
-	} else {
-		return region, nil
 	}
+	return region, nil
 }
 
+// Region returns the region of the GKE cluster.
 func (s *ManagedControlPlaneScope) Region() string {
 	region, _ := parseLocation(s.GCPManagedControlPlane.Spec.Location)
 	return region
 }
 
+// SetEndpoint sets the Endpoint of GCPManagedControlPlane.
 func (s *ManagedControlPlaneScope) SetEndpoint(host string) {
 	s.GCPManagedControlPlane.Spec.Endpoint = clusterv1.APIEndpoint{
 		Host: host,

@@ -19,6 +19,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"sigs.k8s.io/cluster-api/util/annotations"
+
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -36,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -48,7 +51,7 @@ import (
 type GCPManagedControlPlaneReconciler struct {
 	client.Client
 	ReconcileTimeout time.Duration
-	Scheme *runtime.Scheme
+	Scheme           *runtime.Scheme
 	WatchFilterValue string
 }
 
@@ -101,19 +104,19 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 		log.Error(err, "Failed to retrieve owner Cluster from the API Server")
 		return ctrl.Result{}, err
 	}
-	//if cluster == nil {
-	//	log.Info("Cluster Controller has not yet set OwnerRef")
-	//	return ctrl.Result{}, nil
-	//}
+	if cluster == nil {
+		log.Info("Cluster Controller has not yet set OwnerRef")
+		return ctrl.Result{}, nil
+	}
 
-	//if annotations.IsPaused(cluster, gcpManagedControlPlane) {
-	//	log.Info("Reconciliation is paused for this object")
-	//	return ctrl.Result{}, nil
-	//}
+	if annotations.IsPaused(cluster, gcpManagedControlPlane) {
+		log.Info("Reconciliation is paused for this object")
+		return ctrl.Result{}, nil
+	}
 
 	managedControlPlaneScope, err := scope.NewManagedControlPlaneScope(scope.ManagedControlPlaneScopeParams{
-		Client:     r.Client,
-		Cluster:    cluster,
+		Client:                 r.Client,
+		Cluster:                cluster,
 		GCPManagedControlPlane: gcpManagedControlPlane,
 	})
 	if err != nil {

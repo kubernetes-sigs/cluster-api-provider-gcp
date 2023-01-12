@@ -17,9 +17,10 @@ limitations under the License.
 package clusters
 
 import (
-	"cloud.google.com/go/container/apiv1/containerpb"
 	"context"
 	"fmt"
+
+	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -80,7 +81,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 		break
 	}
 
-	needUpdate, clusterUpdate := s.checkDiffAndPrepareUpdate(*cluster)
+	needUpdate, clusterUpdate := s.checkDiffAndPrepareUpdate(cluster)
 	if needUpdate {
 		log.Info("Update required")
 		err = s.updateCluster(ctx, clusterUpdate)
@@ -174,7 +175,7 @@ func (s *Service) createCluster(ctx context.Context) error {
 		},
 		NodePools: []*containerpb.NodePool{
 			{
-				Name: "default",
+				Name:             "default",
 				InitialNodeCount: 1,
 			},
 		},
@@ -187,7 +188,7 @@ func (s *Service) createCluster(ctx context.Context) error {
 	}
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
-		Parent: fmt.Sprintf("projects/%s/locations/%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.Region()),
+		Parent:  fmt.Sprintf("projects/%s/locations/%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.Region()),
 	}
 	_, err := s.scope.ManagedControlPlaneClient().CreateCluster(ctx, createClusterRequest)
 	if err != nil {
@@ -198,12 +199,12 @@ func (s *Service) createCluster(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) updateCluster(ctx context.Context, clusterUpdate containerpb.ClusterUpdate) error {
+func (s *Service) updateCluster(ctx context.Context, clusterUpdate *containerpb.ClusterUpdate) error {
 	log := log.FromContext(ctx)
 
 	updateClusterRequest := &containerpb.UpdateClusterRequest{
-		Name: fmt.Sprintf("projects/%s/locations/%s/clusters/%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.Region(), s.scope.GCPManagedControlPlane.Name),
-		Update: &clusterUpdate,
+		Name:   fmt.Sprintf("projects/%s/locations/%s/clusters/%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.Region(), s.scope.GCPManagedControlPlane.Name),
+		Update: clusterUpdate,
 	}
 	_, err := s.scope.ManagedControlPlaneClient().UpdateCluster(ctx, updateClusterRequest)
 	if err != nil {
@@ -245,10 +246,9 @@ func convertReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.Relea
 	}
 }
 
-func (s *Service) checkDiffAndPrepareUpdate(existingCluster containerpb.Cluster) (bool, containerpb.ClusterUpdate) {
+func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster) (bool, *containerpb.ClusterUpdate) {
 	needUpdate := false
-	clusterUpdate := containerpb.ClusterUpdate{
-	}
+	clusterUpdate := containerpb.ClusterUpdate{}
 	desiredReleaseChannel := convertReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel)
 	if desiredReleaseChannel != existingCluster.ReleaseChannel.Channel {
 		needUpdate = true
@@ -260,5 +260,5 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster containerpb.Cluster)
 		needUpdate = true
 		clusterUpdate.DesiredMasterVersion = *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
 	}
-	return needUpdate, clusterUpdate
+	return needUpdate, &clusterUpdate
 }

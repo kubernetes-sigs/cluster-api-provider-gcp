@@ -80,13 +80,16 @@ type GCPManagedControlPlaneList struct {
 	Items           []GCPManagedControlPlane `json:"items"`
 }
 
-// FeatureToggle is a simple flag with a string value denoting if a given param is "enabled" or "disabled"
+// ReleaseChannel is the release channel of the GKE cluster
 // +kubebuilder:validation:Enum=rapid;regular;stable
 type ReleaseChannel string
 
 const (
-	Rapid  ReleaseChannel = "rapid"
+	// Rapid release channel.
+	Rapid ReleaseChannel = "rapid"
+	// Regular release channel.
 	Regular ReleaseChannel = "regular"
+	// Stable release channel.
 	Stable ReleaseChannel = "stable"
 )
 
