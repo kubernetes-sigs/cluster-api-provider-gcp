@@ -32,18 +32,26 @@ const (
 type GCPManagedClusterSpec struct {
 	// Project is the name of the project to deploy the cluster to.
 	Project string `json:"project"`
+
 	// The GCP Region the cluster lives in.
 	Region string `json:"region"`
+
 	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 	// NetworkSpec encapsulates all things related to the GCP network.
 	// +optional
 	Network infrav1.NetworkSpec `json:"network"`
+
 	// AdditionalLabels is an optional set of tags to add to GCP resources managed by the GCP provider, in addition to the
 	// ones added by default.
 	// +optional
 	AdditionalLabels infrav1.Labels `json:"additionalLabels,omitempty"`
+
+	// CredentialsRef is a reference to a Secret that contains the credentials to use for provisioning this cluster. If not
+	// supplied then the credentials of the controller will be used.
+	// +optional
+	CredentialsRef *infrav1.ObjectReference `json:"credentialsRef,omitempty"`
 }
 
 // GCPManagedClusterStatus defines the observed state of GCPManagedCluster.
