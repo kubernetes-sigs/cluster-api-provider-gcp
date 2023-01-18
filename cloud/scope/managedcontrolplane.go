@@ -18,7 +18,10 @@ package scope
 
 import (
 	"context"
+	"fmt"
 	"strings"
+
+	"google.golang.org/api/option"
 
 	"sigs.k8s.io/cluster-api/util/conditions"
 
@@ -30,30 +33,48 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	// APIServerPort is the port of the GKE api server.
+	APIServerPort = 443
+)
+
 // ManagedControlPlaneScopeParams defines the input parameters used to create a new Scope.
 type ManagedControlPlaneScopeParams struct {
 	ManagedClusterClient   *container.ClusterManagerClient
 	Client                 client.Client
 	Cluster                *clusterv1.Cluster
+	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 }
 
 // NewManagedControlPlaneScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
-func NewManagedControlPlaneScope(params ManagedControlPlaneScopeParams) (*ManagedControlPlaneScope, error) {
+func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlaneScopeParams) (*ManagedControlPlaneScope, error) {
 	if params.Cluster == nil {
 		return nil, errors.New("failed to generate new scope from nil Cluster")
+	}
+	if params.GCPManagedCluster == nil {
+		return nil, errors.New("failed to generate new scope from nil GCPManagedCluster")
 	}
 	if params.GCPManagedControlPlane == nil {
 		return nil, errors.New("failed to generate new scope from nil GCPManagedControlPlane")
 	}
 
 	if params.ManagedClusterClient == nil {
-		managedClusterClient, err := container.NewClusterManagerClient(context.TODO())
+		var managedClusterClient *container.ClusterManagerClient
+		var err error
+		if params.GCPManagedCluster.Spec.CredentialsRef == nil {
+			managedClusterClient, err = container.NewClusterManagerClient(ctx)
+		} else {
+			var rawData []byte
+			rawData, err = getCredentialData(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+			if err == nil {
+				managedClusterClient, err = container.NewClusterManagerClient(ctx, option.WithCredentialsJSON(rawData))
+			}
+		}
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
 		}
-
 		params.ManagedClusterClient = managedClusterClient
 	}
 
@@ -65,6 +86,7 @@ func NewManagedControlPlaneScope(params ManagedControlPlaneScopeParams) (*Manage
 	return &ManagedControlPlaneScope{
 		client:                 params.Client,
 		Cluster:                params.Cluster,
+		GCPManagedCluster:      params.GCPManagedCluster,
 		GCPManagedControlPlane: params.GCPManagedControlPlane,
 		mcClient:               params.ManagedClusterClient,
 		patchHelper:            helper,
@@ -77,6 +99,7 @@ type ManagedControlPlaneScope struct {
 	patchHelper *patch.Helper
 
 	Cluster                *clusterv1.Cluster
+	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	mcClient               *container.ClusterManagerClient
 }
@@ -125,10 +148,20 @@ func (s *ManagedControlPlaneScope) Region() string {
 	return region
 }
 
+// ClusterLocation returns the location of the cluster.
+func (s *ManagedControlPlaneScope) ClusterLocation() string {
+	return fmt.Sprintf("projects/%s/locations/%s", s.GCPManagedControlPlane.Spec.Project, s.Region())
+}
+
+// ClusterFullName returns the full name of the cluster.
+func (s *ManagedControlPlaneScope) ClusterFullName() string {
+	return fmt.Sprintf("%s/clusters/%s", s.ClusterLocation(), s.GCPManagedControlPlane.Name)
+}
+
 // SetEndpoint sets the Endpoint of GCPManagedControlPlane.
 func (s *ManagedControlPlaneScope) SetEndpoint(host string) {
 	s.GCPManagedControlPlane.Spec.Endpoint = clusterv1.APIEndpoint{
 		Host: host,
-		Port: 443,
+		Port: APIServerPort,
 	}
 }

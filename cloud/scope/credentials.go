@@ -29,16 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func createComputeService(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*compute.Service, error) {
-	if credentialsRef == nil {
-		computeSvc, err := compute.NewService(ctx)
-		if err != nil {
-			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
-		}
-
-		return computeSvc, nil
-	}
-
+func getCredentialData(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) ([]byte, error) {
 	secretRefName := types.NamespacedName{
 		Name:      credentialsRef.Name,
 		Namespace: credentialsRef.Namespace,
@@ -54,10 +45,23 @@ func createComputeService(ctx context.Context, credentialsRef *infrav1.ObjectRef
 		return nil, errors.New("no credentials key in secret")
 	}
 
-	computeSvc, err := compute.NewService(ctx, option.WithCredentialsJSON(rawData))
-	if err != nil {
-		return nil, errors.Errorf("failed to create gcp compute client with credentials secret: %v", err)
-	}
+	return rawData, nil
+}
 
+func createComputeService(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*compute.Service, error) {
+	var computeSvc *compute.Service
+	var err error
+	if credentialsRef == nil {
+		computeSvc, err = compute.NewService(ctx)
+	} else {
+		var rawData []byte
+		rawData, err = getCredentialData(ctx, credentialsRef, crClient)
+		if err == nil {
+			computeSvc, err = compute.NewService(ctx, option.WithCredentialsJSON(rawData))
+		}
+	}
+	if err != nil {
+		return nil, errors.Errorf("failed to create gcp compute client: %v", err)
+	}
 	return computeSvc, nil
 }

@@ -26,7 +26,7 @@ type Service struct {
 	scope *scope.ManagedControlPlaneScope
 }
 
-var _ cloud.Reconciler = &Service{}
+var _ cloud.ReconcilerWithResult = &Service{}
 
 // New returns Service from given scope.
 func New(scope *scope.ManagedControlPlaneScope) *Service {

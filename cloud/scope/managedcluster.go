@@ -50,9 +50,6 @@ func NewManagedClusterScope(ctx context.Context, params ManagedClusterScopeParam
 	if params.GCPManagedCluster == nil {
 		return nil, errors.New("failed to generate new scope from nil GCPManagedCluster")
 	}
-	if params.GCPManagedControlPlane == nil {
-		return nil, errors.New("failed to generate new scope from nil GCPManagedControlPlane")
-	}
 
 	if params.GCPServices.Compute == nil {
 		computeSvc, err := createComputeService(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)

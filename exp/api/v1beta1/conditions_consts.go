@@ -31,11 +31,11 @@ const (
 	// GKEControlPlaneCreatingReason used to report GKE control plane being created.
 	GKEControlPlaneCreatingReason = "GKEControlPlaneCreating"
 	// GKEControlPlaneCreatedReason used to report GKE control plane is created.
-	GKEControlPlaneCreatedReason = "GKEControlPlaneCreating"
+	GKEControlPlaneCreatedReason = "GKEControlPlaneCreated"
 	// GKEControlPlaneDeletingReason used to report GKE control plane being deleted.
 	GKEControlPlaneDeletingReason = "GKEControlPlaneDeleting"
 	// GKEControlPlaneDeletedReason used to report GKE control plane is deleted.
-	GKEControlPlaneDeletedReason = "GKEControlPlaneDeleting"
+	GKEControlPlaneDeletedReason = "GKEControlPlaneDeleted"
 	// GKEControlPlaneErrorReason used to report GKE control plane is in error state.
 	GKEControlPlaneErrorReason = "GKEControlPlaneError"
 	// GKEControlPlaneReconciliationFailedReason used to report failures while reconciling GKE control plane.

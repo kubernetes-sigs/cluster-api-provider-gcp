@@ -108,7 +108,10 @@ func (r *GCPManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	log.V(4).Info("getting control plane %s", controlPlaneRef)
 	if err := r.Get(ctx, controlPlaneRef, controlPlane); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get control plane ref: %w", err)
+		if !apierrors.IsNotFound(err) || gcpCluster.DeletionTimestamp.IsZero() {
+			return ctrl.Result{}, fmt.Errorf("failed to get control plane ref: %w", err)
+		}
+		controlPlane = nil
 	}
 
 	clusterScope, err := scope.NewManagedClusterScope(ctx, scope.ManagedClusterScopeParams{
@@ -224,6 +227,11 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clusterScope *scope.ManagedClusterScope) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	log.Info("Reconciling Delete GCPManagedCluster")
+
+	if clusterScope.GCPManagedControlPlane != nil {
+		log.Info("GCPManagedControlPlane not deleted yet, retry later")
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	}
 
 	reconcilers := []cloud.Reconciler{
 		subnets.New(clusterScope),

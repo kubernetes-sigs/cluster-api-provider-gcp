@@ -25,7 +25,6 @@ import (
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
@@ -114,9 +113,21 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, nil
 	}
 
-	managedControlPlaneScope, err := scope.NewManagedControlPlaneScope(scope.ManagedControlPlaneScopeParams{
+	// Get the managed cluster
+	managedCluster := &infrav1exp.GCPManagedCluster{}
+	key := client.ObjectKey{
+		Namespace: gcpManagedControlPlane.Namespace,
+		Name:      cluster.Spec.InfrastructureRef.Name,
+	}
+	if err := r.Client.Get(ctx, key, managedCluster); err != nil || managedCluster == nil {
+		log.Error(err, "Failed to retrieve GCPManagedCluster from the API Server")
+		return ctrl.Result{}, err
+	}
+
+	managedControlPlaneScope, err := scope.NewManagedControlPlaneScope(ctx, scope.ManagedControlPlaneScopeParams{
 		Client:                 r.Client,
 		Cluster:                cluster,
+		GCPManagedCluster:      managedCluster,
 		GCPManagedControlPlane: gcpManagedControlPlane,
 	})
 	if err != nil {
@@ -143,25 +154,30 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 	log := log.FromContext(ctx)
 	log.Info("Reconciling GCPManagedControlPlane")
 
-	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1.ClusterFinalizer)
+	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
 	if err := managedControlPlaneScope.PatchObject(); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	reconcilers := []cloud.Reconciler{
+	if !managedControlPlaneScope.GCPManagedCluster.Status.Ready {
+		log.Info("GCPManagedCluster not ready yet, retry later")
+		return ctrl.Result{RequeueAfter: 2 * time.Minute}, nil
+	}
+
+	reconcilers := []cloud.ReconcilerWithResult{
 		clusters.New(managedControlPlaneScope),
 	}
 
 	for _, r := range reconcilers {
-		if err := r.Reconcile(ctx); err != nil {
+		res, err := r.Reconcile(ctx)
+		if err != nil {
 			log.Error(err, "Reconcile error")
 			record.Warnf(managedControlPlaneScope.GCPManagedControlPlane, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
-	}
-
-	if conditions.IsTrue(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneCreatingCondition) {
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		if res.Requeue {
+			return res, nil
+		}
 	}
 
 	return ctrl.Result{}, nil
@@ -171,20 +187,24 @@ func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, 
 	log := log.FromContext(ctx)
 	log.Info("Deleting GCPManagedControlPlane")
 
-	reconcilers := []cloud.Reconciler{
+	reconcilers := []cloud.ReconcilerWithResult{
 		clusters.New(managedControlPlaneScope),
 	}
 
 	for _, r := range reconcilers {
-		if err := r.Delete(ctx); err != nil {
+		res, err := r.Delete(ctx)
+		if err != nil {
 			log.Error(err, "Reconcile error")
 			record.Warnf(managedControlPlaneScope.GCPManagedControlPlane, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
+		if res.Requeue {
+			return res, nil
+		}
 	}
 
 	if conditions.Get(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneDeletingCondition).Reason == infrav1exp.GKEControlPlaneDeletedReason {
-		controllerutil.RemoveFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1.ClusterFinalizer)
+		controllerutil.RemoveFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
 	}
 
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
