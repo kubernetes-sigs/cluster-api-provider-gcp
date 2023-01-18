@@ -17,7 +17,11 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
+
+	"k8s.io/utils/strings/slices"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -45,8 +49,7 @@ var _ webhook.Validator = &GCPMachine{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (m *GCPMachine) ValidateCreate() error {
 	clusterlog.Info("validate create", "name", m.Name)
-
-	return nil
+	return validateConfidentialCompute(m.Spec)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
@@ -98,4 +101,18 @@ func (m *GCPMachine) ValidateDelete() error {
 // Default implements webhookutil.defaulter so a webhook will be registered for the type.
 func (m *GCPMachine) Default() {
 	clusterlog.Info("default", "name", m.Name)
+}
+
+func validateConfidentialCompute(spec GCPMachineSpec) error {
+	if spec.ConfidentialCompute != nil && *spec.ConfidentialCompute == ConfidentialComputePolicyEnabled {
+		if spec.OnHostMaintenance == nil || *spec.OnHostMaintenance == HostMaintenancePolicyMigrate {
+			return fmt.Errorf("ConfidentialCompute require OnHostMaintenance to be set to %s, the current value is: %s", HostMaintenancePolicyTerminate, HostMaintenancePolicyMigrate)
+		}
+
+		machineSeries := strings.Split(spec.InstanceType, "-")[0]
+		if !slices.Contains(confidentialComputeSupportedMachineSeries, machineSeries) {
+			return fmt.Errorf("ConfidentialCompute require instance type in the following series: %s", confidentialComputeSupportedMachineSeries)
+		}
+	}
+	return nil
 }

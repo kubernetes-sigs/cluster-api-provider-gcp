@@ -45,6 +45,14 @@ func (src *GCPMachineTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 		dst.Spec.Template.Spec.ShieldedInstanceConfig = restored.Spec.Template.Spec.ShieldedInstanceConfig
 	}
 
+	if restored.Spec.Template.Spec.OnHostMaintenance != nil {
+		dst.Spec.Template.Spec.OnHostMaintenance = restored.Spec.Template.Spec.OnHostMaintenance
+	}
+
+	if restored.Spec.Template.Spec.ConfidentialCompute != nil {
+		dst.Spec.Template.Spec.ConfidentialCompute = restored.Spec.Template.Spec.ConfidentialCompute
+	}
+
 	return nil
 }
 

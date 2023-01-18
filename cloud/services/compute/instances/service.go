@@ -19,6 +19,8 @@ package instances
 import (
 	"context"
 
+	"github.com/go-logr/logr"
+
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"google.golang.org/api/compute/v1"
@@ -40,7 +42,7 @@ type instancegroupsInterface interface {
 // Scope is an interfaces that hold used methods.
 type Scope interface {
 	cloud.Machine
-	InstanceSpec() *compute.Instance
+	InstanceSpec(log logr.Logger) *compute.Instance
 	InstanceImageSpec() *compute.AttachedDisk
 	InstanceAdditionalDiskSpec() []*compute.AttachedDisk
 }
