@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	cloud.google.com/go/container v1.7.0
+	cloud.google.com/go/iam v0.8.0
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.20.0
 	github.com/google/go-cmp v0.5.9
 	github.com/googleapis/gax-go/v2 v2.7.0

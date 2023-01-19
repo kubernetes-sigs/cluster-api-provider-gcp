@@ -103,6 +103,16 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	// Reconcile kubeconfig
+	err = s.reconcileKubeconfig(ctx, cluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	err = s.reconcileAdditionalKubeconfigs(ctx, cluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	s.scope.SetEndpoint(cluster.Endpoint)
 	log.Info("Cluster reconciled")
 	conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition)

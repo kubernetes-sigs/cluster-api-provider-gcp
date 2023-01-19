@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/conditions"
 
 	container "cloud.google.com/go/container/apiv1"
+	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	"github.com/pkg/errors"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -40,6 +41,7 @@ const (
 
 // ManagedControlPlaneScopeParams defines the input parameters used to create a new Scope.
 type ManagedControlPlaneScopeParams struct {
+	CredentialsClient      *credentials.IamCredentialsClient
 	ManagedClusterClient   *container.ClusterManagerClient
 	Client                 client.Client
 	Cluster                *clusterv1.Cluster
@@ -60,22 +62,38 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		return nil, errors.New("failed to generate new scope from nil GCPManagedControlPlane")
 	}
 
+	var credentialData []byte
+	var credential *Credential
+	var err error
+	if params.GCPManagedCluster.Spec.CredentialsRef != nil {
+		credentialData, err = getCredentialDataFromRef(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+	} else {
+		credentialData, err = getCredentialDataFromMount()
+	}
+	if err != nil {
+		return nil, errors.Errorf("failed to get credential data: %v", err)
+	}
+
+	credential, err = parseCredential(credentialData)
+	if err != nil {
+		return nil, errors.Errorf("failed to parse credential data: %v", err)
+	}
+
 	if params.ManagedClusterClient == nil {
 		var managedClusterClient *container.ClusterManagerClient
-		var err error
-		if params.GCPManagedCluster.Spec.CredentialsRef == nil {
-			managedClusterClient, err = container.NewClusterManagerClient(ctx)
-		} else {
-			var rawData []byte
-			rawData, err = getCredentialData(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
-			if err == nil {
-				managedClusterClient, err = container.NewClusterManagerClient(ctx, option.WithCredentialsJSON(rawData))
-			}
-		}
+		managedClusterClient, err = container.NewClusterManagerClient(ctx, option.WithCredentialsJSON(credentialData))
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
 		}
 		params.ManagedClusterClient = managedClusterClient
+	}
+	if params.CredentialsClient == nil {
+		var credentialsClient *credentials.IamCredentialsClient
+		credentialsClient, err = credentials.NewIamCredentialsClient(ctx, option.WithCredentialsJSON(credentialData))
+		if err != nil {
+			return nil, errors.Errorf("failed to create gcp credentials client: %v", err)
+		}
+		params.CredentialsClient = credentialsClient
 	}
 
 	helper, err := patch.NewHelper(params.GCPManagedControlPlane, params.Client)
@@ -89,6 +107,8 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		GCPManagedCluster:      params.GCPManagedCluster,
 		GCPManagedControlPlane: params.GCPManagedControlPlane,
 		mcClient:               params.ManagedClusterClient,
+		credentialsClient:      params.CredentialsClient,
+		credential:             credential,
 		patchHelper:            helper,
 	}, nil
 }
@@ -102,6 +122,8 @@ type ManagedControlPlaneScope struct {
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	mcClient               *container.ClusterManagerClient
+	credentialsClient      *credentials.IamCredentialsClient
+	credential             *Credential
 }
 
 // PatchObject persists the managed control plane configuration and status.
@@ -120,6 +142,7 @@ func (s *ManagedControlPlaneScope) PatchObject() error {
 // Close closes the current scope persisting the managed control plane configuration and status.
 func (s *ManagedControlPlaneScope) Close() error {
 	s.mcClient.Close()
+	s.credentialsClient.Close()
 	return s.PatchObject()
 }
 
@@ -128,9 +151,24 @@ func (s *ManagedControlPlaneScope) ConditionSetter() conditions.Setter {
 	return s.GCPManagedControlPlane
 }
 
+// Client returns a k8s client.
+func (s *ManagedControlPlaneScope) Client() client.Client {
+	return s.client
+}
+
 // ManagedControlPlaneClient returns a client used to interact with GKE.
 func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.ClusterManagerClient {
 	return s.mcClient
+}
+
+// CredentialsClient returns a client used to interact with IAM.
+func (s *ManagedControlPlaneScope) CredentialsClient() *credentials.IamCredentialsClient {
+	return s.credentialsClient
+}
+
+// GetCredential returns the credential data.
+func (s *ManagedControlPlaneScope) GetCredential() *Credential {
+	return s.credential
 }
 
 func parseLocation(location string) (region string, zone *string) {
