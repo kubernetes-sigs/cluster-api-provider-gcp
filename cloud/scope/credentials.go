@@ -66,7 +66,7 @@ func getCredentialDataFromRef(ctx context.Context, credentialsRef *infrav1.Objec
 func getCredentialDataFromMount() ([]byte, error) {
 	byteValue, err := os.ReadFile(ConfigFilePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error loading credential from file %s: %w", ConfigFilePath, err)
 	}
 	return byteValue, nil
 }

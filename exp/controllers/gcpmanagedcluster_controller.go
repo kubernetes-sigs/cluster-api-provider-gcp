@@ -230,7 +230,7 @@ func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clust
 
 	if clusterScope.GCPManagedControlPlane != nil {
 		log.Info("GCPManagedControlPlane not deleted yet, retry later")
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
 	reconcilers := []cloud.Reconciler{

@@ -176,10 +176,6 @@ func main() {
 		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
 		os.Exit(1)
 	}
-	if err = (&infrav1exp.GCPManagedControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPManagedControlPlane")
-		os.Exit(1)
-	}
 
 	if err := mgr.AddReadyzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
 		setupLog.Error(err, "unable to create ready check")

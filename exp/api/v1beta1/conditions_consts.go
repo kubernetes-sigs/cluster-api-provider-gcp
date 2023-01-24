@@ -32,6 +32,8 @@ const (
 	GKEControlPlaneCreatingReason = "GKEControlPlaneCreating"
 	// GKEControlPlaneCreatedReason used to report GKE control plane is created.
 	GKEControlPlaneCreatedReason = "GKEControlPlaneCreated"
+	// GKEControlPlaneUpdatedReason used to report GKE control plane is updated.
+	GKEControlPlaneUpdatedReason = "GKEControlPlaneUpdated"
 	// GKEControlPlaneDeletingReason used to report GKE control plane being deleted.
 	GKEControlPlaneDeletingReason = "GKEControlPlaneDeleting"
 	// GKEControlPlaneDeletedReason used to report GKE control plane is deleted.

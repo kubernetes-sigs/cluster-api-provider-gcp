@@ -40,6 +40,11 @@ spec:
           spec:
             description: GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
             properties:
+              clusterName:
+                description: ClusterName allows you to specify the name of the GKE
+                  cluster. If you don't specify a name then a default name will be
+                  created based on the namespace and name of the managed control plane.
+                type: string
               controlPlaneVersion:
                 description: ControlPlaneVersion represents the control plane version
                   of the GKE cluster. If not specified, the default version currently
@@ -74,7 +79,7 @@ spec:
                 type: string
               releaseChannel:
                 description: ReleaseChannel represents the release channel of the
-                  GKE cluster.
+                  GKE cluster. If not specified, it defaults to `regular`.
                 enum:
                 - rapid
                 - regular

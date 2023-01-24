@@ -29,6 +29,11 @@ const (
 
 // GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
 type GCPManagedControlPlaneSpec struct {
+	// ClusterName allows you to specify the name of the GKE cluster.
+	// If you don't specify a name then a default name will be created
+	// based on the namespace and name of the managed control plane.
+	// +optional
+	ClusterName string `json:"clusterName,omitempty"`
 	// Project is the name of the project to deploy the cluster to.
 	Project string `json:"project"`
 	// Location represents the location (region or zone) in which the GKE cluster
@@ -36,7 +41,7 @@ type GCPManagedControlPlaneSpec struct {
 	Location string `json:"location"`
 	// EnableAutopilot indicates whether to enable autopilot for this GKE cluster.
 	EnableAutopilot bool `json:"enableAutopilot"`
-	// ReleaseChannel represents the release channel of the GKE cluster.
+	// ReleaseChannel represents the release channel of the GKE cluster. If not specified, it defaults to `regular`.
 	// +optional
 	ReleaseChannel *ReleaseChannel `json:"releaseChannel,omitempty"`
 	// ControlPlaneVersion represents the control plane version of the GKE cluster.

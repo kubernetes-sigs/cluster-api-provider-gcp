@@ -19,13 +19,13 @@ package clusters
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -53,7 +53,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Info("Cluster provisioning in progress")
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition)
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
 	switch cluster.Status {
@@ -62,7 +62,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition)
 		s.scope.GCPManagedControlPlane.Status.Ready = false
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	case containerpb.Cluster_RECONCILING:
 		log.Info("Cluster reconciling in progress")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition)
@@ -102,6 +102,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		s.scope.GCPManagedControlPlane.Status.Ready = true
 		return ctrl.Result{}, nil
 	}
+	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition, infrav1exp.GKEControlPlaneUpdatedReason, clusterv1.ConditionSeverityInfo, "")
 
 	// Reconcile kubeconfig
 	err = s.reconcileKubeconfig(ctx, cluster)

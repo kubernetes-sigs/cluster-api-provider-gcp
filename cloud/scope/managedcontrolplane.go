@@ -193,7 +193,7 @@ func (s *ManagedControlPlaneScope) ClusterLocation() string {
 
 // ClusterFullName returns the full name of the cluster.
 func (s *ManagedControlPlaneScope) ClusterFullName() string {
-	return fmt.Sprintf("%s/clusters/%s", s.ClusterLocation(), s.GCPManagedControlPlane.Name)
+	return fmt.Sprintf("%s/clusters/%s", s.ClusterLocation(), s.GCPManagedControlPlane.Spec.ClusterName)
 }
 
 // SetEndpoint sets the Endpoint of GCPManagedControlPlane.

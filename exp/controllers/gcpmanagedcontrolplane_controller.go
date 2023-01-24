@@ -161,7 +161,7 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 
 	if !managedControlPlaneScope.GCPManagedCluster.Status.Ready {
 		log.Info("GCPManagedCluster not ready yet, retry later")
-		return ctrl.Result{RequeueAfter: 2 * time.Minute}, nil
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
 	reconcilers := []cloud.ReconcilerWithResult{
@@ -207,5 +207,5 @@ func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, 
 		controllerutil.RemoveFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
 	}
 
-	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 }
