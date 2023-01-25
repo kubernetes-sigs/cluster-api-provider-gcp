@@ -18,9 +18,29 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"time"
+
+	"sigs.k8s.io/cluster-api/util/annotations"
+
+	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/conditions"
+	"sigs.k8s.io/cluster-api/util/predicates"
+	"sigs.k8s.io/cluster-api/util/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	infrastructurev1beta1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,33 +49,163 @@ import (
 // GCPManagedControlPlaneReconciler reconciles a GCPManagedControlPlane object.
 type GCPManagedControlPlaneReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	ReconcileTimeout time.Duration
+	Scheme           *runtime.Scheme
+	WatchFilterValue string
 }
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the GCPManagedControlPlane object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
-func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+// SetupWithManager sets up the controller with the Manager.
+func (r *GCPManagedControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+	log := log.FromContext(ctx).WithValues("controller", "GCPManagedControlPlane")
 
-	// TODO(user): your logic here
+	c, err := ctrl.NewControllerManagedBy(mgr).
+		WithOptions(options).
+		For(&infrav1exp.GCPManagedControlPlane{}).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue)).
+		Build(r)
+	if err != nil {
+		return errors.Wrap(err, "error creating controller")
+	}
+
+	if err = c.Watch(
+		&source.Kind{Type: &clusterv1.Cluster{}},
+		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrav1exp.GroupVersion.WithKind("GCPManagedCluster"), mgr.GetClient(), &infrav1exp.GCPManagedControlPlane{})),
+		predicates.ClusterUnpausedAndInfrastructureReady(log),
+	); err != nil {
+		return fmt.Errorf("failed adding a watch for ready clusters: %w", err)
+	}
+
+	return nil
+}
+
+func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
+	defer cancel()
+
+	log := ctrl.LoggerFrom(ctx)
+
+	// Get the control plane instance
+	gcpManagedControlPlane := &infrav1exp.GCPManagedControlPlane{}
+	if err := r.Client.Get(ctx, req.NamespacedName, gcpManagedControlPlane); err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Get the cluster
+	cluster, err := util.GetOwnerCluster(ctx, r.Client, gcpManagedControlPlane.ObjectMeta)
+	if err != nil {
+		log.Error(err, "Failed to retrieve owner Cluster from the API Server")
+		return ctrl.Result{}, err
+	}
+	if cluster == nil {
+		log.Info("Cluster Controller has not yet set OwnerRef")
+		return ctrl.Result{}, nil
+	}
+
+	if annotations.IsPaused(cluster, gcpManagedControlPlane) {
+		log.Info("Reconciliation is paused for this object")
+		return ctrl.Result{}, nil
+	}
+
+	// Get the managed cluster
+	managedCluster := &infrav1exp.GCPManagedCluster{}
+	key := client.ObjectKey{
+		Namespace: gcpManagedControlPlane.Namespace,
+		Name:      cluster.Spec.InfrastructureRef.Name,
+	}
+	if err := r.Client.Get(ctx, key, managedCluster); err != nil || managedCluster == nil {
+		log.Error(err, "Failed to retrieve GCPManagedCluster from the API Server")
+		return ctrl.Result{}, err
+	}
+
+	managedControlPlaneScope, err := scope.NewManagedControlPlaneScope(ctx, scope.ManagedControlPlaneScopeParams{
+		Client:                 r.Client,
+		Cluster:                cluster,
+		GCPManagedCluster:      managedCluster,
+		GCPManagedControlPlane: gcpManagedControlPlane,
+	})
+	if err != nil {
+		return ctrl.Result{}, errors.Errorf("failed to create scope: %+v", err)
+	}
+
+	// Always close the scope when exiting this function so we can persist any GCPMachine changes.
+	defer func() {
+		if err := managedControlPlaneScope.Close(); err != nil && reterr == nil {
+			reterr = err
+		}
+	}()
+
+	// Handle deleted clusters
+	if !gcpManagedControlPlane.DeletionTimestamp.IsZero() {
+		return r.reconcileDelete(ctx, managedControlPlaneScope)
+	}
+
+	// Handle non-deleted clusters
+	return r.reconcile(ctx, managedControlPlaneScope)
+}
+
+func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, managedControlPlaneScope *scope.ManagedControlPlaneScope) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+	log.Info("Reconciling GCPManagedControlPlane")
+
+	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
+	if err := managedControlPlaneScope.PatchObject(); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !managedControlPlaneScope.GCPManagedCluster.Status.Ready {
+		log.Info("GCPManagedCluster not ready yet, retry later")
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
+	}
+
+	reconcilers := []cloud.ReconcilerWithResult{
+		clusters.New(managedControlPlaneScope),
+	}
+
+	for _, r := range reconcilers {
+		res, err := r.Reconcile(ctx)
+		if err != nil {
+			log.Error(err, "Reconcile error")
+			record.Warnf(managedControlPlaneScope.GCPManagedControlPlane, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
+			return ctrl.Result{}, err
+		}
+		if res.Requeue {
+			return res, nil
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *GCPManagedControlPlaneReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta1.GCPManagedControlPlane{}).
-		Complete(r)
+func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, managedControlPlaneScope *scope.ManagedControlPlaneScope) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+	log.Info("Deleting GCPManagedControlPlane")
+
+	reconcilers := []cloud.ReconcilerWithResult{
+		clusters.New(managedControlPlaneScope),
+	}
+
+	for _, r := range reconcilers {
+		res, err := r.Delete(ctx)
+		if err != nil {
+			log.Error(err, "Reconcile error")
+			record.Warnf(managedControlPlaneScope.GCPManagedControlPlane, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
+			return ctrl.Result{}, err
+		}
+		if res.Requeue {
+			return res, nil
+		}
+	}
+
+	if conditions.Get(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneDeletingCondition).Reason == infrav1exp.GKEControlPlaneDeletedReason {
+		controllerutil.RemoveFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
+	}
+
+	return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 }

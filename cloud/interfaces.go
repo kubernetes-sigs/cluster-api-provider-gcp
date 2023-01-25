@@ -19,6 +19,8 @@ package cloud
 import (
 	"context"
 
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	corev1 "k8s.io/api/core/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -33,6 +35,12 @@ type Cloud = cloud.Cloud
 type Reconciler interface {
 	Reconcile(ctx context.Context) error
 	Delete(ctx context.Context) error
+}
+
+// ReconcilerWithResult is a generic interface used by components offering a type of service.
+type ReconcilerWithResult interface {
+	Reconcile(ctx context.Context) (ctrl.Result, error)
+	Delete(ctx context.Context) (ctrl.Result, error)
 }
 
 // Client is an interface which can get cloud client.

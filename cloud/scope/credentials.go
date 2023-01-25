@@ -18,7 +18,9 @@ package scope
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
@@ -29,16 +31,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func createComputeService(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*compute.Service, error) {
-	if credentialsRef == nil {
-		computeSvc, err := compute.NewService(ctx)
-		if err != nil {
-			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
-		}
+const (
+	// ConfigFilePath is the path to GCP credential config.
+	ConfigFilePath = "/home/.gcp/credentials"
+)
 
-		return computeSvc, nil
-	}
+// Credential is a struct to hold GCP credential data.
+type Credential struct {
+	Type        string `json:"type"`
+	ProjectID   string `json:"project_id"`
+	ClientEmail string `json:"client_email"`
+	ClientID    string `json:"client_id"`
+}
 
+func getCredentialDataFromRef(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) ([]byte, error) {
 	secretRefName := types.NamespacedName{
 		Name:      credentialsRef.Name,
 		Namespace: credentialsRef.Namespace,
@@ -54,10 +60,40 @@ func createComputeService(ctx context.Context, credentialsRef *infrav1.ObjectRef
 		return nil, errors.New("no credentials key in secret")
 	}
 
-	computeSvc, err := compute.NewService(ctx, option.WithCredentialsJSON(rawData))
-	if err != nil {
-		return nil, errors.Errorf("failed to create gcp compute client with credentials secret: %v", err)
-	}
+	return rawData, nil
+}
 
+func getCredentialDataFromMount() ([]byte, error) {
+	byteValue, err := os.ReadFile(ConfigFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("error loading credential from file %s: %w", ConfigFilePath, err)
+	}
+	return byteValue, nil
+}
+
+func parseCredential(rawData []byte) (*Credential, error) {
+	var credential Credential
+	err := json.Unmarshal(rawData, &credential)
+	if err != nil {
+		return nil, err
+	}
+	return &credential, nil
+}
+
+func createComputeService(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*compute.Service, error) {
+	var computeSvc *compute.Service
+	var err error
+	if credentialsRef == nil {
+		computeSvc, err = compute.NewService(ctx)
+	} else {
+		var rawData []byte
+		rawData, err = getCredentialDataFromRef(ctx, credentialsRef, crClient)
+		if err == nil {
+			computeSvc, err = compute.NewService(ctx, option.WithCredentialsJSON(rawData))
+		}
+	}
+	if err != nil {
+		return nil, errors.Errorf("failed to create gcp compute client: %v", err)
+	}
 	return computeSvc, nil
 }

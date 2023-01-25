@@ -17,10 +17,20 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/hash"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+)
+
+const (
+	maxClusterNameLength = 40
+	resourcePrefix       = "capg_"
 )
 
 // log is for logging in this package.
@@ -39,6 +49,18 @@ var _ webhook.Defaulter = &GCPManagedControlPlane{}
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
 func (r *GCPManagedControlPlane) Default() {
 	gcpmanagedcontrolplanelog.Info("default", "name", r.Name)
+
+	if r.Spec.ClusterName == "" {
+		gcpmanagedcontrolplanelog.Info("ClusterName is empty, generating name")
+		name, err := generateGKEName(r.Name, r.Namespace, maxClusterNameLength)
+		if err != nil {
+			gcpmanagedcontrolplanelog.Error(err, "failed to create GKE cluster name")
+			return
+		}
+
+		gcpmanagedcontrolplanelog.Info("defaulting GKE cluster name", "cluster-name", name)
+		r.Spec.ClusterName = name
+	}
 }
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcontrolplane,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=create;update,versions=v1beta1,name=vgcpmanagedcontrolplane.kb.io,admissionReviewVersions=v1
@@ -64,4 +86,21 @@ func (r *GCPManagedControlPlane) ValidateDelete() error {
 	gcpmanagedcontrolplanelog.Info("validate delete", "name", r.Name)
 
 	return nil
+}
+
+func generateGKEName(resourceName, namespace string, maxLength int) (string, error) {
+	escapedName := strings.ReplaceAll(resourceName, ".", "_")
+	gkeName := fmt.Sprintf("%s_%s", namespace, escapedName)
+
+	if len(gkeName) < maxLength {
+		return gkeName, nil
+	}
+
+	hashLength := 32 - len(resourcePrefix)
+	hashedName, err := hash.Base36TruncatedHash(gkeName, hashLength)
+	if err != nil {
+		return "", errors.Wrap(err, "creating hash from name")
+	}
+
+	return fmt.Sprintf("%s%s", resourcePrefix, hashedName), nil
 }
