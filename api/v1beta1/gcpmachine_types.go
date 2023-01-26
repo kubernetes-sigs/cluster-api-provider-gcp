@@ -122,6 +122,30 @@ type GCPShieldedInstanceConfig struct {
 	IntegrityMonitoring IntegrityMonitoringPolicy `json:"integrityMonitoring,omitempty"`
 }
 
+// ConfidentialComputePolicy represents the confidential compute configuration for the GCP machine.
+type ConfidentialComputePolicy string
+
+const (
+	// ConfidentialComputePolicyEnabled enables confidential compute for the GCP machine.
+	ConfidentialComputePolicyEnabled ConfidentialComputePolicy = "Enabled"
+	// ConfidentialComputePolicyDisabled disables confidential compute for the GCP machine.
+	ConfidentialComputePolicyDisabled ConfidentialComputePolicy = "Disabled"
+)
+
+// Confidential VM supports Compute Engine machine types in the following series:
+// reference: https://cloud.google.com/compute/confidential-vm/docs/os-and-machine-type#machine-type
+var confidentialComputeSupportedMachineSeries = []string{"n2d", "c2d"}
+
+// HostMaintenancePolicy represents the desired behavior ase of a host maintenance event.
+type HostMaintenancePolicy string
+
+const (
+	// HostMaintenancePolicyMigrate causes Compute Engine to live migrate an instance when there is a maintenance event.
+	HostMaintenancePolicyMigrate HostMaintenancePolicy = "Migrate"
+	// HostMaintenancePolicyTerminate - stops an instance instead of migrating it.
+	HostMaintenancePolicyTerminate HostMaintenancePolicy = "Terminate"
+)
+
 // GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
@@ -209,6 +233,19 @@ type GCPMachineSpec struct {
 	// ShieldedInstanceConfig is the Shielded VM configuration for this machine
 	// +optional
 	ShieldedInstanceConfig *GCPShieldedInstanceConfig `json:"shieldedInstanceConfig,omitempty"`
+
+	// OnHostMaintenance determines the behavior when a maintenance event occurs that might cause the instance to reboot.
+	// If omitted, the platform chooses a default, which is subject to change over time, currently that default is "Migrate".
+	// +kubebuilder:validation:Enum=Migrate;Terminate;
+	// +optional
+	OnHostMaintenance *HostMaintenancePolicy `json:"onHostMaintenance,omitempty"`
+
+	// ConfidentialCompute Defines whether the instance should have confidential compute enabled.
+	// If enabled OnHostMaintenance is required to be set to "Terminate".
+	// If omitted, the platform chooses a default, which is subject to change over time, currently that default is false.
+	// +kubebuilder:validation:Enum=Enabled;Disabled
+	// +optional
+	ConfidentialCompute *ConfidentialComputePolicy `json:"confidentialCompute,omitempty"`
 }
 
 // MetadataItem defines a single piece of metadata associated with an instance.

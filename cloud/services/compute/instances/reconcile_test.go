@@ -19,6 +19,7 @@ package instances
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
@@ -380,6 +381,137 @@ func TestService_createOrGetInstance(t *testing.T) {
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
+				ServiceAccounts: []*compute.ServiceAccount{
+					{
+						Email:  "default",
+						Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
+					},
+				},
+				Tags: &compute.Tags{
+					Items: []string{
+						"my-cluster-node",
+						"my-cluster",
+					},
+				},
+				Zone: "us-central1-c",
+			},
+		},
+		{
+			name: "instance does not exist (should create instance) with confidential compute enabled and TERMINATE OnHostMaintenance",
+			scope: func() Scope {
+				machineScope.GCPMachine = getFakeGCPMachine()
+				confidentialComputePolicyEnabled := infrav1.ConfidentialComputePolicyEnabled
+				machineScope.GCPMachine.Spec.ConfidentialCompute = &confidentialComputePolicyEnabled
+				hostMaintenancePolicyTerminate := infrav1.HostMaintenancePolicyTerminate
+				machineScope.GCPMachine.Spec.OnHostMaintenance = &hostMaintenancePolicyTerminate
+				return machineScope
+			},
+			mockInstance: &cloud.MockInstances{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
+			},
+			want: &compute.Instance{
+				Name:         "my-machine",
+				CanIpForward: true,
+				Disks: []*compute.AttachedDisk{
+					{
+						AutoDelete: true,
+						Boot:       true,
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+						},
+					},
+				},
+				Labels: map[string]string{
+					"capg-role":               "node",
+					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
+				},
+				MachineType: "zones/us-central1-c/machineTypes",
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{
+							Key:   "user-data",
+							Value: pointer.String("Zm9vCg=="),
+						},
+					},
+				},
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network: "projects/my-proj/global/networks/default",
+					},
+				},
+				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{
+					OnHostMaintenance: strings.ToUpper(string(infrav1.HostMaintenancePolicyTerminate)),
+				},
+				ConfidentialInstanceConfig: &compute.ConfidentialInstanceConfig{
+					EnableConfidentialCompute: true,
+				},
+				ServiceAccounts: []*compute.ServiceAccount{
+					{
+						Email:  "default",
+						Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
+					},
+				},
+				Tags: &compute.Tags{
+					Items: []string{
+						"my-cluster-node",
+						"my-cluster",
+					},
+				},
+				Zone: "us-central1-c",
+			},
+		},
+		{
+			name: "instance does not exist (should create instance) with MIGRATE OnHostMaintenance",
+			scope: func() Scope {
+				machineScope.GCPMachine = getFakeGCPMachine()
+				hostMaintenancePolicyTerminate := infrav1.HostMaintenancePolicyMigrate
+				machineScope.GCPMachine.Spec.OnHostMaintenance = &hostMaintenancePolicyTerminate
+				return machineScope
+			},
+			mockInstance: &cloud.MockInstances{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
+			},
+			want: &compute.Instance{
+				Name:         "my-machine",
+				CanIpForward: true,
+				Disks: []*compute.AttachedDisk{
+					{
+						AutoDelete: true,
+						Boot:       true,
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+						},
+					},
+				},
+				Labels: map[string]string{
+					"capg-role":               "node",
+					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
+				},
+				MachineType: "zones/us-central1-c/machineTypes",
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{
+							Key:   "user-data",
+							Value: pointer.String("Zm9vCg=="),
+						},
+					},
+				},
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network: "projects/my-proj/global/networks/default",
+					},
+				},
+				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{
+					OnHostMaintenance: strings.ToUpper(string(infrav1.HostMaintenancePolicyMigrate)),
+				},
 				ServiceAccounts: []*compute.ServiceAccount{
 					{
 						Email:  "default",

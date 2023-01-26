@@ -24,6 +24,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/go-logr/logr"
+
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	"google.golang.org/api/compute/v1"
@@ -323,7 +325,7 @@ func (m *MachineScope) InstanceAdditionalMetadataSpec() *compute.Metadata {
 }
 
 // InstanceSpec returns instance spec.
-func (m *MachineScope) InstanceSpec() *compute.Instance {
+func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 	instance := &compute.Instance{
 		Name:        m.Name(),
 		Zone:        m.Zone(),
@@ -365,6 +367,24 @@ func (m *MachineScope) InstanceSpec() *compute.Instance {
 		}
 		if m.GCPMachine.Spec.ShieldedInstanceConfig.IntegrityMonitoring == infrav1.IntegrityMonitoringPolicyDisabled {
 			instance.ShieldedInstanceConfig.EnableIntegrityMonitoring = false
+		}
+	}
+	if m.GCPMachine.Spec.OnHostMaintenance != nil {
+		switch *m.GCPMachine.Spec.OnHostMaintenance {
+		case infrav1.HostMaintenancePolicyMigrate:
+			instance.Scheduling.OnHostMaintenance = "MIGRATE"
+		case infrav1.HostMaintenancePolicyTerminate:
+			instance.Scheduling.OnHostMaintenance = "TERMINATE"
+		default:
+			log.Error(errors.New("Invalid value"), "Unknown OnHostMaintenance value", "Spec.OnHostMaintenance", *m.GCPMachine.Spec.OnHostMaintenance)
+		}
+
+		instance.Scheduling.OnHostMaintenance = strings.ToUpper(string(*m.GCPMachine.Spec.OnHostMaintenance))
+	}
+	if m.GCPMachine.Spec.ConfidentialCompute != nil {
+		enabled := *m.GCPMachine.Spec.ConfidentialCompute == infrav1.ConfidentialComputePolicyEnabled
+		instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{
+			EnableConfidentialCompute: enabled,
 		}
 	}
 

@@ -98,7 +98,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 func (s *Service) Delete(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	log.Info("Deleting instance resources")
-	instanceSpec := s.scope.InstanceSpec()
+	instanceSpec := s.scope.InstanceSpec(log)
 	instanceName := instanceSpec.Name
 	instanceKey := meta.ZonalKey(instanceName, s.scope.Zone())
 	log.V(2).Info("Looking for instance before deleting", "name", instanceName, "zone", s.scope.Zone())
@@ -131,7 +131,7 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 		return nil, errors.Wrap(err, "failed to retrieve bootstrap data")
 	}
 
-	instanceSpec := s.scope.InstanceSpec()
+	instanceSpec := s.scope.InstanceSpec(log)
 	instanceName := instanceSpec.Name
 	instanceKey := meta.ZonalKey(instanceName, s.scope.Zone())
 	instanceSpec.Metadata.Items = append(instanceSpec.Metadata.Items, &compute.MetadataItems{

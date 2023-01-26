@@ -46,7 +46,7 @@ var _ webhook.Validator = &GCPMachineTemplate{}
 func (r *GCPMachineTemplate) ValidateCreate() error {
 	clusterlog.Info("validate create", "name", r.Name)
 
-	return nil
+	return validateConfidentialCompute(r.Spec.Template.Spec)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
