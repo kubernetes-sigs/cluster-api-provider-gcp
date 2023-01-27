@@ -19,7 +19,7 @@
 5. Install [Kustomize][kustomize]
    - `brew install kustomize` on macOS.
    - [install instructions](https://kubectl.docs.kubernetes.io/installation/kustomize/) on Windows + WSL2, Linux and macOS.
-6. Install Python 3.x or 2.7.x, if neither is already installed.
+6. Install Python 3.x, if neither is already installed.
 7. Install make.
    - `brew install make` on MacOS.
    - `sudo apt install make` on Windows + WSL2.
