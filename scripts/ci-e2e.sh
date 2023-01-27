@@ -188,47 +188,47 @@ main() {
 
   for arg in "$@"
   do
-    if [[ "$arg" == "--verbose" ]]; then
+    if [[ "${arg}" == "--verbose" ]]; then
       set -o xtrace
     fi
-    if [[ "$arg" == "--init-image" ]]; then
+    if [[ "${arg}" == "--init-image" ]]; then
       unset SKIP_INIT_IMAGE
     fi
-    if [[ "$arg" == "--build-image-only" ]]; then
+    if [[ "${arg}" == "--build-image-only" ]]; then
       BUILD_IMAGE_ONLY="1"
     fi
   done
 
   # If BOSKOS_HOST is set then acquire an GCP account from Boskos.
-  if [ -n "${BOSKOS_HOST:-}" ]; then
+  if [[ -n "${BOSKOS_HOST:-}" ]]; then
     # Check out the account from Boskos and store the produced environment
     # variables in a temporary file.
     account_env_var_file="$(mktemp)"
-    python hack/checkout_account.py 1>"${account_env_var_file}"
+    python3 hack/checkout_account.py 1>"${account_env_var_file}"
     checkout_account_status="${?}"
 
     # If the checkout process was a success then load the account's
     # environment variables into this process.
     # shellcheck disable=SC1090
-    [ "${checkout_account_status}" = "0" ] && . "${account_env_var_file}"
+    [[ "${checkout_account_status}" = "0" ]] && . "${account_env_var_file}"
 
     # Always remove the account environment variable file. It contains
     # sensitive information.
     rm -f "${account_env_var_file}"
 
-    if [ ! "${checkout_account_status}" = "0" ]; then
+    if [[ ! "${checkout_account_status}" = "0" ]]; then
       echo "error getting account from boskos" 1>&2
       exit "${checkout_account_status}"
     fi
 
     # run the heart beat process to tell boskos that we are still
     # using the checked out account periodically
-    python -u hack/heartbeat_account.py >> "$ARTIFACTS/logs/boskos.log" 2>&1 &
+    python3 -u hack/heartbeat_account.py >> "${ARTIFACTS}/logs/boskos.log" 2>&1 &
     # shellcheck disable=SC2116
     HEART_BEAT_PID=$(echo $!)
   fi
 
-  if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+  if [[ -z "${GOOGLE_APPLICATION_CREDENTIALS}" ]]; then
     cat <<EOF
 GOOGLE_APPLICATION_CREDENTIALS is not set.
 Please set this to the path of the service account used to run this script.
@@ -278,7 +278,7 @@ EOF
   echo "${test_status}"
 
   # If Boskos is being used then release the GCP project back to Boskos.
-  [ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> "$ARTIFACTS/logs/boskos.log" 2>&1
+  [[ -z "${BOSKOS_HOST:-}" ]] || hack/checkin_account.py >> "${ARTIFACTS}/logs/boskos.log" 2>&1
 }
 
 main "$@"
