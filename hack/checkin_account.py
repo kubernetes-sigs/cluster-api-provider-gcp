@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2019 The Kubernetes Authors.
 #
@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from urllib.parse import urlencode
 import sys
-import httplib
-import urllib
+import http.client as httplib
 import os
 
 BOSKOS_HOST=os.environ.get("BOSKOS_HOST", "boskos")
@@ -26,7 +26,7 @@ USER = "cluster-api-provider-gcp"
 
 if __name__ == "__main__":
     conn = httplib.HTTPConnection(BOSKOS_HOST)
-    conn.request("POST", "/release?%s" % urllib.urlencode({
+    conn.request("POST", "/release?%s" % urlencode({
         'name': BOSKOS_RESOURCE_NAME,
         'dest': 'dirty',
         'owner': USER,

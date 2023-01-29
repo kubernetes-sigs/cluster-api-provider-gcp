@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2019 The Kubernetes Authors.
 #
@@ -16,8 +16,8 @@
 
 """Checks out a gcp account from E2E"""
 
-import urllib
-import httplib
+from urllib.parse import urlencode
+import http.client as httplib
 import os
 import sys
 import json
@@ -29,7 +29,7 @@ USER = "cluster-api-provider-gcp"
 
 def post_request(host, input_state = "clean"):
     conn = httplib.HTTPConnection(host)
-    conn.request("POST", "/acquire?%s" % urllib.urlencode({
+    conn.request("POST", "/acquire?%s" % urlencode({
         'type': RESOURCE_TYPE,
         'owner': USER,
         'state': input_state,
@@ -56,5 +56,5 @@ if __name__ == "__main__":
         sys.exit("Got invalid response %d: %s" % (status, reason))
 
     body = json.loads(result)
-    print 'export BOSKOS_RESOURCE_NAME="%s";' % body['name']
-    print 'export GCP_PROJECT="%s";' % body['name']
+    print('export BOSKOS_RESOURCE_NAME="%s";' % body['name'])
+    print('export GCP_PROJECT="%s";' % body['name'])
