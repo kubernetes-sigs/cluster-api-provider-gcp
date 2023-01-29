@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2019 The Kubernetes Authors.
 #
@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from urllib.parse import urlencode
 import sys
-import httplib
-import urllib
+import http.client as httplib
 import os
 import time
 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # keep sending heart beat for 3 hours
     while count < 180:
         conn = httplib.HTTPConnection(BOSKOS_HOST)
-        conn.request("POST", "/update?%s" % urllib.urlencode({
+        conn.request("POST", "/update?%s" % urlencode({
             'name': BOSKOS_RESOURCE_NAME,
             'state': 'busy',
             'owner': USER,

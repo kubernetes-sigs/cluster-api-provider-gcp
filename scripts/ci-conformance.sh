@@ -212,7 +212,7 @@ main() {
     # Check out the account from Boskos and store the produced environment
     # variables in a temporary file.
     account_env_var_file="$(mktemp)"
-    python hack/checkout_account.py 1>"${account_env_var_file}"
+    python3 hack/checkout_account.py 1>"${account_env_var_file}"
     checkout_account_status="${?}"
 
     # If the checkout process was a success then load the account's
@@ -231,7 +231,7 @@ main() {
 
     # run the heart beat process to tell boskos that we are still
     # using the checked out account periodically
-    python -u hack/heartbeat_account.py >> "$ARTIFACTS/logs/boskos.log" 2>&1 &
+    python3 -u hack/heartbeat_account.py >> "$ARTIFACTS/logs/boskos.log" 2>&1 &
     # shellcheck disable=SC2116
     HEART_BEAT_PID=$(echo $!)
   fi
