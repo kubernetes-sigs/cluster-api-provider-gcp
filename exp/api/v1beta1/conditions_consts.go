@@ -42,4 +42,32 @@ const (
 	GKEControlPlaneErrorReason = "GKEControlPlaneError"
 	// GKEControlPlaneReconciliationFailedReason used to report failures while reconciling GKE control plane.
 	GKEControlPlaneReconciliationFailedReason = "GKEControlPlaneReconciliationFailed"
+	// GKEControlPlaneRequiresAtLeastOneNodePoolReason used to report that no node pool is specified for the GKE control plane.
+	GKEControlPlaneRequiresAtLeastOneNodePoolReason = "GKEControlPlaneRequiresAtLeastOneNodePool"
+
+	// GKEMachinePoolReadyCondition condition reports on the successful reconciliation of GKE node pool.
+	GKEMachinePoolReadyCondition clusterv1.ConditionType = "GKEMachinePoolReady"
+	// GKEMachinePoolCreatingCondition condition reports on whether the GKE node pool is creating.
+	GKEMachinePoolCreatingCondition clusterv1.ConditionType = "GKEMachinePoolCreating"
+	// GKEMachinePoolUpdatingCondition condition reports on whether the GKE node pool is updating.
+	GKEMachinePoolUpdatingCondition clusterv1.ConditionType = "GKEMachinePoolUpdating"
+	// GKEMachinePoolDeletingCondition condition reports on whether the GKE node pool is deleting.
+	GKEMachinePoolDeletingCondition clusterv1.ConditionType = "GKEMachinePoolDeleting"
+
+	// WaitingForGKEControlPlaneReason used when the machine pool is waiting for GKE control plane infrastructure to be ready before proceeding.
+	WaitingForGKEControlPlaneReason = "WaitingForGKEControlPlane"
+	// GKEMachinePoolCreatingReason used to report GKE node pool being created.
+	GKEMachinePoolCreatingReason = "GKEMachinePoolCreating"
+	// GKEMachinePoolCreatedReason used to report GKE node pool is created.
+	GKEMachinePoolCreatedReason = "GKEMachinePoolCreated"
+	// GKEMachinePoolUpdatedReason used to report GKE node pool is updated.
+	GKEMachinePoolUpdatedReason = "GKEMachinePoolUpdated"
+	// GKEMachinePoolDeletingReason used to report GKE node pool being deleted.
+	GKEMachinePoolDeletingReason = "GKEMachinePoolDeleting"
+	// GKEMachinePoolDeletedReason used to report GKE node pool is deleted.
+	GKEMachinePoolDeletedReason = "GKEMachinePoolDeleted"
+	// GKEMachinePoolErrorReason used to report GKE node pool is in error state.
+	GKEMachinePoolErrorReason = "GKEMachinePoolError"
+	// GKEMachinePoolReconciliationFailedReason used to report failures while reconciling GKE node pool.
+	GKEMachinePoolReconciliationFailedReason = "GKEMachinePoolReconciliationFailed"
 )

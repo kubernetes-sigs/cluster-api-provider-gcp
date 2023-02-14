@@ -198,7 +198,7 @@ func (s *Service) updateCAPIKubeconfigSecret(ctx context.Context, configSecret *
 }
 
 func (s *Service) getKubeConfigContextName(isUser bool) string {
-	contextName := fmt.Sprintf("gke_%s_%s_%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.GCPManagedControlPlane.Spec.Location, s.scope.GCPManagedControlPlane.Name)
+	contextName := fmt.Sprintf("gke_%s_%s_%s", s.scope.GCPManagedControlPlane.Spec.Project, s.scope.GCPManagedControlPlane.Spec.Location, s.scope.ClusterName())
 	if isUser {
 		contextName = fmt.Sprintf("%s-user", contextName)
 	}

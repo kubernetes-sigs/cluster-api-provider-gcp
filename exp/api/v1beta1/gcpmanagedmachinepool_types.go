@@ -30,13 +30,16 @@ const (
 
 // GCPManagedMachinePoolSpec defines the desired state of GCPManagedMachinePool.
 type GCPManagedMachinePoolSpec struct {
-	// NodeVersion represents the node version of the node pool.
-	// If not specified, the GKE cluster control plane version will be used.
+	// NodePoolName specifies the name of the GKE node pool corresponding to this MachinePool. If you don't specify a name
+	// then a default name will be created based on the namespace and name of the managed machine pool.
 	// +optional
-	NodeVersion *string `json:"nodeVersion,omitempty"`
+	NodePoolName string `json:"nodePoolName,omitempty"`
 	// InitialNodeCount represents the initial number of nodes for the pool.
 	// In regional or multi-zonal clusters, this is the number of nodes per zone.
 	InitialNodeCount int32 `json:"initialNodeCount"`
+	// Scaling specifies scaling for the node pool
+	// +optional
+	Scaling *NodePoolAutoScaling `json:"scaling,omitempty"`
 	// KubernetesLabels specifies the labels to apply to the nodes of the node pool.
 	// +optional
 	KubernetesLabels infrav1.Labels `json:"kubernetesLabels,omitempty"`
@@ -86,6 +89,22 @@ type GCPManagedMachinePoolList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []GCPManagedMachinePool `json:"items"`
+}
+
+// NodePoolAutoScaling specifies scaling options.
+type NodePoolAutoScaling struct {
+	MinCount *int32 `json:"minCount,omitempty"`
+	MaxCount *int32 `json:"maxCount,omitempty"`
+}
+
+// GetConditions returns the machine pool conditions.
+func (r *GCPManagedMachinePool) GetConditions() clusterv1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the status conditions for the GCPManagedMachinePool.
+func (r *GCPManagedMachinePool) SetConditions(conditions clusterv1.Conditions) {
+	r.Status.Conditions = conditions
 }
 
 func init() {

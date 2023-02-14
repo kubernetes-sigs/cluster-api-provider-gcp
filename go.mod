@@ -3,6 +3,7 @@ module sigs.k8s.io/cluster-api-provider-gcp
 go 1.19
 
 require (
+	cloud.google.com/go/compute v1.15.1
 	cloud.google.com/go/container v1.13.0
 	cloud.google.com/go/iam v0.10.0
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.20.0
@@ -32,7 +33,6 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.15.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/BurntSushi/toml v1.0.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
