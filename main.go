@@ -18,6 +18,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
@@ -110,6 +111,8 @@ func main() {
 
 	ctrl.SetLogger(klogr.New())
 
+	setupLog.Info(fmt.Sprintf("feature gates: %+v\n", feature.Gates))
+
 	// Machine and cluster operations can create enough events to trigger the event recorder spam filter
 	// Setting the burst size higher ensures all events will be recorded and submitted to the API
 	broadcaster := cgrecord.NewBroadcasterWithCorrelatorOptions(cgrecord.CorrelatorOptions{
@@ -143,47 +146,18 @@ func main() {
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
 
-	if err = (&controllers.GCPMachineReconciler{
-		Client:           mgr.GetClient(),
-		ReconcileTimeout: reconcileTimeout,
-		WatchFilterValue: watchFilterValue,
-	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GCPMachine")
-		os.Exit(1)
-	}
-	if err = (&controllers.GCPClusterReconciler{
-		Client:           mgr.GetClient(),
-		ReconcileTimeout: reconcileTimeout,
-		WatchFilterValue: watchFilterValue,
-	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GCPCluster")
+	if setupErr := setupReconcilers(ctx, mgr); setupErr != nil {
+		setupLog.Error(err, "unable to setup reconcilers")
 		os.Exit(1)
 	}
 
-	if err = (&infrav1beta1.GCPCluster{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPCluster")
-		os.Exit(1)
-	}
-	if err = (&infrav1beta1.GCPClusterTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPClusterTemplate")
-		os.Exit(1)
-	}
-	if err = (&infrav1beta1.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachine")
-		os.Exit(1)
-	}
-	if err = (&infrav1beta1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "GCPMachineTemplate")
+	if setupErr := setupWebhooks(mgr); setupErr != nil {
+		setupLog.Error(err, "unable to setup webhooks")
 		os.Exit(1)
 	}
 
-	if err := mgr.AddReadyzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
-		setupLog.Error(err, "unable to create ready check")
-		os.Exit(1)
-	}
-
-	if err := mgr.AddHealthzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
-		setupLog.Error(err, "unable to create health check")
+	if setupErr := setupProbes(mgr); setupErr != nil {
+		setupLog.Error(err, "unable to setup probes")
 		os.Exit(1)
 	}
 
@@ -193,6 +167,54 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func setupReconcilers(ctx context.Context, mgr ctrl.Manager) error {
+	if err := (&controllers.GCPMachineReconciler{
+		Client:           mgr.GetClient(),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+		return fmt.Errorf("setting up GCPMachine controller: %w", err)
+	}
+	if err := (&controllers.GCPClusterReconciler{
+		Client:           mgr.GetClient(),
+		ReconcileTimeout: reconcileTimeout,
+		WatchFilterValue: watchFilterValue,
+	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+		return fmt.Errorf("setting up GCPCluster controller: %w", err)
+	}
+
+	return nil
+}
+
+func setupWebhooks(mgr ctrl.Manager) error {
+	if err := (&infrav1beta1.GCPCluster{}).SetupWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("setting up GCPCluster webhook: %w", err)
+	}
+	if err := (&infrav1beta1.GCPClusterTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("setting up GCPClusterTemplate webhook: %w", err)
+	}
+	if err := (&infrav1beta1.GCPMachine{}).SetupWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("setting up GCPMachine webhook: %w", err)
+	}
+	if err := (&infrav1beta1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("setting up GCPMachineTemplate webhook: %w", err)
+	}
+
+	return nil
+}
+
+func setupProbes(mgr ctrl.Manager) error {
+	if err := mgr.AddReadyzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
+		return fmt.Errorf("creating ready check: %w", err)
+	}
+
+	if err := mgr.AddHealthzCheck("webhook", mgr.GetWebhookServer().StartedChecker()); err != nil {
+		return fmt.Errorf("creating health check: %w", err)
+	}
+
+	return nil
 }
 
 func initFlags(fs *pflag.FlagSet) {

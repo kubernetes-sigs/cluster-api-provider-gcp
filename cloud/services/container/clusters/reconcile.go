@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
+
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
@@ -40,17 +42,36 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	cluster, err := s.describeCluster(ctx)
 	if err != nil {
 		s.scope.GCPManagedControlPlane.Status.Ready = false
+		conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
 		return ctrl.Result{}, err
 	}
 	if cluster == nil {
 		log.Info("Cluster not found, creating")
 		s.scope.GCPManagedControlPlane.Status.Ready = false
+
+		nodePools, _, err := s.scope.GetAllNodePools(ctx)
+		if err != nil {
+			conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
+			return ctrl.Result{}, err
+		}
+		if len(nodePools) == 0 {
+			log.Info("At least 1 node pool is required to create GKE cluster")
+			conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneRequiresAtLeastOneNodePoolReason, clusterv1.ConditionSeverityInfo, "")
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneRequiresAtLeastOneNodePoolReason, clusterv1.ConditionSeverityInfo, "")
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneRequiresAtLeastOneNodePoolReason, clusterv1.ConditionSeverityInfo, "")
+			return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
+		}
+
 		if err = s.createCluster(ctx); err != nil {
+			conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
 			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
 			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
 			return ctrl.Result{}, err
 		}
 		log.Info("Cluster provisioning in progress")
+		conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition)
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
@@ -59,6 +80,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	switch cluster.Status {
 	case containerpb.Cluster_PROVISIONING:
 		log.Info("Cluster provisioning in progress")
+		conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition)
 		s.scope.GCPManagedControlPlane.Status.Ready = false
@@ -70,6 +92,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	case containerpb.Cluster_STOPPING:
 		log.Info("Cluster stopping in progress")
+		conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneDeletingCondition)
 		s.scope.GCPManagedControlPlane.Status.Ready = false
@@ -79,14 +102,14 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		if len(cluster.Conditions) > 0 {
 			msg = cluster.Conditions[0].GetMessage()
 		}
-		log.Error(errors.New("Cluster in error/degraded state"), msg, "name", s.scope.GCPManagedControlPlane.Name)
+		log.Error(errors.New("Cluster in error/degraded state"), msg, "name", s.scope.ClusterName())
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneErrorReason, clusterv1.ConditionSeverityError, "")
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 		return ctrl.Result{}, nil
 	case containerpb.Cluster_RUNNING:
 		log.Info("Cluster running")
 	default:
-		log.Error(errors.New("Unhandled cluster status"), fmt.Sprintf("Unhandled cluster status %s", cluster.Status), "name", s.scope.GCPManagedControlPlane.Name)
+		log.Error(errors.New("Unhandled cluster status"), fmt.Sprintf("Unhandled cluster status %s", cluster.Status), "name", s.scope.ClusterName())
 		return ctrl.Result{}, nil
 	}
 
@@ -116,6 +139,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 
 	s.scope.SetEndpoint(cluster.Endpoint)
 	log.Info("Cluster reconciled")
+	conditions.MarkTrue(s.scope.ConditionSetter(), clusterv1.ReadyCondition)
 	conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition)
 	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneCreatedReason, clusterv1.ConditionSeverityInfo, "")
 	s.scope.GCPManagedControlPlane.Status.Ready = true
@@ -160,6 +184,7 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 	}
 	log.Info("Cluster deleting in progress")
 	s.scope.GCPManagedControlPlane.Status.Ready = false
+	conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
 	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
 	conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneDeletingCondition)
 
@@ -180,7 +205,7 @@ func (s *Service) describeCluster(ctx context.Context) (*containerpb.Cluster, er
 				return nil, nil
 			}
 		}
-		log.Error(err, "Error getting GKE cluster", "name", s.scope.GCPManagedControlPlane.Name)
+		log.Error(err, "Error getting GKE cluster", "name", s.scope.ClusterName())
 		return nil, err
 	}
 
@@ -190,18 +215,14 @@ func (s *Service) describeCluster(ctx context.Context) (*containerpb.Cluster, er
 func (s *Service) createCluster(ctx context.Context) error {
 	log := log.FromContext(ctx)
 
+	nodePools, machinePools, _ := s.scope.GetAllNodePools(ctx)
 	cluster := &containerpb.Cluster{
-		Name:    s.scope.GCPManagedControlPlane.Name,
+		Name:    s.scope.ClusterName(),
 		Network: *s.scope.GCPManagedCluster.Spec.Network.Name,
 		Autopilot: &containerpb.Autopilot{
 			Enabled: false,
 		},
-		NodePools: []*containerpb.NodePool{
-			{
-				Name:             "default",
-				InitialNodeCount: 1,
-			},
-		},
+		NodePools: scope.ConvertToSdkNodePools(nodePools, machinePools),
 		ReleaseChannel: &containerpb.ReleaseChannel{
 			Channel: convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
 		},
@@ -215,7 +236,7 @@ func (s *Service) createCluster(ctx context.Context) error {
 	}
 	_, err := s.scope.ManagedControlPlaneClient().CreateCluster(ctx, createClusterRequest)
 	if err != nil {
-		log.Error(err, "Error creating GKE cluster", "name", s.scope.GCPManagedControlPlane.Name)
+		log.Error(err, "Error creating GKE cluster", "name", s.scope.ClusterName())
 		return err
 	}
 
@@ -227,7 +248,7 @@ func (s *Service) updateCluster(ctx context.Context, updateClusterRequest *conta
 
 	_, err := s.scope.ManagedControlPlaneClient().UpdateCluster(ctx, updateClusterRequest)
 	if err != nil {
-		log.Error(err, "Error updating GKE cluster", "name", s.scope.GCPManagedControlPlane.Name)
+		log.Error(err, "Error updating GKE cluster", "name", s.scope.ClusterName())
 		return err
 	}
 
@@ -242,7 +263,7 @@ func (s *Service) deleteCluster(ctx context.Context) error {
 	}
 	_, err := s.scope.ManagedControlPlaneClient().DeleteCluster(ctx, deleteClusterRequest)
 	if err != nil {
-		log.Error(err, "Error deleting GKE cluster", "name", s.scope.GCPManagedControlPlane.Name)
+		log.Error(err, "Error deleting GKE cluster", "name", s.scope.ClusterName())
 		return err
 	}
 

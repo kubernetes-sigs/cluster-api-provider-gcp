@@ -88,10 +88,11 @@ spec:
                   - value
                   type: object
                 type: array
-              nodeVersion:
-                description: NodeVersion represents the node version of the node pool.
-                  If not specified, the GKE cluster control plane version will be
-                  used.
+              nodePoolName:
+                description: NodePoolName specifies the name of the GKE node pool
+                  corresponding to this MachinePool. If you don't specify a name then
+                  a default name will be created based on the namespace and name of
+                  the managed machine pool.
                 type: string
               providerIDList:
                 description: ProviderIDList are the provider IDs of instances in the
@@ -100,6 +101,16 @@ spec:
                 items:
                   type: string
                 type: array
+              scaling:
+                description: Scaling specifies scaling for the node pool
+                properties:
+                  maxCount:
+                    format: int32
+                    type: integer
+                  minCount:
+                    format: int32
+                    type: integer
+                type: object
             required:
             - initialNodeCount
             type: object
