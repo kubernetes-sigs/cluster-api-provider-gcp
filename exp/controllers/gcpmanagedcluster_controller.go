@@ -25,7 +25,6 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -52,7 +51,6 @@ import (
 type GCPManagedClusterReconciler struct {
 	client.Client
 	WatchFilterValue string
-	Scheme           *runtime.Scheme
 	ReconcileTimeout time.Duration
 }
 
@@ -106,7 +104,7 @@ func (r *GCPManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		Namespace: cluster.Spec.ControlPlaneRef.Namespace,
 	}
 
-	log.V(4).Info("getting control plane %s", controlPlaneRef)
+	log.V(4).Info("getting control plane ", "ref", controlPlaneRef)
 	if err := r.Get(ctx, controlPlaneRef, controlPlane); err != nil {
 		if !apierrors.IsNotFound(err) || gcpCluster.DeletionTimestamp.IsZero() {
 			return ctrl.Result{}, fmt.Errorf("failed to get control plane ref: %w", err)
@@ -212,14 +210,14 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 	record.Event(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Ready")
 
 	controlPlaneEndpoint := clusterScope.GCPManagedControlPlane.Spec.Endpoint
+	clusterScope.SetControlPlaneEndpoint(controlPlaneEndpoint)
+
 	if controlPlaneEndpoint.IsZero() {
 		log.Info("GCPManagedControlplane does not have endpoint yet. Reconciling")
 		record.Event(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Waiting for control-plane endpoint")
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	} else {
+		record.Eventf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
 	}
-
-	clusterScope.SetControlPlaneEndpoint(controlPlaneEndpoint)
-	record.Eventf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
 
 	return ctrl.Result{}, nil
 }

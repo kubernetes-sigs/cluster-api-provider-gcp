@@ -38,6 +38,7 @@ import (
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	expcontrollers "sigs.k8s.io/cluster-api-provider-gcp/exp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
@@ -185,6 +186,34 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) error {
 		return fmt.Errorf("setting up GCPCluster controller: %w", err)
 	}
 
+	if feature.Gates.Enabled(feature.GKE) {
+		setupLog.Info("Enabling GKE reconcilers")
+
+		if err := (&expcontrollers.GCPManagedClusterReconciler{
+			Client:           mgr.GetClient(),
+			ReconcileTimeout: reconcileTimeout,
+			WatchFilterValue: watchFilterValue,
+		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+			return fmt.Errorf("setting up GCPManagedCluster controller: %w", err)
+		}
+
+		if err := (&expcontrollers.GCPManagedControlPlaneReconciler{
+			Client:           mgr.GetClient(),
+			ReconcileTimeout: reconcileTimeout,
+			WatchFilterValue: watchFilterValue,
+		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpClusterConcurrency}); err != nil {
+			return fmt.Errorf("setting up GCPManagedControlPlane controller: %w", err)
+		}
+
+		if err := (&expcontrollers.GCPManagedMachinePoolReconciler{
+			Client:           mgr.GetClient(),
+			ReconcileTimeout: reconcileTimeout,
+			WatchFilterValue: watchFilterValue,
+		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+			return fmt.Errorf("setting up GCPManagedMachinePool controller: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -200,6 +229,20 @@ func setupWebhooks(mgr ctrl.Manager) error {
 	}
 	if err := (&infrav1beta1.GCPMachineTemplate{}).SetupWebhookWithManager(mgr); err != nil {
 		return fmt.Errorf("setting up GCPMachineTemplate webhook: %w", err)
+	}
+
+	if feature.Gates.Enabled(feature.GKE) {
+		setupLog.Info("Enabling GKE webhooks")
+
+		if err := (&infrav1exp.GCPManagedCluster{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("setting up GCPManagedCluster webhook: %w", err)
+		}
+		if err := (&infrav1exp.GCPManagedControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("setting up GCPManagedControlPlane webhook: %w", err)
+		}
+		if err := (&infrav1exp.GCPManagedMachinePool{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("setting up GCPManagedMachinePool webhook: %w", err)
+		}
 	}
 
 	return nil

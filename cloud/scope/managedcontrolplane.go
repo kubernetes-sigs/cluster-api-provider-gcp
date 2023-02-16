@@ -22,8 +22,6 @@ import (
 
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
-	"google.golang.org/api/option"
-
 	"sigs.k8s.io/cluster-api/util/conditions"
 
 	container "cloud.google.com/go/container/apiv1"
@@ -64,26 +62,13 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		return nil, errors.New("failed to generate new scope from nil GCPManagedControlPlane")
 	}
 
-	var credentialData []byte
-	var credential *Credential
-	var err error
-	if params.GCPManagedCluster.Spec.CredentialsRef != nil {
-		credentialData, err = getCredentialDataFromRef(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
-	} else {
-		credentialData, err = getCredentialDataFromMount()
-	}
+	credential, err := getCredentials(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 	if err != nil {
-		return nil, errors.Errorf("failed to get credential data: %v", err)
-	}
-
-	credential, err = parseCredential(credentialData)
-	if err != nil {
-		return nil, errors.Errorf("failed to parse credential data: %v", err)
+		return nil, fmt.Errorf("getting gcp credentials: %w", err)
 	}
 
 	if params.ManagedClusterClient == nil {
-		var managedClusterClient *container.ClusterManagerClient
-		managedClusterClient, err = container.NewClusterManagerClient(ctx, option.WithCredentialsJSON(credentialData))
+		managedClusterClient, err := newClusterManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
 		}
@@ -91,7 +76,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 	}
 	if params.CredentialsClient == nil {
 		var credentialsClient *credentials.IamCredentialsClient
-		credentialsClient, err = credentials.NewIamCredentialsClient(ctx, option.WithCredentialsJSON(credentialData))
+		credentialsClient, err = newIamCredentialsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp credentials client: %v", err)
 		}
