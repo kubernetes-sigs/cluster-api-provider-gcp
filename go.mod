@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/crypto v0.6.0
 	golang.org/x/mod v0.8.0
-	golang.org/x/net v0.6.0
+	golang.org/x/net v0.7.0
 	google.golang.org/api v0.109.0
 	google.golang.org/grpc v1.53.0
 	k8s.io/api v0.25.5
