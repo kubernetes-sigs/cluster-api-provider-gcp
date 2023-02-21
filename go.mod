@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	cloud.google.com/go/compute v1.18.0
-	cloud.google.com/go/container v1.13.0
+	cloud.google.com/go/container v1.13.1
 	cloud.google.com/go/iam v0.12.0
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.20.0
 	github.com/go-logr/logr v1.2.3
