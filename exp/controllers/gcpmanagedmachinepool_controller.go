@@ -317,7 +317,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 }
 
 func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managedMachinePoolScope *scope.ManagedMachinePoolScope) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedmachinepool")
 	log.Info("Reconciling GCPManagedMachinePool")
 
 	controllerutil.AddFinalizer(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.ManagedMachinePoolFinalizer)
@@ -325,25 +325,31 @@ func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managed
 		return ctrl.Result{}, err
 	}
 
-	reconcilers := []cloud.ReconcilerWithResult{
-		nodepools.New(managedMachinePoolScope),
+	reconcilers := map[string]cloud.ReconcilerWithResult{
+		"nodepools": nodepools.New(managedMachinePoolScope),
 	}
 
-	for _, r := range reconcilers {
+	for name, r := range reconcilers {
+		log.V(4).Info("Calling reconciler", "reconciler", name)
 		res, err := r.Reconcile(ctx)
 		if err != nil {
 			var e *apierror.APIError
 			if ok := errors.As(err, &e); ok {
 				if e.GRPCStatus().Code() == codes.FailedPrecondition {
-					log.Info("Cannot perform update when there's other operation, retry later")
+					log.Info("Cannot perform update when there's other operation, retry later", "reconciler", name)
 					return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 				}
 			}
-			log.Error(err, "Reconcile error")
+			log.Error(err, "Reconcile error", "reconciler", name)
 			record.Warnf(managedMachinePoolScope.GCPManagedMachinePool, "GCPManagedMachinePoolReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
+		if res.RequeueAfter > 0 {
+			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
+			return res, nil
+		}
 		if res.Requeue {
+			log.V(4).Info("Reconciler requested requeue", "reconciler", name)
 			return res, nil
 		}
 	}
@@ -352,21 +358,27 @@ func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managed
 }
 
 func (r *GCPManagedMachinePoolReconciler) reconcileDelete(ctx context.Context, managedMachinePoolScope *scope.ManagedMachinePoolScope) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedmachinepool", "action", "delete")
 	log.Info("Deleting GCPManagedMachinePool")
 
-	reconcilers := []cloud.ReconcilerWithResult{
-		nodepools.New(managedMachinePoolScope),
+	reconcilers := map[string]cloud.ReconcilerWithResult{
+		"nodepools": nodepools.New(managedMachinePoolScope),
 	}
 
-	for _, r := range reconcilers {
+	for name, r := range reconcilers {
+		log.V(4).Info("Calling reconciler delete", "reconciler", name)
 		res, err := r.Delete(ctx)
 		if err != nil {
-			log.Error(err, "Reconcile error")
+			log.Error(err, "Reconcile error", "reconciler", name)
 			record.Warnf(managedMachinePoolScope.GCPManagedMachinePool, "GCPManagedMachinePoolReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
+		if res.RequeueAfter > 0 {
+			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
+			return res, nil
+		}
 		if res.Requeue {
+			log.V(4).Info("Reconciler requested requeue", "reconciler", name)
 			return res, nil
 		}
 	}

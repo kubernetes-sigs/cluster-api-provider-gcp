@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -153,14 +154,18 @@ func (s *ManagedMachinePoolScope) NodePoolVersion() *string {
 }
 
 // ConvertToSdkNodePool converts a node pool to format that is used by GCP SDK.
-func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool clusterv1exp.MachinePool) *containerpb.NodePool {
+func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool clusterv1exp.MachinePool, regional bool) *containerpb.NodePool {
+	replicas := *machinePool.Spec.Replicas
+	if regional {
+		replicas /= cloud.DefaultNumRegionsPerZone
+	}
 	nodePoolName := nodePool.Spec.NodePoolName
 	if len(nodePoolName) == 0 {
 		nodePoolName = nodePool.Name
 	}
 	sdkNodePool := containerpb.NodePool{
 		Name:             nodePoolName,
-		InitialNodeCount: nodePool.Spec.InitialNodeCount,
+		InitialNodeCount: replicas,
 		Config: &containerpb.NodeConfig{
 			Labels:   nodePool.Spec.KubernetesLabels,
 			Taints:   infrav1exp.ConvertToSdkTaint(nodePool.Spec.KubernetesTaints),
@@ -181,10 +186,10 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 }
 
 // ConvertToSdkNodePools converts node pools to format that is used by GCP SDK.
-func ConvertToSdkNodePools(nodePools []infrav1exp.GCPManagedMachinePool, machinePools []clusterv1exp.MachinePool) []*containerpb.NodePool {
+func ConvertToSdkNodePools(nodePools []infrav1exp.GCPManagedMachinePool, machinePools []clusterv1exp.MachinePool, regional bool) []*containerpb.NodePool {
 	res := []*containerpb.NodePool{}
 	for i := range nodePools {
-		res = append(res, ConvertToSdkNodePool(nodePools[i], machinePools[i]))
+		res = append(res, ConvertToSdkNodePool(nodePools[i], machinePools[i], regional))
 	}
 	return res
 }

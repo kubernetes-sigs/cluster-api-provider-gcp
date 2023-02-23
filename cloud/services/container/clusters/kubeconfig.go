@@ -23,6 +23,7 @@ import (
 
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"cloud.google.com/go/iam/credentials/apiv1/credentialspb"
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -40,7 +41,8 @@ const (
 	GkeScope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
-func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.Cluster) error {
+func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.Cluster, log *logr.Logger) error {
+	log.Info("Reconciling kubeconfig")
 	clusterRef := types.NamespacedName{
 		Name:      s.scope.Cluster.Name,
 		Namespace: s.scope.Cluster.Namespace,
@@ -49,13 +51,16 @@ func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.
 	configSecret, err := secret.GetFromNamespacedName(ctx, s.scope.Client(), clusterRef, secret.Kubeconfig)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrap(err, "failed to get kubeconfig secret")
+			log.Error(err, "getting kubeconfig secret", "name", clusterRef)
+			return fmt.Errorf("getting kubeconfig secret %s: %w", clusterRef, err)
 		}
+		log.Info("kubeconfig secret not found, creating")
 
 		if createErr := s.createCAPIKubeconfigSecret(
 			ctx,
 			cluster,
 			&clusterRef,
+			log,
 		); createErr != nil {
 			return fmt.Errorf("creating kubeconfig secret: %w", createErr)
 		}
@@ -66,7 +71,8 @@ func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.
 	return nil
 }
 
-func (s *Service) reconcileAdditionalKubeconfigs(ctx context.Context, cluster *containerpb.Cluster) error {
+func (s *Service) reconcileAdditionalKubeconfigs(ctx context.Context, cluster *containerpb.Cluster, log *logr.Logger) error {
+	log.Info("Reconciling additional kubeconfig")
 	clusterRef := types.NamespacedName{
 		Name:      s.scope.Cluster.Name + "-user",
 		Namespace: s.scope.Cluster.Namespace,
@@ -76,7 +82,7 @@ func (s *Service) reconcileAdditionalKubeconfigs(ctx context.Context, cluster *c
 	_, err := secret.GetFromNamespacedName(ctx, s.scope.Client(), clusterRef, secret.Kubeconfig)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrap(err, "failed to get kubeconfig (user) secret")
+			return fmt.Errorf("getting kubeconfig (user) secret %s: %w", clusterRef, err)
 		}
 
 		createErr := s.createUserKubeconfigSecret(
@@ -85,7 +91,7 @@ func (s *Service) reconcileAdditionalKubeconfigs(ctx context.Context, cluster *c
 			&clusterRef,
 		)
 		if createErr != nil {
-			return err
+			return fmt.Errorf("creating additional kubeconfig secret: %w", err)
 		}
 	}
 
@@ -119,29 +125,31 @@ func (s *Service) createUserKubeconfigSecret(ctx context.Context, cluster *conta
 
 	out, err := clientcmd.Write(*cfg)
 	if err != nil {
-		return errors.Wrap(err, "failed to serialize config to yaml")
+		return fmt.Errorf("serialize kubeconfig to yaml: %w", err)
 	}
 
 	kubeconfigSecret := kubeconfig.GenerateSecretWithOwner(*clusterRef, out, controllerOwnerRef)
 	if err := s.scope.Client().Create(ctx, kubeconfigSecret); err != nil {
-		return errors.Wrap(err, "failed to create kubeconfig secret")
+		return fmt.Errorf("creating secret: %w", err)
 	}
 
 	return nil
 }
 
-func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *containerpb.Cluster, clusterRef *types.NamespacedName) error {
+func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *containerpb.Cluster, clusterRef *types.NamespacedName, log *logr.Logger) error {
 	controllerOwnerRef := *metav1.NewControllerRef(s.scope.GCPManagedControlPlane, infrav1exp.GroupVersion.WithKind("GCPManagedControlPlane"))
 
 	contextName := s.getKubeConfigContextName(false)
 
 	cfg, err := s.createBaseKubeConfig(contextName, cluster)
 	if err != nil {
+		log.Error(err, "failed creating base config")
 		return fmt.Errorf("creating base kubeconfig: %w", err)
 	}
 
 	token, err := s.generateToken(ctx)
 	if err != nil {
+		log.Error(err, "failed generating token")
 		return err
 	}
 	cfg.AuthInfos = map[string]*api.AuthInfo{
@@ -152,12 +160,14 @@ func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *conta
 
 	out, err := clientcmd.Write(*cfg)
 	if err != nil {
-		return errors.Wrap(err, "failed to serialize config to yaml")
+		log.Error(err, "failed serializing kubeconfig to yaml")
+		return fmt.Errorf("serialize kubeconfig to yaml: %w", err)
 	}
 
 	kubeconfigSecret := kubeconfig.GenerateSecretWithOwner(*clusterRef, out, controllerOwnerRef)
 	if err := s.scope.Client().Create(ctx, kubeconfigSecret); err != nil {
-		return errors.Wrap(err, "failed to create kubeconfig secret")
+		log.Error(err, "failed creating secret")
+		return fmt.Errorf("creating secret: %w", err)
 	}
 
 	return nil

@@ -34,9 +34,6 @@ type GCPManagedMachinePoolSpec struct {
 	// then a default name will be created based on the namespace and name of the managed machine pool.
 	// +optional
 	NodePoolName string `json:"nodePoolName,omitempty"`
-	// InitialNodeCount represents the initial number of nodes for the pool.
-	// In regional or multi-zonal clusters, this is the number of nodes per zone.
-	InitialNodeCount int32 `json:"initialNodeCount"`
 	// Scaling specifies scaling for the node pool
 	// +optional
 	Scaling *NodePoolAutoScaling `json:"scaling,omitempty"`

@@ -41,7 +41,7 @@ type GCPManagedControlPlaneSpec struct {
 	Location string `json:"location"`
 	// EnableAutopilot indicates whether to enable autopilot for this GKE cluster.
 	EnableAutopilot bool `json:"enableAutopilot"`
-	// ReleaseChannel represents the release channel of the GKE cluster. If not specified, it defaults to `regular`.
+	// ReleaseChannel represents the release channel of the GKE cluster.
 	// +optional
 	ReleaseChannel *ReleaseChannel `json:"releaseChannel,omitempty"`
 	// ControlPlaneVersion represents the control plane version of the GKE cluster.
@@ -56,16 +56,27 @@ type GCPManagedControlPlaneSpec struct {
 
 // GCPManagedControlPlaneStatus defines the observed state of GCPManagedControlPlane.
 type GCPManagedControlPlaneStatus struct {
+	// Ready denotes that the GCPManagedControlPlane API Server is ready to
+	// receive requests.
+	// +kubebuilder:default=false
 	Ready bool `json:"ready"`
 
-	// Conditions specifies the cpnditions for the managed control plane
+	// Conditions specifies the conditions for the managed control plane
 	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+
+	// CurrentVersion shows the current version of the GKE control plane.
+	// +optional
+	CurrentVersion string `json:"currentVersion,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:path=gcpmanagedcontrolplanes,scope=Namespaced,categories=cluster-api,shortName=gcpmcp
 // +kubebuilder:storageversion
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels.cluster\\.x-k8s\\.io/cluster-name",description="Cluster to which this GCPManagedControlPlane belongs"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="Control plane is ready"
+// +kubebuilder:printcolumn:name="CurrentVersion",type="string",JSONPath=".status.currentVersion",description="The current Kubernetes version"
+// +kubebuilder:printcolumn:name="Endpoint",type="string",JSONPath=".spec.endpoint",description="API Endpoint",priority=1
 
 // GCPManagedControlPlane is the Schema for the gcpmanagedcontrolplanes API.
 type GCPManagedControlPlane struct {

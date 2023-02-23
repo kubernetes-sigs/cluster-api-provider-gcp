@@ -19,7 +19,25 @@ spec:
     singular: gcpmanagedcontrolplane
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - description: Cluster to which this GCPManagedControlPlane belongs
+      jsonPath: .metadata.labels.cluster\.x-k8s\.io/cluster-name
+      name: Cluster
+      type: string
+    - description: Control plane is ready
+      jsonPath: .status.ready
+      name: Ready
+      type: string
+    - description: The current Kubernetes version
+      jsonPath: .status.currentVersion
+      name: CurrentVersion
+      type: string
+    - description: API Endpoint
+      jsonPath: .spec.endpoint
+      name: Endpoint
+      priority: 1
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: GCPManagedControlPlane is the Schema for the gcpmanagedcontrolplanes
@@ -79,7 +97,7 @@ spec:
                 type: string
               releaseChannel:
                 description: ReleaseChannel represents the release channel of the
-                  GKE cluster. If not specified, it defaults to `regular`.
+                  GKE cluster.
                 enum:
                 - rapid
                 - regular
@@ -95,7 +113,7 @@ spec:
               GCPManagedControlPlane.
             properties:
               conditions:
-                description: Conditions specifies the cpnditions for the managed control
+                description: Conditions specifies the conditions for the managed control
                   plane
                 items:
                   description: Condition defines an observation of a Cluster API resource
@@ -140,7 +158,14 @@ spec:
                   - type
                   type: object
                 type: array
+              currentVersion:
+                description: CurrentVersion shows the current version of the GKE control
+                  plane.
+                type: string
               ready:
+                default: false
+                description: Ready denotes that the GCPManagedControlPlane API Server
+                  is ready to receive requests.
                 type: boolean
             required:
             - ready

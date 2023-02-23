@@ -69,6 +69,8 @@ providers:
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-topology.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-quick-start.yaml"
     - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-creds.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke.yaml"
+    - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-autopilot.yaml"
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.25.5}"
@@ -92,12 +94,18 @@ variables:
   KUBETEST_CONFIGURATION: "${PWD}/test/e2e/data/kubetest/conformance.yaml"
   IMAGE_ID: "${IMAGE_ID}"
   IP_FAMILY: "IPv4"
+  EXP_CAPG_GKE: "true"
+  EXP_MACHINE_POOL: "true"
+  GKE_MACHINE_POOL_MIN: "1"
+  GKE_MACHINE_POOL_MAX: "2"
+  CAPG_LOGLEVEL: "4"
 
 intervals:
   default/wait-controllers: ["3m", "10s"]
   default/wait-cluster: ["20m", "10s"]
   default/wait-control-plane: ["30m", "10s"]
   default/wait-worker-nodes: ["30m", "10s"]
+  default/wait-worker-machine-pools: ["30m", "10s"]
   default/wait-delete-cluster: ["20m", "10s"]
   default/wait-machine-upgrade: ["50m", "10s"]
   default/wait-machine-remediation: ["30m", "10s"]

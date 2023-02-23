@@ -57,14 +57,16 @@ type GCPManagedControlPlaneReconciler struct {
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes/finalizers,verbs=update
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedclusters,verbs=get;list;watch
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;delete;patch
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GCPManagedControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
 	log := log.FromContext(ctx).WithValues("controller", "GCPManagedControlPlane")
 
+	gcpManagedControlPlane := &infrav1exp.GCPManagedControlPlane{}
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
-		For(&infrav1exp.GCPManagedControlPlane{}).
+		For(gcpManagedControlPlane).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue)).
 		Build(r)
 	if err != nil {
@@ -73,7 +75,7 @@ func (r *GCPManagedControlPlaneReconciler) SetupWithManager(ctx context.Context,
 
 	if err = c.Watch(
 		&source.Kind{Type: &clusterv1.Cluster{}},
-		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrav1exp.GroupVersion.WithKind("GCPManagedCluster"), mgr.GetClient(), &infrav1exp.GCPManagedControlPlane{})),
+		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, gcpManagedControlPlane.GroupVersionKind(), mgr.GetClient(), &infrav1exp.GCPManagedControlPlane{})),
 		predicates.ClusterUnpausedAndInfrastructureReady(log),
 	); err != nil {
 		return fmt.Errorf("failed adding a watch for ready clusters: %w", err)
@@ -151,7 +153,7 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 }
 
 func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, managedControlPlaneScope *scope.ManagedControlPlaneScope) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcontrolplane")
 	log.Info("Reconciling GCPManagedControlPlane")
 
 	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
@@ -164,18 +166,23 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
-	reconcilers := []cloud.ReconcilerWithResult{
-		clusters.New(managedControlPlaneScope),
+	reconcilers := map[string]cloud.ReconcilerWithResult{
+		"container_clusters": clusters.New(managedControlPlaneScope),
 	}
 
-	for _, r := range reconcilers {
+	for name, r := range reconcilers {
 		res, err := r.Reconcile(ctx)
 		if err != nil {
-			log.Error(err, "Reconcile error")
+			log.Error(err, "Reconcile error", "reconciler", name)
 			record.Warnf(managedControlPlaneScope.GCPManagedControlPlane, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
+		if res.RequeueAfter > 0 {
+			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
+			return res, nil
+		}
 		if res.Requeue {
+			log.V(4).Info("Reconciler requested requeue", "reconciler", name)
 			return res, nil
 		}
 	}
@@ -184,21 +191,26 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 }
 
 func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, managedControlPlaneScope *scope.ManagedControlPlaneScope) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcontrolplane", "action", "delete")
 	log.Info("Deleting GCPManagedControlPlane")
 
-	reconcilers := []cloud.ReconcilerWithResult{
-		clusters.New(managedControlPlaneScope),
+	reconcilers := map[string]cloud.ReconcilerWithResult{
+		"container_clusters": clusters.New(managedControlPlaneScope),
 	}
 
-	for _, r := range reconcilers {
+	for name, r := range reconcilers {
 		res, err := r.Delete(ctx)
 		if err != nil {
-			log.Error(err, "Reconcile error")
+			log.Error(err, "Reconcile error", "reconciler", name)
 			record.Warnf(managedControlPlaneScope.GCPManagedControlPlane, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
+		if res.RequeueAfter > 0 {
+			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
+			return res, nil
+		}
 		if res.Requeue {
+			log.V(4).Info("Reconciler requested requeue", "reconciler", name)
 			return res, nil
 		}
 	}
