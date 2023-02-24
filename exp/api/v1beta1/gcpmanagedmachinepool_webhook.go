@@ -17,10 +17,19 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
+	"github.com/google/go-cmp/cmp"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+)
+
+const (
+	maxNodePoolNameLength = 40
 )
 
 // log is for logging in this package.
@@ -45,18 +54,101 @@ func (r *GCPManagedMachinePool) Default() {
 
 var _ webhook.Validator = &GCPManagedMachinePool{}
 
+func (r *GCPManagedMachinePool) validateNodeCount() field.ErrorList {
+	var allErrs field.ErrorList
+	if r.Spec.InitialNodeCount < 0 {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "InitialNodeCount"),
+				r.Spec.InitialNodeCount, "must be greater or equal to zero"),
+		)
+	}
+	if len(allErrs) == 0 {
+		return nil
+	}
+	return allErrs
+}
+
+func (r *GCPManagedMachinePool) validateScaling() field.ErrorList {
+	var allErrs field.ErrorList
+	if r.Spec.Scaling != nil {
+		minField := field.NewPath("spec", "scaling", "minCount")
+		maxField := field.NewPath("spec", "scaling", "maxCount")
+		min := r.Spec.Scaling.MinCount
+		max := r.Spec.Scaling.MaxCount
+		if min != nil {
+			if *min < 0 {
+				allErrs = append(allErrs, field.Invalid(minField, *min, "must be greater or equal zero"))
+			}
+			if *min > r.Spec.InitialNodeCount {
+				allErrs = append(allErrs, field.Invalid(minField, *min, fmt.Sprintf("must be less or equal to %d", r.Spec.InitialNodeCount)))
+			}
+			if max != nil && *max < *min {
+				allErrs = append(allErrs, field.Invalid(maxField, *max, fmt.Sprintf("must be greater than field %s", minField.String())))
+			}
+		}
+		if max != nil && *max < r.Spec.InitialNodeCount {
+			allErrs = append(allErrs, field.Invalid(maxField, *max, fmt.Sprintf("must be greater or equal to %d", r.Spec.InitialNodeCount)))
+		}
+	}
+	if len(allErrs) == 0 {
+		return nil
+	}
+	return allErrs
+}
+
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (r *GCPManagedMachinePool) ValidateCreate() error {
 	gcpmanagedmachinepoollog.Info("validate create", "name", r.Name)
+	var allErrs field.ErrorList
 
-	return nil
+	if len(r.Spec.NodePoolName) > maxNodePoolNameLength {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodePoolName"),
+				r.Spec.NodePoolName, fmt.Sprintf("node pool name cannot have more than %d characters", maxNodePoolNameLength)),
+		)
+	}
+
+	if errs := r.validateNodeCount(); errs != nil || len(errs) == 0 {
+		allErrs = append(allErrs, errs...)
+	}
+
+	if errs := r.validateScaling(); errs != nil || len(errs) == 0 {
+		allErrs = append(allErrs, errs...)
+	}
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedMachinePool").GroupKind(), r.Name, allErrs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPManagedMachinePool) ValidateUpdate(old runtime.Object) error {
+func (r *GCPManagedMachinePool) ValidateUpdate(oldRaw runtime.Object) error {
 	gcpmanagedmachinepoollog.Info("validate update", "name", r.Name)
+	var allErrs field.ErrorList
+	old := oldRaw.(*GCPManagedMachinePool)
 
-	return nil
+	if !cmp.Equal(r.Spec.NodePoolName, old.Spec.NodePoolName) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodePoolName"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if errs := r.validateNodeCount(); errs != nil || len(errs) == 0 {
+		allErrs = append(allErrs, errs...)
+	}
+
+	if errs := r.validateScaling(); errs != nil || len(errs) == 0 {
+		allErrs = append(allErrs, errs...)
+	}
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedMachinePool").GroupKind(), r.Name, allErrs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.

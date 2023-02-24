@@ -20,6 +20,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/hash"
@@ -70,15 +75,61 @@ var _ webhook.Validator = &GCPManagedControlPlane{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
 func (r *GCPManagedControlPlane) ValidateCreate() error {
 	gcpmanagedcontrolplanelog.Info("validate create", "name", r.Name)
+	var allErrs field.ErrorList
 
-	return nil
+	if len(r.Spec.ClusterName) > maxClusterNameLength {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "ClusterName"),
+				r.Spec.ClusterName, fmt.Sprintf("cluster name cannot have more than %d characters", maxClusterNameLength)),
+		)
+	}
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPManagedControlPlane) ValidateUpdate(old runtime.Object) error {
+func (r *GCPManagedControlPlane) ValidateUpdate(oldRaw runtime.Object) error {
 	gcpmanagedcontrolplanelog.Info("validate update", "name", r.Name)
+	var allErrs field.ErrorList
+	old := oldRaw.(*GCPManagedControlPlane)
 
-	return nil
+	if !cmp.Equal(r.Spec.ClusterName, old.Spec.ClusterName) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "ClusterName"),
+				r.Spec.ClusterName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.Project, old.Spec.Project) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Project"),
+				r.Spec.Project, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.Location, old.Spec.Location) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Location"),
+				r.Spec.Location, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.EnableAutopilot, old.Spec.EnableAutopilot) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "EnableAutopilot"),
+				r.Spec.EnableAutopilot, "field is immutable"),
+		)
+	}
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
