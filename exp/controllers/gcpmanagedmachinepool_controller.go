@@ -198,23 +198,6 @@ func getMachinePoolByName(ctx context.Context, c client.Client, namespace, name 
 	return m, nil
 }
 
-// getOwnerMachinePool returns the MachinePool object owning the current resource.
-func getOwnerMachinePool(ctx context.Context, c client.Client, obj metav1.ObjectMeta) (*expclusterv1.MachinePool, error) {
-	for _, ref := range obj.OwnerReferences {
-		if ref.Kind != "MachinePool" {
-			continue
-		}
-		gv, err := schema.ParseGroupVersion(ref.APIVersion)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		if gv.Group == expclusterv1.GroupVersion.Group {
-			return getMachinePoolByName(ctx, c, obj.Namespace, ref.Name)
-		}
-	}
-	return nil, nil
-}
-
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepools,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepools/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepools/finalizers,verbs=update
@@ -239,7 +222,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	// Get the machine pool
-	machinePool, err := getOwnerMachinePool(ctx, r.Client, gcpManagedMachinePool.ObjectMeta)
+	machinePool, err := GetOwnerMachinePool(ctx, r.Client, gcpManagedMachinePool.ObjectMeta)
 	if err != nil {
 		log.Error(err, "Failed to retrieve owner MachinePool from the API Server")
 		return ctrl.Result{}, err
