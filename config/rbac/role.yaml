@@ -40,6 +40,15 @@ rules:
   verbs:
   - create
 - apiGroups:
+  - bootstrap.cluster.x-k8s.io
+  resources:
+  - kubeadmconfigs
+  - kubeadmconfigs/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - cluster.x-k8s.io
   resources:
   - clusters
@@ -56,12 +65,22 @@ rules:
   verbs:
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - cluster.x-k8s.io
   resources:
   - machines
   - machines/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
   verbs:
   - get
   - list
@@ -82,6 +101,68 @@ rules:
   - infrastructure.cluster.x-k8s.io
   resources:
   - gcpclusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - gcpmachinepoolmachines
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - gcpmachinepoolmachines/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - gcpmachinepoolmachines/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - gcpmachinepools
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - gcpmachinepools/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - gcpmachinepools/status
   verbs:
   - get
   - patch

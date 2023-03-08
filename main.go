@@ -26,12 +26,21 @@ import (
 	"os"
 	"time"
 
+	kubeadmv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
+
 	// +kubebuilder:scaffold:imports
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	cgrecord "k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	expclusterv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
+	capifeature "sigs.k8s.io/cluster-api/feature"
+	"sigs.k8s.io/cluster-api/util/record"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -39,13 +48,8 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	expclusterv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/flags"
-	"sigs.k8s.io/cluster-api/util/record"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
@@ -61,8 +65,12 @@ func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = infrav1beta1.AddToScheme(scheme)
 	_ = clusterv1.AddToScheme(scheme)
-	_ = expclusterv1.AddToScheme(scheme)
+
 	_ = infrav1exp.AddToScheme(scheme)
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = expclusterv1.AddToScheme(scheme)
+	_ = kubeadmv1.AddToScheme(scheme)
+
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -226,6 +234,22 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) error {
 		}
 	}
 
+	if feature.Gates.Enabled(capifeature.MachinePool) {
+		setupLog.Info("Enabling MachinePool reconcilers")
+
+		if err := (&expcontrollers.GCPMachinePoolReconciler{
+			Client: mgr.GetClient(),
+		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+			return fmt.Errorf("setting up GCPMachinePool controller: %w", err)
+		}
+
+		if err := (&expcontrollers.GCPMachinePoolMachineReconciler{
+			Client: mgr.GetClient(),
+		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+			return fmt.Errorf("setting up GCPMachinePoolMachine controller: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -255,6 +279,10 @@ func setupWebhooks(mgr ctrl.Manager) error {
 		if err := (&infrav1exp.GCPManagedMachinePool{}).SetupWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("setting up GCPManagedMachinePool webhook: %w", err)
 		}
+	}
+
+	if feature.Gates.Enabled(capifeature.MachinePool) {
+		setupLog.Info("Enabling MachinePool webhooks")
 	}
 
 	return nil

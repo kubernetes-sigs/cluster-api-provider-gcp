@@ -223,7 +223,7 @@ func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 	if m.Machine.Spec.Version != nil {
 		version = *m.Machine.Spec.Version
 	}
-	image := "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
+	image := cloud.ClusterAPIImagePrefix + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
 	sourceImage := path.Join("projects", m.ClusterGetter.Project(), "global", "images", "family", image)
 	if m.GCPMachine.Spec.Image != nil {
 		sourceImage = *m.GCPMachine.Spec.Image
