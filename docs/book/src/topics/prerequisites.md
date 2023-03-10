@@ -59,7 +59,11 @@ gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJ
 
 To create and manage clusters, this infrastructure provider uses a service account to authenticate with GCP's APIs.
 
-From your cloud console, follow [these instructions](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) to create a new service account with `Editor` permissions. Afterwards, generate a JSON Key and store it somewhere safe.
+From your cloud console, follow [these instructions](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) to create a new service account with `Editor` permissions.
+
+If you plan yo use GKE the the service account will also need the `iam.serviceAccountTokenCreator` role.
+
+Afterwards, generate a JSON Key and store it somewhere safe.
 
 ### Building images
 

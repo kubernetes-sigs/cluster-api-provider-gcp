@@ -54,20 +54,6 @@ func (r *GCPManagedMachinePool) Default() {
 
 var _ webhook.Validator = &GCPManagedMachinePool{}
 
-func (r *GCPManagedMachinePool) validateNodeCount() field.ErrorList {
-	var allErrs field.ErrorList
-	if r.Spec.InitialNodeCount < 0 {
-		allErrs = append(allErrs,
-			field.Invalid(field.NewPath("spec", "InitialNodeCount"),
-				r.Spec.InitialNodeCount, "must be greater or equal to zero"),
-		)
-	}
-	if len(allErrs) == 0 {
-		return nil
-	}
-	return allErrs
-}
-
 func (r *GCPManagedMachinePool) validateScaling() field.ErrorList {
 	var allErrs field.ErrorList
 	if r.Spec.Scaling != nil {
@@ -79,15 +65,9 @@ func (r *GCPManagedMachinePool) validateScaling() field.ErrorList {
 			if *min < 0 {
 				allErrs = append(allErrs, field.Invalid(minField, *min, "must be greater or equal zero"))
 			}
-			if *min > r.Spec.InitialNodeCount {
-				allErrs = append(allErrs, field.Invalid(minField, *min, fmt.Sprintf("must be less or equal to %d", r.Spec.InitialNodeCount)))
-			}
 			if max != nil && *max < *min {
 				allErrs = append(allErrs, field.Invalid(maxField, *max, fmt.Sprintf("must be greater than field %s", minField.String())))
 			}
-		}
-		if max != nil && *max < r.Spec.InitialNodeCount {
-			allErrs = append(allErrs, field.Invalid(maxField, *max, fmt.Sprintf("must be greater or equal to %d", r.Spec.InitialNodeCount)))
 		}
 	}
 	if len(allErrs) == 0 {
@@ -106,10 +86,6 @@ func (r *GCPManagedMachinePool) ValidateCreate() error {
 			field.Invalid(field.NewPath("spec", "NodePoolName"),
 				r.Spec.NodePoolName, fmt.Sprintf("node pool name cannot have more than %d characters", maxNodePoolNameLength)),
 		)
-	}
-
-	if errs := r.validateNodeCount(); errs != nil || len(errs) == 0 {
-		allErrs = append(allErrs, errs...)
 	}
 
 	if errs := r.validateScaling(); errs != nil || len(errs) == 0 {
@@ -134,10 +110,6 @@ func (r *GCPManagedMachinePool) ValidateUpdate(oldRaw runtime.Object) error {
 			field.Invalid(field.NewPath("spec", "NodePoolName"),
 				r.Spec.NodePoolName, "field is immutable"),
 		)
-	}
-
-	if errs := r.validateNodeCount(); errs != nil || len(errs) == 0 {
-		allErrs = append(allErrs, errs...)
 	}
 
 	if errs := r.validateScaling(); errs != nil || len(errs) == 0 {

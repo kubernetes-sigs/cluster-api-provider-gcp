@@ -23,6 +23,7 @@ spec:
         - --leader-elect
         - --feature-gates=GKE=${EXP_CAPG_GKE:=false}
         - "--metrics-bind-addr=localhost:8080"
+        - "--v=${CAPG_LOGLEVEL:=0}"
         image: controller:latest
         imagePullPolicy: IfNotPresent
         name: manager

@@ -215,3 +215,8 @@ func (s *ManagedControlPlaneScope) SetEndpoint(host string) {
 		Port: APIServerPort,
 	}
 }
+
+// IsAutopilotCluster returns true if this is an autopilot cluster.
+func (s *ManagedControlPlaneScope) IsAutopilotCluster() bool {
+	return s.GCPManagedControlPlane.Spec.EnableAutopilot
+}

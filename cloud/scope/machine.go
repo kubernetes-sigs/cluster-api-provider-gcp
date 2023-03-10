@@ -34,6 +34,7 @@ import (
 	"k8s.io/utils/pointer"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	capierrors "sigs.k8s.io/cluster-api/errors"
@@ -169,8 +170,8 @@ func (m *MachineScope) GetProviderID() string {
 
 // SetProviderID sets the GCPMachine providerID in spec.
 func (m *MachineScope) SetProviderID() {
-	providerID := cloud.ProviderIDPrefix + path.Join(m.ClusterGetter.Project(), m.Zone(), m.Name())
-	m.GCPMachine.Spec.ProviderID = pointer.StringPtr(providerID)
+	providerID, _ := providerid.New(m.ClusterGetter.Project(), m.Zone(), m.Name())
+	m.GCPMachine.Spec.ProviderID = pointer.StringPtr(providerID.String())
 }
 
 // GetInstanceStatus returns the GCPMachine instance status.

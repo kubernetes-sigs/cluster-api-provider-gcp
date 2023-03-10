@@ -51,12 +51,6 @@ spec:
                   GCP resources managed by the GCP provider, in addition to the ones
                   added by default.
                 type: object
-              initialNodeCount:
-                description: InitialNodeCount represents the initial number of nodes
-                  for the pool. In regional or multi-zonal clusters, this is the number
-                  of nodes per zone.
-                format: int32
-                type: integer
               kubernetesLabels:
                 additionalProperties:
                   type: string
@@ -111,8 +105,6 @@ spec:
                     format: int32
                     type: integer
                 type: object
-            required:
-            - initialNodeCount
             type: object
           status:
             description: GCPManagedMachinePoolStatus defines the observed state of

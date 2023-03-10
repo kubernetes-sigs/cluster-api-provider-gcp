@@ -84,6 +84,10 @@ func (r *GCPManagedControlPlane) ValidateCreate() error {
 		)
 	}
 
+	if r.Spec.EnableAutopilot && r.Spec.ReleaseChannel == nil {
+		allErrs = append(allErrs, field.Required(field.NewPath("spec", "ReleaseChannel"), "Release channel is required for an autopilot enabled cluster"))
+	}
+
 	if len(allErrs) == 0 {
 		return nil
 	}

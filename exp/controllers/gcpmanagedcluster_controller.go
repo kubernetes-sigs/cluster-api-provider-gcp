@@ -167,7 +167,7 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 }
 
 func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScope *scope.ManagedClusterScope) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcluster")
 	log.Info("Reconciling GCPManagedCluster")
 
 	controllerutil.AddFinalizer(clusterScope.GCPManagedCluster, infrav1exp.ClusterFinalizer)
@@ -193,14 +193,15 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 	}
 	clusterScope.SetFailureDomains(failureDomains)
 
-	reconcilers := []cloud.Reconciler{
-		networks.New(clusterScope),
-		subnets.New(clusterScope),
+	reconcilers := map[string]cloud.Reconciler{
+		"networks": networks.New(clusterScope),
+		"subnets":  subnets.New(clusterScope),
 	}
 
-	for _, r := range reconcilers {
+	for name, r := range reconcilers {
+		log.V(4).Info("Calling reconciler", "reconciler", name)
 		if err := r.Reconcile(ctx); err != nil {
-			log.Error(err, "Reconcile error")
+			log.Error(err, "Reconcile error", "reconciler", name)
 			record.Warnf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
@@ -223,7 +224,7 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 }
 
 func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clusterScope *scope.ManagedClusterScope) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcluster", "action", "delete")
 	log.Info("Reconciling Delete GCPManagedCluster")
 
 	if clusterScope.GCPManagedControlPlane != nil {
@@ -231,14 +232,15 @@ func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clust
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
-	reconcilers := []cloud.Reconciler{
-		subnets.New(clusterScope),
-		networks.New(clusterScope),
+	reconcilers := map[string]cloud.Reconciler{
+		"subnets":  subnets.New(clusterScope),
+		"networks": networks.New(clusterScope),
 	}
 
-	for _, r := range reconcilers {
+	for name, r := range reconcilers {
+		log.V(4).Info("Calling reconciler delete", "reconciler", name)
 		if err := r.Delete(ctx); err != nil {
-			log.Error(err, "Reconcile error")
+			log.Error(err, "Reconcile error", "reconciler", name)
 			record.Warnf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
@@ -263,11 +265,6 @@ func (r *GCPManagedClusterReconciler) managedControlPlaneMapper(ctx context.Cont
 
 		if !gcpManagedControlPlane.ObjectMeta.DeletionTimestamp.IsZero() {
 			log.Info("GCPManagedControlPlane has a deletion timestamp, skipping mapping")
-			return nil
-		}
-
-		if gcpManagedControlPlane.Spec.Endpoint.IsZero() {
-			log.V(2).Info("GCPManagedControlPlane has no endpoint, skipping mapping")
 			return nil
 		}
 
