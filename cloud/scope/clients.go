@@ -59,6 +59,11 @@ func (rl *GCPRateLimiter) Accept(ctx context.Context, key *cloud.RateLimitKey) e
 	return nil
 }
 
+// Observe does nothing.
+func (rl *GCPRateLimiter) Observe(context.Context, error, *cloud.RateLimitKey) {
+	// noop
+}
+
 func newCloud(project string, service GCPServices) cloud.Cloud {
 	return cloud.NewGCE(&cloud.Service{
 		GA:            service.Compute,
