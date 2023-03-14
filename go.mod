@@ -19,7 +19,7 @@ require (
 	golang.org/x/crypto v0.7.0
 	golang.org/x/mod v0.9.0
 	golang.org/x/net v0.8.0
-	google.golang.org/api v0.111.0
+	google.golang.org/api v0.112.0
 	google.golang.org/grpc v1.53.0
 	k8s.io/api v0.25.5
 	k8s.io/apimachinery v0.25.5
@@ -117,7 +117,7 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/oauth2 v0.5.0 // indirect
+	golang.org/x/oauth2 v0.6.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
