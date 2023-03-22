@@ -1,5 +1,5 @@
-//go:build tools
-// +build tools
+//go:build capgtools
+// +build capgtools
 
 /*
 # Copyright 2022 The Kubernetes Authors.
