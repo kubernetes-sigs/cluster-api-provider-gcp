@@ -143,6 +143,7 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 	log := ctrl.LoggerFrom(ctx)
 
 	c, err := ctrl.NewControllerManagedBy(mgr).
+		WithOptions(options).
 		For(&infrav1exp.GCPManagedCluster{}).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue)).
 		Watches(
