@@ -503,7 +503,7 @@ create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	${TIMEOUT} 15m bash -c "while ! kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep master; do sleep 1; done"
 
 	# Deploy calico
-	$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://docs.projectcalico.org/manifests/calico.yaml
+	$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
 
 	@echo 'run "$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) ..." to work with the new target cluster'
 
