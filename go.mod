@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/compute v1.19.0
 	cloud.google.com/go/container v1.14.0
 	cloud.google.com/go/iam v0.13.0
-	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.21.0
+	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.22.0
 	github.com/go-logr/logr v1.2.3
 	github.com/google/go-cmp v0.5.9
 	github.com/googleapis/gax-go/v2 v2.8.0
