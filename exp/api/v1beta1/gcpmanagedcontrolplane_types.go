@@ -61,6 +61,11 @@ type GCPManagedControlPlaneStatus struct {
 	// +kubebuilder:default=false
 	Ready bool `json:"ready"`
 
+	// Initialized is true when the control plane is available for initial contact.
+	// This may occur before the control plane is fully ready.
+	// +optional
+	Initialized bool `json:"initialized,omitempty"`
+
 	// Conditions specifies the conditions for the managed control plane
 	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 
