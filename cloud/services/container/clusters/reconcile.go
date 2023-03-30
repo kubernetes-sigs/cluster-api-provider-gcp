@@ -43,12 +43,14 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 
 	cluster, err := s.describeCluster(ctx, &log)
 	if err != nil {
+		s.scope.GCPManagedControlPlane.Status.Initialized = false
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 		conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, err.Error())
 		return ctrl.Result{}, err
 	}
 	if cluster == nil {
 		log.Info("Cluster not found, creating")
+		s.scope.GCPManagedControlPlane.Status.Initialized = false
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 
 		nodePools, _, err := s.scope.GetAllNodePools(ctx)
@@ -99,11 +101,13 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneCreatingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition)
+		s.scope.GCPManagedControlPlane.Status.Initialized = false
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	case containerpb.Cluster_RECONCILING:
 		log.Info("Cluster reconciling in progress")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition)
+		s.scope.GCPManagedControlPlane.Status.Initialized = true
 		s.scope.GCPManagedControlPlane.Status.Ready = true
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	case containerpb.Cluster_STOPPING:
@@ -111,6 +115,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneDeletingCondition)
+		s.scope.GCPManagedControlPlane.Status.Initialized = false
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	case containerpb.Cluster_ERROR, containerpb.Cluster_DEGRADED:
@@ -121,6 +126,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Error(errors.New("Cluster in error/degraded state"), msg, "name", s.scope.ClusterName())
 		conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneErrorReason, clusterv1.ConditionSeverityError, "")
 		s.scope.GCPManagedControlPlane.Status.Ready = false
+		s.scope.GCPManagedControlPlane.Status.Initialized = false
 		return ctrl.Result{}, nil
 	case containerpb.Cluster_RUNNING:
 		log.Info("Cluster running")
@@ -139,6 +145,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		}
 		log.Info("Cluster updating in progress")
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition)
+		s.scope.GCPManagedControlPlane.Status.Initialized = true
 		s.scope.GCPManagedControlPlane.Status.Ready = true
 		return ctrl.Result{}, nil
 	}
@@ -161,6 +168,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition)
 	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneCreatedReason, clusterv1.ConditionSeverityInfo, "")
 	s.scope.GCPManagedControlPlane.Status.Ready = true
+	s.scope.GCPManagedControlPlane.Status.Initialized = true
 
 	log.Info("Cluster reconciled")
 
@@ -203,6 +211,7 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 	log.Info("Cluster deleting in progress")
+	s.scope.GCPManagedControlPlane.Status.Initialized = false
 	s.scope.GCPManagedControlPlane.Status.Ready = false
 	conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
 	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1.ConditionSeverityInfo, "")
