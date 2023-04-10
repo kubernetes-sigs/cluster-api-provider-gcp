@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	cloud.google.com/go/compute v1.19.0
-	cloud.google.com/go/container v1.14.0
+	cloud.google.com/go/container v1.15.0
 	cloud.google.com/go/iam v0.13.0
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.23.0
 	github.com/go-logr/logr v1.2.4
@@ -125,8 +125,8 @@ require (
 	golang.org/x/tools v0.7.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230320184635-7606e756e683 // indirect
-	google.golang.org/protobuf v1.29.1 // indirect
+	google.golang.org/genproto v0.0.0-20230330154414-c0448cd141ea // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
