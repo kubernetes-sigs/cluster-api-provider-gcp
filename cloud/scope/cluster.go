@@ -314,10 +314,11 @@ func (s *ClusterScope) ForwardingRuleSpec() *compute.ForwardingRule {
 func (s *ClusterScope) HealthCheckSpec() *compute.HealthCheck {
 	return &compute.HealthCheck{
 		Name: fmt.Sprintf("%s-%s", s.Name(), infrav1.APIServerRoleTagValue),
-		Type: "SSL",
-		SslHealthCheck: &compute.SSLHealthCheck{
+		Type: "HTTPS",
+		HttpsHealthCheck: &compute.HTTPSHealthCheck{
 			Port:              6443,
 			PortSpecification: "USE_FIXED_PORT",
+			RequestPath:       "/readyz",
 		},
 		CheckIntervalSec:   10,
 		TimeoutSec:         5,
