@@ -31,6 +31,8 @@ envfile
 kind.kubeconfig
 minikube.kubeconfig
 kubeconfig
+# keep directories named kubeconfig
+!**/kubeconfig/
 
 # Example and binary output directory
 /out
