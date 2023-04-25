@@ -127,16 +127,21 @@ EOF
 Set the following environment variables with the appropriate values for your environment:
 
 ```shell
-$ export GCP_REGION="<GCP_REGION>" \
-$ export GCP_PROJECT="<GCP_PROJECT>" \
-$ export CONTROL_PLANE_MACHINE_COUNT=1 \
-$ export WORKER_MACHINE_COUNT=1 \
+$ export CLUSTER_NAME="<CLUSTER_NAME>"
+$ export GCP_REGION="<GCP_REGION>"
+$ export GCP_PROJECT="<GCP_PROJECT>"
+$ export CONTROL_PLANE_MACHINE_COUNT=1
+$ export WORKER_MACHINE_COUNT=1
+# Substitute <IMAGE_ID> with the selfLink of the GCE image you built
+$ export IMAGE_ID=<IMAGE_ID>
 # Make sure to use same kubernetes version here as building the GCE image
-$ export KUBERNETES_VERSION=1.23.3 \
-$ export GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2 \
-$ export GCP_NODE_MACHINE_TYPE=n1-standard-2 \
-$ export GCP_NETWORK_NAME=<GCP_NETWORK_NAME or default> \
-$ export CLUSTER_NAME="<CLUSTER_NAME>" \
+$ export KUBERNETES_VERSION=1.23.3
+$ export GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2
+$ export GCP_NODE_MACHINE_TYPE=n1-standard-2
+# Optional: Set the following 3 variables if you want to use pre-existing custom mode VPC (sub)networks, skip otherwise
+$ export GCP_AUTO_CREATE_SUBNETWORKS=false
+$ export GCP_NETWORK_NAME=<GCP_NETWORK_NAME>
+$ export GCP_SUBNETWORK_NAME=<GCP_SUBNETWORK_NAME>
 ```
 
 To build a kind cluster and start Tilt, just run:

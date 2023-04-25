@@ -24,7 +24,8 @@ spec:
   project: "${GCP_PROJECT}"
   region: "${GCP_REGION}"
   network:
-    name: "${GCP_NETWORK_NAME}"
+    name: "${GCP_NETWORK_NAME:=default}"
+    autoCreateSubnetworks: "${GCP_AUTO_CREATE_SUBNETWORKS:=true}"
 ---
 kind: KubeadmControlPlane
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
@@ -68,6 +69,7 @@ spec:
     spec:
       instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
       image: "${IMAGE_ID}"
+      subnet: "${GCP_SUBNETWORK_NAME:=default}"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -101,6 +103,7 @@ spec:
     spec:
       instanceType: "${GCP_NODE_MACHINE_TYPE}"
       image: "${IMAGE_ID}"
+      subnet: "${GCP_SUBNETWORK_NAME:=default}"
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
