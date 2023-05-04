@@ -37,6 +37,7 @@ import (
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	expcontrollers "sigs.k8s.io/cluster-api-provider-gcp/exp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/feature"
+	ot "sigs.k8s.io/cluster-api-provider-gcp/pkg/otel"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -82,6 +83,7 @@ var (
 	leaderElectionLeaseDuration time.Duration
 	leaderElectionRenewDeadline time.Duration
 	leaderElectionRetryPeriod   time.Duration
+	enableTracing               bool
 )
 
 // Add RBAC for the authorized diagnostics endpoint.
@@ -161,6 +163,13 @@ func main() {
 
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
+
+	if enableTracing {
+		if err := ot.RegisterTracing(ctx, setupLog); err != nil {
+			setupLog.Error(err, "unable to set up tracing")
+			os.Exit(1)
+		}
+	}
 
 	if err := setupReconcilers(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to setup reconcilers")
@@ -372,6 +381,12 @@ func initFlags(fs *pflag.FlagSet) {
 		"reconcile-timeout",
 		reconciler.DefaultLoopTimeout,
 		"The maximum duration a reconcile loop can run (e.g. 90m)",
+	)
+
+	fs.BoolVar(&enableTracing,
+		"enable-tracing",
+		false,
+		"Enable collecting and sending traces to opentelemetry-collector service",
 	)
 
 	flags.AddManagerOptions(fs, &managerOptions)
