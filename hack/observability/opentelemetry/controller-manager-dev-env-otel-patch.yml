@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: capg-system
+  name: capg-controller-manager
+spec:
+  template:
+    spec:
+      # patch: ../../config/manager/manager.yaml
+      containers:
+        - name: manager
+          args:
+            - "--leader-elect"
+            - "--feature-gates=GKE=${EXP_CAPG_GKE:=false}"
+            - "--metrics-bind-addr=localhost:8080"
+            - "--v=${CAPG_LOGLEVEL:=0}"
+            - "--enable-tracing"
