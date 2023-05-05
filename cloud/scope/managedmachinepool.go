@@ -25,6 +25,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 
 	"sigs.k8s.io/cluster-api/util/conditions"
 
@@ -54,6 +55,12 @@ type ManagedMachinePoolScopeParams struct {
 // NewManagedMachinePoolScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
 func NewManagedMachinePoolScope(ctx context.Context, params ManagedMachinePoolScopeParams) (*ManagedMachinePoolScope, error) {
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "cloud.managedMachinePoolScope.NewManagedMachinePoolScope",
+	)
+	defer span.End()
+
 	if params.Cluster == nil {
 		return nil, errors.New("failed to generate new scope from nil Cluster")
 	}
