@@ -25,11 +25,17 @@ import (
 	"google.golang.org/api/compute/v1"
 
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Reconcile reconciles cluster network components.
 func (s *Service) Reconcile(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "subnets.Services.Reconcile",
+	)
+	defer span.End()
+
 	logger := log.FromContext(ctx)
 	logger.Info("Reconciling subnetwork resources")
 
@@ -43,6 +49,11 @@ func (s *Service) Reconcile(ctx context.Context) error {
 
 // Delete deletes cluster subnetwork components.
 func (s *Service) Delete(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "subnets.Services.Delete",
+	)
+	defer span.End()
+
 	logger := log.FromContext(ctx)
 	if s.scope.IsSharedVpc() {
 		logger.V(2).Info("Shared VPC enabled. Skip deleting subnet resources")
@@ -81,6 +92,11 @@ func (s *Service) Delete(ctx context.Context) error {
 
 // createOrGetSubnets creates the subnetworks if they don't exist otherwise return the existing ones.
 func (s *Service) createOrGetSubnets(ctx context.Context) ([]*compute.Subnetwork, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "subnets.Services.createOrGetSubnets",
+	)
+	defer span.End()
+
 	logger := log.FromContext(ctx)
 	subnets := []*compute.Subnetwork{}
 	for _, subnetSpec := range s.scope.SubnetSpecs() {

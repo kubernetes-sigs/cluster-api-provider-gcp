@@ -27,6 +27,7 @@ import (
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -48,6 +49,11 @@ const (
 
 // Reconcile reconcile cluster control-plane loadbalancer components.
 func (s *Service) Reconcile(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.Reconcile",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	log.Info("Reconciling loadbalancer resources")
 
@@ -82,6 +88,11 @@ func (s *Service) Reconcile(ctx context.Context) error {
 
 // Delete deletes cluster control-plane loadbalancer components.
 func (s *Service) Delete(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.Delete",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	var allErrs []error
 	lbSpec := s.scope.LoadBalancer()
@@ -253,6 +264,11 @@ func (s *Service) createInternalLoadBalancer(ctx context.Context, name string, l
 }
 
 func (s *Service) createOrGetInstanceGroups(ctx context.Context) ([]*compute.InstanceGroup, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.createOrGetInstanceGroups",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	fd := s.scope.FailureDomains()
 	zones := make([]string, 0, len(fd))
@@ -297,6 +313,11 @@ func (s *Service) createOrGetInstanceGroups(ctx context.Context) ([]*compute.Ins
 }
 
 func (s *Service) createOrGetHealthCheck(ctx context.Context, lbname string) (*compute.HealthCheck, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.createOrGetHealthCheck",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	healthcheckSpec := s.scope.HealthCheckSpec(lbname)
 	log.V(2).Info("Looking for healthcheck", "name", healthcheckSpec.Name)
@@ -324,6 +345,11 @@ func (s *Service) createOrGetHealthCheck(ctx context.Context, lbname string) (*c
 }
 
 func (s *Service) createOrGetRegionalHealthCheck(ctx context.Context, lbname string) (*compute.HealthCheck, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.createOrGetBackendService",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	healthcheckSpec := s.scope.HealthCheckSpec(lbname)
 	healthcheckSpec.Region = s.scope.Region()
@@ -460,6 +486,11 @@ func (s *Service) createOrGetRegionalBackendService(ctx context.Context, lbname 
 }
 
 func (s *Service) createOrGetTargetTCPProxy(ctx context.Context, service *compute.BackendService) (*compute.TargetTcpProxy, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.createOrGetTargetTCPProxy",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	targetSpec := s.scope.TargetTCPProxySpec()
 	targetSpec.Service = service.SelfLink
@@ -488,6 +519,11 @@ func (s *Service) createOrGetTargetTCPProxy(ctx context.Context, service *comput
 
 // createOrGetAddress is used to obtain a Global address.
 func (s *Service) createOrGetAddress(ctx context.Context, lbname string) (*compute.Address, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.createOrGetAddress",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	addrSpec := s.scope.AddressSpec(lbname)
 	log.V(2).Info("Looking for address", "name", addrSpec.Name)
@@ -553,6 +589,11 @@ func (s *Service) createOrGetInternalAddress(ctx context.Context, lbname string)
 
 // createOrGetForwardingRule is used obtain a Global ForwardingRule.
 func (s *Service) createOrGetForwardingRule(ctx context.Context, lbname string, target *compute.TargetTcpProxy, addr *compute.Address) (*compute.ForwardingRule, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.createOrGetForwardingRule",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	spec := s.scope.ForwardingRuleSpec(lbname)
 	spec.Target = target.SelfLink
@@ -655,6 +696,11 @@ func (s *Service) createOrGetRegionalForwardingRule(ctx context.Context, lbname 
 }
 
 func (s *Service) deleteForwardingRule(ctx context.Context, lbname string) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.deleteForwardingRule",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	spec := s.scope.ForwardingRuleSpec(lbname)
 	key := meta.GlobalKey(spec.Name)
@@ -681,6 +727,11 @@ func (s *Service) deleteRegionalForwardingRule(ctx context.Context, lbname strin
 }
 
 func (s *Service) deleteAddress(ctx context.Context, lbname string) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.deleteAddress",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	spec := s.scope.AddressSpec(lbname)
 	key := meta.GlobalKey(spec.Name)
@@ -705,6 +756,11 @@ func (s *Service) deleteInternalAddress(ctx context.Context, lbname string) erro
 }
 
 func (s *Service) deleteTargetTCPProxy(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.deleteTargetTCPProxy",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	spec := s.scope.TargetTCPProxySpec()
 	key := meta.GlobalKey(spec.Name)
@@ -718,6 +774,11 @@ func (s *Service) deleteTargetTCPProxy(ctx context.Context) error {
 }
 
 func (s *Service) deleteBackendService(ctx context.Context, lbname string) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.deleteBackendService",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	spec := s.scope.BackendServiceSpec(lbname)
 	key := meta.GlobalKey(spec.Name)
@@ -744,6 +805,11 @@ func (s *Service) deleteRegionalBackendService(ctx context.Context, lbname strin
 }
 
 func (s *Service) deleteHealthCheck(ctx context.Context, lbname string) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.deleteHealthCheck",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	spec := s.scope.HealthCheckSpec(lbname)
 	key := meta.GlobalKey(spec.Name)
@@ -770,6 +836,11 @@ func (s *Service) deleteRegionalHealthCheck(ctx context.Context, lbname string) 
 }
 
 func (s *Service) deleteInstanceGroups(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "loadbalancers.Services.deleteInstanceGroups",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	for zone := range s.scope.Network().APIServerInstanceGroups {
 		spec := s.scope.InstanceGroupSpec(zone)
