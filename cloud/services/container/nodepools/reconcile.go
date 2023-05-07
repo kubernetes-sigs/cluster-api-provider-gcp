@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"sigs.k8s.io/cluster-api-provider-gcp/util/resourceurl"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -57,6 +58,11 @@ func (s *Service) setReadyStatusFromConditions() {
 
 // Reconcile reconcile GKE node pool.
 func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "nodepools.Services.Reconcile",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	log.Info("Reconciling node pool resources")
 
@@ -195,6 +201,11 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 
 // Delete delete GKE node pool.
 func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "nodepools.Services.Delete",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	log.Info("Deleting node pool resources")
 
@@ -239,6 +250,11 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 }
 
 func (s *Service) describeNodePool(ctx context.Context, log *logr.Logger) (*containerpb.NodePool, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "nodepools.Services.describeNodePool",
+	)
+	defer span.End()
+
 	getNodePoolRequest := &containerpb.GetNodePoolRequest{
 		Name: s.scope.NodePoolFullName(),
 	}
@@ -258,6 +274,11 @@ func (s *Service) describeNodePool(ctx context.Context, log *logr.Logger) (*cont
 }
 
 func (s *Service) getInstances(ctx context.Context, nodePool *containerpb.NodePool) ([]*computepb.ManagedInstance, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "nodepools.Services.getInstances",
+	)
+	defer span.End()
+
 	instances := []*computepb.ManagedInstance{}
 
 	for _, url := range nodePool.GetInstanceGroupUrls() {
@@ -287,6 +308,11 @@ func (s *Service) getInstances(ctx context.Context, nodePool *containerpb.NodePo
 }
 
 func (s *Service) createNodePool(ctx context.Context, log *logr.Logger) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "nodepools.Services.createNodePool",
+	)
+	defer span.End()
+
 	log.V(2).Info("Running pre-flight checks on machine pool before creation")
 	if err := shared.ManagedMachinePoolPreflightCheck(s.scope.GCPManagedMachinePool, s.scope.MachinePool, s.scope.Region()); err != nil {
 		return fmt.Errorf("preflight checks on machine pool before creating: %w", err)
@@ -307,6 +333,11 @@ func (s *Service) createNodePool(ctx context.Context, log *logr.Logger) error {
 }
 
 func (s *Service) updateNodePoolConfig(ctx context.Context, updateNodePoolRequest *containerpb.UpdateNodePoolRequest) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "nodepools.Services.updateNodePoolConfig",
+	)
+	defer span.End()
+
 	_, err := s.scope.ManagedMachinePoolClient().UpdateNodePool(ctx, updateNodePoolRequest)
 	if err != nil {
 		return err
@@ -316,6 +347,11 @@ func (s *Service) updateNodePoolConfig(ctx context.Context, updateNodePoolReques
 }
 
 func (s *Service) updateNodePoolAutoscaling(ctx context.Context, setNodePoolAutoscalingRequest *containerpb.SetNodePoolAutoscalingRequest) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "nodepools.Services.updateNodePoolAutoScaling",
+	)
+	defer span.End()
+
 	_, err := s.scope.ManagedMachinePoolClient().SetNodePoolAutoscaling(ctx, setNodePoolAutoscalingRequest)
 	if err != nil {
 		return err
@@ -325,6 +361,11 @@ func (s *Service) updateNodePoolAutoscaling(ctx context.Context, setNodePoolAuto
 }
 
 func (s *Service) updateNodePoolSize(ctx context.Context, setNodePoolSizeRequest *containerpb.SetNodePoolSizeRequest) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "nodepools.Services.updateNodePoolSize",
+	)
+	defer span.End()
+
 	_, err := s.scope.ManagedMachinePoolClient().SetNodePoolSize(ctx, setNodePoolSizeRequest)
 	if err != nil {
 		return err
