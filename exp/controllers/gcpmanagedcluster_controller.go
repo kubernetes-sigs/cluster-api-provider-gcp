@@ -24,6 +24,8 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
@@ -33,6 +35,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/subnets"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
@@ -67,6 +70,16 @@ func (r *GCPManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	defer cancel()
 
 	log := log.FromContext(ctx)
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedClusterReconciler.Reconcile",
+		trace.WithAttributes(
+			attribute.String("name", req.Name),
+			attribute.String("namespace", req.Namespace),
+			attribute.String("kind", "GCPManagedCluster"),
+		),
+	)
+	defer span.End()
 
 	gcpCluster := &infrav1exp.GCPManagedCluster{}
 	err := r.Get(ctx, req.NamespacedName, gcpCluster)
@@ -142,6 +155,14 @@ func (r *GCPManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
 	log := ctrl.LoggerFrom(ctx)
 
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedClusterReconciler.SetupWithManager",
+		trace.WithAttributes(
+			attribute.String("controller", "GCPManagedClusterReconciler"),
+		),
+	)
+	defer span.End()
+
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		For(&infrav1exp.GCPManagedCluster{}).
@@ -169,6 +190,12 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 
 func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScope *scope.ManagedClusterScope) error {
 	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcluster")
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedClusterReconciler.reconcile",
+	)
+	defer span.End()
+
 	log.Info("Reconciling GCPManagedCluster")
 
 	controllerutil.AddFinalizer(clusterScope.GCPManagedCluster, infrav1exp.ClusterFinalizer)
@@ -226,6 +253,12 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 
 func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clusterScope *scope.ManagedClusterScope) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcluster", "action", "delete")
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedClusterReconciler.reconcileDelete",
+	)
+	defer span.End()
+
 	log.Info("Reconciling Delete GCPManagedCluster")
 
 	if clusterScope.GCPManagedControlPlane != nil {

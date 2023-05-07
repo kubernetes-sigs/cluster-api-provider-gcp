@@ -24,6 +24,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,6 +43,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/predicates"
@@ -149,6 +152,14 @@ func managedControlPlaneToManagedMachinePoolMapFunc(c client.Client, gvk schema.
 func (r *GCPManagedMachinePoolReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
 	log := log.FromContext(ctx).WithValues("controller", "GCPManagedMachinePool")
 
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedMachinePoolReconciler.SetupWithManager",
+		trace.WithAttributes(
+			attribute.String("controller", "GCPManagedMachinePool"),
+		),
+	)
+	defer span.End()
+
 	gvk, err := apiutil.GVKForObject(new(infrav1exp.GCPManagedMachinePool), mgr.GetScheme())
 	if err != nil {
 		return errors.Wrapf(err, "failed to find GVK for GCPManagedMachinePool")
@@ -226,6 +237,16 @@ func getOwnerMachinePool(ctx context.Context, c client.Client, obj metav1.Object
 func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
 	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
 	defer cancel()
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedMachinePoolReconciler.Reconcile",
+		trace.WithAttributes(
+			attribute.String("name", req.Name),
+			attribute.String("namespace", req.Namespace),
+			attribute.String("kind", "GCPManagedMachinePool"),
+		),
+	)
+	defer span.End()
 
 	log := ctrl.LoggerFrom(ctx)
 
@@ -318,6 +339,12 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 
 func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managedMachinePoolScope *scope.ManagedMachinePoolScope) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedmachinepool")
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedMachinePoolReconciler.reconcile",
+	)
+	defer span.End()
+
 	log.Info("Reconciling GCPManagedMachinePool")
 
 	controllerutil.AddFinalizer(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.ManagedMachinePoolFinalizer)
@@ -360,6 +387,12 @@ func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managed
 
 func (r *GCPManagedMachinePoolReconciler) reconcileDelete(ctx context.Context, managedMachinePoolScope *scope.ManagedMachinePoolScope) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedmachinepool", "action", "delete")
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedMachinePoolReconciler.reconcileDelete",
+	)
+	defer span.End()
+
 	log.Info("Deleting GCPManagedMachinePool")
 
 	reconcilers := map[string]cloud.ReconcilerWithResult{

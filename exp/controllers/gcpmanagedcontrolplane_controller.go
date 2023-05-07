@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"sigs.k8s.io/cluster-api/util/annotations"
 
 	"github.com/pkg/errors"
@@ -30,6 +32,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -63,6 +66,14 @@ type GCPManagedControlPlaneReconciler struct {
 func (r *GCPManagedControlPlaneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
 	log := log.FromContext(ctx).WithValues("controller", "GCPManagedControlPlane")
 
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedControlPlaneReconciler.SetupWithManager",
+		trace.WithAttributes(
+			attribute.String("controller", "GCPManagedControlPlane"),
+		),
+	)
+	defer span.End()
+
 	gcpManagedControlPlane := &infrav1exp.GCPManagedControlPlane{}
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
@@ -89,6 +100,16 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 	defer cancel()
 
 	log := ctrl.LoggerFrom(ctx)
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedControlPlaneReconciler.Reconcile",
+		trace.WithAttributes(
+			attribute.String("name", req.Name),
+			attribute.String("namespace", req.Namespace),
+			attribute.String("kind", "GCPManagedControlPlane"),
+		),
+	)
+	defer span.End()
 
 	// Get the control plane instance
 	gcpManagedControlPlane := &infrav1exp.GCPManagedControlPlane{}
@@ -154,6 +175,12 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 
 func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, managedControlPlaneScope *scope.ManagedControlPlaneScope) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcontrolplane")
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedControlPlaneReconciler.reconcile",
+	)
+	defer span.End()
+
 	log.Info("Reconciling GCPManagedControlPlane")
 
 	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
@@ -192,6 +219,12 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 
 func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, managedControlPlaneScope *scope.ManagedControlPlaneScope) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcontrolplane", "action", "delete")
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "controllers.GCPManagedControlPlaneReconciler.reconcileDelete",
+	)
+	defer span.End()
+
 	log.Info("Deleting GCPManagedControlPlane")
 
 	reconcilers := map[string]cloud.ReconcilerWithResult{
