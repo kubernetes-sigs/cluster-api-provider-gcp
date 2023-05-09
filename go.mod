@@ -5,7 +5,7 @@ go 1.19
 require (
 	cloud.google.com/go/compute v1.19.1
 	cloud.google.com/go/container v1.17.0
-	cloud.google.com/go/iam v1.0.0
+	cloud.google.com/go/iam v1.0.1
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.23.0
 	github.com/go-logr/logr v1.2.4
 	github.com/google/go-cmp v0.5.9
@@ -20,7 +20,7 @@ require (
 	golang.org/x/mod v0.10.0
 	golang.org/x/net v0.10.0
 	google.golang.org/api v0.120.0
-	google.golang.org/grpc v1.54.0
+	google.golang.org/grpc v1.55.0
 	k8s.io/api v0.25.5
 	k8s.io/apimachinery v0.25.5
 	k8s.io/client-go v0.25.5
