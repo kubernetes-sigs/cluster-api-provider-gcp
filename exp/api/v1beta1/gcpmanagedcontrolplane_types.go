@@ -40,6 +40,7 @@ type GCPManagedControlPlaneSpec struct {
 	// will be created.
 	Location string `json:"location"`
 	// EnableAutopilot indicates whether to enable autopilot for this GKE cluster.
+	// +optional
 	EnableAutopilot bool `json:"enableAutopilot"`
 	// ReleaseChannel represents the release channel of the GKE cluster.
 	// +optional
