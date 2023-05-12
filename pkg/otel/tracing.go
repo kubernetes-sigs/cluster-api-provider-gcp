@@ -20,9 +20,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-func RegisterTracing(ctx context.Context, log logr.Logger) error {
+func RegisterTracing(ctx context.Context, samplingRate float64, log logr.Logger) error {
 
-	tracerProvider, err := SetUpTracing(ctx)
+	tracerProvider, err := SetUpTracing(ctx, samplingRate)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func newExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	return traceExporter, nil
 }
 
-func SetUpTracing(ctx context.Context) (*trace.TracerProvider, error) {
+func SetUpTracing(ctx context.Context, samplingRate float64) (*trace.TracerProvider, error) {
 
 	traceExporter, err := newExporter(ctx)
 
@@ -89,9 +89,8 @@ func SetUpTracing(ctx context.Context) (*trace.TracerProvider, error) {
 	traceProvider := trace.NewTracerProvider(
 		trace.WithBatcher(traceExporter),
 		trace.WithResource(resource),
-		// TODO: dynamic sampling rate?
-		// sampling rate based on parent span = 60%
-		trace.WithSampler(trace.ParentBased(trace.TraceIDRatioBased(0.6))),
+		// 0 < samplingRate <= 1 (< 0 -> be treated as 0; >= 1 -> always sample)
+		trace.WithSampler(trace.ParentBased(trace.TraceIDRatioBased(samplingRate))),
 	)
 
 	otel.SetTracerProvider(traceProvider)

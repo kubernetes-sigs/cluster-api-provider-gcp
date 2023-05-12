@@ -84,6 +84,7 @@ var (
 	leaderElectionRenewDeadline time.Duration
 	leaderElectionRetryPeriod   time.Duration
 	enableTracing               bool
+	samplingRate                float64
 )
 
 // Add RBAC for the authorized diagnostics endpoint.
@@ -165,7 +166,7 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	if enableTracing {
-		if err := ot.RegisterTracing(ctx, setupLog); err != nil {
+		if err := ot.RegisterTracing(ctx, samplingRate, setupLog); err != nil {
 			setupLog.Error(err, "unable to set up tracing")
 			os.Exit(1)
 		}
@@ -387,6 +388,12 @@ func initFlags(fs *pflag.FlagSet) {
 		"enable-tracing",
 		false,
 		"Enable collecting and sending traces to opentelemetry-collector service",
+	)
+
+	fs.Float64Var(&samplingRate,
+		"trace-sampling-rate",
+		0.6,
+		"The fraction of all the traces will be sample",
 	)
 
 	flags.AddManagerOptions(fs, &managerOptions)
