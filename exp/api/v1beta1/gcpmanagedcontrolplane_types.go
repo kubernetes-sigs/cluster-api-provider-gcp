@@ -52,6 +52,11 @@ type GCPManagedControlPlaneSpec struct {
 	// Endpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	Endpoint clusterv1.APIEndpoint `json:"endpoint"`
+	// EnableWorkloadIdentity allows enabling workload identity during cluster creation when
+	// EnableAutopilot is disabled. It allows workloads in your GKE clusters to impersonate
+	// Identity and Access Management (IAM) service accounts to access Google Cloud services.
+	// Ref: https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity
+	EnableWorkloadIdentity bool `json:"enableWorkloadIdentity"`
 }
 
 // GCPManagedControlPlaneStatus defines the observed state of GCPManagedControlPlane.

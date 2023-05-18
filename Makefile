@@ -111,10 +111,10 @@ GOTESTSUM_BIN := gotestsum
 GOTESTSUM := $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)
 
 # Define Docker related variables. Releases should modify and double check these vars.
-export GCP_PROJECT ?= $(shell gcloud config get-value project)
-REGISTRY ?= gcr.io/$(GCP_PROJECT)
-STAGING_REGISTRY := gcr.io/k8s-staging-cluster-api-gcp
-PROD_REGISTRY := registry.k8s.io/cluster-api-gcp
+PROJECT ?= pluralsh
+REGISTRY ?= ghcr.io/$(PROJECT)
+STAGING_REGISTRY := $(REGISTRY)
+PROD_REGISTRY := $(REGISTRY)
 IMAGE_NAME ?= cluster-api-gcp-controller
 export CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
 export TAG ?= dev

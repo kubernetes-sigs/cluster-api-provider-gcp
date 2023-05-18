@@ -72,6 +72,13 @@ spec:
                 description: EnableAutopilot indicates whether to enable autopilot
                   for this GKE cluster.
                 type: boolean
+              enableWorkloadIdentity:
+                description: 'EnableWorkloadIdentity allows enabling workload identity
+                  during cluster creation when EnableAutopilot is disabled. It allows
+                  workloads in your GKE clusters to impersonate Identity and Access
+                  Management (IAM) service accounts to access Google Cloud services.
+                  Ref: https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity'
+                type: boolean
               endpoint:
                 description: Endpoint represents the endpoint used to communicate
                   with the control plane.
@@ -105,6 +112,7 @@ spec:
                 type: string
             required:
             - enableAutopilot
+            - enableWorkloadIdentity
             - location
             - project
             type: object

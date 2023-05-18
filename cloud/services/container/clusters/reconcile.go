@@ -28,12 +28,13 @@ import (
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
-	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 )
 
 // Reconcile reconcile GKE cluster.
@@ -258,6 +259,7 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		ReleaseChannel: &containerpb.ReleaseChannel{
 			Channel: convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
 		},
+		WorkloadIdentityConfig: s.createWorkloadIdentityConfig(),
 	}
 	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
 		cluster.InitialClusterVersion = *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
@@ -302,6 +304,17 @@ func (s *Service) deleteCluster(ctx context.Context, log *logr.Logger) error {
 	}
 
 	return nil
+}
+
+func (s *Service) createWorkloadIdentityConfig() *containerpb.WorkloadIdentityConfig {
+	// Autopilot clusters enable Workload Identity by default.
+	if s.scope.IsAutopilotCluster() || !s.scope.GCPManagedControlPlane.Spec.EnableWorkloadIdentity {
+		return nil
+	}
+
+	return &containerpb.WorkloadIdentityConfig{
+		WorkloadPool: fmt.Sprintf("%s.svc.id.goog", s.scope.GCPManagedControlPlane.Spec.Project),
+	}
 }
 
 func convertToSdkReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.ReleaseChannel_Channel {
