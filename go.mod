@@ -3,7 +3,7 @@ module sigs.k8s.io/cluster-api-provider-gcp
 go 1.19
 
 require (
-	cloud.google.com/go/compute v1.19.2
+	cloud.google.com/go/compute v1.19.3
 	cloud.google.com/go/container v1.18.1
 	cloud.google.com/go/iam v1.0.1
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.23.0
@@ -118,7 +118,7 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/oauth2 v0.7.0 // indirect
+	golang.org/x/oauth2 v0.8.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
