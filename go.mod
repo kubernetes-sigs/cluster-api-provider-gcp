@@ -9,7 +9,7 @@ require (
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.23.0
 	github.com/go-logr/logr v1.2.4
 	github.com/google/go-cmp v0.5.9
-	github.com/googleapis/gax-go/v2 v2.8.0
+	github.com/googleapis/gax-go/v2 v2.9.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
@@ -19,7 +19,7 @@ require (
 	golang.org/x/crypto v0.9.0
 	golang.org/x/mod v0.10.0
 	golang.org/x/net v0.10.0
-	google.golang.org/api v0.122.0
+	google.golang.org/api v0.123.0
 	google.golang.org/grpc v1.55.0
 	k8s.io/api v0.25.5
 	k8s.io/apimachinery v0.25.5
