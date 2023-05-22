@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"k8s.io/client-go/pkg/version"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -18,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	ver "sigs.k8s.io/cluster-api-provider-gcp/version"
 )
 
 func RegisterTracing(ctx context.Context, samplingRate float64, log logr.Logger) error {
@@ -44,10 +44,13 @@ func RegisterTracing(ctx context.Context, samplingRate float64, log logr.Logger)
 
 func newExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
 	conn, err := grpc.DialContext(ctx, "opentelemetry-collector:4317",
 		// Using non-TLS connection for dev environment
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
+		grpc.WithBlock(), // blocking code
 	)
 
 	if err != nil {
@@ -73,12 +76,11 @@ func SetUpTracing(ctx context.Context, samplingRate float64) (*trace.TracerProvi
 	}
 
 	// labels/tags/res common to all traces
-	// TODO: consider to add more fields
 	resource, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String("capg"),
 			attribute.String("exporter", "otlpgrpc"),
-			attribute.String("version", version.Get().String()),
+			attribute.String("version", ver.Get().String()),
 		),
 	)
 
