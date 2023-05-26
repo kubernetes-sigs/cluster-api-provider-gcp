@@ -2,8 +2,8 @@ mode: "deployment"
 
 config:
   receivers:
+    # using default configs for otlp
     jaeger: null # disable Jaeger receiver
-    #otlp:   # using default configs
     prometheus: null # disable Prometheus receiver
     zipkin: null #  disable Zipkin receiver
 
@@ -25,11 +25,9 @@ config:
     #export to Cloud Trace on GCP
     googlecloud:
       # disable metric + logging collections
+      # use default configs for trace
       metric: null
       log: null
-      # use default configs for trace
-      #trace:
-      #use_insecure: true
 
   # (4) service
   service:
@@ -58,7 +56,8 @@ extraEnvs:
 extraVolumes:
   - name: credentials
     secret:
-      secretName: manager-bootstrap-credentials
+      # prefix should match `namePrefix: capg-` from kustomization.yml
+      secretName: capg-manager-bootstrap-credentials
 
 extraVolumeMounts:
   - name: credentials
