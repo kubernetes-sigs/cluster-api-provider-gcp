@@ -57,15 +57,150 @@ spec:
           spec:
             description: GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
             properties:
+              addonsConfig:
+                description: AddonsConfig defines the enabled Cluster Addons.
+                properties:
+                  GCEPersistentDiskCsiDriver:
+                    description: GCEPersistentDiskCsiDriver whether the Compute Engine
+                      PD CSI driver is enabled for this cluster.
+                    type: boolean
+                  GCPFileStoreCsiDriver:
+                    description: GCPFileStoreCsiDriver whether the GCP Filestore CSI
+                      driver is enabled for this cluster.
+                    type: boolean
+                  GKEBackup:
+                    description: GKEBackup whether the Backup for GKE agent is enabled
+                      for this cluster.
+                    type: boolean
+                  ImageStreaming:
+                    description: ImageStreaming whether to use GCFS (Google Container
+                      File System).
+                    type: boolean
+                  cloudRun:
+                    description: CloudRun enable the Cloud Run addon, which allows  the
+                      user to use a managed Knative service.
+                    type: boolean
+                  kalmConfig:
+                    description: KalmConfig enable the KALM addon, which manages the
+                      lifecycle of k8s applications.
+                    type: boolean
+                type: object
               clusterName:
                 description: ClusterName allows you to specify the name of the GKE
                   cluster. If you don't specify a name then a default name will be
                   created based on the namespace and name of the managed control plane.
                 type: string
+              clusterNetwork:
+                description: ClusterNetwork define the cluster network.
+                properties:
+                  pod:
+                    description: Pod defines the range of CIDRBlock list from where
+                      it gets the IP address.
+                    properties:
+                      cidrBlock:
+                        description: CidrBlock is where all pods in the cluster are
+                          assigned an IP address from this range. Enter a range (in
+                          CIDR notation) within a network range, a mask, or leave
+                          this field blank to use a default range. This setting is
+                          permanent.
+                        type: string
+                    type: object
+                  privateCluster:
+                    description: PrivateCluster defines the private cluster spec.
+                    properties:
+                      controlPlaneCidrBlock:
+                        description: ControlPlaneCidrBlock is the IP range in CIDR
+                          notation to use for the hosted master network. This range
+                          must not overlap with any other ranges in use within the
+                          cluster's network. Honored when enabled is true.
+                        type: string
+                      controlPlaneGlobalAccess:
+                        description: ControlPlaneGlobalAccess is whenever master is
+                          accessible globally or not. Honored when enabled is true.
+                        type: boolean
+                      disableDefaultSNAT:
+                        description: DisableDefaultSNAT is disables cluster default
+                          sNAT rules. Honored when enabled is true.
+                        type: boolean
+                      enablePrivateEndpoint:
+                        description: 'EnablePrivateEndpoint: Whether the master''s
+                          internal IP address is used as the cluster endpoint.'
+                        type: boolean
+                      enablePrivateNodes:
+                        description: 'EnablePrivateNodes: Whether nodes have internal
+                          IP addresses only. If enabled, all nodes are given only
+                          RFC 1918 private addresses and communicate with the master
+                          via private networking.'
+                        type: boolean
+                    type: object
+                  service:
+                    description: Service defines the range of CIDRBlock list from
+                      where it gets the IP address.
+                    properties:
+                      cidrBlock:
+                        description: CidrBlock is where cluster services will be assigned
+                          an IP address from this IP address range. Enter a range
+                          (in CIDR notation) within a network range, a mask, or leave
+                          this field blank to use a default range. This setting is
+                          permanent.
+                        type: string
+                    type: object
+                  useIPAliases:
+                    description: UseIPAliases is whether alias IPs will be used for
+                      pod IPs in the cluster. If false, routes will be used for pod
+                      IPs in the cluster.
+                    type: boolean
+                type: object
+              clusterSecurity:
+                description: ClusterSecurity defines the cluster security.
+                properties:
+                  authenticatorGroupConfig:
+                    description: AuthenticatorGroupConfig is RBAC security group for
+                      use with Google security groups in Kubernetes RBAC.
+                    properties:
+                      securityGroups:
+                        description: SecurityGroups is the name of the security group-of-groups
+                          to be used.
+                        type: string
+                    type: object
+                  enableLegacyAuthorization:
+                    description: EnableLegacyAuthorization Whether the legacy (ABAC)
+                      authorizer is enabled for this cluster.
+                    type: boolean
+                  issueClientCertificate:
+                    description: IssueClientCertificate is weather to issue a client
+                      certificate.
+                    type: boolean
+                  workloadIdentityConfig:
+                    description: WorkloadIdentityConfig allows workloads in your GKE
+                      clusters to impersonate Identity and Access Management (IAM)
+                      service accounts to access Google Cloud services
+                    properties:
+                      workloadPool:
+                        description: WorkloadPool is the workload pool to attach all
+                          Kubernetes service accounts to Google Cloud services. Only
+                          relevant when enabled is true
+                        type: string
+                    type: object
+                type: object
               controlPlaneVersion:
                 description: ControlPlaneVersion represents the control plane version
                   of the GKE cluster. If not specified, the default version currently
                   supported by GKE will be used.
+                type: string
+              defaultMaxPodsPerNode:
+                description: DefaultMaXPodsPerNode is the maximum number of pods can
+                  be run simultaneously on a Node, and only honored if Cluster is
+                  created with IP Alias support.
+                type: integer
+              defaultNodeLocation:
+                description: DefaultNodeLocation is the list of Google Compute Engine
+                  zones in which the cluster's Node should be located.
+                items:
+                  type: string
+                type: array
+              description:
+                description: Description describe the cluster.
                 type: string
               enableAutopilot:
                 description: EnableAutopilot indicates whether to enable autopilot
@@ -90,6 +225,26 @@ spec:
                 description: Location represents the location (region or zone) in
                   which the GKE cluster will be created.
                 type: string
+              loggingConfig:
+                description: LoggingConfig defines the logging on Cluster.
+                properties:
+                  apiServer:
+                    description: APIServer enables the api server logging.
+                    type: boolean
+                  controllerManager:
+                    description: ControllerManager enables the controller manager
+                      logging.
+                    type: boolean
+                  scheduler:
+                    description: Scheduler enables the scheduler logging.
+                    type: boolean
+                  systemComponents:
+                    description: SystemComponents enables the system component logging.
+                    type: boolean
+                  workloads:
+                    description: Workloads enables the Workloads logging.
+                    type: boolean
+                type: object
               master_authorized_networks_config:
                 description: MasterAuthorizedNetworksConfig represents configuration
                   options for master authorized networks feature of the GKE cluster.
@@ -115,6 +270,27 @@ spec:
                   gcp_public_cidrs_access_enabled:
                     description: Whether master is accessible via Google Compute Engine
                       Public IP addresses.
+                    type: boolean
+                type: object
+              monitoringConfig:
+                description: MonitoringConfig defines the monitoring on Cluster.
+                properties:
+                  apiServer:
+                    description: APIServer enables the api server monitoring.
+                    type: boolean
+                  controllerManager:
+                    description: ControllerManager enables the controller manager
+                      monitoring.
+                    type: boolean
+                  enableManagedPrometheus:
+                    description: EnableManagedPrometheus Enable Google Cloud Managed
+                      Service for Prometheus in the cluster.
+                    type: boolean
+                  scheduler:
+                    description: Scheduler enables the scheduler monitoring.
+                    type: boolean
+                  systemComponents:
+                    description: SystemComponents enables the system component monitoring.
                     type: boolean
                 type: object
               project:
