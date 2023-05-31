@@ -59,6 +59,7 @@ type AuthorizedNetworkCidrBlock struct {
 	Name string `json:"name,omitempty"`
 
 	// CidrBlock is the list of CIDR blocks associated with Authorized Network.
+	// +kubebuilder:validation:MaxProperties=10
 	// +optional
 	CidrBlock map[string]string `json:"cidrBlock,omitempty"`
 }
@@ -71,7 +72,7 @@ type AuthorizedNetwork struct {
 
 	// CidrBlocks defines the CIDR block configuration.
 	// +optional
-	CidrBlocks AuthorizedNetworkCidrBlock `json:"cidrBlocks,omitempty"`
+	CidrBlocks *AuthorizedNetworkCidrBlock `json:"cidrBlocks,omitempty"`
 }
 
 // ClusterNetworkPod the range of CIDRBlock list from where it gets the IP address.
@@ -96,7 +97,7 @@ type ClusterNetworkService struct {
 type ClusterNetwork struct {
 	// PrivateCluster defines the private cluster spec.
 	// +optional
-	PrivateCluster PrivateCluster `json:"privateCluster,omitempty"`
+	PrivateCluster *PrivateCluster `json:"privateCluster,omitempty"`
 
 	// UseIPAliases is whether alias IPs will be used for pod IPs in the cluster. If false, routes will be used for
 	// pod IPs in the cluster.
@@ -105,15 +106,15 @@ type ClusterNetwork struct {
 
 	// AuthorizedNetwork provide an IP-based firewall that controls access to the GKE control plane.
 	// +optional
-	AuthorizedNetwork AuthorizedNetwork `json:"authorizedNetwork,omitempty"`
+	AuthorizedNetwork *AuthorizedNetwork `json:"authorizedNetwork,omitempty"`
 
 	// Pod defines the range of CIDRBlock list from where it gets the IP address.
 	// +optional
-	Pod ClusterNetworkPod `json:"pod,omitempty"`
+	Pod *ClusterNetworkPod `json:"pod,omitempty"`
 
 	// Service defines the range of CIDRBlock list from where it gets the IP address.
 	// +optional
-	Service ClusterNetworkService `json:"service,omitempty"`
+	Service *ClusterNetworkService `json:"service,omitempty"`
 }
 
 // WorkloadIdentityConfig allows workloads in your GKE clusters to impersonate Identity and Access Management (IAM)
@@ -145,11 +146,11 @@ type ClusterSecurity struct {
 	// WorkloadIdentityConfig allows workloads in your GKE clusters to impersonate Identity and Access Management (IAM)
 	// service accounts to access Google Cloud services
 	// +optional
-	WorkloadIdentityConfig WorkloadIdentityConfig `json:"workloadIdentityConfig,omitempty"`
+	WorkloadIdentityConfig *WorkloadIdentityConfig `json:"workloadIdentityConfig,omitempty"`
 
 	// AuthenticatorGroupConfig is RBAC security group for use with Google security groups in Kubernetes RBAC.
 	// +optional
-	AuthenticatorGroupConfig AuthenticatorGroupConfig `json:"authenticatorGroupConfig,omitempty"`
+	AuthenticatorGroupConfig *AuthenticatorGroupConfig `json:"authenticatorGroupConfig,omitempty"`
 
 	// EnableLegacyAuthorization Whether the legacy (ABAC) authorizer is enabled for this cluster.
 	// +optional
@@ -190,14 +191,12 @@ type AddonsConfig struct {
 // LoggingConfig defines the logging on Cluster.
 type LoggingConfig struct {
 	// Enable define whether enable logging to cluster or not.
-	// +kubebuilder:default=true
 	// +optional
 	Enable bool `json:"enable,omitempty"`
 
 	// EnableComponents select components to collect logs. An empty set would disable all logging. The system logs are
 	// minimum required component for enabling log collections. Only honored when enabled=true.
 	// +kubebuilder:validation:Enum=SYSTEM_COMPONENTS;WORKLOADS;APISERVER;SCHEDULER;CONTROLLER_MANAGER
-	// +kubebuilder:validation:MinItems=1
 	// +optional
 	EnableComponents []string `json:"enableComponents,omitempty"`
 }
@@ -205,14 +204,12 @@ type LoggingConfig struct {
 // MonitoringConfig defines the monitoring on Cluster.
 type MonitoringConfig struct {
 	// Enable is whether enable monitoring to cluster or not.
-	// +kubebuilder:default=true
 	// +optional
 	Enable bool `json:"enable,omitempty"`
 
 	// EnableComponents select components to collect metrics. An empty set would disable all monitoring. System metric
 	// is the minimum required component for enabling metric collection. Only honored when enabled=true.
 	// +kubebuilder:validation:Enum=SYSTEM_COMPONENTS;APISERVER;SCHEDULER;CONTROLLER_MANAGER
-	// +kubebuilder:validation:MinItems=1
 	// +optional
 	EnableComponents []string `json:"enableComponents,omitempty"`
 
@@ -235,23 +232,23 @@ type GCPManagedControlPlaneSpec struct {
 
 	// ClusterNetwork define the cluster network.
 	// +optional
-	ClusterNetwork ClusterNetwork `json:"clusterNetwork,omitempty"`
+	ClusterNetwork *ClusterNetwork `json:"clusterNetwork,omitempty"`
 
 	// ClusterSecurity defines the cluster security.
 	// +optional
-	ClusterSecurity ClusterSecurity `json:"clusterSecurity,omitempty"`
+	ClusterSecurity *ClusterSecurity `json:"clusterSecurity,omitempty"`
 
 	// AddonsConfig defines the enabled Cluster Addons.
 	// +optional
-	AddonsConfig AddonsConfig `json:"addonsConfig,omitempty"`
+	AddonsConfig *AddonsConfig `json:"addonsConfig,omitempty"`
 
 	// LoggingConfig defines the logging on Cluster.
 	// +optional
-	LoggingConfig LoggingConfig `json:"loggingConfig,omitempty"`
+	LoggingConfig *LoggingConfig `json:"loggingConfig,omitempty"`
 
 	// MonitoringConfig defines the monitoring on Cluster.
 	// +optional
-	MonitoringConfig MonitoringConfig `json:"monitoringConfig,omitempty"`
+	MonitoringConfig *MonitoringConfig `json:"monitoringConfig,omitempty"`
 
 	// DefaultNodeLocation is the list of Google Compute Engine zones in which the cluster's Node should be located.
 	// +optional
@@ -260,7 +257,7 @@ type GCPManagedControlPlaneSpec struct {
 	// DefaultMaXPodsPerNode is the maximum number of pods can be run simultaneously on a Node, and only honored if
 	// Cluster is created with IP Alias support.
 	// +optional
-	DefaultMaXPodsPerNode int `json:"defaultMaXPodsPerNode,omitempty"`
+	DefaultMaxPodsPerNode int `json:"defaultMaxPodsPerNode,omitempty"`
 
 	// Project is the name of the project to deploy the cluster to.
 	Project string `json:"project"`
