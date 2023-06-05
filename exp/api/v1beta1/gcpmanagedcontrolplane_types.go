@@ -120,24 +120,16 @@ type ClusterNetwork struct {
 // WorkloadIdentityConfig allows workloads in your GKE clusters to impersonate Identity and Access Management (IAM)
 // service accounts to access Google Cloud services.
 type WorkloadIdentityConfig struct {
-	// Enable is to enable the workload identity config.
-	// +optional
-	Enable bool `json:"enable,omitempty"`
-
 	// WorkloadPool is the workload pool to attach all Kubernetes service accounts to Google Cloud services.
 	// Only relevant when enabled is true
-	// +optional
+	// +kubebuilder:validation:Required
 	WorkloadPool string `json:"workloadPool,omitempty"`
 }
 
 // AuthenticatorGroupConfig is RBAC security group for use with Google security groups in Kubernetes RBAC.
 type AuthenticatorGroupConfig struct {
-	// Enable is to enable the authenticator group config.
-	// +optional
-	Enable bool `json:"enable,omitempty"`
-
 	// SecurityGroups is the name of the security group-of-groups to be used.
-	// +optional
+	// +kubebuilder:validation:Required
 	SecurityGroups string `json:"securityGroups,omitempty"`
 }
 
