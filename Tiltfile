@@ -9,7 +9,7 @@ kind_cmd = "./hack/tools/bin/kind"
 os.putenv("PATH", os.getenv("PATH") + ":" + tools_bin)
 
 update_settings(
-    k8s_upsert_timeout_secs=60
+    k8s_upsert_timeout_secs = 60,
 )  # on first tilt up, often can take longer than 30 seconds
 
 # set defaults
@@ -31,8 +31,8 @@ keys = ["GCP_B64ENCODED_CREDENTIALS"]
 settings.update(
     read_json(
         "tilt-settings.json",
-        default={},
-    )
+        default = {},
+    ),
 )
 
 if settings.get("trigger_mode") == "manual":
@@ -44,17 +44,18 @@ if "allowed_contexts" in settings:
 if "default_registry" in settings:
     default_registry(settings.get("default_registry"))
 
-
 # deploy CAPI
 def deploy_capi():
     version = settings.get("capi_version")
     capi_uri = "https://github.com/kubernetes-sigs/cluster-api/releases/download/{}/cluster-api-components.yaml".format(
-        version
+        version,
     )
     cmd = "curl -sSL {} | {} | {} apply -f -".format(
-        capi_uri, envsubst_cmd, kubectl_cmd
+        capi_uri,
+        envsubst_cmd,
+        kubectl_cmd,
     )
-    local(cmd, quiet=True)
+    local(cmd, quiet = True)
     if settings.get("extra_args"):
         extra_args = settings.get("extra_args")
         if extra_args.get("core"):
@@ -62,7 +63,9 @@ def deploy_capi():
             if core_extra_args:
                 for namespace in ["capi-system"]:
                     patch_args_with_extra_args(
-                        namespace, "capi-controller-manager", core_extra_args
+                        namespace,
+                        "capi-controller-manager",
+                        core_extra_args,
                     )
         if extra_args.get("kubeadm-bootstrap"):
             kb_extra_args = extra_args.get("kubeadm-bootstrap")
@@ -73,14 +76,15 @@ def deploy_capi():
                     kb_extra_args,
                 )
 
-
 def patch_args_with_extra_args(namespace, name, extra_args):
     args_str = str(
         local(
             "{} get deployments {} -n {} -o jsonpath={{.spec.template.spec.containers[0].args}}".format(
-                kubectl_cmd, name, namespace
-            )
-        )
+                kubectl_cmd,
+                name,
+                namespace,
+            ),
+        ),
     )
     args_to_add = [arg for arg in extra_args if arg not in args_str]
     if args_to_add:
@@ -91,14 +95,16 @@ def patch_args_with_extra_args(namespace, name, extra_args):
                 "op": "replace",
                 "path": "/spec/template/spec/containers/0/args",
                 "value": args,
-            }
+            },
         ]
         local(
             "{} patch deployment {} -n {} --type json -p='{}'".format(
-                kubectl_cmd, name, namespace, str(encode_json(patch)).replace("\n", "")
-            )
+                kubectl_cmd,
+                name,
+                namespace,
+                str(encode_json(patch)).replace("\n", ""),
+            ),
         )
-
 
 # Users may define their own Tilt customizations in tilt.d. This directory is excluded from git and these files will
 # not be checked in to version control.
@@ -107,26 +113,26 @@ def include_user_tilt_files():
     for f in user_tiltfiles:
         include(f)
 
-
 def append_arg_for_container_in_deployment(
-    yaml_stream, name, namespace, contains_image_name, args
-):
+        yaml_stream,
+        name,
+        namespace,
+        contains_image_name,
+        args):
     for item in yaml_stream:
         if (
-            item["kind"] == "Deployment"
-            and item.get("metadata").get("name") == name
-            and item.get("metadata").get("namespace") == namespace
+            item["kind"] == "Deployment" and
+            item.get("metadata").get("name") == name and
+            item.get("metadata").get("namespace") == namespace
         ):
             containers = item.get("spec").get("template").get("spec").get("containers")
             for container in containers:
                 if contains_image_name in container.get("image"):
                     container.get("args").extend(args)
 
-
 def fixup_yaml_empty_arrays(yaml_str):
     yaml_str = yaml_str.replace("conditions: null", "conditions: []")
     return yaml_str.replace("storedVersions: null", "storedVersions: []")
-
 
 def validate_auth():
     substitutions = settings.get("kustomize_substitutions", {})
@@ -134,10 +140,9 @@ def validate_auth():
     if missing:
         fail(
             "missing kustomize_substitutions keys {} in tilt-settings.json".format(
-                missing
-            )
+                missing,
+            ),
         )
-
 
 tilt_helper_dockerfile_header = """
 # Tilt image
@@ -161,7 +166,6 @@ COPY --from=tilt-helper /go/bin/dlv .
 COPY manager .
 """
 
-
 # Build CAPG and add feature gates
 def capg():
     # Apply the kustomized yaml for this provider
@@ -169,7 +173,7 @@ def capg():
     os.environ.update(substitutions)
 
     yaml = str(
-        kustomizesub("./hack/observability")
+        kustomizesub("./hack/observability"),
     )  # build an observable kind deployment by default
     # TODO: consider to remove
     # yaml = str(kustomizesub("./config/default"))
@@ -192,8 +196,8 @@ def capg():
     # Set up a local_resource build of the provider's manager binary.
     local_resource(
         "manager",
-        cmd="mkdir -p .tiltbuild;CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '-extldflags \"-static\"' -o .tiltbuild/manager",
-        deps=[
+        cmd = "mkdir -p .tiltbuild;CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '-extldflags \"-static\"' -o .tiltbuild/manager",
+        deps = [
             "api",
             "cloud",
             "config",
@@ -211,7 +215,7 @@ def capg():
         [
             tilt_helper_dockerfile_header,
             tilt_dockerfile_header,
-        ]
+        ],
     )
 
     entrypoint = ["sh", "/start.sh", "/manager"]
@@ -222,21 +226,20 @@ def capg():
     # Set up an image build for the provider. The live update configuration syncs the output from the local_resource
     # build into the container.
     docker_build(
-        ref="gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller",
-        context="./.tiltbuild/",
-        dockerfile_contents=dockerfile_contents,
-        target="tilt",
-        entrypoint=entrypoint,
-        only="manager",
-        live_update=[
+        ref = "gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller",
+        context = "./.tiltbuild/",
+        dockerfile_contents = dockerfile_contents,
+        target = "tilt",
+        entrypoint = entrypoint,
+        only = "manager",
+        live_update = [
             sync(".tiltbuild/manager", "/manager"),
             run("sh /restart.sh"),
         ],
-        ignore=["templates"],
+        ignore = ["templates"],
     )
 
     k8s_yaml(blob(yaml))
-
 
 def observability():
     # Install the OpenTelemetry helm chart
@@ -245,87 +248,82 @@ def observability():
     k8s_yaml(
         helm(
             "./hack/observability/opentelemetry/chart",
-            name="opentelemetry-collector",
-            namespace="capg-system",
-            values=["./hack/observability/opentelemetry/values.yaml"],
+            name = "opentelemetry-collector",
+            namespace = "capg-system",
+            values = ["./hack/observability/opentelemetry/values.yaml"],
             # refer https://github.com/helm/helm/issues/1987
-            set=[
+            set = [
                 "extraEnvs[0].name=GCP_PROJECT_ID",
                 "extraEnvs[0].value=" + gcp_project_id,
             ],
-        )
+        ),
     )
 
     k8s_yaml(
         helm(
             "./hack/observability/jaeger/chart",
-            name="jaeger-all-in-one",
-            namespace="capg-system",
-            set=[
+            name = "jaeger-all-in-one",
+            namespace = "capg-system",
+            set = [
                 # TODO: consider to remove
                 # "crd.install=false",
                 # "rbac.create=false",
                 "resources.limits.cpu=200m",
                 "resources.limits.memory=256Mi",
             ],
-        )
+        ),
     )
 
     k8s_resource(
-        workload="jaeger-all-in-one",
-        new_name="traces: jaeger-all-in-one",
-        port_forwards=[
-            port_forward(16686, name="View traces", link_path="/search?service=capg")
+        workload = "jaeger-all-in-one",
+        new_name = "traces: jaeger-all-in-one",
+        port_forwards = [
+            port_forward(16686, name = "View traces", link_path = "/search?service=capg"),
         ],
-        labels=["observability"],
+        labels = ["observability"],
     )
 
-    k8s_resource(workload="opentelemetry-collector", labels=["observability"])
-
+    k8s_resource(workload = "opentelemetry-collector", labels = ["observability"])
 
 def base64_encode(to_encode):
     encode_blob = local(
-        "echo '{}' | tr -d '\n' | base64 - | tr -d '\n'".format(to_encode), quiet=True
+        "echo '{}' | tr -d '\n' | base64 - | tr -d '\n'".format(to_encode),
+        quiet = True,
     )
     return str(encode_blob)
-
 
 def base64_encode_file(path_to_encode):
     encode_blob = local(
-        "cat {} | tr -d '\n' | base64 - | tr -d '\n'".format(path_to_encode), quiet=True
+        "cat {} | tr -d '\n' | base64 - | tr -d '\n'".format(path_to_encode),
+        quiet = True,
     )
     return str(encode_blob)
 
-
 def read_file_from_path(path_to_read):
-    str_blob = local("cat {} | tr -d '\n'".format(path_to_read), quiet=True)
+    str_blob = local("cat {} | tr -d '\n'".format(path_to_read), quiet = True)
     return str(str_blob)
 
-
 def base64_decode(to_decode):
-    decode_blob = local("echo '{}' | base64 --decode -".format(to_decode), quiet=True)
+    decode_blob = local("echo '{}' | base64 --decode -".format(to_decode), quiet = True)
     return str(decode_blob)
 
-
 def kustomizesub(folder):
-    yaml = local("hack/kustomize-sub.sh {}".format(folder), quiet=True)
+    yaml = local("hack/kustomize-sub.sh {}".format(folder), quiet = True)
     return yaml
-
 
 def waitforsystem():
     local(
-        kubectl_cmd
-        + " wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-bootstrap-system"
+        kubectl_cmd +
+        " wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-bootstrap-system",
     )
     local(
-        kubectl_cmd
-        + " wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-control-plane-system"
+        kubectl_cmd +
+        " wait --for=condition=ready --timeout=300s pod --all -n capi-kubeadm-control-plane-system",
     )
     local(
-        kubectl_cmd
-        + " wait --for=condition=ready --timeout=300s pod --all -n capi-system"
+        kubectl_cmd +
+        " wait --for=condition=ready --timeout=300s pod --all -n capi-system",
     )
-
 
 ##############################
 # Actual work happens here
