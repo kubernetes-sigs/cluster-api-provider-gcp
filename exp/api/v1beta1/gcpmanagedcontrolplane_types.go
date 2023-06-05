@@ -178,10 +178,6 @@ type AddonsConfig struct {
 
 // LoggingConfig defines the logging on Cluster.
 type LoggingConfig struct {
-	// Enable define whether enable logging to cluster or not.
-	// +optional
-	Enable bool `json:"enable,omitempty"`
-
 	// SystemComponents enables the system component logging.
 	// +optional
 	SystemComponents bool `json:"systemComponents,omitempty"`
@@ -205,10 +201,6 @@ type LoggingConfig struct {
 
 // MonitoringConfig defines the monitoring on Cluster.
 type MonitoringConfig struct {
-	// Enable is whether enable monitoring to cluster or not.
-	// +optional
-	Enable bool `json:"enable,omitempty"`
-
 	// SystemComponents enables the system component monitoring.
 	// +optional
 	SystemComponents bool `json:"systemComponents,omitempty"`
