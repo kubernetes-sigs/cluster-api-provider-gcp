@@ -112,10 +112,6 @@ spec:
                             description: Name is the name of the CIDR Block.
                             type: string
                         type: object
-                      enabled:
-                        description: Enabled defines Whether enable authorized network
-                          or not.
-                        type: boolean
                     type: object
                   pod:
                     description: Pod defines the range of CIDRBlock list from where
@@ -251,48 +247,42 @@ spec:
               loggingConfig:
                 description: LoggingConfig defines the logging on Cluster.
                 properties:
-                  enable:
-                    description: Enable define whether enable logging to cluster or
-                      not.
+                  apiServer:
+                    description: ApiServer enables the api server logging.
                     type: boolean
-                  enableComponents:
-                    description: EnableComponents select components to collect logs.
-                      An empty set would disable all logging. The system logs are
-                      minimum required component for enabling log collections. Only
-                      honored when enabled=true.
-                    enum:
-                    - SYSTEM_COMPONENTS
-                    - WORKLOADS
-                    - APISERVER
-                    - SCHEDULER
-                    - CONTROLLER_MANAGER
-                    items:
-                      type: string
-                    type: array
+                  controllerManager:
+                    description: ControllerManager enables the controller manager
+                      logging.
+                    type: boolean
+                  scheduler:
+                    description: Scheduler enables the scheduler logging.
+                    type: boolean
+                  systemComponents:
+                    description: SystemComponents enables the system component logging.
+                    type: boolean
+                  workloads:
+                    description: Workloads enables the Workloads logging.
+                    type: boolean
                 type: object
               monitoringConfig:
                 description: MonitoringConfig defines the monitoring on Cluster.
                 properties:
-                  enable:
-                    description: Enable is whether enable monitoring to cluster or
-                      not.
+                  apiServer:
+                    description: ApiServer enables the api server monitoring.
                     type: boolean
-                  enableComponents:
-                    description: EnableComponents select components to collect metrics.
-                      An empty set would disable all monitoring. System metric is
-                      the minimum required component for enabling metric collection.
-                      Only honored when enabled=true.
-                    enum:
-                    - SYSTEM_COMPONENTS
-                    - APISERVER
-                    - SCHEDULER
-                    - CONTROLLER_MANAGER
-                    items:
-                      type: string
-                    type: array
+                  controllerManager:
+                    description: ControllerManager enables the controller manager
+                      monitoring.
+                    type: boolean
                   enableManagedPrometheus:
                     description: EnableManagedPrometheus Enable Google Cloud Managed
                       Service for Prometheus in the cluster.
+                    type: boolean
+                  scheduler:
+                    description: Scheduler enables the scheduler monitoring.
+                    type: boolean
+                  systemComponents:
+                    description: SystemComponents enables the system component monitoring.
                     type: boolean
                 type: object
               project:
