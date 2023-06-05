@@ -186,11 +186,25 @@ type LoggingConfig struct {
 	// +optional
 	Enable bool `json:"enable,omitempty"`
 
-	// EnableComponents select components to collect logs. An empty set would disable all logging. The system logs are
-	// minimum required component for enabling log collections. Only honored when enabled=true.
-	// +kubebuilder:validation:Enum=SYSTEM_COMPONENTS;WORKLOADS;APISERVER;SCHEDULER;CONTROLLER_MANAGER
+	// SystemComponents enables the system component logging.
 	// +optional
-	EnableComponents []string `json:"enableComponents,omitempty"`
+	SystemComponents bool `json:"systemComponents,omitempty"`
+
+	// Workloads enables the Workloads logging.
+	// +optional
+	Workloads bool `json:"workloads,omitempty"`
+
+	// ApiServer enables the api server logging.
+	// +optional
+	ApiServer bool `json:"apiServer,omitempty"`
+
+	// Scheduler enables the scheduler logging.
+	// +optional
+	Scheduler bool `json:"scheduler,omitempty"`
+
+	// ControllerManager enables the controller manager logging.
+	// +optional
+	ControllerManager bool `json:"controllerManager,omitempty"`
 }
 
 // MonitoringConfig defines the monitoring on Cluster.
@@ -199,11 +213,21 @@ type MonitoringConfig struct {
 	// +optional
 	Enable bool `json:"enable,omitempty"`
 
-	// EnableComponents select components to collect metrics. An empty set would disable all monitoring. System metric
-	// is the minimum required component for enabling metric collection. Only honored when enabled=true.
-	// +kubebuilder:validation:Enum=SYSTEM_COMPONENTS;APISERVER;SCHEDULER;CONTROLLER_MANAGER
+	// SystemComponents enables the system component monitoring.
 	// +optional
-	EnableComponents []string `json:"enableComponents,omitempty"`
+	SystemComponents bool `json:"systemComponents,omitempty"`
+
+	// ApiServer enables the api server monitoring.
+	// +optional
+	ApiServer bool `json:"apiServer,omitempty"`
+
+	// Scheduler enables the scheduler monitoring.
+	// +optional
+	Scheduler bool `json:"scheduler,omitempty"`
+
+	// ControllerManager enables the controller manager monitoring.
+	// +optional
+	ControllerManager bool `json:"controllerManager,omitempty"`
 
 	// EnableManagedPrometheus Enable Google Cloud Managed Service for Prometheus in the cluster.
 	// +optional
