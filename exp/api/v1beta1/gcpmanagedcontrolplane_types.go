@@ -66,10 +66,6 @@ type AuthorizedNetworkCidrBlock struct {
 
 // AuthorizedNetwork provide an IP-based firewall that controls access to the GKE control plane.
 type AuthorizedNetwork struct {
-	// Enabled defines Whether enable authorized network or not.
-	// +optional
-	Enabled bool `json:"enabled,omitempty"`
-
 	// CidrBlocks defines the CIDR block configuration.
 	// +optional
 	CidrBlocks *AuthorizedNetworkCidrBlock `json:"cidrBlocks,omitempty"`
