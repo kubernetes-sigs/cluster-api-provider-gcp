@@ -46,7 +46,7 @@ GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS")
 export GCP_B64ENCODED_CREDENTIALS
 export KUBERNETES_MAJOR_VERSION="1"
 export KUBERNETES_MINOR_VERSION="25"
-export KUBERNETES_PATCH_VERSION="10"
+export KUBERNETES_PATCH_VERSION="7"
 export KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
 # using prebuilt image from image-builder project the image is built everyday and the job is available here https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
 export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-${KUBERNETES_VERSION//[.+]/-}-nightly"
@@ -54,7 +54,7 @@ export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-
 init_image() {
   if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then
     image=$(gcloud compute images list --project "$GCP_PROJECT" \
-      --no-standard-images --filter="family:capi-ubuntu-1804-k8s-v${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}" --format="table[no-heading](name)")
+      --no-standard-images --filter="family:capi-ubuntu-2004-k8s-v${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}" --format="table[no-heading](name)")
     if [[ -n "$image" ]]; then
       return
     fi
