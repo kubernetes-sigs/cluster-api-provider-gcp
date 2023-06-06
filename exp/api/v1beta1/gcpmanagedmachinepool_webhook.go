@@ -113,6 +113,90 @@ func (r *GCPManagedMachinePool) ValidateUpdate(oldRaw runtime.Object) (admission
 		)
 	}
 
+	if !cmp.Equal(r.Spec.InstanceType, old.Spec.InstanceType) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "InstanceType"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.DiskSizeGB, old.Spec.DiskSizeGB) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "DiskSizeGB"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.MaxPodsPerNode, old.Spec.MaxPodsPerNode) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "MaxPodsPerNode"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.NodeNetwork.CreatePodRange, old.Spec.NodeNetwork.CreatePodRange) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeNetwork", "CreatePodRange"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.NodeNetwork.PodRangeName, old.Spec.NodeNetwork.PodRangeName) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeNetwork", "PodRangeName"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.NodeNetwork.PodRangeCidrBlock, old.Spec.NodeNetwork.PodRangeCidrBlock) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeNetwork", "PodRangeCidrBlock"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.NodeSecurity.ServiceAccount.Email, old.Spec.NodeSecurity.ServiceAccount.Email) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeSecurity", "ServiceAccount", "Email"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.NodeSecurity.ServiceAccount.Scopes, old.Spec.NodeSecurity.ServiceAccount.Scopes) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeSecurity", "ServiceAccount", "Scopes"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.NodeSecurity.SandboxType, old.Spec.NodeSecurity.SandboxType) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeSecurity", "SandboxType"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.NodeSecurity.EnableSecureBoot, old.Spec.NodeSecurity.EnableSecureBoot) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeSecurity", "EnableSecureBoot"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.NodeSecurity.EnableIntegrityMonitoring, old.Spec.NodeSecurity.EnableIntegrityMonitoring) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeSecurity", "EnableIntegrityMonitoring"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(r.Spec.AdditionalLabels, old.Spec.AdditionalLabels) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "AdditionalLabels"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
 	if errs := r.validateScaling(); errs != nil || len(errs) == 0 {
 		allErrs = append(allErrs, errs...)
 	}

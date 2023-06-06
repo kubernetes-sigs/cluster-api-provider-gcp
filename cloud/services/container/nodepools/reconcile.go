@@ -30,6 +30,7 @@ import (
 	"cloud.google.com/go/compute/apiv1/computepb"
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
@@ -127,14 +128,14 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	needUpdateVersionOrImage, nodePoolUpdateVersionOrImage := s.checkDiffAndPrepareUpdateVersionOrImage(nodePool)
-	if needUpdateVersionOrImage {
-		log.Info("Version/image update required")
-		err = s.updateNodePoolVersionOrImage(ctx, nodePoolUpdateVersionOrImage)
+	needUpdateNodePool, nodePoolUpdateNodePool := s.checkDiffAndPrepareUpdateNodePool(nodePool)
+	if needUpdateNodePool {
+		log.Info("Node pool config update required")
+		err = s.updateNodePool(ctx, nodePoolUpdateNodePool)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("node pool config update (either version/labels/taints/locations/image type/network tag or all) failed: %s", err)
 		}
-		log.Info("Node pool version/image updating in progress")
+		log.Info("Node pool config updating in progress")
 		s.scope.GCPManagedMachinePool.Status.Ready = true
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolUpdatingCondition)
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
@@ -290,15 +291,6 @@ func (s *Service) createNodePool(ctx context.Context, log *logr.Logger) error {
 	return nil
 }
 
-func (s *Service) updateNodePoolVersionOrImage(ctx context.Context, updateNodePoolRequest *containerpb.UpdateNodePoolRequest) error {
-	_, err := s.scope.ManagedMachinePoolClient().UpdateNodePool(ctx, updateNodePoolRequest)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *Service) updateNodePoolAutoscaling(ctx context.Context, setNodePoolAutoscalingRequest *containerpb.SetNodePoolAutoscalingRequest) error {
 	_, err := s.scope.ManagedMachinePoolClient().SetNodePoolAutoscaling(ctx, setNodePoolAutoscalingRequest)
 	if err != nil {
@@ -310,6 +302,15 @@ func (s *Service) updateNodePoolAutoscaling(ctx context.Context, setNodePoolAuto
 
 func (s *Service) updateNodePoolSize(ctx context.Context, setNodePoolSizeRequest *containerpb.SetNodePoolSizeRequest) error {
 	_, err := s.scope.ManagedMachinePoolClient().SetNodePoolSize(ctx, setNodePoolSizeRequest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) updateNodePool(ctx context.Context, updateNodePoolRequest *containerpb.UpdateNodePoolRequest) error {
+	_, err := s.scope.ManagedMachinePoolClient().UpdateNodePool(ctx, updateNodePoolRequest)
 	if err != nil {
 		return err
 	}
@@ -329,7 +330,7 @@ func (s *Service) deleteNodePool(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) checkDiffAndPrepareUpdateVersionOrImage(existingNodePool *containerpb.NodePool) (bool, *containerpb.UpdateNodePoolRequest) {
+func (s *Service) checkDiffAndPrepareUpdateNodePool(existingNodePool *containerpb.NodePool) (bool, *containerpb.UpdateNodePoolRequest) {
 	needUpdate := false
 	updateNodePoolRequest := containerpb.UpdateNodePoolRequest{
 		Name: s.scope.NodePoolFullName(),
@@ -340,7 +341,7 @@ func (s *Service) checkDiffAndPrepareUpdateVersionOrImage(existingNodePool *cont
 		updateNodePoolRequest.NodeVersion = *s.scope.NodePoolVersion()
 	}
 	// Kubernetes labels
-	if !reflect.DeepEqual(map[string]string(s.scope.GCPManagedMachinePool.Spec.KubernetesLabels), existingNodePool.Config.Labels) {
+	if !cmp.Equal(map[string]string(s.scope.GCPManagedMachinePool.Spec.KubernetesLabels), existingNodePool.Config.Labels) {
 		needUpdate = true
 		updateNodePoolRequest.Labels = &containerpb.NodeLabels{
 			Labels: s.scope.GCPManagedMachinePool.Spec.KubernetesLabels,
@@ -348,12 +349,33 @@ func (s *Service) checkDiffAndPrepareUpdateVersionOrImage(existingNodePool *cont
 	}
 	// Kubernetes taints
 	desiredKubernetesTaints := infrav1exp.ConvertToSdkTaint(s.scope.GCPManagedMachinePool.Spec.KubernetesTaints)
-	if !reflect.DeepEqual(desiredKubernetesTaints, existingNodePool.Config.Taints) {
+	if !cmp.Equal(desiredKubernetesTaints, existingNodePool.Config.Taints) {
 		needUpdate = true
 		updateNodePoolRequest.Taints = &containerpb.NodeTaints{
 			Taints: desiredKubernetesTaints,
 		}
 	}
+	// Locations
+	desiredLocations := s.scope.GCPManagedMachinePool.Spec.NodeLocations
+	if !cmp.Equal(desiredLocations, existingNodePool.Locations) {
+		needUpdate = true
+		updateNodePoolRequest.Locations = desiredLocations
+	}
+	// Image type
+	desiredImageType := s.scope.GCPManagedMachinePool.Spec.ImageType
+	if desiredImageType != nil && existingNodePool.Config != nil && *desiredImageType != existingNodePool.Config.ImageType {
+		needUpdate = true
+		updateNodePoolRequest.ImageType = *desiredImageType
+	}
+	// Network tags
+	desiredNetworkTags := s.scope.GCPManagedMachinePool.Spec.NodeNetwork.Tags
+	if existingNodePool.Config != nil && !cmp.Equal(desiredNetworkTags, existingNodePool.Config.Tags) {
+		needUpdate = true
+		updateNodePoolRequest.Tags = &containerpb.NetworkTags{
+			Tags: desiredNetworkTags,
+		}
+	}
+
 	return needUpdate, &updateNodePoolRequest
 }
 
