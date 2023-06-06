@@ -3,13 +3,13 @@ module sigs.k8s.io/cluster-api-provider-gcp
 go 1.19
 
 require (
-	cloud.google.com/go/compute v1.19.3
+	cloud.google.com/go/compute v1.20.0
 	cloud.google.com/go/container v1.18.1
 	cloud.google.com/go/iam v1.0.1
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.23.0
 	github.com/go-logr/logr v1.2.4
 	github.com/google/go-cmp v0.5.9
-	github.com/googleapis/gax-go/v2 v2.9.1
+	github.com/googleapis/gax-go/v2 v2.10.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
@@ -19,7 +19,7 @@ require (
 	golang.org/x/crypto v0.9.0
 	golang.org/x/mod v0.10.0
 	golang.org/x/net v0.10.0
-	google.golang.org/api v0.124.0
+	google.golang.org/api v0.125.0
 	google.golang.org/grpc v1.55.0
 	k8s.io/api v0.25.5
 	k8s.io/apimachinery v0.25.5
@@ -126,7 +126,9 @@ require (
 	golang.org/x/tools v0.9.1 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/genproto v0.0.0-20230530153820-e85fd2cbaebc // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
