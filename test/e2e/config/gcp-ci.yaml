@@ -73,15 +73,15 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-autopilot.yaml"
 
 variables:
-  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.25.5}"
+  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.25.7}"
   ETCD_VERSION_UPGRADE_TO: "3.5.1-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.8.6"
-  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-24-9-nightly"
-  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-25-5-nightly"
+  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-24-11-nightly"
+  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-25-7-nightly"
   CONTROL_PLANE_MACHINE_TEMPLATE_UPGRADE_TO: "cp-k8s-upgrade-and-conformance"
   WORKERS_MACHINE_TEMPLATE_UPGRADE_TO: "worker-k8s-upgrade-and-conformance"
-  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.25.5}"
-  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.24.9}"
+  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.25.7}"
+  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.24.11}"
   EXP_CLUSTER_RESOURCE_SET: "true"
   CLUSTER_TOPOLOGY: "true"
   # Cluster Addons

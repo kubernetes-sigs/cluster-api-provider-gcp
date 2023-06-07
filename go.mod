@@ -21,10 +21,10 @@ require (
 	golang.org/x/net v0.10.0
 	google.golang.org/api v0.125.0
 	google.golang.org/grpc v1.55.0
-	k8s.io/api v0.25.5
-	k8s.io/apimachinery v0.25.5
-	k8s.io/client-go v0.25.5
-	k8s.io/component-base v0.25.5
+	k8s.io/api v0.25.10
+	k8s.io/apimachinery v0.25.10
+	k8s.io/client-go v0.25.10
+	k8s.io/component-base v0.25.10
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20220823124924-e9cbc92d1a73
 	sigs.k8s.io/cluster-api v1.3.7
