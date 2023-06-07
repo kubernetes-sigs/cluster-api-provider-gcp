@@ -127,8 +127,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
-github.com/docker/distribution v2.8.1+incompatible h1:Q50tZOPR6T/hjNsyc9g8/syEs6bk8XXApsHjKukMl68=
-github.com/docker/distribution v2.8.1+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
+github.com/docker/distribution v2.8.2+incompatible h1:T3de5rq0dB1j30rp0sA2rER+m322EBzniBPB6ZIzuh8=
+github.com/docker/distribution v2.8.2+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/docker/docker v20.10.24+incompatible h1:Ugvxm7a8+Gz6vqQYQQ2W7GYq5EUPaAiuPgIfVyI3dYE=
 github.com/docker/docker v20.10.24+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/go-connections v0.4.0 h1:El9xVISelRB7BuFusrZozjnkIM5YnzCViNKohAFqRJQ=
@@ -1013,10 +1013,10 @@ k8s.io/utils v0.0.0-20220823124924-e9cbc92d1a73/go.mod h1:jPW/WVKK9YHAvNhRxK0md/
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
 rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
-sigs.k8s.io/cluster-api v1.3.7 h1:SqVOfGtwmSH2ryuhxruWD6r31PN5UDYBcnAbQCHrC9c=
-sigs.k8s.io/cluster-api v1.3.7/go.mod h1:9FNHNItE5c+klfDLNG3+ApSTX0H4yGAumdbFJMnk6Vc=
-sigs.k8s.io/cluster-api/test v1.3.7 h1:RI9m/qNvILItKTQSWaFL6TPcZcg3Wbu+Iuz3m5JCshU=
-sigs.k8s.io/cluster-api/test v1.3.7/go.mod h1:RwkAw4bkNW0s+AhRokbgEPWGbdN5VxdmOsLNQeuZCoU=
+sigs.k8s.io/cluster-api v1.3.8 h1:aBNsoPbU86oWQVWRO2ekHvYUe7NQ1qD4TFL42Xn1PC4=
+sigs.k8s.io/cluster-api v1.3.8/go.mod h1:AAgtyudmqHMp95hS4l1jb+IzFFdhiCmyUYyO9wVUKu0=
+sigs.k8s.io/cluster-api/test v1.3.8 h1:GpwQf2i+pOnSTZf70TjG0RmblcqHkMXwy8OJP3+x3Cw=
+sigs.k8s.io/cluster-api/test v1.3.8/go.mod h1:mq+w7KLwwbWxsIrY1dTmRn2WokLGDqylQyJ/O9AUb8w=
 sigs.k8s.io/controller-runtime v0.13.1 h1:tUsRCSJVM1QQOOeViGeX3GMT3dQF1eePPw6sEE3xSlg=
 sigs.k8s.io/controller-runtime v0.13.1/go.mod h1:Zbz+el8Yg31jubvAEyglRZGdLAjplZl+PgtYNI6WNTI=
 sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 h1:iXTIw73aPyC+oRdyqqvVJuloN1p0AC/kzH07hu3NE+k=
