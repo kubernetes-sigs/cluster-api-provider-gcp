@@ -3,7 +3,7 @@ module sigs.k8s.io/cluster-api-provider-gcp
 go 1.19
 
 require (
-	cloud.google.com/go/compute v1.20.0
+	cloud.google.com/go/compute v1.20.1
 	cloud.google.com/go/container v1.22.1
 	cloud.google.com/go/iam v1.1.1
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
