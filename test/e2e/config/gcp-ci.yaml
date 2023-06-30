@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.3.8
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.8/core-components.yaml
+      - name: v1.4.4
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.4.4/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-      - name: v1.3.8
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.8/bootstrap-components.yaml
+      - name: v1.4.4
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.4.4/bootstrap-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -41,8 +41,8 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-      - name: v1.3.8
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.3.8/control-plane-components.yaml
+      - name: v1.4.4
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.4.4/control-plane-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -54,7 +54,7 @@ providers:
   - name: gcp
     type: InfrastructureProvider
     versions:
-      - name: v1.3.99 # next; use manifest from source files
+      - name: v1.4.99 # next; use manifest from source files
         value: "${PWD}/config/default"
     files:
       - sourcePath: "${PWD}/metadata.yaml"
@@ -74,6 +74,7 @@ providers:
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.25.7}"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.27.3"
   ETCD_VERSION_UPGRADE_TO: "3.5.1-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.8.6"
   KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-v1-24-11-nightly"

@@ -33,8 +33,8 @@ import (
 	cgrecord "k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
-	infrav1alpha3 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3"
-	infrav1alpha4 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4"
+	infrav1alpha3 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3" //nolint: staticcheck
+	infrav1alpha4 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4" //nolint: staticcheck
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"

@@ -136,7 +136,7 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 	instanceKey := meta.ZonalKey(instanceName, s.scope.Zone())
 	instanceSpec.Metadata.Items = append(instanceSpec.Metadata.Items, &compute.MetadataItems{
 		Key:   "user-data",
-		Value: pointer.StringPtr(bootstrapData),
+		Value: pointer.String(bootstrapData),
 	})
 
 	log.V(2).Info("Looking for instance", "name", instanceName, "zone", s.scope.Zone())

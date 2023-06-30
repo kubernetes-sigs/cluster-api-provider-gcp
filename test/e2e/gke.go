@@ -181,7 +181,7 @@ func GetManagedControlPlaneByCluster(ctx context.Context, input GetManagedContro
 	opts := []client.ListOption{
 		client.InNamespace(input.Namespace),
 		client.MatchingLabels{
-			clusterv1.ClusterLabelName: input.ClusterName,
+			clusterv1.ClusterNameLabel: input.ClusterName,
 		},
 	}
 
