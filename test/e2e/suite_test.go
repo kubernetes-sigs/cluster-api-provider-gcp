@@ -41,9 +41,10 @@ import (
 )
 
 const (
-	KubernetesVersion = "KUBERNETES_VERSION"
-	CNIPath           = "CNI"
-	CNIResources      = "CNI_RESOURCES"
+	KubernetesVersion           = "KUBERNETES_VERSION"
+	CNIPath                     = "CNI"
+	CNIResources                = "CNI_RESOURCES"
+	KubernetesVersionManagement = "KUBERNETES_VERSION_MANAGEMENT"
 )
 
 // Test suite flags.
@@ -225,6 +226,7 @@ func setupBootstrapCluster(config *clusterctl.E2EConfig, scheme *runtime.Scheme,
 			Name:               config.ManagementClusterName,
 			RequiresDockerSock: config.HasDockerProvider(),
 			Images:             config.Images,
+			KubernetesVersion:  config.GetVariable(KubernetesVersionManagement),
 		})
 		Expect(clusterProvider).ToNot(BeNil(), "Failed to create a bootstrap cluster")
 

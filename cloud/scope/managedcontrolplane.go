@@ -166,7 +166,7 @@ func (s *ManagedControlPlaneScope) GetAllNodePools(ctx context.Context) ([]infra
 	if s.AllManagedMachinePools == nil || len(s.AllManagedMachinePools) == 0 {
 		listOptions := []client.ListOption{
 			client.InNamespace(s.GCPManagedControlPlane.Namespace),
-			client.MatchingLabels(map[string]string{clusterv1.ClusterLabelName: s.Cluster.Name}),
+			client.MatchingLabels(map[string]string{clusterv1.ClusterNameLabel: s.Cluster.Name}),
 		}
 
 		machinePoolList := &clusterv1exp.MachinePoolList{}
