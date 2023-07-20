@@ -135,7 +135,7 @@ func (r *GCPManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	// Handle non-deleted clusters
-	return r.reconcile(ctx, clusterScope)
+	return ctrl.Result{}, r.reconcile(ctx, clusterScope)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -147,8 +147,8 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 		For(&infrav1exp.GCPManagedCluster{}).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue)).
 		Watches(
-			&source.Kind{Type: &infrav1exp.GCPManagedControlPlane{}},
-			handler.EnqueueRequestsFromMapFunc(r.managedControlPlaneMapper(ctx)),
+			&infrav1exp.GCPManagedControlPlane{},
+			handler.EnqueueRequestsFromMapFunc(r.managedControlPlaneMapper()),
 		).
 		Build(r)
 	if err != nil {
@@ -156,7 +156,7 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 	}
 
 	if err = c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
+		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
 		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrav1exp.GroupVersion.WithKind("GCPManagedCluster"), mgr.GetClient(), &infrav1exp.GCPManagedCluster{})),
 		predicates.ClusterUnpaused(log),
 		predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue),
@@ -167,23 +167,23 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 	return nil
 }
 
-func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScope *scope.ManagedClusterScope) (ctrl.Result, error) {
+func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScope *scope.ManagedClusterScope) error {
 	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcluster")
 	log.Info("Reconciling GCPManagedCluster")
 
 	controllerutil.AddFinalizer(clusterScope.GCPManagedCluster, infrav1exp.ClusterFinalizer)
 	if err := clusterScope.PatchObject(); err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 
 	region, err := clusterScope.Cloud().Regions().Get(ctx, meta.GlobalKey(clusterScope.Region()))
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 
 	zones, err := clusterScope.Cloud().Zones().List(ctx, filter.Regexp("region", region.SelfLink))
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 
 	failureDomains := make(clusterv1.FailureDomains, len(zones))
@@ -204,7 +204,7 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 		if err := r.Reconcile(ctx); err != nil {
 			log.Error(err, "Reconcile error", "reconciler", name)
 			record.Warnf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
@@ -221,7 +221,7 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 		record.Eventf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clusterScope *scope.ManagedClusterScope) (ctrl.Result, error) {
@@ -253,8 +253,8 @@ func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clust
 	return ctrl.Result{}, nil
 }
 
-func (r *GCPManagedClusterReconciler) managedControlPlaneMapper(ctx context.Context) handler.MapFunc {
-	return func(o client.Object) []ctrl.Request {
+func (r *GCPManagedClusterReconciler) managedControlPlaneMapper() handler.MapFunc {
+	return func(ctx context.Context, o client.Object) []ctrl.Request {
 		log := ctrl.LoggerFrom(ctx)
 		gcpManagedControlPlane, ok := o.(*infrav1exp.GCPManagedControlPlane)
 		if !ok {

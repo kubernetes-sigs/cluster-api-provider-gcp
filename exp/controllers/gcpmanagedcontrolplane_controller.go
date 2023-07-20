@@ -74,7 +74,7 @@ func (r *GCPManagedControlPlaneReconciler) SetupWithManager(ctx context.Context,
 	}
 
 	if err = c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
+		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
 		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, gcpManagedControlPlane.GroupVersionKind(), mgr.GetClient(), &infrav1exp.GCPManagedControlPlane{})),
 		predicates.ClusterUnpausedAndInfrastructureReady(log),
 	); err != nil {

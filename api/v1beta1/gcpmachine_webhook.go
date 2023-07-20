@@ -30,6 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -47,22 +48,22 @@ func (m *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &GCPMachine{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (m *GCPMachine) ValidateCreate() error {
+func (m *GCPMachine) ValidateCreate() (admission.Warnings, error) {
 	clusterlog.Info("validate create", "name", m.Name)
-	return validateConfidentialCompute(m.Spec)
+	return nil, validateConfidentialCompute(m.Spec)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (m *GCPMachine) ValidateUpdate(old runtime.Object) error {
+func (m *GCPMachine) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	newGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(m)
 	if err != nil {
-		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
+		return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.InternalError(nil, errors.Wrap(err, "failed to convert new GCPMachine to unstructured object")),
 		})
 	}
 	oldGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(old)
 	if err != nil {
-		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
+		return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.InternalError(nil, errors.Wrap(err, "failed to convert old GCPMachine to unstructured object")),
 		})
 	}
@@ -83,19 +84,19 @@ func (m *GCPMachine) ValidateUpdate(old runtime.Object) error {
 	delete(newGCPMachineSpec, "additionalNetworkTags")
 
 	if !reflect.DeepEqual(oldGCPMachineSpec, newGCPMachineSpec) {
-		return apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
+		return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.Forbidden(field.NewPath("spec"), "cannot be modified"),
 		})
 	}
 
-	return nil
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (m *GCPMachine) ValidateDelete() error {
+func (m *GCPMachine) ValidateDelete() (admission.Warnings, error) {
 	clusterlog.Info("validate delete", "name", m.Name)
 
-	return nil
+	return nil, nil
 }
 
 // Default implements webhookutil.defaulter so a webhook will be registered for the type.

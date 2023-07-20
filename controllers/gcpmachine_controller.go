@@ -62,11 +62,11 @@ func (r *GCPMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		For(&infrav1.GCPMachine{}).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
 		Watches(
-			&source.Kind{Type: &clusterv1.Machine{}},
+			&clusterv1.Machine{},
 			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPMachine"))),
 		).
 		Watches(
-			&source.Kind{Type: &infrav1.GCPCluster{}},
+			&infrav1.GCPCluster{},
 			handler.EnqueueRequestsFromMapFunc(r.GCPClusterToGCPMachines(ctx)),
 		).
 		Build(r)
@@ -74,14 +74,14 @@ func (r *GCPMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		return errors.Wrap(err, "error creating controller")
 	}
 
-	clusterToObjectFunc, err := util.ClusterToObjectsMapper(r.Client, &infrav1.GCPMachineList{}, mgr.GetScheme())
+	clusterToObjectFunc, err := util.ClusterToTypedObjectsMapper(r.Client, &infrav1.GCPMachineList{}, mgr.GetScheme())
 	if err != nil {
 		return errors.Wrap(err, "failed to create mapper for Cluster to GCPMachines")
 	}
 
 	// Add a watch on clusterv1.Cluster object for unpause & ready notifications.
 	if err := c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
+		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
 		handler.EnqueueRequestsFromMapFunc(clusterToObjectFunc),
 		predicates.ClusterUnpausedAndInfrastructureReady(log),
 	); err != nil {
@@ -95,7 +95,7 @@ func (r *GCPMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 // of GCPMachines.
 func (r *GCPMachineReconciler) GCPClusterToGCPMachines(ctx context.Context) handler.MapFunc {
 	log := ctrl.LoggerFrom(ctx)
-	return func(o client.Object) []ctrl.Request {
+	return func(mapCtx context.Context, o client.Object) []ctrl.Request {
 		result := []ctrl.Request{}
 
 		c, ok := o.(*infrav1.GCPCluster)
@@ -104,7 +104,7 @@ func (r *GCPMachineReconciler) GCPClusterToGCPMachines(ctx context.Context) hand
 			return nil
 		}
 
-		cluster, err := util.GetOwnerCluster(ctx, r.Client, c.ObjectMeta)
+		cluster, err := util.GetOwnerCluster(mapCtx, r.Client, c.ObjectMeta)
 		switch {
 		case apierrors.IsNotFound(err) || cluster == nil:
 			return result
@@ -115,7 +115,7 @@ func (r *GCPMachineReconciler) GCPClusterToGCPMachines(ctx context.Context) hand
 
 		labels := map[string]string{clusterv1.ClusterNameLabel: cluster.Name}
 		machineList := &clusterv1.MachineList{}
-		if err := r.List(ctx, machineList, client.InNamespace(c.Namespace), client.MatchingLabels(labels)); err != nil {
+		if err := r.List(mapCtx, machineList, client.InNamespace(c.Namespace), client.MatchingLabels(labels)); err != nil {
 			log.Error(err, "failed to list Machines")
 			return nil
 		}
@@ -209,7 +209,7 @@ func (r *GCPMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Handle deleted machines
 	if !gcpMachine.ObjectMeta.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, machineScope)
+		return ctrl.Result{}, r.reconcileDelete(ctx, machineScope)
 	}
 
 	// Handle non-deleted machines
@@ -250,16 +250,16 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	}
 }
 
-func (r *GCPMachineReconciler) reconcileDelete(ctx context.Context, machineScope *scope.MachineScope) (_ ctrl.Result, reterr error) {
+func (r *GCPMachineReconciler) reconcileDelete(ctx context.Context, machineScope *scope.MachineScope) error {
 	log := log.FromContext(ctx)
 	log.Info("Reconciling Delete GCPMachine")
 
 	if err := instances.New(machineScope).Delete(ctx); err != nil {
 		log.Error(err, "Error deleting instance resources")
-		return ctrl.Result{}, err
+		return err
 	}
 
 	controllerutil.RemoveFinalizer(machineScope.GCPMachine, infrav1.MachineFinalizer)
 	record.Event(machineScope.GCPMachine, "GCPMachineReconcile", "Reconciled")
-	return ctrl.Result{}, nil
+	return nil
 }

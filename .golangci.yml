@@ -59,6 +59,13 @@ linters-settings:
     go: "1.18"
   stylecheck:
     go: "1.18"
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: "io/ioutil"
+            desc: "ioutil is deprecated starting with Go 1.16"
+
 
 issues:
   max-same-issues: 0

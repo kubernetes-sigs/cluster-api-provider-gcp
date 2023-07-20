@@ -80,12 +80,13 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			err := test.newTemplate.ValidateUpdate(test.oldTemplate)
+			warn, err := test.newTemplate.ValidateUpdate(test.oldTemplate)
 			if test.wantErr {
 				g.Expect(err).To(HaveOccurred())
 			} else {
 				g.Expect(err).NotTo(HaveOccurred())
 			}
+			g.Expect(warn).To(BeNil())
 		})
 	}
 }
