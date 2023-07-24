@@ -5,7 +5,7 @@ go 1.19
 replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.4.4
 
 require (
-	cloud.google.com/go/compute v1.21.0
+	cloud.google.com/go/compute v1.22.0
 	cloud.google.com/go/container v1.23.0
 	cloud.google.com/go/iam v1.1.1
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
