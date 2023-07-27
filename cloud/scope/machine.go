@@ -94,6 +94,11 @@ func (m *MachineScope) Cloud() cloud.Cloud {
 	return m.ClusterGetter.Cloud()
 }
 
+// NetworkCloud returns initialized network cloud
+func (m *MachineScope) NetworkCloud() cloud.Cloud {
+	return m.ClusterGetter.NetworkCloud()
+}
+
 // Zone returns the FailureDomain for the GCPMachine.
 func (m *MachineScope) Zone() string {
 	if m.Machine.Spec.FailureDomain == nil {
@@ -276,7 +281,7 @@ func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
 // InstanceNetworkInterfaceSpec returns compute network interface spec.
 func (m *MachineScope) InstanceNetworkInterfaceSpec() *compute.NetworkInterface {
 	networkInterface := &compute.NetworkInterface{
-		Network: path.Join("projects", m.ClusterGetter.Project(), "global", "networks", m.ClusterGetter.NetworkName()),
+		Network: path.Join("projects", m.ClusterGetter.NetworkProject(), "global", "networks", m.ClusterGetter.NetworkName()),
 	}
 
 	if m.GCPMachine.Spec.PublicIP != nil && *m.GCPMachine.Spec.PublicIP {
@@ -289,7 +294,7 @@ func (m *MachineScope) InstanceNetworkInterfaceSpec() *compute.NetworkInterface 
 	}
 
 	if m.GCPMachine.Spec.Subnet != nil {
-		networkInterface.Subnetwork = path.Join("regions", m.ClusterGetter.Region(), "subnetworks", *m.GCPMachine.Spec.Subnet)
+		networkInterface.Subnetwork = path.Join("projects", m.ClusterGetter.NetworkProject(), "regions", m.ClusterGetter.Region(), "subnetworks", *m.GCPMachine.Spec.Subnet)
 	}
 
 	return networkInterface

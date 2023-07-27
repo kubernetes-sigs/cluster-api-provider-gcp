@@ -52,6 +52,11 @@ func (s *Service) Reconcile(ctx context.Context) error {
 // Delete delete cluster network components.
 func (s *Service) Delete(ctx context.Context) error {
 	log := log.FromContext(ctx)
+	if s.scope.IsSharedVpc() {
+		s.scope.Network().Router = nil
+		s.scope.Network().SelfLink = nil
+		return nil
+	}
 	log.Info("Deleting network resources")
 	networkKey := meta.GlobalKey(s.scope.NetworkName())
 	log.V(2).Info("Looking for network before deleting", "name", networkKey)
@@ -99,6 +104,10 @@ func (s *Service) createOrGetNetwork(ctx context.Context) (*compute.Network, err
 	if err != nil {
 		if !gcperrors.IsNotFound(err) {
 			log.Error(err, "Error looking for network", "name", s.scope.NetworkName())
+			return nil, err
+		}
+		if s.scope.IsSharedVpc() {
+			log.Error(err, "VPC is enabled. Error looking for network", "name", s.scope.NetworkName())
 			return nil, err
 		}
 
