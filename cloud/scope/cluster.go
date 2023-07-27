@@ -125,7 +125,7 @@ func (s *ClusterScope) NetworkProject() string {
 	return pointer.StringDeref(s.GCPCluster.Spec.Network.HostProject, s.GCPCluster.Spec.Project)
 }
 
-// IsSharedVpc returns the cluster network unique identifier.
+// IsSharedVpc returns true If sharedVPC used else , returns false.
 func (s *ClusterScope) IsSharedVpc() bool {
 	if s.NetworkProject() != s.Project() {
 		return true
