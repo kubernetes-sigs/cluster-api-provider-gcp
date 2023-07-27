@@ -93,6 +93,11 @@ func (s *ManagedClusterScope) Cloud() cloud.Cloud {
 	return newCloud(s.Project(), s.GCPServices)
 }
 
+// NetworkCloud returns initialized cloud.
+func (s *ManagedClusterScope) NetworkCloud() cloud.Cloud {
+	return newCloud(s.NetworkProject(), s.GCPServices)
+}
+
 // Project returns the current project name.
 func (s *ManagedClusterScope) Project() string {
 	return s.GCPManagedCluster.Spec.Project
@@ -118,9 +123,22 @@ func (s *ManagedClusterScope) NetworkName() string {
 	return pointer.StringDeref(s.GCPManagedCluster.Spec.Network.Name, "default")
 }
 
+// NetworkProject returns the cluster network unique identifier.
+func (s *ManagedClusterScope) NetworkProject() string {
+	return pointer.StringDeref(s.GCPManagedCluster.Spec.Network.HostProject, s.GCPManagedCluster.Spec.Project)
+}
+
+// IsSharedVpc returns the cluster network unique identifier.
+func (s *ManagedClusterScope) IsSharedVpc() bool {
+	if s.NetworkProject() != s.Project() {
+		return true
+	}
+	return false
+}
+
 // NetworkLink returns the partial URL for the network.
 func (s *ManagedClusterScope) NetworkLink() string {
-	return fmt.Sprintf("projects/%s/global/networks/%s", s.Project(), s.NetworkName())
+	return fmt.Sprintf("projects/%s/global/networks/%s", s.NetworkProject(), s.NetworkName())
 }
 
 // Network returns the cluster network object.

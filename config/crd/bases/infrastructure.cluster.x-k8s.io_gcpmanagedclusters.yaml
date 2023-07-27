@@ -114,6 +114,9 @@ spec:
                   name:
                     description: Name is the name of the network to be used.
                     type: string
+                  hostProject:
+                    description: Network host project is the name need of the host project hosting the shared VPC network.
+                    type: string
                   subnets:
                     description: Subnets configuration.
                     items:

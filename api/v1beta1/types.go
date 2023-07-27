@@ -93,6 +93,9 @@ type NetworkSpec struct {
 	// +optional
 	Name *string `json:"name,omitempty"`
 
+	// HostProject  is the name of the host project hosting the shared VPC network
+	HostProject *string `json:"hostProject,omitempty"`
+
 	// AutoCreateSubnetworks: When set to true, the VPC network is created
 	// in "auto" mode. When set to false, the VPC network is created in
 	// "custom" mode.
