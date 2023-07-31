@@ -21,7 +21,7 @@ require (
 	golang.org/x/mod v0.12.0
 	golang.org/x/net v0.12.0
 	google.golang.org/api v0.133.0
-	google.golang.org/grpc v1.56.2
+	google.golang.org/grpc v1.57.0
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
@@ -32,6 +32,8 @@ require (
 	sigs.k8s.io/cluster-api/test v1.4.4
 	sigs.k8s.io/controller-runtime v0.14.5
 )
+
+require golang.org/x/sync v0.3.0 // indirect
 
 require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
