@@ -25,6 +25,7 @@ import (
 
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -136,7 +137,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, statusErr
 	}
 
-	needUpdate, updateClusterRequest := s.checkDiffAndPrepareUpdate(cluster)
+	needUpdate, updateClusterRequest := s.checkDiffAndPrepareUpdate(cluster, &log)
 	if needUpdate {
 		log.Info("Update required")
 		err = s.updateCluster(ctx, updateClusterRequest, &log)
@@ -258,6 +259,7 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		ReleaseChannel: &containerpb.ReleaseChannel{
 			Channel: convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
 		},
+		MasterAuthorizedNetworksConfig: convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig),
 	}
 	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
 		cluster.InitialClusterVersion = *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
@@ -320,25 +322,102 @@ func convertToSdkReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.
 	}
 }
 
-func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster) (bool, *containerpb.UpdateClusterRequest) {
+// convertToSdkMasterAuthorizedNetworksConfig converts the MasterAuthorizedNetworksConfig defined in CRs to the SDK version.
+func convertToSdkMasterAuthorizedNetworksConfig(config *infrav1exp.MasterAuthorizedNetworksConfig) *containerpb.MasterAuthorizedNetworksConfig {
+	// if config is nil, it means that the user wants to disable the feature.
+	if config == nil {
+		return &containerpb.MasterAuthorizedNetworksConfig{
+			Enabled:                     false,
+			CidrBlocks:                  []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{},
+			GcpPublicCidrsAccessEnabled: new(bool),
+		}
+	}
+
+	// Convert the CidrBlocks slice.
+	cidrBlocks := make([]*containerpb.MasterAuthorizedNetworksConfig_CidrBlock, len(config.CidrBlocks))
+	for i, cidrBlock := range config.CidrBlocks {
+		cidrBlocks[i] = &containerpb.MasterAuthorizedNetworksConfig_CidrBlock{
+			CidrBlock:   cidrBlock.CidrBlock,
+			DisplayName: cidrBlock.DisplayName,
+		}
+	}
+
+	return &containerpb.MasterAuthorizedNetworksConfig{
+		Enabled:                     true,
+		CidrBlocks:                  cidrBlocks,
+		GcpPublicCidrsAccessEnabled: config.GcpPublicCidrsAccessEnabled,
+	}
+}
+
+func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	log.V(4).Info("Checking diff and preparing update.")
+
 	needUpdate := false
 	clusterUpdate := containerpb.ClusterUpdate{}
 	// Release channel
 	desiredReleaseChannel := convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel)
 	if desiredReleaseChannel != existingCluster.ReleaseChannel.Channel {
+		log.V(2).Info("Release channel update required", "current", existingCluster.ReleaseChannel.Channel, "desired", desiredReleaseChannel)
 		needUpdate = true
 		clusterUpdate.DesiredReleaseChannel = &containerpb.ReleaseChannel{
 			Channel: desiredReleaseChannel,
 		}
 	}
 	// Master version
-	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil && *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != existingCluster.InitialClusterVersion {
-		needUpdate = true
-		clusterUpdate.DesiredMasterVersion = *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
+	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
+		desiredMasterVersion := *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
+		if desiredMasterVersion != existingCluster.InitialClusterVersion {
+			needUpdate = true
+			clusterUpdate.DesiredMasterVersion = desiredMasterVersion
+			log.V(2).Info("Master version update required", "current", existingCluster.InitialClusterVersion, "desired", desiredMasterVersion)
+		}
 	}
+
+	// DesiredMasterAuthorizedNetworksConfig
+	// When desiredMasterAuthorizedNetworksConfig is nil, it means that the user wants to disable the feature.
+	desiredMasterAuthorizedNetworksConfig := convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig)
+	if !compareMasterAuthorizedNetworksConfig(desiredMasterAuthorizedNetworksConfig, existingCluster.MasterAuthorizedNetworksConfig) {
+		needUpdate = true
+		clusterUpdate.DesiredMasterAuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
+		log.V(2).Info("Master authorized networks config update required", "current", existingCluster.MasterAuthorizedNetworksConfig, "desired", desiredMasterAuthorizedNetworksConfig)
+	}
+	log.V(4).Info("Master authorized networks config update check", "current", existingCluster.MasterAuthorizedNetworksConfig)
+	if desiredMasterAuthorizedNetworksConfig != nil {
+		log.V(4).Info("Master authorized networks config update check", "desired", desiredMasterAuthorizedNetworksConfig)
+	}
+
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,
 	}
+	log.V(4).Info("Update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
 	return needUpdate, &updateClusterRequest
+}
+
+// compare if two MasterAuthorizedNetworksConfig are equal.
+func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNetworksConfig) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	if a.Enabled != b.Enabled {
+		return false
+	}
+	if (a.GcpPublicCidrsAccessEnabled == nil && b.GcpPublicCidrsAccessEnabled != nil) || (a.GcpPublicCidrsAccessEnabled != nil && b.GcpPublicCidrsAccessEnabled == nil) {
+		return false
+	}
+	if a.GcpPublicCidrsAccessEnabled != nil && b.GcpPublicCidrsAccessEnabled != nil && *a.GcpPublicCidrsAccessEnabled != *b.GcpPublicCidrsAccessEnabled {
+		return false
+	}
+	// if one cidrBlocks is nil, but the other is empty, they are equal.
+	if (a.CidrBlocks == nil && b.CidrBlocks != nil && len(b.CidrBlocks) == 0) || (b.CidrBlocks == nil && a.CidrBlocks != nil && len(a.CidrBlocks) == 0) {
+		return true
+	}
+	if !cmp.Equal(a.CidrBlocks, b.CidrBlocks) {
+		return false
+	}
+	return true
 }

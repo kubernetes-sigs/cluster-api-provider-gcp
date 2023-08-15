@@ -53,6 +53,10 @@ type GCPManagedControlPlaneSpec struct {
 	// Endpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	Endpoint clusterv1.APIEndpoint `json:"endpoint"`
+	// MasterAuthorizedNetworksConfig represents configuration options for master authorized networks feature of the GKE cluster.
+	// This feature is disabled if this field is not specified.
+	// +optional
+	MasterAuthorizedNetworksConfig *MasterAuthorizedNetworksConfig `json:"master_authorized_networks_config,omitempty"`
 }
 
 // GCPManagedControlPlaneStatus defines the observed state of GCPManagedControlPlane.
@@ -114,6 +118,29 @@ const (
 	// Stable release channel.
 	Stable ReleaseChannel = "stable"
 )
+
+// MasterAuthorizedNetworksConfig contains configuration options for the master authorized networks feature.
+// Enabled master authorized networks will disallow all external traffic to access
+// Kubernetes master through HTTPS except traffic from the given CIDR blocks,
+// Google Compute Engine Public IPs and Google Prod IPs.
+type MasterAuthorizedNetworksConfig struct {
+	// cidr_blocks define up to 50 external networks that could access
+	// Kubernetes master through HTTPS.
+	// +optional
+	CidrBlocks []*MasterAuthorizedNetworksConfigCidrBlock `json:"cidr_blocks,omitempty"`
+	// Whether master is accessible via Google Compute Engine Public IP addresses.
+	// +optional
+	GcpPublicCidrsAccessEnabled *bool `json:"gcp_public_cidrs_access_enabled,omitempty"`
+}
+
+// MasterAuthorizedNetworksConfigCidrBlock contains an optional name and one CIDR block.
+type MasterAuthorizedNetworksConfigCidrBlock struct {
+	// display_name is an field for users to identify CIDR blocks.
+	DisplayName string `json:"display_name,omitempty"`
+	// cidr_block must be specified in CIDR notation.
+	// +kubebuilder:validation:Pattern=`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\/([0-9]|[1-2][0-9]|3[0-2]))?$|^([a-fA-F0-9:]+:+)+[a-fA-F0-9]+\/[0-9]{1,3}$`
+	CidrBlock string `json:"cidr_block,omitempty"`
+}
 
 // GetConditions returns the control planes conditions.
 func (r *GCPManagedControlPlane) GetConditions() clusterv1.Conditions {
