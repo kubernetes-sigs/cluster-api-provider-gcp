@@ -25,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -49,27 +50,27 @@ func (r *GCPClusterTemplate) Default() {
 var _ webhook.Validator = &GCPClusterTemplate{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPClusterTemplate) ValidateCreate() error {
+func (r *GCPClusterTemplate) ValidateCreate() (admission.Warnings, error) {
 	gcpclustertemplatelog.Info("validate create", "name", r.Name)
 
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPClusterTemplate) ValidateUpdate(oldRaw runtime.Object) error {
+func (r *GCPClusterTemplate) ValidateUpdate(oldRaw runtime.Object) (admission.Warnings, error) {
 	old, ok := oldRaw.(*GCPClusterTemplate)
 	if !ok {
-		return apierrors.NewBadRequest(fmt.Sprintf("expected an GCPClusterTemplate but got a %T", oldRaw))
+		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected an GCPClusterTemplate but got a %T", oldRaw))
 	}
 
 	if !reflect.DeepEqual(r.Spec, old.Spec) {
-		return apierrors.NewBadRequest("GCPClusterTemplate.Spec is immutable")
+		return nil, apierrors.NewBadRequest("GCPClusterTemplate.Spec is immutable")
 	}
-	return nil
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPClusterTemplate) ValidateDelete() error {
+func (r *GCPClusterTemplate) ValidateDelete() (admission.Warnings, error) {
 	gcpclustertemplatelog.Info("validate delete", "name", r.Name)
-	return nil
+	return nil, nil
 }

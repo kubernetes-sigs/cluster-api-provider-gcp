@@ -90,12 +90,13 @@ func TestGCPMachine_ValidateCreate(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			err := test.GCPMachine.ValidateCreate()
+			warn, err := test.GCPMachine.ValidateCreate()
 			if test.wantErr {
 				g.Expect(err).To(HaveOccurred())
 			} else {
 				g.Expect(err).NotTo(HaveOccurred())
 			}
+			g.Expect(warn).To(BeNil())
 		})
 	}
 }

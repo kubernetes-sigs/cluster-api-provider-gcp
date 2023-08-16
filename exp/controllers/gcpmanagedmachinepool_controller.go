@@ -81,7 +81,7 @@ func GetOwnerClusterKey(obj metav1.ObjectMeta) (*client.ObjectKey, error) {
 }
 
 func machinePoolToInfrastructureMapFunc(gvk schema.GroupVersionKind) handler.MapFunc {
-	return func(o client.Object) []reconcile.Request {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		m, ok := o.(*expclusterv1.MachinePool)
 		if !ok {
 			panic(fmt.Sprintf("Expected a MachinePool but got a %T", o))
@@ -106,8 +106,7 @@ func machinePoolToInfrastructureMapFunc(gvk schema.GroupVersionKind) handler.Map
 }
 
 func managedControlPlaneToManagedMachinePoolMapFunc(c client.Client, gvk schema.GroupVersionKind, log logr.Logger) handler.MapFunc {
-	return func(o client.Object) []reconcile.Request {
-		ctx := context.Background()
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		gcpManagedControlPlane, ok := o.(*infrav1exp.GCPManagedControlPlane)
 		if !ok {
 			panic(fmt.Sprintf("Expected a GCPManagedControlPlane but got a %T", o))
@@ -138,7 +137,7 @@ func managedControlPlaneToManagedMachinePoolMapFunc(c client.Client, gvk schema.
 
 		var results []ctrl.Request
 		for i := range managedPoolForClusterList.Items {
-			managedPool := mapFunc(&managedPoolForClusterList.Items[i])
+			managedPool := mapFunc(ctx, &managedPoolForClusterList.Items[i])
 			results = append(results, managedPool...)
 		}
 
@@ -160,11 +159,11 @@ func (r *GCPManagedMachinePoolReconciler) SetupWithManager(ctx context.Context, 
 		For(&infrav1exp.GCPManagedMachinePool{}).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue)).
 		Watches(
-			&source.Kind{Type: &expclusterv1.MachinePool{}},
+			&expclusterv1.MachinePool{},
 			handler.EnqueueRequestsFromMapFunc(machinePoolToInfrastructureMapFunc(gvk)),
 		).
 		Watches(
-			&source.Kind{Type: &infrav1exp.GCPManagedControlPlane{}},
+			&infrav1exp.GCPManagedControlPlane{},
 			handler.EnqueueRequestsFromMapFunc(managedControlPlaneToManagedMachinePoolMapFunc(r.Client, gvk, log)),
 		).
 		Build(r)
@@ -172,14 +171,14 @@ func (r *GCPManagedMachinePoolReconciler) SetupWithManager(ctx context.Context, 
 		return errors.Wrap(err, "error creating controller")
 	}
 
-	clusterToObjectFunc, err := util.ClusterToObjectsMapper(r.Client, &infrav1exp.GCPManagedMachinePoolList{}, mgr.GetScheme())
+	clusterToObjectFunc, err := util.ClusterToTypedObjectsMapper(r.Client, &infrav1exp.GCPManagedMachinePoolList{}, mgr.GetScheme())
 	if err != nil {
 		return errors.Wrap(err, "failed to create mapper for Cluster to GCPManagedMachinePools")
 	}
 
 	// Add a watch on clusterv1.Cluster object for unpause & ready notifications.
 	if err := c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
+		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
 		handler.EnqueueRequestsFromMapFunc(clusterToObjectFunc),
 		predicates.ClusterUnpausedAndInfrastructureReady(log),
 	); err != nil {

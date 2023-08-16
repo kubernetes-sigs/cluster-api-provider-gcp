@@ -31,6 +31,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 const (
@@ -73,7 +74,7 @@ func (r *GCPManagedControlPlane) Default() {
 var _ webhook.Validator = &GCPManagedControlPlane{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPManagedControlPlane) ValidateCreate() error {
+func (r *GCPManagedControlPlane) ValidateCreate() (admission.Warnings, error) {
 	gcpmanagedcontrolplanelog.Info("validate create", "name", r.Name)
 	var allErrs field.ErrorList
 
@@ -89,14 +90,14 @@ func (r *GCPManagedControlPlane) ValidateCreate() error {
 	}
 
 	if len(allErrs) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	return apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
+	return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPManagedControlPlane) ValidateUpdate(oldRaw runtime.Object) error {
+func (r *GCPManagedControlPlane) ValidateUpdate(oldRaw runtime.Object) (admission.Warnings, error) {
 	gcpmanagedcontrolplanelog.Info("validate update", "name", r.Name)
 	var allErrs field.ErrorList
 	old := oldRaw.(*GCPManagedControlPlane)
@@ -130,17 +131,17 @@ func (r *GCPManagedControlPlane) ValidateUpdate(oldRaw runtime.Object) error {
 	}
 
 	if len(allErrs) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	return apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
+	return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPManagedControlPlane) ValidateDelete() error {
+func (r *GCPManagedControlPlane) ValidateDelete() (admission.Warnings, error) {
 	gcpmanagedcontrolplanelog.Info("validate delete", "name", r.Name)
 
-	return nil
+	return nil, nil
 }
 
 func generateGKEName(resourceName, namespace string, maxLength int) (string, error) {

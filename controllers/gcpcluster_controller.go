@@ -74,9 +74,9 @@ func (r *GCPClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 
 	clusterToInfraFn := util.ClusterToInfrastructureMapFunc(ctx, infrav1.GroupVersion.WithKind("GCPCluster"), mgr.GetClient(), &infrav1.GCPCluster{})
 	if err = c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
-		handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
-			requests := clusterToInfraFn(o)
+		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
+		handler.EnqueueRequestsFromMapFunc(func(mapCtx context.Context, o client.Object) []reconcile.Request {
+			requests := clusterToInfraFn(mapCtx, o)
 			if requests == nil {
 				return nil
 			}
@@ -152,7 +152,7 @@ func (r *GCPClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Handle deleted clusters
 	if !gcpCluster.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, clusterScope)
+		return ctrl.Result{}, r.reconcileDelete(ctx, clusterScope)
 	}
 
 	// Handle non-deleted clusters
@@ -225,7 +225,7 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 	return ctrl.Result{}, nil
 }
 
-func (r *GCPClusterReconciler) reconcileDelete(ctx context.Context, clusterScope *scope.ClusterScope) (ctrl.Result, error) {
+func (r *GCPClusterReconciler) reconcileDelete(ctx context.Context, clusterScope *scope.ClusterScope) error {
 	log := log.FromContext(ctx)
 	log.Info("Reconciling Delete GCPCluster")
 
@@ -240,11 +240,11 @@ func (r *GCPClusterReconciler) reconcileDelete(ctx context.Context, clusterScope
 		if err := r.Delete(ctx); err != nil {
 			log.Error(err, "Reconcile error")
 			record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
 	controllerutil.RemoveFinalizer(clusterScope.GCPCluster, infrav1.ClusterFinalizer)
 	record.Event(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconciled")
-	return ctrl.Result{}, nil
+	return nil
 }

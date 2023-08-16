@@ -25,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // clusterlog is for logging in this package.
@@ -49,14 +50,14 @@ func (c *GCPCluster) Default() {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (c *GCPCluster) ValidateCreate() error {
+func (c *GCPCluster) ValidateCreate() (admission.Warnings, error) {
 	clusterlog.Info("validate create", "name", c.Name)
 
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (c *GCPCluster) ValidateUpdate(oldRaw runtime.Object) error {
+func (c *GCPCluster) ValidateUpdate(oldRaw runtime.Object) (admission.Warnings, error) {
 	clusterlog.Info("validate update", "name", c.Name)
 	var allErrs field.ErrorList
 	old := oldRaw.(*GCPCluster)
@@ -83,15 +84,15 @@ func (c *GCPCluster) ValidateUpdate(oldRaw runtime.Object) error {
 	}
 
 	if len(allErrs) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	return apierrors.NewInvalid(GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
+	return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (c *GCPCluster) ValidateDelete() error {
+func (c *GCPCluster) ValidateDelete() (admission.Warnings, error) {
 	clusterlog.Info("validate delete", "name", c.Name)
 
-	return nil
+	return nil, nil
 }
