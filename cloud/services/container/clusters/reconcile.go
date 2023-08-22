@@ -280,6 +280,17 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		return err
 	}
 
+	err = shared.ResourceTagBinding(
+		ctx,
+		s.scope.TagBindingsClient(),
+		s.scope.GCPManagedCluster.Spec,
+		s.scope.ClusterName(),
+	)
+	if err != nil {
+		log.Error(err, "Error binding tags to cluster resources", "name", s.scope.ClusterName())
+		return err
+	}
+
 	return nil
 }
 

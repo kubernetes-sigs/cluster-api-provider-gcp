@@ -197,6 +197,12 @@ type GCPMachineSpec struct {
 	// +optional
 	AdditionalNetworkTags []string `json:"additionalNetworkTags,omitempty"`
 
+	// ResourceManagerTags is an optional set of tags to apply to GCP resources managed
+	// by the GCP provider. GCP supports a maximum of 50 tags per resource.
+	// +maxItems=50
+	// +optional
+	ResourceManagerTags ResourceManagerTags `json:"resourceManagerTags,omitempty"`
+
 	// RootDeviceSize is the size of the root volume in GB.
 	// Defaults to 30.
 	// +optional

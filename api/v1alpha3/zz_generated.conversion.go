@@ -414,6 +414,7 @@ func autoConvert_v1beta1_GCPClusterSpec_To_v1alpha3_GCPClusterSpec(in *v1beta1.G
 	}
 	out.FailureDomains = *(*[]string)(unsafe.Pointer(&in.FailureDomains))
 	out.AdditionalLabels = *(*Labels)(unsafe.Pointer(&in.AdditionalLabels))
+	// WARNING: in.ResourceManagerTags requires manual conversion: does not exist in peer-type
 	// WARNING: in.CredentialsRef requires manual conversion: does not exist in peer-type
 	return nil
 }
@@ -567,6 +568,7 @@ func autoConvert_v1beta1_GCPMachineSpec_To_v1alpha3_GCPMachineSpec(in *v1beta1.G
 	out.AdditionalMetadata = *(*[]MetadataItem)(unsafe.Pointer(&in.AdditionalMetadata))
 	out.PublicIP = (*bool)(unsafe.Pointer(in.PublicIP))
 	out.AdditionalNetworkTags = *(*[]string)(unsafe.Pointer(&in.AdditionalNetworkTags))
+	// WARNING: in.ResourceManagerTags requires manual conversion: does not exist in peer-type
 	out.RootDeviceSize = in.RootDeviceSize
 	out.RootDeviceType = (*DiskType)(unsafe.Pointer(in.RootDeviceType))
 	out.AdditionalDisks = *(*[]AttachedDiskSpec)(unsafe.Pointer(&in.AdditionalDisks))

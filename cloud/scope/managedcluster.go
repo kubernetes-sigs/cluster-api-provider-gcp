@@ -133,6 +133,15 @@ func (s *ManagedClusterScope) AdditionalLabels() infrav1.Labels {
 	return s.GCPManagedCluster.Spec.AdditionalLabels
 }
 
+// ResourceManagerTags returns ResourceManagerTags from cluster. The returned value will never be nil.
+func (s *ManagedClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags {
+	if len(s.GCPManagedCluster.Spec.ResourceManagerTags) == 0 {
+		s.GCPManagedCluster.Spec.ResourceManagerTags = infrav1.ResourceManagerTags{}
+	}
+
+	return s.GCPManagedCluster.Spec.ResourceManagerTags.DeepCopy()
+}
+
 // ControlPlaneEndpoint returns the cluster control-plane endpoint.
 func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 	endpoint := s.GCPManagedCluster.Spec.ControlPlaneEndpoint

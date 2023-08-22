@@ -357,6 +357,57 @@ spec:
                       region:
                         description: The GCP Region the cluster lives in.
                         type: string
+                      resourceManagerTags:
+                        description: ResourceManagerTags is an optional set of tags
+                          to apply to GCP resources managed by the GCP provider. GCP
+                          supports a maximum of 50 tags per resource.
+                        items:
+                          description: ResourceManagerTag is a tag to apply to GCP
+                            resources managed by the GCP provider.
+                          properties:
+                            key:
+                              description: Key is the key part of the tag. A tag key
+                                can have a maximum of 63 characters and cannot be
+                                empty. Tag key must begin and end with an alphanumeric
+                                character, and must contain only uppercase, lowercase
+                                alphanumeric characters, and the following special
+                                characters `._-`.
+                              maxLength: 63
+                              minLength: 1
+                              pattern: ^[a-zA-Z0-9]([0-9A-Za-z_.-]{0,61}[a-zA-Z0-9])?$
+                              type: string
+                            parentID:
+                              description: ParentID is the ID of the hierarchical
+                                resource where the tags are defined e.g. at the Organization
+                                or the Project level. To find the Organization or
+                                Project ID ref https://cloud.google.com/resource-manager/docs/creating-managing-organization#retrieving_your_organization_id
+                                https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects
+                                An OrganizationID must consist of decimal numbers,
+                                and cannot have leading zeroes. A ProjectID must be
+                                6 to 30 characters in length, can only contain lowercase
+                                letters, numbers, and hyphens, and must start with
+                                a letter, and cannot end with a hyphen.
+                              maxLength: 32
+                              minLength: 1
+                              pattern: (^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)
+                              type: string
+                            value:
+                              description: Value is the value part of the tag. A tag
+                                value can have a maximum of 63 characters and cannot
+                                be empty. Tag value must begin and end with an alphanumeric
+                                character, and must contain only uppercase, lowercase
+                                alphanumeric characters, and the following special
+                                characters `_-.@%=+:,*#&(){}[]` and spaces.
+                              maxLength: 63
+                              minLength: 1
+                              pattern: ^[a-zA-Z0-9]([0-9A-Za-z_.@%=+:,*#&()\[\]{}\-\s]{0,61}[a-zA-Z0-9])?$
+                              type: string
+                          required:
+                          - key
+                          - parentID
+                          - value
+                          type: object
+                        type: array
                     required:
                     - project
                     - region
