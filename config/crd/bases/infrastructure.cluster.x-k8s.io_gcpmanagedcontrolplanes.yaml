@@ -91,6 +91,33 @@ spec:
                 description: Location represents the location (region or zone) in
                   which the GKE cluster will be created.
                 type: string
+              master_authorized_networks_config:
+                description: MasterAuthorizedNetworksConfig represents configuration
+                  options for master authorized networks feature of the GKE cluster.
+                  This feature is disabled if this field is not specified.
+                properties:
+                  cidr_blocks:
+                    description: cidr_blocks define up to 50 external networks that
+                      could access Kubernetes master through HTTPS.
+                    items:
+                      description: MasterAuthorizedNetworksConfigCidrBlock contains
+                        an optional name and one CIDR block.
+                      properties:
+                        cidr_block:
+                          description: cidr_block must be specified in CIDR notation.
+                          pattern: ^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\/([0-9]|[1-2][0-9]|3[0-2]))?$|^([a-fA-F0-9:]+:+)+[a-fA-F0-9]+\/[0-9]{1,3}$
+                          type: string
+                        display_name:
+                          description: display_name is an field for users to identify
+                            CIDR blocks.
+                          type: string
+                      type: object
+                    type: array
+                  gcp_public_cidrs_access_enabled:
+                    description: Whether master is accessible via Google Compute Engine
+                      Public IP addresses.
+                    type: boolean
+                type: object
               project:
                 description: Project is the name of the project to deploy the cluster
                   to.
