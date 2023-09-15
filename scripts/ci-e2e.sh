@@ -52,7 +52,7 @@ export KUBERNETES_MINOR_VERSION="27"
 export KUBERNETES_PATCH_VERSION="3"
 export KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
 # using prebuilt image from image-builder project the image is built everyday and the job is available here https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
-export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2004-${KUBERNETES_VERSION//[.+]/-}-nightly"
+export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-${KUBERNETES_VERSION//[.+]/-}-nightly"
 
 init_image() {
   if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then

@@ -28,9 +28,10 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
@@ -38,6 +39,7 @@ import (
 	"sigs.k8s.io/cluster-api/test/framework/bootstrap"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/test/framework/ginkgoextensions"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -101,6 +103,13 @@ func init() {
 	flag.BoolVar(&useCIArtifacts, "kubetest.use-ci-artifacts", false, "use the latest build from the main branch of the Kubernetes repository. Set KUBERNETES_VERSION environment variable to latest-1.xx to use the build from 1.xx release branch.")
 	flag.StringVar(&kubetestConfigFilePath, "kubetest.config-file", "", "path to the kubetest configuration file")
 	flag.StringVar(&kubetestRepoListPath, "kubetest.repo-list-path", "", "path to the kubetest repo-list path")
+
+	klog.InitFlags(nil)
+	// additionally force all the controllers to use the Ginkgo logger.
+	ctrl.SetLogger(klog.Background())
+	logf.SetLogger(klog.Background())
+	// add logger for ginkgo
+	klog.SetOutput(ginkgo.GinkgoWriter)
 }
 
 func TestE2E(t *testing.T) {
