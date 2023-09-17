@@ -87,6 +87,8 @@ variables:
   CLUSTER_TOPOLOGY: "true"
   # Cluster Addons
   CNI: "${PWD}/test/e2e/data/cni/calico/calico.yaml"
+  CCM: "${PWD}/test/e2e/data/ccm/gce-cloud-controller-manager.yaml"
+
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
   CONFORMANCE_WORKER_MACHINE_COUNT: "2"
