@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
@@ -103,17 +103,12 @@ func init() {
 	flag.BoolVar(&useCIArtifacts, "kubetest.use-ci-artifacts", false, "use the latest build from the main branch of the Kubernetes repository. Set KUBERNETES_VERSION environment variable to latest-1.xx to use the build from 1.xx release branch.")
 	flag.StringVar(&kubetestConfigFilePath, "kubetest.config-file", "", "path to the kubetest configuration file")
 	flag.StringVar(&kubetestRepoListPath, "kubetest.repo-list-path", "", "path to the kubetest repo-list path")
-
-	klog.InitFlags(nil)
-	// additionally force all the controllers to use the Ginkgo logger.
-	ctrl.SetLogger(klog.Background())
-	logf.SetLogger(klog.Background())
-	// add logger for ginkgo
-	klog.SetOutput(ginkgo.GinkgoWriter)
 }
 
 func TestE2E(t *testing.T) {
 	g := NewWithT(t)
+
+	ctrl.SetLogger(klog.Background())
 
 	// If running in prow, make sure to use the artifacts folder that will be reported in test grid (ignoring the value provided by flag).
 	if prowArtifactFolder, exists := os.LookupEnv("ARTIFACTS"); exists {
