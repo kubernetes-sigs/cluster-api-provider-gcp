@@ -203,8 +203,8 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 	subnets := []*compute.Subnetwork{}
 	for _, subnetwork := range s.GCPCluster.Spec.Network.Subnets {
 		secondaryIPRanges := []*compute.SubnetworkSecondaryRange{}
-		for _, secondaryCidrBlock := range subnetwork.SecondaryCidrBlocks {
-			secondaryIPRanges = append(secondaryIPRanges, &compute.SubnetworkSecondaryRange{IpCidrRange: secondaryCidrBlock})
+		for rangeName, secondaryCidrBlock := range subnetwork.SecondaryCidrBlocks {
+			secondaryIPRanges = append(secondaryIPRanges, &compute.SubnetworkSecondaryRange{RangeName: rangeName, IpCidrRange: secondaryCidrBlock})
 		}
 		subnets = append(subnets, &compute.Subnetwork{
 			Name:                  subnetwork.Name,
