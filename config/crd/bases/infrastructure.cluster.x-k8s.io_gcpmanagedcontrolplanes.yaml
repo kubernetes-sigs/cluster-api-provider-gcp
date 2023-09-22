@@ -27,7 +27,7 @@ spec:
     - description: Control plane is ready
       jsonPath: .status.ready
       name: Ready
-      type: string
+      type: boolean
     - description: The current Kubernetes version
       jsonPath: .status.currentVersion
       name: CurrentVersion
@@ -58,6 +58,38 @@ spec:
           spec:
             description: GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
             properties:
+              addonsConfig:
+                description: AddonsConfig represents the configuration options for
+                  GKE cluster add ons.
+                properties:
+                  dnsCacheConfig:
+                    description: DNSCacheConfig represents a configuration for NodeLocalDNS,
+                      a dns cache running on GKE cluster nodes If omitted it is disabled
+                      by default.
+                    properties:
+                      enabled:
+                        description: Enabled defines whether or not NodeLocal DNSCache
+                          is enabled for the GKE cluster
+                        type: boolean
+                    type: object
+                  gcePersistentDiskCsiDriverConfig:
+                    description: GcePersistentDiskCsiDriverConfig represents a configuration
+                      for the Compute Engine Persistent Disk CSI driver If omitted
+                      it is enabled by default.
+                    properties:
+                      enabled:
+                        description: Enabled defines whether or not the Compute Engine
+                          PD CSI driver is enabled for the GKE cluster.
+                        type: boolean
+                    type: object
+                type: object
+              clusterIpv4Cidr:
+                description: ClusterIpv4Cidr is the IP address range of the container
+                  pods in the GKE cluster, in [CIDR](http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing)
+                  notation (e.g. `10.96.0.0/14`). If not specified then one will be
+                  automatically chosen. If this field is specified then IPAllocationPolicy.ClusterIpv4CidrBlock
+                  should be left blank.
+                type: string
               clusterName:
                 description: ClusterName allows you to specify the name of the GKE
                   cluster. If you don't specify a name then a default name will be
@@ -68,6 +100,21 @@ spec:
                   of the GKE cluster. If not specified, the default version currently
                   supported by GKE will be used.
                 type: string
+              defaultMaxPodsConstraint:
+                description: 'DefaultMaxPodsConstraint represents the default constraint
+                  on the max number of pods that can be run simultaneiously on a given
+                  node in a node pool of the GKE cluster. Note: only honored if the
+                  GKE cluster is created with IPAllocationPolicy.UseIPAliases set
+                  to true.'
+                properties:
+                  maxPodsPerNode:
+                    description: MaxPodsPerNode represents the constraint enforced
+                      on the max num of pods per node.
+                    format: int64
+                    maximum: 256
+                    minimum: 8
+                    type: integer
+                type: object
               enableAutopilot:
                 description: EnableAutopilot indicates whether to enable autopilot
                   for this GKE cluster.
@@ -87,36 +134,262 @@ spec:
                 - host
                 - port
                 type: object
+              ipAllocationPolicy:
+                description: IPAllocationPolicy represents configuration options for
+                  GKE cluster IP allocation. If not specified then GKE default values
+                  will be used.
+                properties:
+                  clusterIpv4CidrBlock:
+                    description: ClusterIpv4CidrBlock represents the IP address range
+                      for the GKE cluster pod IPs. If this field is set, then GCPManagedControlPlaneSpec.ClusterIpv4Cidr
+                      must be left blank. This field is only applicable when use_ip_aliases
+                      is set to true. If not specified the range will be chosen with
+                      the default size.
+                    type: string
+                  clusterSecondaryRangeName:
+                    description: ClusterSecondaryRangeName represents the name of
+                      the secondary range to be used for the GKE cluster CIDR block.
+                      The range will be used for pod IP addresses and must be an existing
+                      secondary range associated with the cluster subnetwork. This
+                      field is only applicable when use_ip_aliases is set to true.
+                    type: string
+                  servicesIpv4CidrBlock:
+                    description: ServicesIpv4CidrBlock represents the IP address range
+                      for services IPs in the GKE cluster. This field is only applicable
+                      when use_ip_aliases is set to true. If not specified the range
+                      will be chosen with the default size.
+                    type: string
+                  servicesSecondaryRangeName:
+                    description: ServicesSecondaryRangeName represents the name of
+                      the secondary range to be used for the services CIDR block.
+                      The range will be used for service ClusterIPs and must be an
+                      existing secondary range associated with the cluster subnetwork.
+                      This field is only applicable when use_ip_aliases is set to
+                      true.
+                    type: string
+                  useIPAliases:
+                    description: UseIPAliases represents whether alias IPs will be
+                      used for pod IPs in the cluster. If unspecified will default
+                      to false.
+                    type: boolean
+                type: object
               location:
                 description: Location represents the location (region or zone) in
                   which the GKE cluster will be created.
                 type: string
-              master_authorized_networks_config:
+              loggingConfig:
+                description: LoggingConfig represents the configuration options for
+                  GKE cluster logging. If not specified, none of the logging components
+                  are enabled.
+                properties:
+                  enableComponents:
+                    description: EnableComponents represents the components to collect
+                      logs from. If left empty, logging on all components is disabled.
+                      If non-empty, SystemComponents must be specified (will be added
+                      by default if not).
+                    items:
+                      description: LoggingComponent represents the component to enable
+                        logging for within the GKE cluster.
+                      enum:
+                      - system-components
+                      - workloads
+                      - apiserver
+                      - scheduler
+                      - controller-manager
+                      type: string
+                    type: array
+                type: object
+              maintenancePolicy:
+                description: MaintenancePolicy represents configuration options for
+                  the GKE cluster maintenance policy
+                properties:
+                  dailyMaintenanceWindow:
+                    description: DailyMaintenanceWindow represents a daily maintenance
+                      time window for use with the GKE cluster. Only one of DailyMaintenanceWindow
+                      and RecurringMaintenanceWindow can be set.
+                    properties:
+                      startTime:
+                        description: 'StartTime represents time within the maintenance
+                          window to start the maintenance operations. Time format
+                          should be in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt)
+                          format "HH:MM", where HH : [00-23] and MM : [00-59] GMT.'
+                        pattern: ^([01]\d|2[0-3]):([0-5]\d)$
+                        type: string
+                    type: object
+                  maintenanceExclusions:
+                    additionalProperties:
+                      description: TimeWindow represents an arbitrary window of time.
+                      properties:
+                        endTime:
+                          description: EndTime represents the time that the window
+                            ends. The end time must take place after the start time.
+                            Time format should follow Internet date/time format in
+                            [RFC3339](https://www.ietf.org/rfc/rfc3339.txt) i.e. "2006-01-02T15:04:05Z"
+                          type: string
+                        maintenanceExclusionOption:
+                          description: MaintenanceExclusionOption represents the maintenance
+                            exclusion scope for which upgrades are blocked by the
+                            exclusion.
+                          enum:
+                          - no-upgrades
+                          - no-minor-upgrades
+                          - no-minor-or-node-upgrades
+                          type: string
+                        startTime:
+                          description: StartTime represents the time that the window
+                            first starts. Time format should follow Internet date/time
+                            format in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt)
+                            i.e. "2006-01-02T15:04:05Z"
+                          type: string
+                      type: object
+                    description: MaintenanceExclusions represents a map of maintenance
+                      exclusion names to a TimeWindow representing the exclusion period
+                      (consists of a start time, end time, and exclusion scope). Non-emergency
+                      maintenance should not occur in these windows. A maximum of
+                      3 maintenance exclusions with "no-upgrades" is allowed.
+                    maxProperties: 20
+                    type: object
+                  recurringMaintenanceWindow:
+                    description: RecurringMaintenanceWindow represents a recurring
+                      maintenance time window for use with the GKE cluster. Only one
+                      of DailyMaintenanceWindow and RecurringMaintenanceWindow can
+                      be set.
+                    properties:
+                      recurrence:
+                        description: Recurrence represents a RRULE (https://tools.ietf.org/html/rfc5545#section-3.8.5.3)
+                          for how the given window recurs. They go on for the span
+                          of time between the start and end time. For more detail
+                          see (https://pkg.go.dev/cloud.google.com/go/container/apiv1/containerpb#RecurringTimeWindow)
+                        type: string
+                      window:
+                        description: Window represents the time window of first recurrence
+                        properties:
+                          endTime:
+                            description: EndTime represents the time that the window
+                              ends. The end time must take place after the start time.
+                              Time format should follow Internet date/time format
+                              in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt) i.e.
+                              "2006-01-02T15:04:05Z"
+                            type: string
+                          maintenanceExclusionOption:
+                            description: MaintenanceExclusionOption represents the
+                              maintenance exclusion scope for which upgrades are blocked
+                              by the exclusion.
+                            enum:
+                            - no-upgrades
+                            - no-minor-upgrades
+                            - no-minor-or-node-upgrades
+                            type: string
+                          startTime:
+                            description: StartTime represents the time that the window
+                              first starts. Time format should follow Internet date/time
+                              format in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt)
+                              i.e. "2006-01-02T15:04:05Z"
+                            type: string
+                        type: object
+                    type: object
+                type: object
+              masterAuthorizedNetworksConfig:
                 description: MasterAuthorizedNetworksConfig represents configuration
                   options for master authorized networks feature of the GKE cluster.
                   This feature is disabled if this field is not specified.
                 properties:
-                  cidr_blocks:
-                    description: cidr_blocks define up to 50 external networks that
+                  cidrBlocks:
+                    description: CidrBlocks define up to 50 external networks that
                       could access Kubernetes master through HTTPS.
                     items:
                       description: MasterAuthorizedNetworksConfigCidrBlock contains
                         an optional name and one CIDR block.
                       properties:
-                        cidr_block:
-                          description: cidr_block must be specified in CIDR notation.
+                        cidrBlock:
+                          description: CidrBlock must be specified in CIDR notation.
                           pattern: ^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\/([0-9]|[1-2][0-9]|3[0-2]))?$|^([a-fA-F0-9:]+:+)+[a-fA-F0-9]+\/[0-9]{1,3}$
                           type: string
-                        display_name:
-                          description: display_name is an field for users to identify
+                        displayName:
+                          description: DisplayName is an field for users to identify
                             CIDR blocks.
                           type: string
                       type: object
                     type: array
-                  gcp_public_cidrs_access_enabled:
-                    description: Whether master is accessible via Google Compute Engine
-                      Public IP addresses.
+                  gcpPublicCidrsAccessEnabled:
+                    description: GcpPublicCidrsAccessEnabled defines whether master
+                      is accessible via Google Compute Engine Public IP addresses.
+                      If PrivateClusterConfig PrivateEndpoint is enabled then this
+                      must be set to false or unspecified.
                     type: boolean
+                type: object
+              networkConfig:
+                description: NetworkConfig represents configurations for GKE cluster
+                  networking
+                properties:
+                  datapathProvider:
+                    description: DatapathProvider represents the desired datapath
+                      Provider for the GKE cluster. If unspecified will use the default
+                      IPTables-based kube-proxy implementation.
+                    enum:
+                    - legacy
+                    - advanced
+                    type: string
+                  dnsConfig:
+                    description: DNSConfig represents the cluster DNS configurations
+                      for the GKE cluster.
+                    properties:
+                      clusterDNS:
+                        description: ClusterDNS represents which in-cluster DNS provider
+                          should be used. If not specified will default to the GKE
+                          default DNS provider (kube-dns).
+                        enum:
+                        - platform
+                        - cloud-dns
+                        - kube-dns
+                        type: string
+                      clusterDNSDomain:
+                        description: ClusterDNSDomain is the suffix used for all GKE
+                          cluster service records
+                        type: string
+                      clusterDNSScope:
+                        description: ClusterDNSScope represents the scope of access
+                          to the GKE cluster DNS records If not specified will default
+                          to cluster scope.
+                        enum:
+                        - cluster
+                        - vpc
+                        type: string
+                    type: object
+                type: object
+              privateClusterConfig:
+                description: PrivateClusterConfig represents configuration options
+                  for GKE private cluster feature. This feature (both PrivateNodes
+                  and PrivateEndpoints) is disabled if this field is not specified.
+                properties:
+                  enablePrivateEndpoint:
+                    description: Whether the master's internal IP address is used
+                      as the cluster endpoint. If EnablePrivateEndpoint is true then
+                      MasterAuthorizedNetworksConfig must be set.
+                    type: boolean
+                  enablePrivateNodes:
+                    description: Whether nodes have internal IP addresses only. If
+                      enabled, all nodes are given only RFC 1918 private addresses
+                      and communicate with the master via private networking.
+                    type: boolean
+                  masterIpv4CidrBlock:
+                    description: The IP range in CIDR notation to use for the hosted
+                      master network. This range will be used for assigning internal
+                      IP addresses to the master or set of masters, as well as the
+                      ILB VIP. This range must not overlap with any other ranges in
+                      use within the cluster's network.
+                    type: string
+                  privateClusterMasterGlobalAccessEnabled:
+                    description: PrivateClusterMasterGlobalAccessEnabled controls
+                      if the master is globally accessible. If not specified will
+                      default to false.
+                    type: boolean
+                  privateEndpointSubnetwork:
+                    description: PrivateEndpointSubnetwork represents the subnet to
+                      provision the master's private endpoint during cluster creation.
+                      Specified in projects/*/regions/*/subnetworks/* format.
+                    pattern: ^projects\/[a-z]([-a-z0-9]*[a-z0-9])?\/regions\/[a-z]([-a-z0-9]*[a-z0-9])?\/subnetworks\/[a-z]([-a-z0-9]*[a-z0-9])?
+                    type: string
                 type: object
               project:
                 description: Project is the name of the project to deploy the cluster
@@ -130,6 +403,37 @@ spec:
                 - regular
                 - stable
                 type: string
+              resourceLabels:
+                additionalProperties:
+                  type: string
+                description: ResourceLabels represents the resource labels for the
+                  GKE cluster to use to annotate any related Google Compute Engine
+                  resources.
+                type: object
+              shieldedNodes:
+                description: ShieldedNodes represents the configuration options for
+                  GKE ShieldedNodes feature For Autopilot Enabled Clusters, ShieldedNodes
+                  is the default configuration. Otherwise if not specified this feature
+                  is enabled by default on GKE 1.18+.
+                properties:
+                  enabled:
+                    description: Enabled defines whether or not ShieldedNodes is enabled
+                      for the GKE cluster.
+                    type: boolean
+                type: object
+              workloadIdentityConfig:
+                description: WorkloadIdentityConfig represents configuration options
+                  for the use of Kubernetes Service Accounts in GCP IAM policies.
+                  This feature is diabled if this field is not specified.
+                properties:
+                  workloadPool:
+                    description: WorkloadPool represents the node pool to attach all
+                      Kubernetes service accounts to.
+                    maxLength: 63
+                    minLength: 1
+                    pattern: ^[a-z]([-a-z0-9]*[a-z0-9])?
+                    type: string
+                type: object
             required:
             - location
             - project
