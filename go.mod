@@ -7,7 +7,7 @@ replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.5.0
 require (
 	cloud.google.com/go/compute v1.23.0
 	cloud.google.com/go/container v1.26.0
-	cloud.google.com/go/iam v1.1.2
+	cloud.google.com/go/iam v1.1.3
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
 	github.com/go-logr/logr v1.2.4
 	github.com/google/go-cmp v0.5.9
@@ -19,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.14.0
 	golang.org/x/mod v0.13.0
-	golang.org/x/net v0.16.0
+	golang.org/x/net v0.17.0
 	google.golang.org/api v0.146.0
 	google.golang.org/grpc v1.58.2
 	k8s.io/api v0.27.2
