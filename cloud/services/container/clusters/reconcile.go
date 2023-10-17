@@ -26,6 +26,7 @@ import (
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -137,19 +138,19 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, statusErr
 	}
 
-	needUpdate, updateClusterRequest := s.checkDiffAndPrepareUpdate(cluster, &log)
-	if needUpdate {
-		log.Info("Update required")
-		err = s.updateCluster(ctx, updateClusterRequest, &log)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		log.Info("Cluster updating in progress")
+	// Check for cluster diffs and update
+	isUpdating, err := s.checkDiffAndUpdateCluster(ctx, cluster, &log)
+	if err != nil {
+		log.Error(err, "failed to check diff and update cluster")
+		return ctrl.Result{}, err
+	}
+	if isUpdating {
 		conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition)
 		s.scope.GCPManagedControlPlane.Status.Initialized = true
 		s.scope.GCPManagedControlPlane.Status.Ready = true
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
+
 	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition, infrav1exp.GKEControlPlaneUpdatedReason, clusterv1.ConditionSeverityInfo, "")
 
 	// Reconcile kubeconfig
@@ -257,15 +258,53 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 			Enabled: s.scope.GCPManagedControlPlane.Spec.EnableAutopilot,
 		},
 		ReleaseChannel: &containerpb.ReleaseChannel{
-			Channel: convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
+			Channel: infrav1exp.ConvertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
 		},
-		MasterAuthorizedNetworksConfig: convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig),
+		ResourceLabels:                 s.scope.GCPManagedControlPlane.Spec.ResourceLabels,
+		AddonsConfig:                   infrav1exp.ConvertToSdkAddonsConfig(s.scope.GCPManagedControlPlane.Spec.AddonsConfig),
+		LoggingConfig:                  infrav1exp.ConvertToSdkLoggingConfig(s.scope.GCPManagedControlPlane.Spec.LoggingConfig),
+		MasterAuthorizedNetworksConfig: infrav1exp.ConvertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig),
+		ShieldedNodes:                  infrav1exp.ConvertToSdkShieldedNodes(s.scope.GCPManagedControlPlane.Spec.ShieldedNodes),
 	}
 	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
 		cluster.InitialClusterVersion = *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
 	}
 	if !s.scope.IsAutopilotCluster() {
 		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional)
+	}
+
+	if s.scope.GCPManagedControlPlane.Spec.ClusterIpv4Cidr != nil {
+		cluster.ClusterIpv4Cidr = *s.scope.GCPManagedControlPlane.Spec.ClusterIpv4Cidr
+	}
+
+	if s.scope.GCPManagedControlPlane.Spec.IPAllocationPolicy != nil {
+		cluster.IpAllocationPolicy = infrav1exp.ConvertToSdkIPAllocationPolicy(s.scope.GCPManagedControlPlane.Spec.IPAllocationPolicy)
+	}
+
+	if s.scope.GCPManagedControlPlane.Spec.MaintenancePolicy != nil {
+		mp, err := infrav1exp.ConvertToSdkMaintenancePolicy(s.scope.GCPManagedControlPlane.Spec.MaintenancePolicy)
+		if err != nil {
+			return fmt.Errorf("invalid conversion to SDK MaintenancePolicy: %w", err)
+		}
+		cluster.MaintenancePolicy = mp
+	}
+
+	if s.scope.GCPManagedControlPlane.Spec.NetworkConfig != nil {
+		cluster.NetworkConfig = infrav1exp.ConvertToSdkNetworkConfig(s.scope.GCPManagedControlPlane.Spec.NetworkConfig)
+	}
+
+	if s.scope.GCPManagedControlPlane.Spec.DefaultMaxPodsConstraint != nil {
+		cluster.DefaultMaxPodsConstraint = &containerpb.MaxPodsConstraint{
+			MaxPodsPerNode: s.scope.GCPManagedControlPlane.Spec.DefaultMaxPodsConstraint.MaxPodsPerNode,
+		}
+	}
+
+	if s.scope.GCPManagedControlPlane.Spec.PrivateClusterConfig != nil {
+		cluster.PrivateClusterConfig = infrav1exp.ConvertToSdkPrivateClusterConfig(s.scope.GCPManagedControlPlane.Spec.PrivateClusterConfig)
+	}
+
+	if s.scope.GCPManagedControlPlane.Spec.WorkloadIdentityConfig != nil {
+		cluster.WorkloadIdentityConfig = infrav1exp.ConvertToSdkWorkloadIdentityConfig(s.scope.GCPManagedControlPlane.Spec.WorkloadIdentityConfig)
 	}
 
 	createClusterRequest := &containerpb.CreateClusterRequest{
@@ -293,6 +332,16 @@ func (s *Service) updateCluster(ctx context.Context, updateClusterRequest *conta
 	return nil
 }
 
+func (s *Service) updateMaintenancePolicy(ctx context.Context, updateMaintenancePolicyRequest *containerpb.SetMaintenancePolicyRequest, log *logr.Logger) error {
+	_, err := s.scope.ManagedControlPlaneClient().SetMaintenancePolicy(ctx, updateMaintenancePolicyRequest)
+	if err != nil {
+		log.Error(err, "Error updating MaintenancePolicy", "name", s.scope.ClusterName())
+		return err
+	}
+
+	return nil
+}
+
 func (s *Service) deleteCluster(ctx context.Context, log *logr.Logger) error {
 	deleteClusterRequest := &containerpb.DeleteClusterRequest{
 		Name: s.scope.ClusterFullName(),
@@ -306,56 +355,132 @@ func (s *Service) deleteCluster(ctx context.Context, log *logr.Logger) error {
 	return nil
 }
 
-func convertToSdkReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.ReleaseChannel_Channel {
-	if channel == nil {
-		return containerpb.ReleaseChannel_UNSPECIFIED
-	}
-	switch *channel {
-	case infrav1exp.Rapid:
-		return containerpb.ReleaseChannel_RAPID
-	case infrav1exp.Regular:
-		return containerpb.ReleaseChannel_REGULAR
-	case infrav1exp.Stable:
-		return containerpb.ReleaseChannel_STABLE
-	default:
-		return containerpb.ReleaseChannel_UNSPECIFIED
-	}
-}
-
-// convertToSdkMasterAuthorizedNetworksConfig converts the MasterAuthorizedNetworksConfig defined in CRs to the SDK version.
-func convertToSdkMasterAuthorizedNetworksConfig(config *infrav1exp.MasterAuthorizedNetworksConfig) *containerpb.MasterAuthorizedNetworksConfig {
-	// if config is nil, it means that the user wants to disable the feature.
-	if config == nil {
-		return &containerpb.MasterAuthorizedNetworksConfig{
-			Enabled:                     false,
-			CidrBlocks:                  []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{},
-			GcpPublicCidrsAccessEnabled: new(bool),
-		}
-	}
-
-	// Convert the CidrBlocks slice.
-	cidrBlocks := make([]*containerpb.MasterAuthorizedNetworksConfig_CidrBlock, len(config.CidrBlocks))
-	for i, cidrBlock := range config.CidrBlocks {
-		cidrBlocks[i] = &containerpb.MasterAuthorizedNetworksConfig_CidrBlock{
-			CidrBlock:   cidrBlock.CidrBlock,
-			DisplayName: cidrBlock.DisplayName,
-		}
-	}
-
-	return &containerpb.MasterAuthorizedNetworksConfig{
-		Enabled:                     true,
-		CidrBlocks:                  cidrBlocks,
-		GcpPublicCidrsAccessEnabled: config.GcpPublicCidrsAccessEnabled,
-	}
-}
-
-func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+// checkDiffAndUpdateCluster sequentially checks different cluster fields diffs and submits an update request if necessary.
+// Updates are done sequentially because the SDK does not allow updating multiple fields at once.
+func (s *Service) checkDiffAndUpdateCluster(ctx context.Context, existingCluster *containerpb.Cluster, log *logr.Logger) (bool, error) {
 	log.V(4).Info("Checking diff and preparing update.")
 
+	needUpdateReleaseChannel, updateReleaseChannelRequest := s.checkDiffAndPrepareUpdateReleaseChannel(existingCluster, log)
+	if needUpdateReleaseChannel {
+		log.Info("release channel update required")
+		err := s.updateCluster(ctx, updateReleaseChannelRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster release channel updating in progress")
+		return true, nil
+	}
+
+	needUpdateMasterVersion, updateMasterVersionRequest := s.checkDiffAndPrepareUpdateMasterVersion(existingCluster, log)
+	if needUpdateMasterVersion {
+		log.Info("master version update required")
+		err := s.updateCluster(ctx, updateMasterVersionRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster master version updating in progress")
+		return true, nil
+	}
+
+	needUpdateMasterAuthorizedNetworkConfigs, updateMasterAuthorizedNetworkConfigsRequest := s.checkDiffAndPrepareUpdateMasterAuthorizedNetworkConfigs(existingCluster, log)
+	if needUpdateMasterAuthorizedNetworkConfigs {
+		log.Info("master authorized network configs update required")
+		err := s.updateCluster(ctx, updateMasterAuthorizedNetworkConfigsRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster master authorized network configs updating in progress")
+		return true, nil
+	}
+
+	needUpdateAddonsConfig, updateAddonsConfigRequest := s.checkDiffAndPrepareUpdateAddonsConfig(existingCluster, log)
+	if needUpdateAddonsConfig {
+		log.Info("addons config update required")
+		err := s.updateCluster(ctx, updateAddonsConfigRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster addons configs updating in progress")
+		return true, nil
+	}
+
+	needUpdateDNSConfig, updateDNSConfigRequest := s.checkDiffAndPrepareUpdateDNSConfig(existingCluster, log)
+	if needUpdateDNSConfig {
+		log.Info("DNSConfig update required")
+		err := s.updateCluster(ctx, updateDNSConfigRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster DNSConfig updating in progress")
+		return true, nil
+	}
+
+	needUpdateMasterGlobalAccessEnabled, updateMasterGlobalAccessEnabledRequest := s.checkDiffAndPrepareUpdateMasterGlobalAccessEnabled(existingCluster, log)
+	if needUpdateMasterGlobalAccessEnabled {
+		log.Info("master global access config update required")
+		err := s.updateCluster(ctx, updateMasterGlobalAccessEnabledRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster master global access config updating in progress")
+		return true, nil
+	}
+
+	needUpdateShieldedNodes, updateShieldedNodesRequest := s.checkDiffAndPrepareUpdateShieldedNodes(existingCluster, log)
+	if needUpdateShieldedNodes {
+		log.Info("shielded nodes update required")
+		err := s.updateCluster(ctx, updateShieldedNodesRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster shielded nodes updating in progress")
+		return true, nil
+	}
+
+	needUpdateWorkloadIdentityConfig, updateWorkloadIdentityConfigRequest := s.checkDiffAndPrepareUpdateWorkloadIdentityConfig(existingCluster, log)
+	if needUpdateWorkloadIdentityConfig {
+		log.Info("workload identity config update required")
+		err := s.updateCluster(ctx, updateWorkloadIdentityConfigRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster workload identity config updating in progress")
+		return true, nil
+	}
+
+	needUpdateLoggingConfig, updateLoggingConfigRequest := s.checkDiffAndPrepareUpdateLoggingConfig(existingCluster, log)
+	if needUpdateLoggingConfig {
+		log.Info("logging config update required")
+		err := s.updateCluster(ctx, updateLoggingConfigRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster logging config updating in progress")
+		return true, nil
+	}
+
+	needUpdateMaintenancePolicy, updateMaintenancePolicyRequest, err := s.checkDiffAndPrepareUpdateMaintenancePolicy(existingCluster, log)
+	if err != nil {
+		log.Error(err, "failed to check maintenance policy diff")
+		return false, err
+	}
+	if needUpdateMaintenancePolicy {
+		log.Info("MaintenancePolicy update required")
+		err := s.updateMaintenancePolicy(ctx, updateMaintenancePolicyRequest, log)
+		if err != nil {
+			return false, err
+		}
+		log.Info("cluster MaintenancePolicy updating in progress")
+		return true, nil
+	}
+	// No updates needed
+	return false, nil
+}
+
+func (s *Service) checkDiffAndPrepareUpdateReleaseChannel(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
 	needUpdate := false
 	clusterUpdate := containerpb.ClusterUpdate{}
-	// Release channel
-	desiredReleaseChannel := convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel)
+	desiredReleaseChannel := infrav1exp.ConvertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel)
 	if desiredReleaseChannel != existingCluster.ReleaseChannel.Channel {
 		log.V(2).Info("Release channel update required", "current", existingCluster.ReleaseChannel.Channel, "desired", desiredReleaseChannel)
 		needUpdate = true
@@ -363,6 +488,17 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			Channel: desiredReleaseChannel,
 		}
 	}
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name:   s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	log.V(4).Info("ReleaseChannel update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	return needUpdate, &updateClusterRequest
+}
+
+func (s *Service) checkDiffAndPrepareUpdateMasterVersion(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	needUpdate := false
+	clusterUpdate := containerpb.ClusterUpdate{}
 	// Master version
 	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
 		desiredMasterVersion := *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
@@ -372,10 +508,19 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			log.V(2).Info("Master version update required", "current", existingCluster.InitialClusterVersion, "desired", desiredMasterVersion)
 		}
 	}
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name:   s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	log.V(4).Info("MasterVersion update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	return needUpdate, &updateClusterRequest
+}
 
-	// DesiredMasterAuthorizedNetworksConfig
+func (s *Service) checkDiffAndPrepareUpdateMasterAuthorizedNetworkConfigs(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	needUpdate := false
+	clusterUpdate := containerpb.ClusterUpdate{}
 	// When desiredMasterAuthorizedNetworksConfig is nil, it means that the user wants to disable the feature.
-	desiredMasterAuthorizedNetworksConfig := convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig)
+	desiredMasterAuthorizedNetworksConfig := infrav1exp.ConvertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig)
 	if !compareMasterAuthorizedNetworksConfig(desiredMasterAuthorizedNetworksConfig, existingCluster.MasterAuthorizedNetworksConfig) {
 		needUpdate = true
 		clusterUpdate.DesiredMasterAuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
@@ -385,39 +530,157 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 	if desiredMasterAuthorizedNetworksConfig != nil {
 		log.V(4).Info("Master authorized networks config update check", "desired", desiredMasterAuthorizedNetworksConfig)
 	}
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name:   s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	log.V(4).Info("MasterAuthorizedNetworkConfig update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	return needUpdate, &updateClusterRequest
+}
+
+func (s *Service) checkDiffAndPrepareUpdateAddonsConfig(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	needUpdate := false
+	clusterUpdate := containerpb.ClusterUpdate{}
+	desiredAddonsConfig := infrav1exp.ConvertToSdkAddonsConfig(s.scope.GCPManagedControlPlane.Spec.AddonsConfig)
+	if !compareAddonsConfig(desiredAddonsConfig, existingCluster.AddonsConfig) {
+		needUpdate = true
+		clusterUpdate.DesiredAddonsConfig = desiredAddonsConfig
+		log.V(2).Info("AddonsConfig update required", "current", existingCluster.AddonsConfig, "desired", desiredAddonsConfig)
+	}
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name:   s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	log.V(4).Info("AddonsConfig update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	return needUpdate, &updateClusterRequest
+}
+
+func (s *Service) checkDiffAndPrepareUpdateDNSConfig(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	needUpdate := false
+	clusterUpdate := containerpb.ClusterUpdate{}
+	desiredNetworkConfigs := infrav1exp.ConvertToSdkNetworkConfig(s.scope.GCPManagedControlPlane.Spec.NetworkConfig)
+	if existingCluster.NetworkConfig != nil {
+		if !cmp.Equal(desiredNetworkConfigs.DnsConfig, existingCluster.NetworkConfig.DnsConfig,
+			cmpopts.IgnoreUnexported(containerpb.DNSConfig{})) {
+			needUpdate = true
+			clusterUpdate.DesiredDnsConfig = desiredNetworkConfigs.DnsConfig
+			if existingCluster.NetworkConfig == nil {
+				log.V(2).Info("Network Configs DnsConfig update required", "current",
+					nil, "desired", desiredNetworkConfigs.DnsConfig)
+			} else {
+				log.V(2).Info("Network Configs DnsConfig update required", "current",
+					existingCluster.NetworkConfig.DnsConfig, "desired", desiredNetworkConfigs.DnsConfig)
+			}
+		}
+	}
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name:   s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	log.V(4).Info("DNSConfig update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	return needUpdate, &updateClusterRequest
+}
+
+func (s *Service) checkDiffAndPrepareUpdateMasterGlobalAccessEnabled(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	needUpdate := false
+	clusterUpdate := containerpb.ClusterUpdate{}
+	desiredPrivateClusterConfig := infrav1exp.ConvertToSdkPrivateClusterConfig(s.scope.GCPManagedControlPlane.Spec.PrivateClusterConfig)
+	if !compareMasterGlobalAccessConfig(desiredPrivateClusterConfig.GetMasterGlobalAccessConfig(), existingCluster.PrivateClusterConfig.GetMasterGlobalAccessConfig()) {
+		needUpdate = true
+		// Only the MasterGlobalAccessConfig is mutable
+		clusterUpdate.DesiredPrivateClusterConfig = existingCluster.PrivateClusterConfig
+		clusterUpdate.DesiredPrivateClusterConfig.MasterGlobalAccessConfig = desiredPrivateClusterConfig.GetMasterGlobalAccessConfig()
+		log.V(2).Info("MasterGlobalAccessConfig update required", "current", existingCluster.PrivateClusterConfig.GetMasterGlobalAccessConfig(),
+			"desired", desiredPrivateClusterConfig.GetMasterGlobalAccessConfig())
+	}
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name:   s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	log.V(4).Info("MasterGlobalAccessConfig update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	return needUpdate, &updateClusterRequest
+}
+
+func (s *Service) checkDiffAndPrepareUpdateShieldedNodes(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	needUpdate := false
+	clusterUpdate := containerpb.ClusterUpdate{}
+	desiredShieldedNodes := infrav1exp.ConvertToSdkShieldedNodes(s.scope.GCPManagedControlPlane.Spec.ShieldedNodes)
+	if desiredShieldedNodes != nil {
+		if existingCluster.ShieldedNodes == nil || existingCluster.ShieldedNodes.Enabled != desiredShieldedNodes.Enabled {
+			needUpdate = true
+			clusterUpdate.DesiredShieldedNodes = desiredShieldedNodes
+			log.V(2).Info("ShieldedNodes update required", "current", existingCluster.ShieldedNodes, "desired", desiredShieldedNodes)
+		}
+	}
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name:   s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	log.V(4).Info("ShieldedNodes update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	return needUpdate, &updateClusterRequest
+}
+
+func (s *Service) checkDiffAndPrepareUpdateWorkloadIdentityConfig(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	needUpdate := false
+	clusterUpdate := containerpb.ClusterUpdate{}
+	desiredWorkloadIdentityConfig := infrav1exp.ConvertToSdkWorkloadIdentityConfig(s.scope.GCPManagedControlPlane.Spec.WorkloadIdentityConfig)
+	if !compareWorkloadIdentityConfig(desiredWorkloadIdentityConfig, existingCluster.WorkloadIdentityConfig) {
+		needUpdate = true
+		if desiredWorkloadIdentityConfig == nil {
+			clusterUpdate.DesiredWorkloadIdentityConfig = &containerpb.WorkloadIdentityConfig{}
+		} else {
+			clusterUpdate.DesiredWorkloadIdentityConfig = desiredWorkloadIdentityConfig
+		}
+		log.V(2).Info("WorkloadIdentityConfig update required", "current", existingCluster.WorkloadIdentityConfig,
+			"desired", desiredWorkloadIdentityConfig)
+	}
+	updateClusterRequest := containerpb.UpdateClusterRequest{
+		Name:   s.scope.ClusterFullName(),
+		Update: &clusterUpdate,
+	}
+	log.V(4).Info("WorkloadIdentityConfig update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	return needUpdate, &updateClusterRequest
+}
+
+func (s *Service) checkDiffAndPrepareUpdateLoggingConfig(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+	needUpdate := false
+	clusterUpdate := containerpb.ClusterUpdate{}
+	desiredLoggingConfig := infrav1exp.ConvertToSdkLoggingConfig(s.scope.GCPManagedControlPlane.Spec.LoggingConfig)
+	if !compareLoggingConfig(desiredLoggingConfig, existingCluster.LoggingConfig) {
+		needUpdate = true
+		clusterUpdate.DesiredLoggingConfig = desiredLoggingConfig
+		log.V(2).Info("LoggingConfig update required", "current", existingCluster.LoggingConfig, "desired", desiredLoggingConfig)
+	}
 
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,
 	}
-	log.V(4).Info("Update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
+	log.V(4).Info("LoggingConfig update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
 	return needUpdate, &updateClusterRequest
 }
 
-// compare if two MasterAuthorizedNetworksConfig are equal.
-func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNetworksConfig) bool {
-	if a == nil && b == nil {
-		return true
+func (s *Service) checkDiffAndPrepareUpdateMaintenancePolicy(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.SetMaintenancePolicyRequest, error) {
+	needUpdate := false
+	setMaintenancePolicyRequest := containerpb.SetMaintenancePolicyRequest{
+		Name: s.scope.ClusterFullName(),
 	}
-	if a == nil || b == nil {
-		return false
+	desiredMaintenancePolicy, err := infrav1exp.ConvertToSdkMaintenancePolicy(s.scope.GCPManagedControlPlane.Spec.MaintenancePolicy)
+	if err != nil {
+		return false, nil, err
 	}
-
-	if a.Enabled != b.Enabled {
-		return false
+	if !compareMaintenancePolicy(desiredMaintenancePolicy, existingCluster.MaintenancePolicy) {
+		needUpdate = true
+		if desiredMaintenancePolicy != nil {
+			desiredMaintenancePolicy.ResourceVersion = existingCluster.MaintenancePolicy.GetResourceVersion()
+		} else {
+			desiredMaintenancePolicy = &containerpb.MaintenancePolicy{
+				ResourceVersion: existingCluster.MaintenancePolicy.GetResourceVersion(),
+			}
+		}
+		setMaintenancePolicyRequest.MaintenancePolicy = desiredMaintenancePolicy
+		log.V(2).Info("MaintenancePolicy update required", "current", existingCluster.MaintenancePolicy, "desired", desiredMaintenancePolicy)
 	}
-	if (a.GcpPublicCidrsAccessEnabled == nil && b.GcpPublicCidrsAccessEnabled != nil) || (a.GcpPublicCidrsAccessEnabled != nil && b.GcpPublicCidrsAccessEnabled == nil) {
-		return false
-	}
-	if a.GcpPublicCidrsAccessEnabled != nil && b.GcpPublicCidrsAccessEnabled != nil && *a.GcpPublicCidrsAccessEnabled != *b.GcpPublicCidrsAccessEnabled {
-		return false
-	}
-	// if one cidrBlocks is nil, but the other is empty, they are equal.
-	if (a.CidrBlocks == nil && b.CidrBlocks != nil && len(b.CidrBlocks) == 0) || (b.CidrBlocks == nil && a.CidrBlocks != nil && len(a.CidrBlocks) == 0) {
-		return true
-	}
-	if !cmp.Equal(a.CidrBlocks, b.CidrBlocks) {
-		return false
-	}
-	return true
+	log.V(4).Info("MaintenancePolicy update request. ", "needUpdate", needUpdate, "updateClusterRequest", &setMaintenancePolicyRequest)
+	return needUpdate, &setMaintenancePolicyRequest, nil
 }
