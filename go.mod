@@ -10,7 +10,7 @@ require (
 	cloud.google.com/go/iam v1.1.3
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
 	github.com/go-logr/logr v1.2.4
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.28.0
