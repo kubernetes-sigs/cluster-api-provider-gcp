@@ -60,7 +60,7 @@ spec:
             properties:
               addonsConfig:
                 description: AddonsConfig represents the configuration options for
-                  GKE cluster add ons.
+                  GKE cluster add-ons.
                 properties:
                   dnsCacheConfig:
                     description: DNSCacheConfig represents a configuration for NodeLocalDNS,
@@ -424,7 +424,7 @@ spec:
               workloadIdentityConfig:
                 description: WorkloadIdentityConfig represents configuration options
                   for the use of Kubernetes Service Accounts in GCP IAM policies.
-                  This feature is diabled if this field is not specified.
+                  This feature is disabled if this field is not specified.
                 properties:
                   workloadPool:
                     description: WorkloadPool represents the node pool to attach all

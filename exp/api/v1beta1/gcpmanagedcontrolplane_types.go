@@ -60,7 +60,7 @@ type GCPManagedControlPlaneSpec struct {
 	// Endpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	Endpoint clusterv1.APIEndpoint `json:"endpoint"`
-	// AddonsConfig represents the configuration options for GKE cluster add ons.
+	// AddonsConfig represents the configuration options for GKE cluster add-ons.
 	// +optional
 	AddonsConfig *AddonsConfig `json:"addonsConfig,omitempty"`
 	// LoggingConfig represents the configuration options for GKE cluster logging.
@@ -79,7 +79,7 @@ type GCPManagedControlPlaneSpec struct {
 	// +optional
 	PrivateClusterConfig *PrivateClusterConfig `json:"privateClusterConfig,omitempty"`
 	// WorkloadIdentityConfig represents configuration options for the use of Kubernetes Service Accounts in GCP IAM
-	// policies. This feature is diabled if this field is not specified.
+	// policies. This feature is disabled if this field is not specified.
 	// +optional
 	WorkloadIdentityConfig *WorkloadIdentityConfig `json:"workloadIdentityConfig,omitempty"`
 	// ResourceLabels represents the resource labels for the GKE cluster to use to annotate any related
@@ -279,7 +279,7 @@ const (
 	NoMinorOrNodeUpgrades MaintenanceExclusionOption = "no-minor-or-node-upgrades"
 )
 
-// AddonsConfig contains configurations for various add ons available to run in the GKE cluster.
+// AddonsConfig contains configurations for various add-ons available to run in the GKE cluster.
 type AddonsConfig struct {
 	// DNSCacheConfig represents a configuration for NodeLocalDNS, a dns cache running on GKE cluster nodes
 	// If omitted it is disabled by default.

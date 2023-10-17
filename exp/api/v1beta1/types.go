@@ -191,16 +191,23 @@ func ConvertToSdkMaintenancePolicy(policy *MaintenancePolicy) (*containerpb.Main
 			}
 			exclusions[k] = tw
 		}
+		maintenancePolicy.Window = &containerpb.MaintenanceWindow{
+			MaintenanceExclusions: exclusions,
+		}
 	}
 
 	if policy.DailyMaintenanceWindow != nil {
-		maintenancePolicy.Window = &containerpb.MaintenanceWindow{
-			Policy: &containerpb.MaintenanceWindow_DailyMaintenanceWindow{
-				DailyMaintenanceWindow: &containerpb.DailyMaintenanceWindow{
-					StartTime: policy.DailyMaintenanceWindow.StartTime,
-				},
+		dailyMaintenanceWindowPolicy := &containerpb.MaintenanceWindow_DailyMaintenanceWindow{
+			DailyMaintenanceWindow: &containerpb.DailyMaintenanceWindow{
+				StartTime: policy.DailyMaintenanceWindow.StartTime,
 			},
-			MaintenanceExclusions: exclusions,
+		}
+		if maintenancePolicy.Window == nil {
+			maintenancePolicy.Window = &containerpb.MaintenanceWindow{
+				Policy: dailyMaintenanceWindowPolicy,
+			}
+		} else {
+			maintenancePolicy.Window.Policy = dailyMaintenanceWindowPolicy
 		}
 	}
 
@@ -209,14 +216,18 @@ func ConvertToSdkMaintenancePolicy(policy *MaintenancePolicy) (*containerpb.Main
 		if err != nil {
 			return nil, err
 		}
-		maintenancePolicy.Window = &containerpb.MaintenanceWindow{
-			Policy: &containerpb.MaintenanceWindow_RecurringWindow{
-				RecurringWindow: &containerpb.RecurringTimeWindow{
-					Window:     tw,
-					Recurrence: policy.RecurringMaintenanceWindow.Recurrence,
-				},
+		recurringWindowPolicy := &containerpb.MaintenanceWindow_RecurringWindow{
+			RecurringWindow: &containerpb.RecurringTimeWindow{
+				Window:     tw,
+				Recurrence: policy.RecurringMaintenanceWindow.Recurrence,
 			},
-			MaintenanceExclusions: exclusions,
+		}
+		if maintenancePolicy.Window == nil {
+			maintenancePolicy.Window = &containerpb.MaintenanceWindow{
+				Policy: recurringWindowPolicy,
+			}
+		} else {
+			maintenancePolicy.Window.Policy = recurringWindowPolicy
 		}
 	}
 
