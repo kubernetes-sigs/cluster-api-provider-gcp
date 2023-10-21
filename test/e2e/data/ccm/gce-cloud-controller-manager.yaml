@@ -30,17 +30,17 @@ spec:
                     operator: Exists
       containers:
       - args:
-          - --allocate-node-cidrs=true
-          - --cidr-allocator-type=RangeAllocator
-          - --cluster-cidr=192.168.0.0/16
-          - --cluster-name=${CLUSTER_NAME}
-          - --controllers=*
-          - --leader-elect=true
-          - --v=4
-          - --cloud-provider=gce
-          - --use-service-account-credentials=true
-          - --cloud-config=/etc/kubernetes/cloud.config
-        image: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager:v27.1.6@sha256:f057f6c934d6afa73a38f94b71d7da2f99033e9a6e689d59b4ee1e689031ef00
+        - --allocate-node-cidrs=true
+        - --cidr-allocator-type=RangeAllocator
+        - --cluster-cidr=192.168.0.0/16
+        - --cluster-name=${CLUSTER_NAME}
+        - --controllers=*
+        - --leader-elect=true
+        - --v=4
+        - --cloud-provider=gce
+        - --use-service-account-credentials=true
+        - --cloud-config=/etc/kubernetes/cloud.config
+        image: gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:master
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3

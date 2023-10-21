@@ -60,6 +60,7 @@ var _ = Describe("Conformance Tests", func() {
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.KubernetesVersion))
 		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.CNIPath))
+		Expect(e2eConfig.Variables).To(HaveKey(CCMPath))
 
 		clusterName = fmt.Sprintf("capg-conf-%s", util.RandomString(6))
 

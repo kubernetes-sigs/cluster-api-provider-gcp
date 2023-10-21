@@ -32,11 +32,6 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 )
 
-const (
-	CCMPath      = "CCM"
-	CCMResources = "CCM_RESOURCES"
-)
-
 func Byf(format string, a ...interface{}) {
 	By(fmt.Sprintf(format, a...))
 }

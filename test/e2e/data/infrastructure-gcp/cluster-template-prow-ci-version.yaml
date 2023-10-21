@@ -125,6 +125,14 @@ spec:
       owner: root:root
       path: /tmp/kubeadm-bootstrap.sh
       permissions: "0744"
+    - content: |
+        [Global]
+
+        project-id = "${GCP_PROJECT}"
+        network-name = "${GCP_NETWORK_NAME}"
+      owner: root:root
+      path: /etc/kubernetes/cloud.config
+      permissions: "0744"
     joinConfiguration:
       nodeRegistration:
         name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
