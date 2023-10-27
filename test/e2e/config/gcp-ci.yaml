@@ -54,7 +54,7 @@ providers:
   - name: gcp
     type: InfrastructureProvider
     versions:
-      - name: v1.4.99 # next; use manifest from source files
+      - name: v1.5.99 # next; use manifest from source files
         value: "${PWD}/config/default"
     files:
       - sourcePath: "${PWD}/metadata.yaml"
