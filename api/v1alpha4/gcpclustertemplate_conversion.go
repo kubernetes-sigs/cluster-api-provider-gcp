@@ -54,6 +54,10 @@ func (src *GCPClusterTemplate) ConvertTo(dstRaw conversion.Hub) error { // nolin
 		dst.Spec.Template.Spec.CredentialsRef = restored.Spec.Template.Spec.CredentialsRef.DeepCopy()
 	}
 
+	for _, restoredTag := range restored.Spec.Template.Spec.ResourceManagerTags {
+		dst.Spec.Template.Spec.ResourceManagerTags = append(dst.Spec.Template.Spec.ResourceManagerTags, *restoredTag.DeepCopy())
+	}
+
 	return nil
 }
 

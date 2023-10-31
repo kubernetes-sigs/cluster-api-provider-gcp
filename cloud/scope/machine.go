@@ -35,6 +35,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	capierrors "sigs.k8s.io/cluster-api/errors"
@@ -239,9 +240,10 @@ func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 		AutoDelete: true,
 		Boot:       true,
 		InitializeParams: &compute.AttachedDiskInitializeParams{
-			DiskSizeGb:  m.GCPMachine.Spec.RootDeviceSize,
-			DiskType:    path.Join("zones", m.Zone(), "diskTypes", string(diskType)),
-			SourceImage: sourceImage,
+			DiskSizeGb:          m.GCPMachine.Spec.RootDeviceSize,
+			DiskType:            path.Join("zones", m.Zone(), "diskTypes", string(diskType)),
+			ResourceManagerTags: shared.ResourceTagConvert(context.TODO(), m.GCPMachine.Spec.ResourceManagerTags),
+			SourceImage:         sourceImage,
 		},
 	}
 }
@@ -253,8 +255,9 @@ func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
 		additionalDisk := &compute.AttachedDisk{
 			AutoDelete: true,
 			InitializeParams: &compute.AttachedDiskInitializeParams{
-				DiskSizeGb: pointer.Int64Deref(disk.Size, 30),
-				DiskType:   path.Join("zones", m.Zone(), "diskTypes", string(*disk.DeviceType)),
+				DiskSizeGb:          pointer.Int64Deref(disk.Size, 30),
+				DiskType:            path.Join("zones", m.Zone(), "diskTypes", string(*disk.DeviceType)),
+				ResourceManagerTags: shared.ResourceTagConvert(context.TODO(), m.GCPMachine.Spec.ResourceManagerTags),
 			},
 		}
 		if strings.HasSuffix(additionalDisk.InitializeParams.DiskType, string(infrav1.LocalSsdDiskType)) {
@@ -337,6 +340,9 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 				fmt.Sprintf("%s-%s", m.ClusterGetter.Name(), m.Role()),
 				m.ClusterGetter.Name(),
 			),
+		},
+		Params: &compute.InstanceParams{
+			ResourceManagerTags: shared.ResourceTagConvert(context.TODO(), m.ResourceManagerTags()),
 		},
 		Labels: infrav1.Build(infrav1.BuildParams{
 			ClusterName: m.ClusterGetter.Name(),
@@ -427,4 +433,17 @@ func (m *MachineScope) PatchObject() error {
 // Close closes the current scope persisting the cluster configuration and status.
 func (m *MachineScope) Close() error {
 	return m.PatchObject()
+}
+
+// ResourceManagerTags merges ResourceManagerTags from the scope's GCPCluster and GCPMachine. If the same key is present in both,
+// the value from GCPMachine takes precedence. The returned ResourceManagerTags will never be nil.
+func (m *MachineScope) ResourceManagerTags() infrav1.ResourceManagerTags {
+	tags := infrav1.ResourceManagerTags{}
+
+	// Start with the cluster-wide tags...
+	tags.Merge(m.ClusterGetter.ResourceManagerTags())
+	// ... and merge in the Machine's
+	tags.Merge(m.GCPMachine.Spec.ResourceManagerTags)
+
+	return tags
 }

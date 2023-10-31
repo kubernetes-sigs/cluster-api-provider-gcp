@@ -53,6 +53,10 @@ func (src *GCPMachine) ConvertTo(dstRaw conversion.Hub) error { // nolint
 		dst.Spec.ConfidentialCompute = restored.Spec.ConfidentialCompute
 	}
 
+	if restored.Spec.ResourceManagerTags != nil {
+		dst.Spec.ResourceManagerTags = restored.Spec.ResourceManagerTags
+	}
+
 	return nil
 }
 

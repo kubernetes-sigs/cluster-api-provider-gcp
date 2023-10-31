@@ -98,6 +98,11 @@ func (in *GCPManagedClusterSpec) DeepCopyInto(out *GCPManagedClusterSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.ResourceManagerTags != nil {
+		in, out := &in.ResourceManagerTags, &out.ResourceManagerTags
+		*out = make(apiv1beta1.ResourceManagerTags, len(*in))
+		copy(*out, *in)
+	}
 	if in.CredentialsRef != nil {
 		in, out := &in.CredentialsRef, &out.CredentialsRef
 		*out = new(apiv1beta1.ObjectReference)

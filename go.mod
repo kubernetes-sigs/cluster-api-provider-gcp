@@ -8,6 +8,7 @@ require (
 	cloud.google.com/go/compute v1.23.2
 	cloud.google.com/go/container v1.26.2
 	cloud.google.com/go/iam v1.1.4
+	cloud.google.com/go/resourcemanager v1.9.1
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
 	github.com/go-logr/logr v1.3.0
 	github.com/google/go-cmp v0.6.0
@@ -33,7 +34,11 @@ require (
 	sigs.k8s.io/controller-runtime v0.15.1
 )
 
-require golang.org/x/sync v0.4.0 // indirect
+require (
+	cloud.google.com/go v0.110.8 // indirect
+	cloud.google.com/go/longrunning v0.5.1 // indirect
+	golang.org/x/sync v0.4.0 // indirect
+)
 
 require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
