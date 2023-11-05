@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
@@ -170,6 +171,10 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 			Labels:   nodePool.Spec.KubernetesLabels,
 			Taints:   infrav1exp.ConvertToSdkTaint(nodePool.Spec.KubernetesTaints),
 			Metadata: nodePool.Spec.AdditionalLabels,
+			ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{
+				EnableSecureBoot:          pointer.BoolDeref(nodePool.Spec.NodeSecurity.EnableSecureBoot, false),
+				EnableIntegrityMonitoring: pointer.BoolDeref(nodePool.Spec.NodeSecurity.EnableIntegrityMonitoring, false),
+			},
 		},
 	}
 	if nodePool.Spec.Scaling != nil {
@@ -177,6 +182,48 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 			Enabled:      true,
 			MinNodeCount: *nodePool.Spec.Scaling.MinCount,
 			MaxNodeCount: *nodePool.Spec.Scaling.MaxCount,
+		}
+	}
+	if nodePool.Spec.InstanceType != nil {
+		sdkNodePool.Config.MachineType = *nodePool.Spec.InstanceType
+	}
+	if nodePool.Spec.ImageType != nil {
+		sdkNodePool.Config.ImageType = *nodePool.Spec.ImageType
+	}
+	if nodePool.Spec.DiskType != nil {
+		sdkNodePool.Config.DiskType = string(*nodePool.Spec.DiskType)
+	}
+	if nodePool.Spec.DiskSizeGB != nil {
+		sdkNodePool.Config.DiskSizeGb = int32(*nodePool.Spec.DiskSizeGB)
+	}
+	if len(nodePool.Spec.NodeNetwork.Tags) != 0 {
+		sdkNodePool.Config.Tags = nodePool.Spec.NodeNetwork.Tags
+	}
+	if nodePool.Spec.NodeSecurity.ServiceAccount.Email != nil {
+		sdkNodePool.Config.ServiceAccount = *nodePool.Spec.NodeSecurity.ServiceAccount.Email
+	}
+	if len(nodePool.Spec.NodeSecurity.ServiceAccount.Scopes) != 0 {
+		sdkNodePool.Config.OauthScopes = nodePool.Spec.NodeSecurity.ServiceAccount.Scopes
+	}
+	if len(nodePool.Spec.NodeLocations) != 0 {
+		sdkNodePool.Locations = nodePool.Spec.NodeLocations
+	}
+	if nodePool.Spec.MaxPodsPerNode != nil {
+		sdkNodePool.MaxPodsConstraint = &containerpb.MaxPodsConstraint{
+			MaxPodsPerNode: *nodePool.Spec.MaxPodsPerNode,
+		}
+	}
+	if nodePool.Spec.NodeNetwork.CreatePodRange != nil && nodePool.Spec.NodeNetwork.PodRangeName != nil && nodePool.Spec.NodeNetwork.PodRangeCidrBlock != nil {
+		sdkNodePool.NetworkConfig = &containerpb.NodeNetworkConfig{
+			CreatePodRange:   *nodePool.Spec.NodeNetwork.CreatePodRange,
+			PodRange:         *nodePool.Spec.NodeNetwork.PodRangeName,
+			PodIpv4CidrBlock: *nodePool.Spec.NodeNetwork.PodRangeCidrBlock,
+		}
+	}
+
+	if pointer.StringDeref(nodePool.Spec.NodeSecurity.SandboxType, "") == "GVISOR" {
+		sdkNodePool.Config.SandboxConfig = &containerpb.SandboxConfig{
+			Type: containerpb.SandboxConfig_GVISOR,
 		}
 	}
 	if machinePool.Spec.Template.Spec.Version != nil {
