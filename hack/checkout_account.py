@@ -53,6 +53,7 @@ if __name__ == "__main__":
         status, reason, result = post_request(BOSKOS_HOST, "free")
 
     if status != 200:
+        print("BOSKOS Got invalid response %d: %s" % (status, reason))
         sys.exit("Got invalid response %d: %s" % (status, reason))
 
     body = json.loads(result)
