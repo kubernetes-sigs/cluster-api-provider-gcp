@@ -21,7 +21,7 @@ require (
 	golang.org/x/crypto v0.15.0
 	golang.org/x/mod v0.14.0
 	golang.org/x/net v0.18.0
-	google.golang.org/api v0.150.0
+	google.golang.org/api v0.151.0
 	google.golang.org/grpc v1.59.0
 	k8s.io/api v0.27.2
 	k8s.io/apimachinery v0.27.2
