@@ -22,4 +22,5 @@ REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 # shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
 
+export CONTROLLER_IMG="gcr.io/k8s-staging-cluster-api-gcp/cluster-api-gcp-controller"
 cd "${REPO_ROOT}" && make docker-build
