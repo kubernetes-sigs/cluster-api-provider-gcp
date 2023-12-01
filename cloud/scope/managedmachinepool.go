@@ -221,7 +221,12 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 			PodIpv4CidrBlock: *nodePool.Spec.NodeNetwork.PodRangeCidrBlock,
 		}
 	}
-
+	if nodePool.Spec.NodeManagement != nil {
+		sdkNodePool.Management = &containerpb.NodeManagement{
+			AutoRepair:  nodePool.Spec.NodeManagement.AutoRepair,
+			AutoUpgrade: nodePool.Spec.NodeManagement.AutoUpgrade,
+		}
+	}
 	if pointer.StringDeref(nodePool.Spec.NodeSecurity.SandboxType, "") == "GVISOR" {
 		sdkNodePool.Config.SandboxConfig = &containerpb.SandboxConfig{
 			Type: containerpb.SandboxConfig_GVISOR,

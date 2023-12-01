@@ -197,6 +197,13 @@ func (r *GCPManagedMachinePool) ValidateUpdate(oldRaw runtime.Object) (admission
 		)
 	}
 
+	if !cmp.Equal(r.Spec.NodeManagement, old.Spec.NodeManagement) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NodeManagement"),
+				r.Spec.NodePoolName, "field is immutable"),
+		)
+	}
+
 	if errs := r.validateScaling(); errs != nil || len(errs) == 0 {
 		allErrs = append(allErrs, errs...)
 	}

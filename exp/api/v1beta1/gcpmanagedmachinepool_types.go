@@ -95,6 +95,9 @@ type GCPManagedMachinePoolSpec struct {
 	// managed instance group corresponding to the nodegroup represented by this
 	// machine pool
 	// +optional
+	NodeManagement *NodeManagementConfig `json:"nodeManagement,omitempty"`
+	// NodeManagement specifies the node management options.
+	// +optional
 	ProviderIDList []string `json:"providerIDList,omitempty"`
 }
 
@@ -147,6 +150,19 @@ type ServiceAccountConfig struct {
 	// on all of the node VMs under the "default" service account.
 	// +optional
 	Scopes []string `json:"scopes,omitempty"`
+}
+
+// NodeManagementConfig encapsulates node management options.
+type NodeManagementConfig struct {
+	// AutoUpgrade specifies whether node auto-upgrade is enabled for the node
+	// pool. If enabled, node auto-upgrade helps keep the nodes in your node pool
+	// up to date with the latest release version of Kubernetes.
+	AutoUpgrade bool `json:"autoUpgrade,omitempty"`
+	// AutoRepair specifies whether the node auto-repair is enabled for the node
+	// pool. If enabled, the nodes in this node pool will be monitored and, if
+	// they fail health checks too many times, an automatic repair action will be
+	// triggered.
+	AutoRepair bool `json:"autoRepair,omitempty"`
 }
 
 // GCPManagedMachinePoolStatus defines the observed state of GCPManagedMachinePool.
