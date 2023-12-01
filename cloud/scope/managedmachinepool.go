@@ -19,6 +19,7 @@ package scope
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -227,7 +228,7 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 		}
 	}
 	if machinePool.Spec.Template.Spec.Version != nil {
-		sdkNodePool.Version = *machinePool.Spec.Template.Spec.Version
+		sdkNodePool.Version = strings.Replace(*machinePool.Spec.Template.Spec.Version, "v", "", 1)
 	}
 	return &sdkNodePool
 }
