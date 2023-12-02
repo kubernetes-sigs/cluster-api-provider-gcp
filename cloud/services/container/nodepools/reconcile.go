@@ -127,7 +127,6 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Error(errors.New("Unhandled node pool status"), fmt.Sprintf("Unhandled node pool status %s", nodePool.Status), "name", s.scope.GCPManagedMachinePool.Name)
 		return ctrl.Result{}, nil
 	}
-
 	needUpdateNodePool, nodePoolUpdateNodePool := s.checkDiffAndPrepareUpdateNodePool(nodePool)
 	if needUpdateNodePool {
 		log.Info("Node pool config update required")
@@ -357,7 +356,7 @@ func (s *Service) checkDiffAndPrepareUpdateNodePool(existingNodePool *containerp
 	}
 	// Locations
 	desiredLocations := s.scope.GCPManagedMachinePool.Spec.NodeLocations
-	if !cmp.Equal(desiredLocations, existingNodePool.Locations) {
+	if desiredLocations != nil && !cmp.Equal(desiredLocations, existingNodePool.Locations) {
 		needUpdate = true
 		updateNodePoolRequest.Locations = desiredLocations
 	}
