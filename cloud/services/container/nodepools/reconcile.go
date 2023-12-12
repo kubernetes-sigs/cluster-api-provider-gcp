@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/resourceurl"
 
 	"google.golang.org/api/iterator"
@@ -411,7 +410,7 @@ func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.No
 
 	replicas := *s.scope.MachinePool.Spec.Replicas
 	if shared.IsRegional(s.scope.Region()) {
-		replicas /= cloud.DefaultNumRegionsPerZone
+		replicas /= int32(len(existingNodePool.Locations))
 	}
 
 	if replicas != existingNodePool.InitialNodeCount {
