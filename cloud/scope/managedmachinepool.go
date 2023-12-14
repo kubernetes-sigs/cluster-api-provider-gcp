@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"k8s.io/utils/pointer"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
@@ -155,34 +156,68 @@ func (s *ManagedMachinePoolScope) NodePoolVersion() *string {
 	return s.MachinePool.Spec.Template.Spec.Version
 }
 
+// NodePoolResourceLabels returns the resource labels of the node pool.
+func NodePoolResourceLabels(additionalLabels infrav1.Labels, clusterName string) infrav1.Labels {
+	if additionalLabels == nil {
+		additionalLabels = infrav1.Labels{}
+	}
+	resourceLabels := additionalLabels.DeepCopy()
+	resourceLabels[infrav1.ClusterTagKey(clusterName)] = string(infrav1.ResourceLifecycleOwned)
+	return resourceLabels
+}
+
 // ConvertToSdkNodePool converts a node pool to format that is used by GCP SDK.
-func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool clusterv1exp.MachinePool, regional bool) *containerpb.NodePool {
+func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool clusterv1exp.MachinePool, regional bool, clusterName string) *containerpb.NodePool {
 	replicas := *machinePool.Spec.Replicas
 	if regional {
 		replicas /= cloud.DefaultNumRegionsPerZone
 	}
 	nodePoolName := nodePool.Spec.NodePoolName
 	if len(nodePoolName) == 0 {
+		// Use the GCPManagedMachinePool CR name if nodePoolName is not specified
 		nodePoolName = nodePool.Name
 	}
+	// build node pool in GCP SDK format using the GCPManagedMachinePool spec
 	sdkNodePool := containerpb.NodePool{
 		Name:             nodePoolName,
 		InitialNodeCount: replicas,
 		Config: &containerpb.NodeConfig{
-			Labels:   nodePool.Spec.KubernetesLabels,
-			Taints:   infrav1exp.ConvertToSdkTaint(nodePool.Spec.KubernetesTaints),
-			Metadata: nodePool.Spec.AdditionalLabels,
+			Labels: nodePool.Spec.KubernetesLabels,
+			Taints: infrav1exp.ConvertToSdkTaint(nodePool.Spec.KubernetesTaints),
 			ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{
 				EnableSecureBoot:          pointer.BoolDeref(nodePool.Spec.NodeSecurity.EnableSecureBoot, false),
 				EnableIntegrityMonitoring: pointer.BoolDeref(nodePool.Spec.NodeSecurity.EnableIntegrityMonitoring, false),
 			},
+			ResourceLabels: NodePoolResourceLabels(nodePool.Spec.AdditionalLabels, clusterName),
 		},
 	}
+	if nodePool.Spec.MachineType != nil {
+		sdkNodePool.Config.MachineType = *nodePool.Spec.MachineType
+	}
+	if nodePool.Spec.DiskSizeGb != nil {
+		sdkNodePool.Config.DiskSizeGb = *nodePool.Spec.DiskSizeGb
+	}
+	if nodePool.Spec.ImageType != nil {
+		sdkNodePool.Config.ImageType = *nodePool.Spec.ImageType
+	}
+	if nodePool.Spec.LocalSsdCount != nil {
+		sdkNodePool.Config.LocalSsdCount = *nodePool.Spec.LocalSsdCount
+	}
+	if nodePool.Spec.DiskType != nil {
+		sdkNodePool.Config.DiskType = string(*nodePool.Spec.DiskType)
+	}
 	if nodePool.Spec.Scaling != nil {
-		sdkNodePool.Autoscaling = &containerpb.NodePoolAutoscaling{
-			Enabled:      true,
-			MinNodeCount: *nodePool.Spec.Scaling.MinCount,
-			MaxNodeCount: *nodePool.Spec.Scaling.MaxCount,
+		sdkNodePool.Autoscaling = infrav1exp.ConvertToSdkAutoscaling(nodePool.Spec.Scaling)
+	}
+	if nodePool.Spec.Management != nil {
+		sdkNodePool.Management = &containerpb.NodeManagement{
+			AutoRepair:  nodePool.Spec.Management.AutoRepair,
+			AutoUpgrade: nodePool.Spec.Management.AutoUpgrade,
+		}
+	}
+	if nodePool.Spec.MaxPodsPerNode != nil {
+		sdkNodePool.MaxPodsConstraint = &containerpb.MaxPodsConstraint{
+			MaxPodsPerNode: *nodePool.Spec.MaxPodsPerNode,
 		}
 	}
 	if nodePool.Spec.InstanceType != nil {
@@ -234,10 +269,10 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 }
 
 // ConvertToSdkNodePools converts node pools to format that is used by GCP SDK.
-func ConvertToSdkNodePools(nodePools []infrav1exp.GCPManagedMachinePool, machinePools []clusterv1exp.MachinePool, regional bool) []*containerpb.NodePool {
+func ConvertToSdkNodePools(nodePools []infrav1exp.GCPManagedMachinePool, machinePools []clusterv1exp.MachinePool, regional bool, clusterName string) []*containerpb.NodePool {
 	res := []*containerpb.NodePool{}
 	for i := range nodePools {
-		res = append(res, ConvertToSdkNodePool(nodePools[i], machinePools[i], regional))
+		res = append(res, ConvertToSdkNodePool(nodePools[i], machinePools[i], regional, clusterName))
 	}
 	return res
 }
