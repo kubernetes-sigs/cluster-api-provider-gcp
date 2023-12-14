@@ -377,10 +377,10 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 	// Master version
 	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
 		desiredMasterVersion := *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
-		if desiredMasterVersion != existingCluster.InitialClusterVersion {
+		if desiredMasterVersion != existingCluster.CurrentMasterVersion {
 			needUpdate = true
 			clusterUpdate.DesiredMasterVersion = desiredMasterVersion
-			log.V(2).Info("Master version update required", "current", existingCluster.InitialClusterVersion, "desired", desiredMasterVersion)
+			log.V(2).Info("Master version update required", "current", existingCluster.CurrentMasterVersion, "desired", desiredMasterVersion)
 		}
 	}
 
