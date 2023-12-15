@@ -170,7 +170,11 @@ func NodePoolResourceLabels(additionalLabels infrav1.Labels, clusterName string)
 func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool clusterv1exp.MachinePool, regional bool, clusterName string) *containerpb.NodePool {
 	replicas := *machinePool.Spec.Replicas
 	if regional {
-		replicas /= cloud.DefaultNumRegionsPerZone
+		if len(nodePool.Spec.NodeLocations) != 0 {
+			replicas /= int32(len(nodePool.Spec.NodeLocations))
+		} else {
+			replicas /= cloud.DefaultNumRegionsPerZone
+		}
 	}
 	nodePoolName := nodePool.Spec.NodePoolName
 	if len(nodePoolName) == 0 {
