@@ -265,7 +265,7 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		cluster.InitialClusterVersion = *s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
 	}
 	if !s.scope.IsAutopilotCluster() {
-		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional)
+		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional, cluster.Name)
 	}
 
 	createClusterRequest := &containerpb.CreateClusterRequest{
