@@ -30,6 +30,7 @@ import (
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
@@ -410,7 +411,8 @@ func (s *Service) checkDiffAndPrepareUpdateAutoscaling(existingNodePool *contain
 	setNodePoolAutoscalingRequest := containerpb.SetNodePoolAutoscalingRequest{
 		Name: s.scope.NodePoolFullName(),
 	}
-	if !cmp.Equal(desiredAutoscaling, existingNodePool.Autoscaling) {
+
+	if !cmp.Equal(desiredAutoscaling, existingNodePool.Autoscaling, cmpopts.IgnoreUnexported(containerpb.NodePoolAutoscaling{})) {
 		needUpdate = true
 		setNodePoolAutoscalingRequest.Autoscaling = desiredAutoscaling
 	}
