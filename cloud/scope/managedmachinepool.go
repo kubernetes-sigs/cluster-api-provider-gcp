@@ -213,6 +213,9 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 	if nodePool.Spec.Scaling != nil {
 		sdkNodePool.Autoscaling = infrav1exp.ConvertToSdkAutoscaling(nodePool.Spec.Scaling)
 	}
+	if nodePool.Spec.LinuxNodeConfig != nil {
+		sdkNodePool.Config.LinuxNodeConfig = infrav1exp.ConvertToSdkLinuxNodeConfig(nodePool.Spec.LinuxNodeConfig)
+	}
 	if nodePool.Spec.Management != nil {
 		sdkNodePool.Management = &containerpb.NodeManagement{
 			AutoRepair:  nodePool.Spec.Management.AutoRepair,

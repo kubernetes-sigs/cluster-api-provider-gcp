@@ -30,6 +30,7 @@ import (
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
@@ -148,7 +149,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Info("Node pool config update required", "request", nodePoolUpdateConfigRequest)
 		err = s.updateNodePoolConfig(ctx, nodePoolUpdateConfigRequest)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("node pool config update (either version/labels/taints/locations/image type/network tag or all) failed: %s", err)
+			return ctrl.Result{}, fmt.Errorf("node pool config update (either version/labels/taints/locations/image type/network tag/linux node config or all) failed: %s", err)
 		}
 		log.Info("Node pool config updating in progress")
 		s.scope.GCPManagedMachinePool.Status.Ready = true
@@ -398,6 +399,12 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 		updateNodePoolRequest.Tags = &containerpb.NetworkTags{
 			Tags: desiredNetworkTags,
 		}
+	}
+	// LinuxNodeConfig
+	desiredLinuxNodeConfig := infrav1exp.ConvertToSdkLinuxNodeConfig(s.scope.GCPManagedMachinePool.Spec.LinuxNodeConfig)
+	if !cmp.Equal(desiredLinuxNodeConfig, existingNodePool.Config.LinuxNodeConfig, cmpopts.IgnoreUnexported(containerpb.LinuxNodeConfig{})) {
+		needUpdate = true
+		updateNodePoolRequest.LinuxNodeConfig = desiredLinuxNodeConfig
 	}
 
 	return needUpdate, &updateNodePoolRequest

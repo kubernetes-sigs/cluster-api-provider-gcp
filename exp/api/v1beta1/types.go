@@ -112,3 +112,32 @@ func ConvertFromSdkNodeVersion(sdkNodeVersion string) string {
 	// For example, the node version returned from GCP SDK can be 1.27.2-gke.2100, we want to convert it to 1.27.2
 	return strings.Split(sdkNodeVersion, "-")[0]
 }
+
+// ConvertToSdkCgroupMode converts GCP SDK node version to k8s version.
+func ConvertToSdkCgroupMode(cgroupMode ManagedNodePoolCgroupMode) containerpb.LinuxNodeConfig_CgroupMode {
+	switch cgroupMode {
+	case 1:
+		return containerpb.LinuxNodeConfig_CGROUP_MODE_V1
+	case 2:
+		return containerpb.LinuxNodeConfig_CGROUP_MODE_V2
+	}
+	return containerpb.LinuxNodeConfig_CGROUP_MODE_UNSPECIFIED
+}
+
+// ConvertToSdkLinuxNodeConfig converts GCP SDK node version to k8s version.
+func ConvertToSdkLinuxNodeConfig(linuxNodeConfig *LinuxNodeConfig) *containerpb.LinuxNodeConfig {
+	sdkLinuxNodeConfig := containerpb.LinuxNodeConfig{}
+	if linuxNodeConfig != nil {
+		if linuxNodeConfig.Sysctls != nil {
+			sdkSysctl := make(map[string]string)
+			for _, sysctl := range linuxNodeConfig.Sysctls {
+				sdkSysctl[sysctl.Parameter] = sysctl.Value
+			}
+			sdkLinuxNodeConfig.Sysctls = sdkSysctl
+		}
+		if linuxNodeConfig.CgroupMode != nil {
+			sdkLinuxNodeConfig.CgroupMode = ConvertToSdkCgroupMode(*linuxNodeConfig.CgroupMode)
+		}
+	}
+	return &sdkLinuxNodeConfig
+}

@@ -109,6 +109,31 @@ spec:
                   - value
                   type: object
                 type: array
+              linuxNodeConfig:
+                description: LinuxNodeConfig specifies the settings for Linux agent
+                  nodes.
+                properties:
+                  cgroupMode:
+                    description: CgroupMode specifies the cgroup mode for this node
+                      pool.
+                    format: int32
+                    type: integer
+                  sysctls:
+                    description: Sysctls specifies the sysctl settings for this node
+                      pool.
+                    items:
+                      description: SysctlConfig specifies the sysctl settings for
+                        Linux nodes.
+                      properties:
+                        parameter:
+                          description: Parameter specifies sysctl parameter name.
+                          type: string
+                        value:
+                          description: Value specifies sysctl parameter value.
+                          type: string
+                      type: object
+                    type: array
+                type: object
               localSsdCount:
                 description: LocalSsdCount is the number of local SSD disks to be
                   attached to the node.
