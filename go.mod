@@ -22,7 +22,7 @@ require (
 	golang.org/x/mod v0.14.0
 	golang.org/x/net v0.19.0
 	google.golang.org/api v0.154.0
-	google.golang.org/grpc v1.60.0
+	google.golang.org/grpc v1.60.1
 	k8s.io/api v0.27.2
 	k8s.io/apimachinery v0.27.2
 	k8s.io/client-go v0.27.2
