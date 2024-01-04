@@ -106,6 +106,9 @@ type GCPManagedMachinePoolSpec struct {
 	// Management specifies the node pool management options.
 	// +optional
 	Management *NodePoolManagement `json:"management,omitempty"`
+	// LinuxNodeConfig specifies the settings for Linux agent nodes.
+	// +optional
+	LinuxNodeConfig *LinuxNodeConfig `json:"linuxNodeConfig,omitempty"`
 	// ProviderIDList are the provider IDs of instances in the
 	// managed instance group corresponding to the nodegroup represented by this
 	// machine pool
@@ -233,6 +236,29 @@ type NodePoolManagement struct {
 
 // ManagedNodePoolLocationPolicy specifies the location policy of the node pool when autoscaling is enabled.
 type ManagedNodePoolLocationPolicy string
+
+// LinuxNodeConfig specifies the settings for Linux agent nodes.
+type LinuxNodeConfig struct {
+	// Sysctls specifies the sysctl settings for this node pool.
+	// +optional
+	Sysctls []SysctlConfig `json:"sysctls,omitempty"`
+	// CgroupMode specifies the cgroup mode for this node pool.
+	// +optional
+	CgroupMode *ManagedNodePoolCgroupMode `json:"cgroupMode,omitempty"`
+}
+
+// SysctlConfig specifies the sysctl settings for Linux nodes.
+type SysctlConfig struct {
+	// Parameter specifies sysctl parameter name.
+	// +optional
+	Parameter string `json:"parameter,omitempty"`
+	// Value specifies sysctl parameter value.
+	// +optional
+	Value string `json:"value,omitempty"`
+}
+
+// ManagedNodePoolCgroupMode specifies the cgroup mode of the node pool when autoscaling is enabled.
+type ManagedNodePoolCgroupMode int32
 
 const (
 	// ManagedNodePoolLocationPolicyBalanced aims to balance the sizes of different zones.
