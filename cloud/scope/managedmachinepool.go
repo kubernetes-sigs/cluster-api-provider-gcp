@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
@@ -189,8 +189,8 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 			Labels: nodePool.Spec.KubernetesLabels,
 			Taints: infrav1exp.ConvertToSdkTaint(nodePool.Spec.KubernetesTaints),
 			ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{
-				EnableSecureBoot:          pointer.BoolDeref(nodePool.Spec.NodeSecurity.EnableSecureBoot, false),
-				EnableIntegrityMonitoring: pointer.BoolDeref(nodePool.Spec.NodeSecurity.EnableIntegrityMonitoring, false),
+				EnableSecureBoot:          ptr.Deref(nodePool.Spec.NodeSecurity.EnableSecureBoot, false),
+				EnableIntegrityMonitoring: ptr.Deref(nodePool.Spec.NodeSecurity.EnableIntegrityMonitoring, false),
 			},
 			ResourceLabels: NodePoolResourceLabels(nodePool.Spec.AdditionalLabels, clusterName),
 		},
@@ -264,7 +264,7 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 		}
 	}
 
-	if pointer.StringDeref(nodePool.Spec.NodeSecurity.SandboxType, "") == "GVISOR" {
+	if ptr.Deref(nodePool.Spec.NodeSecurity.SandboxType, "") == "GVISOR" {
 		sdkNodePool.Config.SandboxConfig = &containerpb.SandboxConfig{
 			Type: containerpb.SandboxConfig_GVISOR,
 		}

@@ -24,7 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
 )
 
@@ -64,7 +64,7 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 				BootstrapClusterProxy: bootstrapClusterProxy,
 				ArtifactFolder:        artifactFolder,
 				SkipCleanup:           skipCleanup,
-				Flavor:                pointer.String("topology"),
+				Flavor:                ptr.To[string]("topology"),
 			}
 		})
 	})
@@ -101,8 +101,8 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 				ClusterctlConfigPath:     clusterctlConfigPath,
 				BootstrapClusterProxy:    bootstrapClusterProxy,
 				ArtifactFolder:           artifactFolder,
-				ControlPlaneMachineCount: pointer.Int64(3),
-				WorkerMachineCount:       pointer.Int64(0),
+				ControlPlaneMachineCount: ptr.To[int64](3),
+				WorkerMachineCount:       ptr.To[int64](0),
 				SkipCleanup:              skipCleanup,
 				SkipConformanceTests:     true,
 			}
