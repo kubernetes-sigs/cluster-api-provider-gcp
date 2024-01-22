@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -148,12 +147,12 @@ func (m *MachineScope) Role() string {
 
 // GetInstanceID returns the GCPMachine instance id by parsing Spec.ProviderID.
 func (m *MachineScope) GetInstanceID() *string {
-	parsed, err := noderefutil.NewProviderID(m.GetProviderID()) //nolint: staticcheck
+	parsed, err := NewProviderID(m.GetProviderID())
 	if err != nil {
 		return nil
 	}
 
-	return ptr.To[string](parsed.ID()) //nolint: staticcheck
+	return ptr.To[string](parsed.ID())
 }
 
 // GetProviderID returns the GCPMachine providerID from the spec.

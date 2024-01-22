@@ -41,7 +41,7 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-      - name: v1.5.3
+      - name: v1.6.1
         value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.6.1/control-plane-components.yaml
         type: url
         files:
@@ -54,7 +54,7 @@ providers:
   - name: gcp
     type: InfrastructureProvider
     versions:
-      - name: v1.6.99 # next; use manifest from source files
+      - name: v1.5.99 # next; use manifest from source files
         value: "${PWD}/config/default"
     files:
       - sourcePath: "${PWD}/metadata.yaml"
@@ -74,7 +74,7 @@ providers:
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.28.3}"
-  KUBERNETES_VERSION_MANAGEMENT: "v1.28.3"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.28.0"
   ETCD_VERSION_UPGRADE_TO: "3.5.1-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.8.6"
   KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-27-3-nightly"

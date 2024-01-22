@@ -25,7 +25,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
-	"k8s.io/klog/v2/klogr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,7 +44,7 @@ var (
 func init() {
 	klog.InitFlags(nil)
 	klog.SetOutput(GinkgoWriter)
-	logf.SetLogger(klogr.New())
+	logf.SetLogger(klog.Background())
 }
 
 func TestAPIs(t *testing.T) {
