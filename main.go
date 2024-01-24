@@ -147,17 +147,17 @@ func main() {
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
 
-	if setupErr := setupReconcilers(ctx, mgr); setupErr != nil {
+	if err := setupReconcilers(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to setup reconcilers")
 		os.Exit(1)
 	}
 
-	if setupErr := setupWebhooks(mgr); setupErr != nil {
+	if err := setupWebhooks(mgr); err != nil {
 		setupLog.Error(err, "unable to setup webhooks")
 		os.Exit(1)
 	}
 
-	if setupErr := setupProbes(mgr); setupErr != nil {
+	if err := setupProbes(mgr); err != nil {
 		setupLog.Error(err, "unable to setup probes")
 		os.Exit(1)
 	}
