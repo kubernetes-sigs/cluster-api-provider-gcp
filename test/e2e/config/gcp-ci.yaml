@@ -71,6 +71,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-creds.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-autopilot.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.28.3}"
