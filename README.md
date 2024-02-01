@@ -71,7 +71,7 @@ For more, see the [issue tracker]. If you're unsure where to start, feel free to
 See also: Our own [contributor guide] and the Kubernetes [community page].
 
 We also encourage ALL active community participants to act as if they are maintainers, even if you don't have
-'official' written permissions. This is a community effort and we are here to serve the Kubernetes community.
+"official" written permissions. This is a community effort and we are here to serve the Kubernetes community.
 If you have an active interest and you want to get involved, you have real power!
 
 
