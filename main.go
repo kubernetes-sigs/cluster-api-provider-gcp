@@ -32,8 +32,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	cgrecord "k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
-	"k8s.io/klog/v2/klogr"
-	infrav1alpha3 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha3" //nolint: staticcheck
 	infrav1alpha4 "sigs.k8s.io/cluster-api-provider-gcp/api/v1alpha4" //nolint: staticcheck
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
@@ -44,21 +42,24 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	expclusterv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/flags"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme             = runtime.NewScheme()
+	setupLog           = ctrl.Log.WithName("setup")
+	diagnosticsOptions = flags.DiagnosticsOptions{}
 )
 
 func init() {
 	klog.InitFlags(nil)
 
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = infrav1alpha3.AddToScheme(scheme)
 	_ = infrav1alpha4.AddToScheme(scheme)
 	_ = infrav1beta1.AddToScheme(scheme)
 	_ = clusterv1.AddToScheme(scheme)
@@ -69,7 +70,6 @@ func init() {
 
 var (
 	enableLeaderElection        bool
-	metricsAddr                 string
 	leaderElectionNamespace     string
 	watchNamespace              string
 	profilerAddress             string
@@ -86,12 +86,22 @@ var (
 	leaderElectionRetryPeriod   time.Duration
 )
 
+// Add RBAC for the authorized diagnostics endpoint.
+// +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
+// +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+
 func main() {
 	initFlags(pflag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
+	diagnosticsOpts := flags.GetDiagnosticsOptions(diagnosticsOptions)
+
+	var watchNamespaces map[string]cache.Config
 	if watchNamespace != "" {
+		watchNamespaces = map[string]cache.Config{
+			watchNamespace: {},
+		}
 		setupLog.Info("Watching cluster-api objects only in namespace for reconciliation", "namespace", watchNamespace)
 	}
 
@@ -110,7 +120,7 @@ func main() {
 		}()
 	}
 
-	ctrl.SetLogger(klogr.New())
+	ctrl.SetLogger(klog.Background())
 
 	setupLog.Info(fmt.Sprintf("feature gates: %+v\n", feature.Gates))
 
@@ -122,19 +132,23 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,
-		MetricsBindAddress:      metricsAddr,
+		Metrics:                 diagnosticsOpts,
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionID:        "controller-leader-election-capg",
 		LeaderElectionNamespace: leaderElectionNamespace,
 		LeaseDuration:           &leaderElectionLeaseDuration,
 		RenewDeadline:           &leaderElectionRenewDeadline,
 		RetryPeriod:             &leaderElectionRetryPeriod,
-		SyncPeriod:              &syncPeriod,
-		Namespace:               watchNamespace,
-		Port:                    webhookPort,
-		CertDir:                 webhookCertDir,
-		HealthProbeBindAddress:  healthAddr,
-		EventBroadcaster:        broadcaster,
+		Cache: cache.Options{
+			DefaultNamespaces: watchNamespaces,
+			SyncPeriod:        &syncPeriod,
+		},
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port:    webhookPort,
+			CertDir: webhookCertDir,
+		}),
+		HealthProbeBindAddress: healthAddr,
+		EventBroadcaster:       broadcaster,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -261,13 +275,6 @@ func setupProbes(mgr ctrl.Manager) error {
 }
 
 func initFlags(fs *pflag.FlagSet) {
-	fs.StringVar(
-		&metricsAddr,
-		"metrics-bind-addr",
-		"localhost:8080",
-		"The address the metric endpoint binds to.",
-	)
-
 	fs.BoolVar(
 		&enableLeaderElection,
 		"leader-elect",
@@ -365,6 +372,8 @@ func initFlags(fs *pflag.FlagSet) {
 		reconciler.DefaultLoopTimeout,
 		"The maximum duration a reconcile loop can run (e.g. 90m)",
 	)
+
+	flags.AddDiagnosticsOptions(fs, &diagnosticsOptions)
 
 	feature.MutableGates.AddFlag(fs)
 }

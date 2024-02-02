@@ -28,7 +28,7 @@ import (
 	"google.golang.org/api/googleapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -62,7 +62,7 @@ var fakeGCPCluster = &infrav1.GCPCluster{
 					Name:      "workers",
 					CidrBlock: "10.0.0.1/28",
 					Region:    "us-central1",
-					Purpose:   pointer.String("INTERNAL_HTTPS_LOAD_BALANCER"),
+					Purpose:   ptr.To[string]("INTERNAL_HTTPS_LOAD_BALANCER"),
 				},
 			},
 		},

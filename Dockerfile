@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Build the manager binary
-FROM golang:1.20.11@sha256:ddcc9c29fc589c10a26dd59198873510a526e7d1a3d81f6903690255f1118e4e as builder
+FROM golang:1.21.6@sha256:04cf306d01a03309934b49ac4b9f487abb8a054b71141fa53df6df482ab7d7eb as builder
 WORKDIR /workspace
 
 # Run this with docker build --build_arg $(go env GOPROXY) to override the goproxy

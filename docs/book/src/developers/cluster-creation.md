@@ -17,7 +17,7 @@ For creating a cluster with clusterctl, checkout our [Cluster API Quick Start](h
    export GCP_PROJECT=k8s-staging-cluster-api-gcp
    export CONTROL_PLANE_MACHINE_COUNT=1
    export WORKER_MACHINE_COUNT=1
-   export KUBERNETES_VERSION=1.20.9
+   export KUBERNETES_VERSION=1.21.6
    export GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2
    export GCP_NODE_MACHINE_TYPE=n1-standard-2
    export GCP_NETWORK_NAME=default

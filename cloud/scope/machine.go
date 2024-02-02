@@ -31,13 +31,12 @@ import (
 	"google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/controllers/noderefutil"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -148,12 +147,12 @@ func (m *MachineScope) Role() string {
 
 // GetInstanceID returns the GCPMachine instance id by parsing Spec.ProviderID.
 func (m *MachineScope) GetInstanceID() *string {
-	parsed, err := noderefutil.NewProviderID(m.GetProviderID()) //nolint: staticcheck
+	parsed, err := NewProviderID(m.GetProviderID())
 	if err != nil {
 		return nil
 	}
 
-	return pointer.String(parsed.ID()) //nolint: staticcheck
+	return ptr.To[string](parsed.ID())
 }
 
 // GetProviderID returns the GCPMachine providerID from the spec.
@@ -172,7 +171,7 @@ func (m *MachineScope) GetProviderID() string {
 // SetProviderID sets the GCPMachine providerID in spec.
 func (m *MachineScope) SetProviderID() {
 	providerID, _ := providerid.New(m.ClusterGetter.Project(), m.Zone(), m.Name())
-	m.GCPMachine.Spec.ProviderID = pointer.String(providerID.String())
+	m.GCPMachine.Spec.ProviderID = ptr.To[string](providerID.String())
 }
 
 // GetInstanceStatus returns the GCPMachine instance status.
@@ -192,7 +191,7 @@ func (m *MachineScope) SetReady() {
 
 // SetFailureMessage sets the GCPMachine status failure message.
 func (m *MachineScope) SetFailureMessage(v error) {
-	m.GCPMachine.Status.FailureMessage = pointer.String(v.Error())
+	m.GCPMachine.Status.FailureMessage = ptr.To[string](v.Error())
 }
 
 // SetFailureReason sets the GCPMachine status failure reason.
@@ -255,7 +254,7 @@ func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
 		additionalDisk := &compute.AttachedDisk{
 			AutoDelete: true,
 			InitializeParams: &compute.AttachedDiskInitializeParams{
-				DiskSizeGb:          pointer.Int64Deref(disk.Size, 30),
+				DiskSizeGb:          ptr.Deref(disk.Size, 30),
 				DiskType:            path.Join("zones", m.Zone(), "diskTypes", string(*disk.DeviceType)),
 				ResourceManagerTags: shared.ResourceTagConvert(context.TODO(), m.GCPMachine.Spec.ResourceManagerTags),
 			},
@@ -347,7 +346,7 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 		Labels: infrav1.Build(infrav1.BuildParams{
 			ClusterName: m.ClusterGetter.Name(),
 			Lifecycle:   infrav1.ResourceLifecycleOwned,
-			Role:        pointer.String(m.Role()),
+			Role:        ptr.To[string](m.Role()),
 			// TODO(vincepri): Check what needs to be added for the cloud provider label.
 			Additional: m.ClusterGetter.AdditionalLabels().AddLabels(m.GCPMachine.Spec.AdditionalLabels),
 		}),

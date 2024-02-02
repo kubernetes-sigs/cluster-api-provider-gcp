@@ -30,7 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -67,10 +67,10 @@ var fakeMachine = &clusterv1.Machine{
 	},
 	Spec: clusterv1.MachineSpec{
 		Bootstrap: clusterv1.Bootstrap{
-			DataSecretName: pointer.String("my-cluster-bootstrap"),
+			DataSecretName: ptr.To[string]("my-cluster-bootstrap"),
 		},
-		FailureDomain: pointer.String("us-central1-c"),
-		Version:       pointer.String("v1.19.11"),
+		FailureDomain: ptr.To[string]("us-central1-c"),
+		Version:       ptr.To[string]("v1.19.11"),
 	},
 }
 
@@ -81,9 +81,9 @@ var fakeMachineWithOutFailureDomain = &clusterv1.Machine{
 	},
 	Spec: clusterv1.MachineSpec{
 		Bootstrap: clusterv1.Bootstrap{
-			DataSecretName: pointer.String("my-cluster-bootstrap"),
+			DataSecretName: ptr.To[string]("my-cluster-bootstrap"),
 		},
-		Version: pointer.String("v1.19.11"),
+		Version: ptr.To[string]("v1.19.11"),
 	},
 }
 
@@ -248,7 +248,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 					Items: []*compute.MetadataItems{
 						{
 							Key:   "user-data",
-							Value: pointer.String("Zm9vCg=="),
+							Value: ptr.To[string]("Zm9vCg=="),
 						},
 					},
 				},
@@ -313,7 +313,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 					Items: []*compute.MetadataItems{
 						{
 							Key:   "user-data",
-							Value: pointer.String("Zm9vCg=="),
+							Value: ptr.To[string]("Zm9vCg=="),
 						},
 					},
 				},
@@ -380,7 +380,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 					Items: []*compute.MetadataItems{
 						{
 							Key:   "user-data",
-							Value: pointer.String("Zm9vCg=="),
+							Value: ptr.To[string]("Zm9vCg=="),
 						},
 					},
 				},
@@ -447,7 +447,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 					Items: []*compute.MetadataItems{
 						{
 							Key:   "user-data",
-							Value: pointer.String("Zm9vCg=="),
+							Value: ptr.To[string]("Zm9vCg=="),
 						},
 					},
 				},
@@ -517,7 +517,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 					Items: []*compute.MetadataItems{
 						{
 							Key:   "user-data",
-							Value: pointer.String("Zm9vCg=="),
+							Value: ptr.To[string]("Zm9vCg=="),
 						},
 					},
 				},
@@ -580,7 +580,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 					Items: []*compute.MetadataItems{
 						{
 							Key:   "user-data",
-							Value: pointer.String("Zm9vCg=="),
+							Value: ptr.To[string]("Zm9vCg=="),
 						},
 					},
 				},

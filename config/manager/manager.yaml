@@ -22,7 +22,8 @@ spec:
       - args:
         - --leader-elect
         - --feature-gates=GKE=${EXP_CAPG_GKE:=false}
-        - "--metrics-bind-addr=localhost:8080"
+        - "--diagnostics-address=${CAPG_DIAGNOSTICS_ADDRESS:=:8443}"
+        - "--insecure-diagnostics=${CAPG_INSECURE_DIAGNOSTICS:=false}"
         - "--v=${CAPG_LOGLEVEL:=0}"
         image: controller:latest
         imagePullPolicy: IfNotPresent
@@ -30,6 +31,9 @@ spec:
         ports:
         - containerPort: 9440
           name: healthz
+          protocol: TCP
+        - containerPort: ${CAPG_DIAGNOSTICS_PORT:=8443}
+          name: metrics
           protocol: TCP
         readinessProbe:
           httpGet:

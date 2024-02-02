@@ -23,7 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -115,7 +115,7 @@ func (s *ManagedClusterScope) Namespace() string {
 
 // NetworkName returns the cluster network unique identifier.
 func (s *ManagedClusterScope) NetworkName() string {
-	return pointer.StringDeref(s.GCPManagedCluster.Spec.Network.Name, "default")
+	return ptr.Deref(s.GCPManagedCluster.Spec.Network.Name, "default")
 }
 
 // NetworkLink returns the partial URL for the network.
@@ -145,7 +145,7 @@ func (s *ManagedClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags 
 // ControlPlaneEndpoint returns the cluster control-plane endpoint.
 func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 	endpoint := s.GCPManagedCluster.Spec.ControlPlaneEndpoint
-	endpoint.Port = pointer.Int32Deref(s.Cluster.Spec.ClusterNetwork.APIServerPort, 443)
+	endpoint.Port = ptr.Deref(s.Cluster.Spec.ClusterNetwork.APIServerPort, 443)
 	return endpoint
 }
 
@@ -179,7 +179,7 @@ func (s *ManagedClusterScope) SetControlPlaneEndpoint(endpoint clusterv1.APIEndp
 
 // NetworkSpec returns google compute network spec.
 func (s *ManagedClusterScope) NetworkSpec() *compute.Network {
-	createSubnet := pointer.BoolDeref(s.GCPManagedCluster.Spec.Network.AutoCreateSubnetworks, true)
+	createSubnet := ptr.Deref(s.GCPManagedCluster.Spec.Network.AutoCreateSubnetworks, true)
 	network := &compute.Network{
 		Name:                  s.NetworkName(),
 		Description:           infrav1.ClusterTagKey(s.Name()),
@@ -218,13 +218,13 @@ func (s *ManagedClusterScope) SubnetSpecs() []*compute.Subnetwork {
 		subnets = append(subnets, &compute.Subnetwork{
 			Name:                  subnetwork.Name,
 			Region:                subnetwork.Region,
-			EnableFlowLogs:        pointer.BoolDeref(subnetwork.EnableFlowLogs, false),
-			PrivateIpGoogleAccess: pointer.BoolDeref(subnetwork.PrivateGoogleAccess, false),
+			EnableFlowLogs:        ptr.Deref(subnetwork.EnableFlowLogs, false),
+			PrivateIpGoogleAccess: ptr.Deref(subnetwork.PrivateGoogleAccess, false),
 			IpCidrRange:           subnetwork.CidrBlock,
 			SecondaryIpRanges:     secondaryIPRanges,
-			Description:           pointer.StringDeref(subnetwork.Description, infrav1.ClusterTagKey(s.Name())),
+			Description:           ptr.Deref(subnetwork.Description, infrav1.ClusterTagKey(s.Name())),
 			Network:               s.NetworkLink(),
-			Purpose:               pointer.StringDeref(subnetwork.Purpose, "PRIVATE_RFC_1918"),
+			Purpose:               ptr.Deref(subnetwork.Purpose, "PRIVATE_RFC_1918"),
 			Role:                  "ACTIVE",
 		})
 	}
