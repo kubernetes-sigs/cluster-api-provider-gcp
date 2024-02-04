@@ -110,7 +110,7 @@ func ConvertToSdkAutoscaling(autoscaling *NodePoolAutoScaling) *containerpb.Node
 // ConvertFromSdkNodeVersion converts GCP SDK node version to k8s version.
 func ConvertFromSdkNodeVersion(sdkNodeVersion string) string {
 	// For example, the node version returned from GCP SDK can be 1.27.2-gke.2100, we want to convert it to 1.27.2
-	return strings.Split(sdkNodeVersion, "-")[0]
+	return strings.Replace(strings.Split(sdkNodeVersion, "-")[0], "v", "", 1)
 }
 
 // ConvertToSdkCgroupMode converts GCP SDK node version to k8s version.
