@@ -81,27 +81,30 @@ func convertToSdkLocationPolicy(locationPolicy ManagedNodePoolLocationPolicy) co
 
 // ConvertToSdkAutoscaling converts node pool autoscaling config to a value that is used by GCP SDK.
 func ConvertToSdkAutoscaling(autoscaling *NodePoolAutoScaling) *containerpb.NodePoolAutoscaling {
-	if autoscaling == nil {
-		return nil
-	}
 	sdkAutoscaling := containerpb.NodePoolAutoscaling{
-		Enabled: true, // enable autoscaling by default
+		Enabled:           true, // enable autoscaling by default
+		TotalMinNodeCount: 0,
+		TotalMaxNodeCount: 1,
+		LocationPolicy:    convertToSdkLocationPolicy(ManagedNodePoolLocationPolicyBalanced),
 	}
-	// set fields
-	if autoscaling.MinCount != nil {
-		sdkAutoscaling.TotalMinNodeCount = *autoscaling.MinCount
-	}
-	if autoscaling.MaxCount != nil {
-		sdkAutoscaling.TotalMaxNodeCount = *autoscaling.MaxCount
-	}
-	if autoscaling.EnableAutoscaling != nil {
-		sdkAutoscaling.Enabled = *autoscaling.EnableAutoscaling
-	}
-	if autoscaling.LocationPolicy != nil {
-		sdkAutoscaling.LocationPolicy = convertToSdkLocationPolicy(*autoscaling.LocationPolicy)
-	} else if sdkAutoscaling.Enabled {
-		// if location policy is not specified and autoscaling is enabled, default location policy to "any"
-		sdkAutoscaling.LocationPolicy = convertToSdkLocationPolicy(ManagedNodePoolLocationPolicyAny)
+	if autoscaling != nil {
+		// set fields
+		if autoscaling.MinCount != nil {
+			sdkAutoscaling.TotalMinNodeCount = *autoscaling.MinCount
+		}
+		if autoscaling.MaxCount != nil {
+			sdkAutoscaling.TotalMaxNodeCount = *autoscaling.MaxCount
+		}
+		if autoscaling.LocationPolicy != nil {
+			sdkAutoscaling.LocationPolicy = convertToSdkLocationPolicy(*autoscaling.LocationPolicy)
+		}
+		if autoscaling.EnableAutoscaling != nil {
+			if !*autoscaling.EnableAutoscaling {
+				sdkAutoscaling = containerpb.NodePoolAutoscaling{
+					Enabled: false,
+				}
+			}
+		}
 	}
 
 	return &sdkAutoscaling

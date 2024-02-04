@@ -420,7 +420,8 @@ func (s *Service) checkDiffAndPrepareUpdateAutoscaling(existingNodePool *contain
 	setNodePoolAutoscalingRequest := containerpb.SetNodePoolAutoscalingRequest{
 		Name: s.scope.NodePoolFullName(),
 	}
-	if !cmp.Equal(desiredAutoscaling, existingNodePool.Autoscaling) {
+
+	if !cmp.Equal(desiredAutoscaling, existingNodePool.Autoscaling, cmpopts.IgnoreUnexported(containerpb.NodePoolAutoscaling{})) {
 		needUpdate = true
 		setNodePoolAutoscalingRequest.Autoscaling = desiredAutoscaling
 	}
