@@ -4,9 +4,12 @@ go 1.21
 
 toolchain go1.21.6
 
+replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.6.1
+
 require sigs.k8s.io/cluster-api/hack/tools v0.0.0-20240116064735-bfe8d0d16ff3
 
 require (
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -26,7 +29,9 @@ require (
 	k8s.io/apimachinery v0.28.5 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/utils v0.0.0-20231127182322-b307cd553661 // indirect
+	sigs.k8s.io/cluster-api v0.0.0-00010101000000-000000000000 // indirect
 	sigs.k8s.io/controller-tools v0.13.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
+	sigs.k8s.io/kubebuilder/docs/book/utils v0.0.0-20211028165026-57688c578b5d // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
