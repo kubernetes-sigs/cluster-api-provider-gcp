@@ -268,6 +268,9 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	if !s.scope.IsAutopilotCluster() {
 		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional, cluster.Name)
 	}
+	if s.scope.GCPManagedControlPlane.Spec.NetworkPolicy != nil {
+		cluster.NetworkPolicy = convertToSdkNetworkPolicy(s.scope.GCPManagedControlPlane.Spec.NetworkPolicy)
+	}
 
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
@@ -366,6 +369,20 @@ func convertToSdkMasterAuthorizedNetworksConfig(config *infrav1exp.MasterAuthori
 	}
 }
 
+// convertToSdkNetworkPolicy converts NetworkPolicy config to a value that is used by GCP SDK.
+func convertToSdkNetworkPolicy(networkPolicy *infrav1exp.NetworkPolicy) *containerpb.NetworkPolicy {
+	sdkNetworkPolicy := containerpb.NetworkPolicy{
+		Enabled: true,
+	}
+	switch networkPolicy.Provider {
+	case "calico":
+		sdkNetworkPolicy.Provider = containerpb.NetworkPolicy_CALICO
+	default:
+		sdkNetworkPolicy.Provider = containerpb.NetworkPolicy_PROVIDER_UNSPECIFIED
+	}
+	return &sdkNetworkPolicy
+}
+
 func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
 	log.V(4).Info("Checking diff and preparing update.")
 
@@ -390,7 +407,6 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			log.V(2).Info("Master version update required", "current", existingClusterMasterVersion, "desired", desiredMasterVersion)
 		}
 	}
-
 	// DesiredMasterAuthorizedNetworksConfig
 	// When desiredMasterAuthorizedNetworksConfig is nil, it means that the user wants to disable the feature.
 	desiredMasterAuthorizedNetworksConfig := convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig)

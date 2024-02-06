@@ -130,6 +130,13 @@ func (r *GCPManagedControlPlane) ValidateUpdate(oldRaw runtime.Object) (admissio
 		)
 	}
 
+	if !cmp.Equal(r.Spec.NetworkPolicy, old.Spec.NetworkPolicy) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "NetworkPolicy"),
+				r.Spec.NetworkPolicy, "field is immutable"),
+		)
+	}
+
 	if len(allErrs) == 0 {
 		return nil, nil
 	}
