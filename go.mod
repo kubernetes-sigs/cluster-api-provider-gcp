@@ -14,7 +14,7 @@ require (
 	cloud.google.com/go/compute v1.23.4
 	cloud.google.com/go/container v1.30.0
 	cloud.google.com/go/iam v1.1.6
-	cloud.google.com/go/resourcemanager v1.9.4
+	cloud.google.com/go/resourcemanager v1.9.5
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
