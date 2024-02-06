@@ -11,7 +11,7 @@ replace (
 )
 
 require (
-	cloud.google.com/go/compute v1.23.3
+	cloud.google.com/go/compute v1.23.4
 	cloud.google.com/go/container v1.30.0
 	cloud.google.com/go/iam v1.1.6
 	cloud.google.com/go/resourcemanager v1.9.4
