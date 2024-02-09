@@ -80,6 +80,81 @@ spec:
                                 Local SSD disk (https://cloud.google.com/compute/docs/disks/local-ssd).
                                 Default is "pd-standard".'
                               type: string
+                            encryptionKey:
+                              description: EncryptionKey defines the KMS key to be
+                                used to encrypt the disk.
+                              properties:
+                                keyType:
+                                  description: KeyType is the type of encryption key.
+                                    Must be either Managed, aka Customer-Managed Encryption
+                                    Key (CMEK) or Supplied, aka Customer-Supplied
+                                    EncryptionKey (CSEK).
+                                  enum:
+                                  - Managed
+                                  - Supplied
+                                  type: string
+                                kmsKeyServiceAccount:
+                                  description: 'KMSKeyServiceAccount is the service
+                                    account being used for the encryption request
+                                    for the given KMS key. If absent, the Compute
+                                    Engine default service account is used. For example:
+                                    "kmsKeyServiceAccount": "name@project_id.iam.gserviceaccount.com.
+                                    The maximum length is based on the Service Account
+                                    ID (max 30), Project (max 30), and a valid gcloud
+                                    email suffix ("iam.gserviceaccount.com").'
+                                  maxLength: 85
+                                  pattern: '[-_[A-Za-z0-9]+@[-_[A-Za-z0-9]+.iam.gserviceaccount.com'
+                                  type: string
+                                managedKey:
+                                  description: ManagedKey references keys managed
+                                    by the Cloud Key Management Service. This should
+                                    be set when KeyType is Managed.
+                                  properties:
+                                    kmsKeyName:
+                                      description: 'KMSKeyName is the name of the
+                                        encryption key that is stored in Google Cloud
+                                        KMS. For example: "kmsKeyName": "projects/kms_project_id/locations/region/keyRings/key_region/cryptoKeys/key'
+                                      maxLength: 160
+                                      pattern: projects\/[-_[A-Za-z0-9]+\/locations\/[-_[A-Za-z0-9]+\/keyRings\/[-_[A-Za-z0-9]+\/cryptoKeys\/[-_[A-Za-z0-9]+
+                                      type: string
+                                  type: object
+                                suppliedKey:
+                                  description: SuppliedKey provides the key used to
+                                    create or manage a disk. This should be set when
+                                    KeyType is Managed.
+                                  maxProperties: 1
+                                  minProperties: 1
+                                  properties:
+                                    rawKey:
+                                      description: 'RawKey specifies a 256-bit customer-supplied
+                                        encryption key, encoded in RFC 4648 base64
+                                        to either encrypt or decrypt this resource.
+                                        You can provide either the rawKey or the rsaEncryptedKey.
+                                        For example: "rawKey": "SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0="'
+                                      format: byte
+                                      type: string
+                                    rsaEncryptedKey:
+                                      description: 'RSAEncryptedKey specifies an RFC
+                                        4648 base64 encoded, RSA-wrapped 2048-bit
+                                        customer-supplied encryption key to either
+                                        encrypt or decrypt this resource. You can
+                                        provide either the rawKey or the rsaEncryptedKey.
+                                        For example: "rsaEncryptedKey": "ieCx/NcW06PcT7Ep1X6LUTc/hLvUDYyzSZPPVCVPTVEohpeHASqC8uw5TzyO9U+Fka9JFHi
+                                        z0mBibXUInrC/jEk014kCK/NPjYgEMOyssZ4ZINPKxlUh2zn1bV+MCaTICrdmuSBTWlUUiFoDi
+                                        D6PYznLwh8ZNdaheCeZ8ewEXgFQ8V+sDroLaN3Xs3MDTXQEMMoNUXMCZEIpg9Vtp9x2oe=="
+                                        The key must meet the following requirements
+                                        before you can provide it to Compute Engine:
+                                        1. The key is wrapped using a RSA public key
+                                        certificate provided by Google. 2. After being
+                                        wrapped, the key must be encoded in RFC 4648
+                                        base64 encoding. Gets the RSA public key certificate
+                                        provided by Google at: https://cloud-certs.storage.googleapis.com/google-cloud-csek-ingress.pem'
+                                      format: byte
+                                      type: string
+                                  type: object
+                              required:
+                              - keyType
+                              type: object
                             size:
                               description: Size is the size of the disk in GBs. Defaults
                                 to 30GB. For "local-ssd" size is always 375GB.
@@ -242,6 +317,80 @@ spec:
                           (HDD) persistent disk 2. "pd-ssd" - SSD persistent disk
                           Default is "pd-standard".'
                         type: string
+                      rootDiskEncryptionKey:
+                        description: RootDiskEncryptionKey defines the KMS key to
+                          be used to encrypt the root disk.
+                        properties:
+                          keyType:
+                            description: KeyType is the type of encryption key. Must
+                              be either Managed, aka Customer-Managed Encryption Key
+                              (CMEK) or Supplied, aka Customer-Supplied EncryptionKey
+                              (CSEK).
+                            enum:
+                            - Managed
+                            - Supplied
+                            type: string
+                          kmsKeyServiceAccount:
+                            description: 'KMSKeyServiceAccount is the service account
+                              being used for the encryption request for the given
+                              KMS key. If absent, the Compute Engine default service
+                              account is used. For example: "kmsKeyServiceAccount":
+                              "name@project_id.iam.gserviceaccount.com. The maximum
+                              length is based on the Service Account ID (max 30),
+                              Project (max 30), and a valid gcloud email suffix ("iam.gserviceaccount.com").'
+                            maxLength: 85
+                            pattern: '[-_[A-Za-z0-9]+@[-_[A-Za-z0-9]+.iam.gserviceaccount.com'
+                            type: string
+                          managedKey:
+                            description: ManagedKey references keys managed by the
+                              Cloud Key Management Service. This should be set when
+                              KeyType is Managed.
+                            properties:
+                              kmsKeyName:
+                                description: 'KMSKeyName is the name of the encryption
+                                  key that is stored in Google Cloud KMS. For example:
+                                  "kmsKeyName": "projects/kms_project_id/locations/region/keyRings/key_region/cryptoKeys/key'
+                                maxLength: 160
+                                pattern: projects\/[-_[A-Za-z0-9]+\/locations\/[-_[A-Za-z0-9]+\/keyRings\/[-_[A-Za-z0-9]+\/cryptoKeys\/[-_[A-Za-z0-9]+
+                                type: string
+                            type: object
+                          suppliedKey:
+                            description: SuppliedKey provides the key used to create
+                              or manage a disk. This should be set when KeyType is
+                              Managed.
+                            maxProperties: 1
+                            minProperties: 1
+                            properties:
+                              rawKey:
+                                description: 'RawKey specifies a 256-bit customer-supplied
+                                  encryption key, encoded in RFC 4648 base64 to either
+                                  encrypt or decrypt this resource. You can provide
+                                  either the rawKey or the rsaEncryptedKey. For example:
+                                  "rawKey": "SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0="'
+                                format: byte
+                                type: string
+                              rsaEncryptedKey:
+                                description: 'RSAEncryptedKey specifies an RFC 4648
+                                  base64 encoded, RSA-wrapped 2048-bit customer-supplied
+                                  encryption key to either encrypt or decrypt this
+                                  resource. You can provide either the rawKey or the
+                                  rsaEncryptedKey. For example: "rsaEncryptedKey":
+                                  "ieCx/NcW06PcT7Ep1X6LUTc/hLvUDYyzSZPPVCVPTVEohpeHASqC8uw5TzyO9U+Fka9JFHi
+                                  z0mBibXUInrC/jEk014kCK/NPjYgEMOyssZ4ZINPKxlUh2zn1bV+MCaTICrdmuSBTWlUUiFoDi
+                                  D6PYznLwh8ZNdaheCeZ8ewEXgFQ8V+sDroLaN3Xs3MDTXQEMMoNUXMCZEIpg9Vtp9x2oe=="
+                                  The key must meet the following requirements before
+                                  you can provide it to Compute Engine: 1. The key
+                                  is wrapped using a RSA public key certificate provided
+                                  by Google. 2. After being wrapped, the key must
+                                  be encoded in RFC 4648 base64 encoding. Gets the
+                                  RSA public key certificate provided by Google at:
+                                  https://cloud-certs.storage.googleapis.com/google-cloud-csek-ingress.pem'
+                                format: byte
+                                type: string
+                            type: object
+                        required:
+                        - keyType
+                        type: object
                       serviceAccounts:
                         description: 'ServiceAccount specifies the service account
                           email and which scopes to assign to the machine. Defaults

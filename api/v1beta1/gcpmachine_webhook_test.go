@@ -85,6 +85,86 @@ func TestGCPMachine_ValidateCreate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "GCPMachine with RootDiskEncryptionKey KeyType Managed and Managed field set",
+			GCPMachine: &GCPMachine{
+				Spec: GCPMachineSpec{
+					RootDiskEncryptionKey: &CustomerEncryptionKey{
+						KeyType: CustomerManagedKey,
+						ManagedKey: &ManagedKey{
+							KMSKeyName: "projects/my-project/locations/us-central1/keyRings/us-central1/cryptoKeys/some-key",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPMachine with RootDiskEncryptionKey KeyType Managed and Managed field not set",
+			GCPMachine: &GCPMachine{
+				Spec: GCPMachineSpec{
+					RootDiskEncryptionKey: &CustomerEncryptionKey{
+						KeyType: CustomerManagedKey,
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachine with RootDiskEncryptionKey KeyType Supplied and Supplied field not set",
+			GCPMachine: &GCPMachine{
+				Spec: GCPMachineSpec{
+					RootDiskEncryptionKey: &CustomerEncryptionKey{
+						KeyType: CustomerSuppliedKey,
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachine with AdditionalDisk Encryption KeyType Managed and Managed field not set",
+			GCPMachine: &GCPMachine{
+				Spec: GCPMachineSpec{
+					AdditionalDisks: []AttachedDiskSpec{
+						{
+							EncryptionKey: &CustomerEncryptionKey{
+								KeyType: CustomerManagedKey,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachine with RootDiskEncryptionKey KeyType Supplied and one Supplied field set",
+			GCPMachine: &GCPMachine{
+				Spec: GCPMachineSpec{
+					RootDiskEncryptionKey: &CustomerEncryptionKey{
+						KeyType: CustomerSuppliedKey,
+						SuppliedKey: &SuppliedKey{
+							RawKey: []byte("SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0="),
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPMachine with RootDiskEncryptionKey KeyType Supplied and both Supplied fields set",
+			GCPMachine: &GCPMachine{
+				Spec: GCPMachineSpec{
+					RootDiskEncryptionKey: &CustomerEncryptionKey{
+						KeyType: CustomerSuppliedKey,
+						SuppliedKey: &SuppliedKey{
+							RawKey:          []byte("SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0="),
+							RSAEncryptedKey: []byte("SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0="),
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, test := range tests {
 		test := test
