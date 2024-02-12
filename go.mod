@@ -27,7 +27,7 @@ require (
 	golang.org/x/crypto v0.18.0
 	golang.org/x/mod v0.14.0
 	golang.org/x/net v0.20.0
-	google.golang.org/api v0.161.0
+	google.golang.org/api v0.163.0
 	google.golang.org/grpc v1.61.0
 	k8s.io/api v0.28.6
 	k8s.io/apimachinery v0.28.6
@@ -119,7 +119,7 @@ require (
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/safetext v0.0.0-20220905092116-b49f7bc46da2 // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huandu/xstrings v1.3.3 // indirect
