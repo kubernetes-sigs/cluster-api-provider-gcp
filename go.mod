@@ -12,7 +12,7 @@ replace (
 
 require (
 	cloud.google.com/go/compute v1.23.4
-	cloud.google.com/go/container v1.30.1
+	cloud.google.com/go/container v1.31.0
 	cloud.google.com/go/iam v1.1.6
 	cloud.google.com/go/resourcemanager v1.9.5
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
@@ -165,7 +165,7 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240125205218-1f4bbc51befe // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240205150955-31a09d347014 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
