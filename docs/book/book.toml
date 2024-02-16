@@ -1,0 +1,24 @@
+[book]
+authors = ["The Cluster API Provider GCP Maintainers"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Kubernetes Cluster API Provider GCP"
+
+[output.html]
+curly-quotes = true
+git-repository-url = "https://sigs.k8s.io/cluster-api-provider-gcp"
+no-section-label = true
+
+[output.html.redirect]
+"/agenda.html" = "/agenda/2024.html"
+"/agenda/2024.html" = "https://docs.google.com/document/d/1l8B947Je79ZJX7zmKnJyMcOMIWjNidvp5FMTnPAY72I/"
+
+[preprocessor.tabulate]
+command = "mdbook-tabulate"
+
+[preprocessor.embed]
+command = "mdbook-embed"
+
+[preprocessor.releaselink]
+command = "mdbook-releaselink"
