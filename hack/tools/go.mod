@@ -1,10 +1,8 @@
 module sigs.k8s.io/cluster-api-provider-gcp/hack/tools
 
-go 1.21
+go 1.21.7
 
-toolchain go1.21.6
-
-replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.6.1
+replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.6.2
 
 require sigs.k8s.io/cluster-api/hack/tools v0.0.0-20240116064735-bfe8d0d16ff3
 
@@ -25,13 +23,13 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.28.5 // indirect
-	k8s.io/apimachinery v0.28.5 // indirect
-	k8s.io/klog/v2 v2.100.1 // indirect
-	k8s.io/utils v0.0.0-20231127182322-b307cd553661 // indirect
+	k8s.io/apiextensions-apiserver v0.28.6 // indirect
+	k8s.io/apimachinery v0.28.6 // indirect
+	k8s.io/klog/v2 v2.110.1 // indirect
+	k8s.io/utils v0.0.0-20240102154912-e7106e64919e // indirect
 	sigs.k8s.io/cluster-api v0.0.0-00010101000000-000000000000 // indirect
 	sigs.k8s.io/controller-tools v0.13.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kubebuilder/docs/book/utils v0.0.0-20211028165026-57688c578b5d // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
