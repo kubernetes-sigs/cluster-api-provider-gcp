@@ -235,7 +235,7 @@ func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 		diskType = *t
 	}
 
-	return &compute.AttachedDisk{
+	disk := &compute.AttachedDisk{
 		AutoDelete: true,
 		Boot:       true,
 		InitializeParams: &compute.AttachedDiskInitializeParams{
@@ -245,6 +245,27 @@ func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 			SourceImage:         sourceImage,
 		},
 	}
+
+	if m.GCPMachine.Spec.RootDiskEncryptionKey != nil {
+		if m.GCPMachine.Spec.RootDiskEncryptionKey.KeyType == infrav1.CustomerManagedKey && m.GCPMachine.Spec.RootDiskEncryptionKey.ManagedKey != nil {
+			disk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
+				KmsKeyName: m.GCPMachine.Spec.RootDiskEncryptionKey.ManagedKey.KMSKeyName,
+			}
+			if m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount != nil {
+				disk.DiskEncryptionKey.KmsKeyServiceAccount = *m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount
+			}
+		} else if m.GCPMachine.Spec.RootDiskEncryptionKey.KeyType == infrav1.CustomerSuppliedKey && m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey != nil {
+			disk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
+				RawKey:          string(m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey.RawKey),
+				RsaEncryptedKey: string(m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey.RSAEncryptedKey),
+			}
+			if m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount != nil {
+				disk.DiskEncryptionKey.KmsKeyServiceAccount = *m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount
+			}
+		}
+	}
+
+	return disk
 }
 
 // InstanceAdditionalDiskSpec returns compute instance additional attched-disk spec.
@@ -269,6 +290,25 @@ func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
 			// https://cloud.google.com/compute/docs/disks/local-ssd#choose_an_interface
 			additionalDisk.Interface = "NVME"
 		}
+		if disk.EncryptionKey != nil {
+			if m.GCPMachine.Spec.RootDiskEncryptionKey.KeyType == infrav1.CustomerManagedKey && m.GCPMachine.Spec.RootDiskEncryptionKey.ManagedKey != nil {
+				additionalDisk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
+					KmsKeyName: m.GCPMachine.Spec.RootDiskEncryptionKey.ManagedKey.KMSKeyName,
+				}
+				if m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount != nil {
+					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount
+				}
+			} else if m.GCPMachine.Spec.RootDiskEncryptionKey.KeyType == infrav1.CustomerSuppliedKey && m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey != nil {
+				additionalDisk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
+					RawKey:          string(m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey.RawKey),
+					RsaEncryptedKey: string(m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey.RSAEncryptedKey),
+				}
+				if m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount != nil {
+					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount
+				}
+			}
+		}
+
 		additionalDisks = append(additionalDisks, additionalDisk)
 	}
 

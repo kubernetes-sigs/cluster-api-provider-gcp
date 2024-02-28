@@ -460,11 +460,11 @@ func TestService_createOrGetInstance(t *testing.T) {
 					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
-				Scheduling: &compute.Scheduling{
-					OnHostMaintenance: strings.ToUpper(string(infrav1.HostMaintenancePolicyTerminate)),
-				},
 				ConfidentialInstanceConfig: &compute.ConfidentialInstanceConfig{
 					EnableConfidentialCompute: true,
+				},
+				Scheduling: &compute.Scheduling{
+					OnHostMaintenance: strings.ToUpper(string(infrav1.HostMaintenancePolicyTerminate)),
 				},
 				ServiceAccounts: []*compute.ServiceAccount{
 					{
@@ -607,6 +607,225 @@ func TestService_createOrGetInstance(t *testing.T) {
 					},
 				},
 				Zone: "us-central1-a",
+			},
+		},
+		{
+			name: "instance does not exist (should create instance) with Customer-Managed boot DiskEncryption",
+			scope: func() Scope {
+				machineScope.GCPMachine = getFakeGCPMachine()
+				diskEncryption := infrav1.CustomerEncryptionKey{
+					KeyType: infrav1.CustomerManagedKey,
+					ManagedKey: &infrav1.ManagedKey{
+						KMSKeyName: "projects/my-project/locations/us-central1/keyRings/us-central1/cryptoKeys/some-key",
+					},
+				}
+				machineScope.GCPMachine.Spec.RootDiskEncryptionKey = &diskEncryption
+				return machineScope
+			},
+			mockInstance: &cloud.MockInstances{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
+			},
+			want: &compute.Instance{
+				Name:         "my-machine",
+				CanIpForward: true,
+				Disks: []*compute.AttachedDisk{
+					{
+						AutoDelete: true,
+						Boot:       true,
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+							ResourceManagerTags: map[string]string{},
+						},
+						DiskEncryptionKey: &compute.CustomerEncryptionKey{
+							KmsKeyName: "projects/my-project/locations/us-central1/keyRings/us-central1/cryptoKeys/some-key",
+						},
+					},
+				},
+				Labels: map[string]string{
+					"capg-role":               "node",
+					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
+				},
+				MachineType: "zones/us-central1-c/machineTypes",
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{
+							Key:   "user-data",
+							Value: ptr.To[string]("Zm9vCg=="),
+						},
+					},
+				},
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network: "projects/my-proj/global/networks/default",
+					},
+				},
+				Params: &compute.InstanceParams{
+					ResourceManagerTags: map[string]string{},
+				},
+				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{},
+				ServiceAccounts: []*compute.ServiceAccount{
+					{
+						Email:  "default",
+						Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
+					},
+				},
+				Tags: &compute.Tags{
+					Items: []string{
+						"my-cluster-node",
+						"my-cluster",
+					},
+				},
+				Zone: "us-central1-c",
+			},
+		},
+		{
+			name: "instance does not exist (should create instance) with Customer-Supplied Raw DiskEncryption",
+			scope: func() Scope {
+				machineScope.GCPMachine = getFakeGCPMachine()
+				diskEncryption := infrav1.CustomerEncryptionKey{
+					KeyType: infrav1.CustomerSuppliedKey,
+					SuppliedKey: &infrav1.SuppliedKey{
+						RawKey: []byte("SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0="),
+					},
+				}
+				machineScope.GCPMachine.Spec.RootDiskEncryptionKey = &diskEncryption
+				return machineScope
+			},
+			mockInstance: &cloud.MockInstances{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
+			},
+			want: &compute.Instance{
+				Name:         "my-machine",
+				CanIpForward: true,
+				Disks: []*compute.AttachedDisk{
+					{
+						AutoDelete: true,
+						Boot:       true,
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+							ResourceManagerTags: map[string]string{},
+						},
+						DiskEncryptionKey: &compute.CustomerEncryptionKey{
+							RawKey: "SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0=",
+						},
+					},
+				},
+				Labels: map[string]string{
+					"capg-role":               "node",
+					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
+				},
+				MachineType: "zones/us-central1-c/machineTypes",
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{
+							Key:   "user-data",
+							Value: ptr.To[string]("Zm9vCg=="),
+						},
+					},
+				},
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network: "projects/my-proj/global/networks/default",
+					},
+				},
+				Params: &compute.InstanceParams{
+					ResourceManagerTags: map[string]string{},
+				},
+				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{},
+				ServiceAccounts: []*compute.ServiceAccount{
+					{
+						Email:  "default",
+						Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
+					},
+				},
+				Tags: &compute.Tags{
+					Items: []string{
+						"my-cluster-node",
+						"my-cluster",
+					},
+				},
+				Zone: "us-central1-c",
+			},
+		},
+		{
+			name: "instance does not exist (should create instance) with Customer-Supplied RSA DiskEncryption",
+			scope: func() Scope {
+				machineScope.GCPMachine = getFakeGCPMachine()
+				diskEncryption := infrav1.CustomerEncryptionKey{
+					KeyType: infrav1.CustomerSuppliedKey,
+					SuppliedKey: &infrav1.SuppliedKey{
+						RSAEncryptedKey: []byte("ieCx/NcW06PcT7Ep1X6LUTc/hLvUDYyzSZPPVCVPTVEohpeHASqC8uw5TzyO9U+Fka9JFHiz0mBibXUInrC/jEk014kCK/NPjYgEMOyssZ4ZINPKxlUh2zn1bV+MCaTICrdmuSBTWlUUiFoDiD6PYznLwh8ZNdaheCeZ8ewEXgFQ8V+sDroLaN3Xs3MDTXQEMMoNUXMCZEIpg9Vtp9x2oe=="),
+					},
+				}
+				machineScope.GCPMachine.Spec.RootDiskEncryptionKey = &diskEncryption
+				return machineScope
+			},
+			mockInstance: &cloud.MockInstances{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
+			},
+			want: &compute.Instance{
+				Name:         "my-machine",
+				CanIpForward: true,
+				Disks: []*compute.AttachedDisk{
+					{
+						AutoDelete: true,
+						Boot:       true,
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+							ResourceManagerTags: map[string]string{},
+						},
+						DiskEncryptionKey: &compute.CustomerEncryptionKey{
+							RsaEncryptedKey: "ieCx/NcW06PcT7Ep1X6LUTc/hLvUDYyzSZPPVCVPTVEohpeHASqC8uw5TzyO9U+Fka9JFHiz0mBibXUInrC/jEk014kCK/NPjYgEMOyssZ4ZINPKxlUh2zn1bV+MCaTICrdmuSBTWlUUiFoDiD6PYznLwh8ZNdaheCeZ8ewEXgFQ8V+sDroLaN3Xs3MDTXQEMMoNUXMCZEIpg9Vtp9x2oe==",
+						},
+					},
+				},
+				Labels: map[string]string{
+					"capg-role":               "node",
+					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
+				},
+				MachineType: "zones/us-central1-c/machineTypes",
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{
+							Key:   "user-data",
+							Value: ptr.To[string]("Zm9vCg=="),
+						},
+					},
+				},
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network: "projects/my-proj/global/networks/default",
+					},
+				},
+				Params: &compute.InstanceParams{
+					ResourceManagerTags: map[string]string{},
+				},
+				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling: &compute.Scheduling{},
+				ServiceAccounts: []*compute.ServiceAccount{
+					{
+						Email:  "default",
+						Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
+					},
+				},
+				Tags: &compute.Tags{
+					Items: []string{
+						"my-cluster-node",
+						"my-cluster",
+					},
+				},
+				Zone: "us-central1-c",
 			},
 		},
 	}
