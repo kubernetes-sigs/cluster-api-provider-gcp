@@ -24,6 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	"k8s.io/utils/ptr"
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
 )
@@ -34,6 +35,7 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 	)
 
 	BeforeEach(func() {
+		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.CNIPath))
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.KubernetesVersionUpgradeFrom))
 		Expect(e2eConfig.Variables).To(HaveKey(capi_e2e.KubernetesVersionUpgradeTo))
