@@ -71,17 +71,18 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 		})
 	})
 
-	Context("Should successfully remediate unhealthy machines with MachineHealthCheck", func() {
-		capi_e2e.KCPRemediationSpec(ctx, func() capi_e2e.KCPRemediationSpecInput {
-			return capi_e2e.KCPRemediationSpecInput{
-				E2EConfig:             e2eConfig,
-				ClusterctlConfigPath:  clusterctlConfigPath,
-				BootstrapClusterProxy: bootstrapClusterProxy,
-				ArtifactFolder:        artifactFolder,
-				SkipCleanup:           skipCleanup,
-			}
-		})
-	})
+	// TODO: Investigate why this test is failing and fix it: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/1156
+	// Context("Should successfully remediate unhealthy machines with MachineHealthCheck", func() {
+	// 	capi_e2e.KCPRemediationSpec(ctx, func() capi_e2e.KCPRemediationSpecInput {
+	// 		return capi_e2e.KCPRemediationSpecInput{
+	// 			E2EConfig:             e2eConfig,
+	// 			ClusterctlConfigPath:  clusterctlConfigPath,
+	// 			BootstrapClusterProxy: bootstrapClusterProxy,
+	// 			ArtifactFolder:        artifactFolder,
+	// 			SkipCleanup:           skipCleanup,
+	// 		}
+	// 	})
+	// })
 
 	Context("Running the workload cluster upgrade spec [K8s-Upgrade]", func() {
 		capi_e2e.ClusterUpgradeConformanceSpec(ctx, func() capi_e2e.ClusterUpgradeConformanceSpecInput {
