@@ -35,6 +35,8 @@ source "${REPO_ROOT}/hack/ensure-go.sh"
 # Make sure the tools binaries are on the path.
 export PATH="${REPO_ROOT}/hack/tools/bin:${PATH}"
 
+kustomize version
+
 # Configure e2e tests
 export GINKGO_NODES=3
 export GINKGO_ARGS="--fail-fast" # Other ginkgo args that need to be appended to the command.
@@ -275,7 +277,7 @@ EOF
     init_networks
   fi
 
-  PATH="${REPO_ROOT}/hack/tools/bin:${PATH}" make test-e2e
+  make test-e2e
   test_status="${?}"
   echo TESTSTATUS
   echo "${test_status}"
