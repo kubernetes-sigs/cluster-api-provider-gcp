@@ -26,12 +26,14 @@ set -o pipefail
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
 KIND="${REPO_ROOT}/hack/tools/bin/kind"
-make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}"
+KUSTOMIZE="${REPO_ROOT}/hack/tools/bin/kustomize"
+make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}" "${KUSTOMIZE##*/}"
 
 # shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
-# shellcheck source=hack/ensure-kustomize.sh
-source "${REPO_ROOT}/hack/ensure-kustomize.sh"
+
+# Make sure the tools binaries are on the path.
+export PATH="${REPO_ROOT}/hack/tools/bin:${PATH}"
 
 # Configure e2e tests
 export GINKGO_NODES=3
@@ -273,7 +275,7 @@ EOF
     init_networks
   fi
 
-  make test-e2e
+  PATH="${REPO_ROOT}/hack/tools/bin:${PATH}" make test-e2e
   test_status="${?}"
   echo TESTSTATUS
   echo "${test_status}"
