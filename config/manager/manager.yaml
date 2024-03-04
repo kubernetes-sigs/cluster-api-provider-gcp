@@ -32,7 +32,7 @@ spec:
         - containerPort: 9440
           name: healthz
           protocol: TCP
-        - containerPort: ${CAPG_DIAGNOSTICS_PORT:=8443}
+        - containerPort: 8443
           name: metrics
           protocol: TCP
         readinessProbe:
