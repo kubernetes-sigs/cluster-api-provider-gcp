@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
         resp = conn.getresponse()
         if resp.status != 200:
-            sys.exit("Got invalid response %d : %r : %r" % (resp.status, resp.reason, resp))
+            sys.exit("boskos: heartbeat_account: Got invalid response while sending heartbeat: %d: %s, %r" % (resp.status, resp.reason, resp))
         conn.close()
         # sleep for a minute
         time.sleep(60)
