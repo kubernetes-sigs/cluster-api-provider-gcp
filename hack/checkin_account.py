@@ -34,5 +34,5 @@ if __name__ == "__main__":
 
     resp = conn.getresponse()
     if resp.status != 200:
-        sys.exit("Got invalid response %d" % resp.status)
+        sys.exit("boskos: checkin_account: Got invalid response while checking for 'release': %d: %s, %r" % (resp.status, resp.reason, resp))
     conn.close()

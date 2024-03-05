@@ -53,7 +53,7 @@ if __name__ == "__main__":
         status, reason, result = post_request(BOSKOS_HOST, "free")
 
     if status != 200:
-        sys.exit("Got invalid response %d: %s" % (status, reason))
+        sys.exit("boskos: checkout_account: Got invalid response while checking for 'free': %d: %s, %r" % (status, reason, result))
 
     body = json.loads(result)
     print('export BOSKOS_RESOURCE_NAME="%s";' % body['name'])
