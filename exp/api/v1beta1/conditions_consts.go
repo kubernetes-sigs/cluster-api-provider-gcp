@@ -70,4 +70,28 @@ const (
 	GKEMachinePoolErrorReason = "GKEMachinePoolError"
 	// GKEMachinePoolReconciliationFailedReason used to report failures while reconciling GKE node pool.
 	GKEMachinePoolReconciliationFailedReason = "GKEMachinePoolReconciliationFailed"
+
+	// GCPMachinePoolReadyCondition condition reports on the successful reconciliation of GCP machine pool.
+	GCPMachinePoolReadyCondition clusterv1.ConditionType = "GCPMachinePoolReady"
+	// GCPMachinePoolCreatingCondition condition reports on whether the GCP machine pool is creating.
+	GCPMachinePoolCreatingCondition clusterv1.ConditionType = "GCPMachinePoolCreating"
+	// GCPMachinePoolUpdatingCondition condition reports on whether the GCP machine pool is updating.
+	GCPMachinePoolUpdatingCondition clusterv1.ConditionType = "GCPMachinePoolUpdating"
+	// GCPMachinePoolDeletingCondition condition reports on whether the GCP machine pool is deleting.
+	GCPMachinePoolDeletingCondition clusterv1.ConditionType = "GCPMachinePoolDeleting"
+	// GCPMachinePoolDeletedReason used to report GCP machine pool is deleted.
+	GCPMachinePoolDeletedReason = "GCPMachinePoolDeleted"
+
+	// GCPMachinePoolCreatingReason used to report GCP machine pool being created.
+	GCPMachinePoolCreatingReason = "GCPMachinePoolCreating"
+	// GCPMachinePoolCreatedReason used to report GCP machine pool is created.
+	GCPMachinePoolCreatedReason = "GCPMachinePoolCreated"
+	// GCPMachinePoolUpdatedReason used to report GCP machine pool is updated.
+	GCPMachinePoolUpdatedReason = "GCPMachinePoolUpdated"
+	// GCPMachinePoolDeletingReason used to report GCP machine pool being deleted.
+	GCPMachinePoolDeletingReason = "GCPMachinePoolDeleting"
+	// GCPMachinePoolErrorReason used to report GCP machine pool is in error state.
+	GCPMachinePoolErrorReason = "GCPMachinePoolError"
+	// GCPMachinePoolReconciliationFailedReason used to report failures while reconciling GCP machine pool.
+	GCPMachinePoolReconciliationFailedReason = "GCPMachinePoolReconciliationFailed"
 )

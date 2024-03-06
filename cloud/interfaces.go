@@ -105,3 +105,13 @@ type Machine interface {
 	MachineGetter
 	MachineSetter
 }
+
+// MachinePoolGetter is an interface which can get machine pool information.
+type MachinePoolGetter interface {
+	Project() string
+}
+
+// MachinePool is an interface which can get machine pool information.
+type MachinePool interface {
+	MachinePoolGetter
+}
