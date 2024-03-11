@@ -112,7 +112,7 @@ Both of the [Tilt](https://tilt.dev) setups below will get you started developin
 If you want to develop in CAPG and get a local development cluster working quickly, this is the path for you.
 
 From the root of the CAPG repository, run the following to generate a `tilt-settings.json` file with your GCP
-service account credentials:
+service account credentials (-w0 is not needed on macos):
 
 ```shell
 $ cat <<EOF > tilt-settings.json

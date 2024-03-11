@@ -476,6 +476,7 @@ release-notes: $(RELEASE_NOTES)
 ## --------------------------------------
 
 CLUSTER_NAME ?= test1
+WORKLOAD_CLUSTER_TYPE ?= default
 
 .PHONY: install-tools # populate hack/tools/bin
 install-tools: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(GINKGO) $(KIND)
@@ -510,7 +511,7 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KIND) $(KUBECTL)
 .PHONY: create-workload-cluster
 create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	# Create workload Cluster.
-	$(KUSTOMIZE) build templates | $(ENVSUBST) | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build templates/${WORKLOAD_CLUSTER_TYPE} | $(ENVSUBST) | $(KUBECTL) apply -f -
 
 	# Wait for the kubeconfig to become available.
 	${TIMEOUT} 5m bash -c "while ! $(KUBECTL) get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
