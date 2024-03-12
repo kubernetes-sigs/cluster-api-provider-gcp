@@ -19,6 +19,7 @@ package instancegroups
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -122,6 +123,23 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Error(err, "Error getting instance group")
 		return ctrl.Result{}, err
 	}
+
+	instanceGroupResponse, err := s.Client.ListInstanceGroupInstances(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name)
+	if err != nil {
+		log.Error(err, "Error listing instance group instances")
+		return ctrl.Result{}, err
+	}
+
+	providerIDList := []string{}
+	for _, managedInstance := range instanceGroupResponse.ManagedInstances {
+		managedInstanceFmt := fmt.Sprintf("gce://%s/%s/%s", s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, managedInstance.Name)
+		providerIDList = append(providerIDList, managedInstanceFmt)
+	}
+
+	// update ProviderID and ProviderId List
+	s.scope.MachinePool.Spec.ProviderIDList = providerIDList
+	s.scope.GCPMachinePool.Spec.ProviderID = fmt.Sprintf("gce://%s/%s/%s", s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, instanceGroup.Name)
+	s.scope.GCPMachinePool.Spec.ProviderIDList = providerIDList
 
 	log.Info("Instance group updated", "instance group", instanceGroup.Name, "instance group status", instanceGroup.Status, "instance group target size", instanceGroup.TargetSize, "instance group current size", instanceGroup.TargetSize)
 	// Set the status.
