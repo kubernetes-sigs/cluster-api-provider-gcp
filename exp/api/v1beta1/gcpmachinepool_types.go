@@ -120,6 +120,14 @@ type GCPMachinePoolSpec struct {
 	// +optional
 	PublicIP *bool `json:"publicIP,omitempty"`
 
+	// ProviderID is the identification ID of the Managed Instance Group
+	// +optional
+	ProviderID string `json:"providerID,omitempty"`
+
+	// ProviderIDList is the unique identifier as specified by the cloud provider.
+	// +optional
+	ProviderIDList []string `json:"providerIDList,omitempty"`
+
 	// RootDeviceSize is the size of the root volume in GB.
 	// Defaults to 30.
 	// +optional
