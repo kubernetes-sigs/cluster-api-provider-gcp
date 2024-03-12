@@ -155,6 +155,11 @@ func (in *GCPMachinePoolSpec) DeepCopyInto(out *GCPMachinePoolSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ProviderIDList != nil {
+		in, out := &in.ProviderIDList, &out.ProviderIDList
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.RootDeviceType != nil {
 		in, out := &in.RootDeviceType, &out.RootDeviceType
 		*out = new(DiskType)
