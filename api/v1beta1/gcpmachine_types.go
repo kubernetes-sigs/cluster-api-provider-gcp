@@ -220,6 +220,11 @@ type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
 	InstanceType string `json:"instanceType"`
 
+	// MinCPUPlatform is the minimum CPU platform to use for the instance. The instance may be scheduled on the specified or newer CPU platform.
+	// applicable values are the friendly names of CPU platforms, such as minCpuPlatform: "Intel Haswell" or minCpuPlatform: "Intel Sandy Bridge".
+	// +optional
+	MinCPUPlatform *string `json:"minCPUPlatform,omitempty"`
+
 	// Subnet is a reference to the subnetwork to use for this instance. If not specified,
 	// the first subnetwork retrieved from the Cluster Region and Network is picked.
 	// +optional

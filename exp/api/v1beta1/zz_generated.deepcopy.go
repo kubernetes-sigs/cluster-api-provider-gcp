@@ -150,6 +150,11 @@ func (in *GCPMachinePoolSpec) DeepCopyInto(out *GCPMachinePoolSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.MinCPUPlatform != nil {
+		in, out := &in.MinCPUPlatform, &out.MinCPUPlatform
+		*out = new(string)
+		**out = **in
+	}
 	if in.PublicIP != nil {
 		in, out := &in.PublicIP, &out.PublicIP
 		*out = new(bool)

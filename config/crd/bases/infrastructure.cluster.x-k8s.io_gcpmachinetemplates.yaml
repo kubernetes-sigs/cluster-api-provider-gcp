@@ -233,6 +233,13 @@ spec:
                         - Enabled
                         - Disabled
                         type: string
+                      minCPUPlatform:
+                        description: 'MinCPUPlatform is the minimum CPU platform to
+                          use for the instance. The instance may be scheduled on the
+                          specified or newer CPU platform. applicable values are the
+                          friendly names of CPU platforms, such as minCpuPlatform:
+                          "Intel Haswell" or minCpuPlatform: "Intel Sandy Bridge".'
+                        type: string
                       onHostMaintenance:
                         description: OnHostMaintenance determines the behavior when
                           a maintenance event occurs that might cause the instance
