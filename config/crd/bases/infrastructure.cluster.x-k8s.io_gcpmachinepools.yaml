@@ -120,6 +120,13 @@ spec:
               location:
                 description: Location is the GCP region location ex us-central1
                 type: string
+              minCPUPlatform:
+                description: 'MinCPUPlatform is the minimum CPU platform to use for
+                  the instance. The instance may be scheduled on the specified or
+                  newer CPU platform. applicable values are the friendly names of
+                  CPU platforms, such as minCpuPlatform: "Intel Haswell" or minCpuPlatform:
+                  "Intel Sandy Bridge".'
+                type: string
               network:
                 description: Network is the network to be used by machines in the
                   machine pool.

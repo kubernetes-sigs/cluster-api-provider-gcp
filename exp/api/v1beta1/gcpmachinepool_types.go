@@ -112,6 +112,11 @@ type GCPMachinePoolSpec struct {
 	// Location is the GCP region location ex us-central1
 	Location string `json:"location"`
 
+	// MinCPUPlatform is the minimum CPU platform to use for the instance. The instance may be scheduled on the specified or newer CPU platform.
+	// applicable values are the friendly names of CPU platforms, such as minCpuPlatform: "Intel Haswell" or minCpuPlatform: "Intel Sandy Bridge".
+	// +optional
+	MinCPUPlatform *string `json:"minCPUPlatform,omitempty"`
+
 	// Network is the network to be used by machines in the machine pool.
 	Network string `json:"network"`
 

@@ -274,6 +274,35 @@ func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 	return disk
 }
 
+// MinCPUPlatform returns the min cpu platform for the machine pool.
+func (m *MachineScope) MinCPUPlatform() string {
+	// map of machine types to their respective processors (e2 cannot have a min cpu platform set, so it is not included here)
+	var processors = map[string]string{
+		"n1":  "Intel Skylake",
+		"n2":  "Intel Ice Lake",
+		"n2d": "AMD Milan",
+		"c3":  "Intel Sapphire Rapids",
+		"c2":  "Intel Cascade Lake",
+		"t2d": "AMD Milan",
+		"m1":  "Intel Skylake",
+	}
+
+	// If the min cpu platform is set on the GCPMachinePool, use the specified value.
+	if m.GCPMachine.Spec.MinCPUPlatform != nil {
+		return *m.GCPMachine.Spec.MinCPUPlatform
+	}
+
+	// If the min cpu platform is not set on the GCPMachinePool, use the default value for the machine type.
+	for machineType, processor := range processors {
+		if strings.HasPrefix(m.GCPMachine.Spec.InstanceType, machineType) {
+			return processor
+		}
+	}
+
+	// If the machine type is not recognized, return an empty string (This will hand off the processor selection to GCP).
+	return ""
+}
+
 // InstanceAdditionalDiskSpec returns compute instance additional attched-disk spec.
 func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
 	additionalDisks := make([]*compute.AttachedDisk, 0, len(m.GCPMachine.Spec.AdditionalDisks))
@@ -376,9 +405,10 @@ func (m *MachineScope) InstanceAdditionalMetadataSpec() *compute.Metadata {
 // InstanceSpec returns instance spec.
 func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 	instance := &compute.Instance{
-		Name:        m.Name(),
-		Zone:        m.Zone(),
-		MachineType: path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
+		Name:           m.Name(),
+		Zone:           m.Zone(),
+		MachineType:    path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
+		MinCpuPlatform: m.MinCPUPlatform(),
 		Tags: &compute.Tags{
 			Items: append(
 				m.GCPMachine.Spec.AdditionalNetworkTags,
