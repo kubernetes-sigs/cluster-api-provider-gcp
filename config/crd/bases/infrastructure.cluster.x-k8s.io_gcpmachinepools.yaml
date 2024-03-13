@@ -124,6 +124,16 @@ spec:
                 description: Network is the network to be used by machines in the
                   machine pool.
                 type: string
+              providerID:
+                description: ProviderID is the identification ID of the Managed Instance
+                  Group
+                type: string
+              providerIDList:
+                description: ProviderIDList is the unique identifier as specified
+                  by the cloud provider.
+                items:
+                  type: string
+                type: array
               publicIP:
                 description: PublicIP specifies whether the instance should get a
                   public IP. Set this to true if you don't have a NAT instances or

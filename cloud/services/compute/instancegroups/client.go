@@ -34,6 +34,7 @@ type Client interface {
 	UpdateInstanceGroup(ctx context.Context, project, zone string, instanceGroup *compute.InstanceGroupManager) (*compute.Operation, error)
 	SetInstanceGroupTemplate(ctx context.Context, project, zone string, instanceGroup *compute.InstanceGroupManager) (*compute.Operation, error)
 	DeleteInstanceGroup(ctx context.Context, project, zone, name string) (*compute.Operation, error)
+	ListInstanceGroupInstances(ctx context.Context, project, zone, name string) (*compute.InstanceGroupManagersListManagedInstancesResponse, error)
 	// InstanceGroupTemplate Interfaces
 	GetInstanceTemplate(ctx context.Context, project, name string) (*compute.InstanceTemplate, error)
 	CreateInstanceTemplate(ctx context.Context, project string, instanceTemplate *compute.InstanceTemplate) (*compute.Operation, error)
@@ -85,6 +86,11 @@ func (c *GCPClient) SetInstanceGroupTemplate(_ context.Context, project, zone st
 // DeleteInstanceGroup deletes an instance group in a project and zone.
 func (c *GCPClient) DeleteInstanceGroup(_ context.Context, project, zone, name string) (*compute.Operation, error) {
 	return c.service.InstanceGroupManagers.Delete(project, zone, name).Do()
+}
+
+// ListInstanceGroupInstances returns a response that contains the list of managed instances in the instance group.
+func (c *GCPClient) ListInstanceGroupInstances(_ context.Context, project, zone, name string) (*compute.InstanceGroupManagersListManagedInstancesResponse, error) {
+	return c.service.InstanceGroupManagers.ListManagedInstances(project, zone, name).Do()
 }
 
 // GetInstanceTemplate returns a specific instance template in a project.
