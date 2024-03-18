@@ -37,6 +37,7 @@ type Client interface {
 	ListInstanceGroupInstances(ctx context.Context, project, zone, name string) (*compute.InstanceGroupManagersListManagedInstancesResponse, error)
 	// InstanceGroupTemplate Interfaces
 	GetInstanceTemplate(ctx context.Context, project, name string) (*compute.InstanceTemplate, error)
+	ListInstanceTemplates(ctx context.Context, project string) (*compute.InstanceTemplateList, error)
 	CreateInstanceTemplate(ctx context.Context, project string, instanceTemplate *compute.InstanceTemplate) (*compute.Operation, error)
 	DeleteInstanceTemplate(ctx context.Context, project, name string) (*compute.Operation, error)
 	WaitUntilOperationCompleted(project, operation string) error
@@ -96,6 +97,11 @@ func (c *GCPClient) ListInstanceGroupInstances(_ context.Context, project, zone,
 // GetInstanceTemplate returns a specific instance template in a project.
 func (c *GCPClient) GetInstanceTemplate(_ context.Context, project, name string) (*compute.InstanceTemplate, error) {
 	return c.service.InstanceTemplates.Get(project, name).Do()
+}
+
+// ListInstanceTemplates returns a list of instance templates in a project.
+func (c *GCPClient) ListInstanceTemplates(_ context.Context, project string) (*compute.InstanceTemplateList, error) {
+	return c.service.InstanceTemplates.List(project).Do()
 }
 
 // CreateInstanceTemplate creates a new instance template in a project.
