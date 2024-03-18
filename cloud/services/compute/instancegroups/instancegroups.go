@@ -115,6 +115,11 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 			log.Error(err, "Error updating instance group")
 			return ctrl.Result{}, err
 		}
+		err = s.removeOldInstanceTemplate(ctx, instanceTemplateName)
+		if err != nil {
+			log.Error(err, "Error removing old instance templates")
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Re-get the instance group after updating it. This is needed to get the latest status.
@@ -229,6 +234,48 @@ func (s *Service) patchInstanceGroup(ctx context.Context, instanceTemplateName s
 			log.Error(err, "Error waiting for instance group update operation to complete")
 			return err
 		}
+	}
+
+	return nil
+}
+
+// removeOldInstanceTemplate removes the old instance templates.
+func (s *Service) removeOldInstanceTemplate(ctx context.Context, instanceTemplateName string) error {
+	log := log.FromContext(ctx)
+	log.Info("Starting to remove old instance templates", "templateName", instanceTemplateName)
+
+	// List all instance templates.
+	instanceTemplates, err := s.Client.ListInstanceTemplates(ctx, s.scope.Project())
+	if err != nil {
+		log.Error(err, "Error listing instance templates")
+		return err
+	}
+
+	// Prepare to identify instance templates to remove.
+	lastIndex := strings.LastIndex(instanceTemplateName, "-")
+	if lastIndex == -1 {
+		log.Error(fmt.Errorf("invalid instance template name format"), "Invalid template name", "templateName", instanceTemplateName)
+		return fmt.Errorf("invalid instance template name format: %s", instanceTemplateName)
+	}
+
+	trimmedInstanceTemplateName := instanceTemplateName[:lastIndex]
+	var errors []error
+
+	for _, instanceTemplate := range instanceTemplates.Items {
+		if strings.HasPrefix(instanceTemplate.Name, trimmedInstanceTemplateName) && instanceTemplate.Name != instanceTemplateName {
+			log.Info("Deleting instance template", "templateName", instanceTemplate.Name)
+			_, err := s.Client.DeleteInstanceTemplate(ctx, s.scope.Project(), instanceTemplate.Name)
+			if err != nil {
+				log.Error(err, "Error deleting instance template", "templateName", instanceTemplate.Name)
+				errors = append(errors, err)
+				continue // Proceed to next template instead of returning immediately.
+			}
+		}
+	}
+
+	// Aggregate errors (if any).
+	if len(errors) > 0 {
+		return fmt.Errorf("encountered errors during deletion: %v", errors)
 	}
 
 	return nil
