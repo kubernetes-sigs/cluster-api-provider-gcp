@@ -13,7 +13,7 @@ replace (
 require (
 	cloud.google.com/go/compute v1.25.1
 	cloud.google.com/go/container v1.33.0
-	cloud.google.com/go/iam v1.1.6
+	cloud.google.com/go/iam v1.1.7
 	cloud.google.com/go/resourcemanager v1.9.5
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
 	github.com/go-logr/logr v1.4.1
@@ -112,7 +112,7 @@ require (
 	github.com/gobuffalo/flect v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/cel-go v0.17.7 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
