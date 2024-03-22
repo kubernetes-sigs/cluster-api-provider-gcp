@@ -29,13 +29,13 @@ spec:
     autoCreateSubnetworks: false
     subnets:
       - cidrBlock: "192.168.0.0/17"
-        name: cf1g-subnet-1
+        name: "${CLUSTER_NAME}-subnet-1"
         region: us-east-1
       - cidrBlock: "192.168.128.0/18"
-        name: cf1g-subnet-2
+        name: "${CLUSTER_NAME}-subnet-2"
         region: us-east-1
       - cidrBlock: "192.168.192.0/18"
-        name: cf1g-subnet-3
+        name: "${CLUSTER_NAME}-subnet-3"
         region: us-east-1
 ---
 kind: KubeadmControlPlane
@@ -80,7 +80,7 @@ spec:
     spec:
       instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
       image: "${IMAGE_ID}"
-      subnet: cf1g-subnet-1
+      subnet: "${CLUSTER_NAME}-subnet-1"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -114,7 +114,7 @@ spec:
     spec:
       instanceType: "${GCP_NODE_MACHINE_TYPE}"
       image: "${IMAGE_ID}"
-      subnet: cf1g-subnet-2
+      subnet: "${CLUSTER_NAME}-subnet-2"
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
