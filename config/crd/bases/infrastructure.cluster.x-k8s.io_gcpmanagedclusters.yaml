@@ -132,6 +132,10 @@ spec:
 
                       Defaults to true.
                     type: boolean
+                  hostProject:
+                    description: HostProject is the name of the project hosting the
+                      shared VPC network resources.
+                    type: string
                   loadBalancerBackendPort:
                     description: Allow for configuration of load balancer backend
                       (useful for changing apiserver port)

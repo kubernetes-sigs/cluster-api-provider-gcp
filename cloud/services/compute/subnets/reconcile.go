@@ -44,6 +44,10 @@ func (s *Service) Reconcile(ctx context.Context) error {
 // Delete deletes cluster subnetwork components.
 func (s *Service) Delete(ctx context.Context) error {
 	logger := log.FromContext(ctx)
+	if s.scope.IsSharedVpc() {
+		logger.V(2).Info("Shared VPC enabled. Skip deleting subnet resources")
+		return nil
+	}
 	for _, subnetSpec := range s.scope.SubnetSpecs() {
 		subnetKey := meta.RegionalKey(subnetSpec.Name, s.getSubnetRegion(subnetSpec))
 		logger.V(2).Info("Looking for subnet before deleting it", "name", subnetSpec.Name)
@@ -87,6 +91,11 @@ func (s *Service) createOrGetSubnets(ctx context.Context) ([]*compute.Subnetwork
 			if !gcperrors.IsNotFound(err) {
 				logger.Error(err, "Error looking for subnet", "name", subnetSpec.Name)
 				return subnets, err
+			}
+
+			if s.scope.IsSharedVpc() {
+				logger.Error(err, "Shared VPC is enabled, but could not find existing subnetwork", "name", subnetSpec.Name)
+				return nil, err
 			}
 
 			// Subnet was not found, let's create it
