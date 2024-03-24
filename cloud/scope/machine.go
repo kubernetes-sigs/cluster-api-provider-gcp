@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/processors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
@@ -276,31 +277,13 @@ func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 
 // MinCPUPlatform returns the min cpu platform for the machine pool.
 func (m *MachineScope) MinCPUPlatform() string {
-	// map of machine types to their respective processors (e2 cannot have a min cpu platform set, so it is not included here)
-	var processors = map[string]string{
-		"n1":  "Intel Skylake",
-		"n2":  "Intel Ice Lake",
-		"n2d": "AMD Milan",
-		"c3":  "Intel Sapphire Rapids",
-		"c2":  "Intel Cascade Lake",
-		"t2d": "AMD Milan",
-		"m1":  "Intel Skylake",
-	}
-
 	// If the min cpu platform is set on the GCPMachinePool, use the specified value.
 	if m.GCPMachine.Spec.MinCPUPlatform != nil {
 		return *m.GCPMachine.Spec.MinCPUPlatform
 	}
 
-	// If the min cpu platform is not set on the GCPMachinePool, use the default value for the machine type.
-	for machineType, processor := range processors {
-		if strings.HasPrefix(m.GCPMachine.Spec.InstanceType, machineType) {
-			return processor
-		}
-	}
-
-	// If the machine type is not recognized, return an empty string (This will hand off the processor selection to GCP).
-	return ""
+	// Return the latest processor for the instance type or empty string if unknown instance type
+	return processors.GetLatestProcessor(m.GCPMachine.Spec.InstanceType)
 }
 
 // InstanceAdditionalDiskSpec returns compute instance additional attched-disk spec.
