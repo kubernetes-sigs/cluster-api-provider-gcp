@@ -107,9 +107,9 @@ So that I don't have to worry about the management of these instances
 
 #### Functional Requirements
 
-**FR1:** CAPA MUST support creating GKE clusters.
+**FR1:** CAPG MUST support creating GKE clusters.
 
-**FR2:** CAPA MUST validate the input an user specifies for a GKE cluster.
+**FR2:** CAPG MUST validate the input an user specifies for a GKE cluster.
 
 #### Non-Functional Requirements
 
@@ -234,7 +234,7 @@ GCP permission also needs to be updated so the controllers can call GKE APIs.
 
 ### Risks and Mitigations
 
-The risk is that the implemented interface is different from CAPA and CAPZ. However it follows the recommended approach in the [Managed Kubernetes in CAPI](https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20220725-managed-kubernetes.md) proposal.
+The risk is that the implemented interface is different from CAPG and CAPZ. However it follows the recommended approach in the [Managed Kubernetes in CAPI](https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20220725-managed-kubernetes.md) proposal.
 
 ## Alternatives
 
