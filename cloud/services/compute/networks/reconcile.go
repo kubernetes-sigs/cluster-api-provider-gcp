@@ -53,7 +53,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 func (s *Service) Delete(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	if s.scope.IsSharedVpc() {
-		log.Info("VPC enabled. Ignore Deleting network resources")
+		log.Info("Shared VPC enabled. Ignore Deleting network resources")
 		s.scope.Network().Router = nil
 		s.scope.Network().SelfLink = nil
 		return nil
@@ -109,7 +109,7 @@ func (s *Service) createOrGetNetwork(ctx context.Context) (*compute.Network, err
 		}
 
 		if s.scope.IsSharedVpc() {
-			log.Error(err, "VPC is enabled. Error looking for network", "name", s.scope.NetworkName())
+			log.Error(err, "Shared VPC is enabled. Error looking for network", "name", s.scope.NetworkName())
 			return nil, err
 		}
 

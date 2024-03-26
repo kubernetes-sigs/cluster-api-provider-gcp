@@ -42,7 +42,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 func (s *Service) Delete(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	if s.scope.IsSharedVpc() {
-		logger.Info("VPC enabled. Ignore Deleting subnet resources")
+		logger.Info("Shared VPC enabled. Ignore Deleting subnet resources")
 		return nil
 	}
 	for _, subnetSpec := range s.scope.SubnetSpecs() {
@@ -73,7 +73,7 @@ func (s *Service) createOrGetSubnets(ctx context.Context) ([]*compute.Subnetwork
 			}
 
 			if s.scope.IsSharedVpc() {
-				logger.Error(err, "VPC is enabled. Error looking for subnetwork", "name", subnetSpec.Name)
+				logger.Error(err, "Shared VPC is enabled. Error looking for subnetwork", "name", subnetSpec.Name)
 				return nil, err
 			}
 
