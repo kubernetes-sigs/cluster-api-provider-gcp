@@ -161,9 +161,7 @@ func (r *GCPManagedMachinePool) validateImmutable(old *GCPManagedMachinePool) fi
 	appendErrorIfMutated(old.Spec.LocalSsdCount, r.Spec.LocalSsdCount, "localSsdCount", &allErrs)
 	appendErrorIfMutated(old.Spec.Management, r.Spec.Management, "management", &allErrs)
 	appendErrorIfMutated(old.Spec.MaxPodsPerNode, r.Spec.MaxPodsPerNode, "maxPodsPerNode", &allErrs)
-	appendErrorIfMutated(old.Spec.NodeNetwork.PodRangeName, r.Spec.NodeNetwork.PodRangeName, "podRangeName", &allErrs)
-	appendErrorIfMutated(old.Spec.NodeNetwork.CreatePodRange, r.Spec.NodeNetwork.CreatePodRange, "createPodRange", &allErrs)
-	appendErrorIfMutated(old.Spec.NodeNetwork.PodRangeCidrBlock, r.Spec.NodeNetwork.PodRangeCidrBlock, "podRangeCidrBlock", &allErrs)
+	appendErrorIfMutated(old.Spec.NodeNetwork, r.Spec.NodeNetwork, "nodeNetwork", &allErrs)
 	appendErrorIfMutated(old.Spec.NodeSecurity, r.Spec.NodeSecurity, "nodeSecurity", &allErrs)
 
 	return allErrs
