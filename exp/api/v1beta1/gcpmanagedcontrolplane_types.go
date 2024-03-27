@@ -57,6 +57,10 @@ type GCPManagedControlPlaneSpec struct {
 	// This feature is disabled if this field is not specified.
 	// +optional
 	MasterAuthorizedNetworksConfig *MasterAuthorizedNetworksConfig `json:"master_authorized_networks_config,omitempty"`
+	// NetworkPolicy represents configuration options for NetworkPolicy feature of the GKE cluster.
+	// This feature is disabled if this field is not specified.
+	// +optional
+	NetworkPolicy *NetworkPolicy `json:"networkPolicy,omitempty"`
 }
 
 // GCPManagedControlPlaneStatus defines the observed state of GCPManagedControlPlane.
@@ -140,6 +144,14 @@ type MasterAuthorizedNetworksConfigCidrBlock struct {
 	// cidr_block must be specified in CIDR notation.
 	// +kubebuilder:validation:Pattern=`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\/([0-9]|[1-2][0-9]|3[0-2]))?$|^([a-fA-F0-9:]+:+)+[a-fA-F0-9]+\/[0-9]{1,3}$`
 	CidrBlock string `json:"cidr_block,omitempty"`
+}
+
+// NetworkPolicy represents configuration options for NetworkPolicy feature of the GKE cluster.
+type NetworkPolicy struct {
+	// The selected network policy provider.
+	// +kubebuilder:validation:Enum=calico
+	// +optional
+	Provider string `json:"provider,omitempty"`
 }
 
 // GetConditions returns the control planes conditions.

@@ -117,6 +117,17 @@ spec:
                       Public IP addresses.
                     type: boolean
                 type: object
+              networkPolicy:
+                description: NetworkPolicy represents configuration options for NetworkPolicy
+                  feature of the GKE cluster. This feature is disabled if this field
+                  is not specified.
+                properties:
+                  provider:
+                    description: The selected network policy provider.
+                    enum:
+                    - calico
+                    type: string
+                type: object
               project:
                 description: Project is the name of the project to deploy the cluster
                   to.
