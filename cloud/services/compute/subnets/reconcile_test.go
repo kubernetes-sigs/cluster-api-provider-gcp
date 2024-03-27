@@ -111,7 +111,7 @@ func TestService_Reconcile(t *testing.T) {
 			mockSubnetworks: &cloud.MockSubnetworks{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				Objects:       map[meta.Key]*cloud.MockSubnetworksObj{},
-				GetHook: func(ctx context.Context, key *meta.Key, m *cloud.MockSubnetworks) (bool, *compute.Subnetwork, error) {
+				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockSubnetworks) (bool, *compute.Subnetwork, error) {
 					return true, &compute.Subnetwork{}, &googleapi.Error{Code: http.StatusBadRequest}
 				},
 			},
