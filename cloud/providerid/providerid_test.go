@@ -66,7 +66,7 @@ func TestProviderID_New(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.testname, func(t *testing.T) {
+		t.Run(tc.testname, func(_ *testing.T) {
 			providerID, err := providerid.New(tc.project, tc.location, tc.name)
 
 			if tc.expectError {
@@ -102,7 +102,7 @@ func TestProviderID_NewFromResourceURL(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.testname, func(t *testing.T) {
+		t.Run(tc.testname, func(_ *testing.T) {
 			providerID, err := providerid.NewFromResourceURL(tc.resourceURL)
 
 			if tc.expectError {

@@ -211,7 +211,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 			mockInstance: &cloud.MockInstances{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
-				GetHook: func(ctx context.Context, key *meta.Key, m *cloud.MockInstances) (bool, *compute.Instance, error) {
+				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockInstances) (bool, *compute.Instance, error) {
 					return true, &compute.Instance{}, &googleapi.Error{Code: http.StatusBadRequest}
 				},
 			},
