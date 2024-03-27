@@ -71,7 +71,7 @@ ENVSUBST_VER := v1.4.2
 ENVSUBST_BIN := envsubst
 ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
 
-GOLANGCI_LINT_VER := v1.55.2
+GOLANGCI_LINT_VER := v1.56.2
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
 
@@ -176,7 +176,7 @@ SKIP_CLEANUP ?= false
 SKIP_CREATE_MGMT_CLUSTER ?= false
 
 .PHONY: test-e2e-run
-test-e2e-run: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end tests
+test-e2e-run: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end tests
 	$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
 	time $(GINKGO) -v --trace -poll-progress-after=$(GINKGO_POLL_PROGRESS_AFTER) -poll-progress-interval=$(GINKGO_POLL_PROGRESS_INTERVAL) \
 	--tags=e2e --focus="$(GINKGO_FOCUS)" -skip="$(GINKGO_SKIP)" --nodes=$(GINKGO_NODES) --no-color=$(GINKGO_NOCOLOR) \
@@ -199,7 +199,7 @@ test-junit: $(SETUP_ENVTEST) $(GOTESTSUM) ## Run tests with verbose setting and 
 	exit $$(cat $(ARTIFACTS)/junit.exitcode)
 
 .PHONY: test-e2e
-test-e2e: ## Run the end-to-end tests
+test-e2e: $(KUSTOMIZE) ## Run the end-to-end tests
 	$(MAKE) test-e2e-run
 
 LOCAL_GINKGO_ARGS ?=
@@ -214,7 +214,7 @@ test-e2e-local: ## Run e2e tests
 CONFORMANCE_E2E_ARGS ?= -kubetest.config-file=$(KUBETEST_CONF_PATH)
 CONFORMANCE_E2E_ARGS += $(E2E_ARGS)
 .PHONY: test-conformance
-test-conformance: ## Run conformance test on workload cluster.
+test-conformance: $(KUSTOMIZE) ## Run conformance test on workload cluster.
 	$(MAKE) test-e2e-run GINKGO_FOCUS="Conformance Tests" E2E_ARGS='$(CONFORMANCE_E2E_ARGS)' GINKGO_ARGS='$(LOCAL_GINKGO_ARGS)'
 
 ## --------------------------------------
@@ -287,6 +287,8 @@ $(GO_APIDIFF_BIN): $(GO_APIDIFF)
 .PHONY: $(KIND_BIN)
 $(KIND_BIN): $(KIND) ## Building Kind from tools folder
 
+.PHONY: $(KUSTOMIZE_BIN)
+$(KUSTOMIZE_BIN): $(KUSTOMIZE) ## Building kustomize from tools folder
 
 ## --------------------------------------
 ## Linting
