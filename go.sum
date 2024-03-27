@@ -56,8 +56,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/toml v1.0.0 h1:dtDWrepsVPfW9H/4y7dDgFc2MBUSeJhlaDtK13CxFlU=
 github.com/BurntSushi/toml v1.0.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0 h1:a/2jEb6YZq88x+36TcyUu9widTOcGlndZc4L54r+Jys=
-github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0/go.mod h1:SZTgFVlGGwQ/X9NQsExTrYerE+frOeQvIuHCTuAGODI=
+github.com/GoogleCloudPlatform/k8s-cloud-provider v1.27.0 h1:5slI4ZAsvkgpVEfrKZGlvcpeYTv2roIbDzK6zvJYhwY=
+github.com/GoogleCloudPlatform/k8s-cloud-provider v1.27.0/go.mod h1:TFNxHb9YGSjLB86UWy5BQCgVTXQscyy/X5tC/2olieA=
 github.com/MakeNowJust/heredoc v1.0.0 h1:cXCdzVdstXyiTqTvfqk9SDHpKNjxuom+DOlyEeQ4pzQ=
 github.com/MakeNowJust/heredoc v1.0.0/go.mod h1:mG5amYoWBHf8vpLOuehzbGGw0EHxpZZ6lCpQ4fNJ8LE=
 github.com/Masterminds/goutils v1.1.1 h1:5nUrii3FMTL5diU80unEVvNevw1nH4+ZV4DSLVJLSYI=
