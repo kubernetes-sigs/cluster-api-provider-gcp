@@ -43,7 +43,7 @@ func (s *Service) Delete(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	for _, subnetSpec := range s.scope.SubnetSpecs() {
 		logger.V(2).Info("Deleting a subnet", "name", subnetSpec.Name)
-		subnetKey := meta.RegionalKey(subnetSpec.Name, s.scope.Region())
+		subnetKey := meta.RegionalKey(subnetSpec.Name, s.getSubnetRegion(subnetSpec))
 		err := s.subnets.Delete(ctx, subnetKey)
 		if err != nil && !gcperrors.IsNotFound(err) {
 			logger.Error(err, "Error deleting subnet", "name", subnetSpec.Name)
@@ -60,7 +60,7 @@ func (s *Service) createOrGetSubnets(ctx context.Context) ([]*compute.Subnetwork
 	subnets := []*compute.Subnetwork{}
 	for _, subnetSpec := range s.scope.SubnetSpecs() {
 		logger.V(2).Info("Looking for subnet", "name", subnetSpec.Name)
-		subnetKey := meta.RegionalKey(subnetSpec.Name, s.scope.Region())
+		subnetKey := meta.RegionalKey(subnetSpec.Name, s.getSubnetRegion(subnetSpec))
 		subnet, err := s.subnets.Get(ctx, subnetKey)
 		if err != nil {
 			if !gcperrors.IsNotFound(err) {
@@ -85,4 +85,12 @@ func (s *Service) createOrGetSubnets(ctx context.Context) ([]*compute.Subnetwork
 	}
 
 	return subnets, nil
+}
+
+// getSubnetRegion returns subnet region if user provided it, otherwise returns default scope region.
+func (s *Service) getSubnetRegion(subnetSpec *compute.Subnetwork) string {
+	if subnetSpec.Region != "" {
+		return subnetSpec.Region
+	}
+	return s.scope.Region()
 }

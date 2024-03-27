@@ -159,4 +159,33 @@ var _ = Describe("GKE workload cluster creation", func() {
 			}, result)
 		})
 	})
+
+	Context("Creating a GKE cluster with custom subnet", func() {
+		It("Should create a cluster with 3 machine pool and custom subnet", func() {
+			By("Initializes with 3 machine pool")
+
+			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-gke-custom-subnet",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](3),
+					ClusterctlVariables: map[string]string{
+						"GCP_SUBNET_NAME": "capg-test-subnet",
+						"GCP_SUBNET_CIDR": "172.20.0.0/16",
+					},
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-worker-machine-pools"),
+			}, result)
+		})
+	})
 })
