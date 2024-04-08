@@ -59,7 +59,7 @@ spec:
                       enum:
                       - pd-standard
                       - pd-ssd
-                      - pd-balanced
+                      - local-ssd
                       type: string
                     size:
                       description: Size is the size of the disk in GBs. Defaults to

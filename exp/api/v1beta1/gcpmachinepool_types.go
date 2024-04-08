@@ -45,8 +45,9 @@ type AttachedDiskSpec struct {
 	// 2. "pd-ssd" - SSD persistent disk
 	// 3. "local-ssd" - Local SSD disk (https://cloud.google.com/compute/docs/disks/local-ssd).
 	// Default is "pd-standard".
+	// +kubebuilder:validation:Enum=pd-standard;pd-ssd;local-ssd
 	// +optional
-	DeviceType *DiskType `json:"deviceType,omitempty"`
+	DeviceType *string `json:"deviceType,omitempty"`
 	// Size is the size of the disk in GBs.
 	// Defaults to 30GB. For "local-ssd" size is always 375GB.
 	// +optional

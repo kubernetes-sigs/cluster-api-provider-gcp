@@ -226,7 +226,7 @@ func (m *MachinePoolScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk 
 			AutoDelete: true,
 			InitializeParams: &compute.AttachedDiskInitializeParams{
 				DiskSizeGb: ptr.Deref(disk.Size, 30),
-				DiskType:   string(*disk.DeviceType),
+				DiskType:   *disk.DeviceType,
 			},
 		}
 		if strings.HasSuffix(additionalDisk.InitializeParams.DiskType, string(infrav1.LocalSsdDiskType)) {

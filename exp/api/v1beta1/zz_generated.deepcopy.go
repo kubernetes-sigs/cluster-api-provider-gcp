@@ -32,7 +32,7 @@ func (in *AttachedDiskSpec) DeepCopyInto(out *AttachedDiskSpec) {
 	*out = *in
 	if in.DeviceType != nil {
 		in, out := &in.DeviceType, &out.DeviceType
-		*out = new(DiskType)
+		*out = new(string)
 		**out = **in
 	}
 	if in.Size != nil {
