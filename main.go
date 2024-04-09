@@ -242,6 +242,12 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) error {
 		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
 			return fmt.Errorf("setting up GCPMachinePool controller: %w", err)
 		}
+
+		if err := (&expcontrollers.GCPMachinePoolMachineReconciler{
+			Client: mgr.GetClient(),
+		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
+			return fmt.Errorf("setting up GCPMachinePoolMachine controller: %w", err)
+		}
 	}
 
 	return nil

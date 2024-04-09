@@ -24,12 +24,10 @@ import (
 	"time"
 
 	"google.golang.org/api/compute/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -98,6 +96,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	}
 
 	instanceGroup, err := s.Client.GetInstanceGroup(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name)
+	var patched bool
 	switch {
 	case err != nil && !gcperrors.IsNotFound(err):
 		log.Error(err, "Error looking for instance group")
@@ -109,8 +108,8 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 			return ctrl.Result{}, err
 		}
 	case err == nil:
-		log.Info("Instance group found, updating")
-		err = s.patchInstanceGroup(ctx, instanceTemplateName, instanceGroup)
+		log.Info("Instance group found", "instance group", instanceGroup.Name)
+		patched, err = s.patchInstanceGroup(ctx, instanceTemplateName, instanceGroup)
 		if err != nil {
 			log.Error(err, "Error updating instance group")
 			return ctrl.Result{}, err
@@ -122,40 +121,30 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		}
 	}
 
-	// Re-get the instance group after updating it. This is needed to get the latest status.
-	instanceGroup, err = s.Client.GetInstanceGroup(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name)
-	if err != nil {
-		log.Error(err, "Error getting instance group")
-		return ctrl.Result{}, err
+	// Get the instance group again if it was patched. This is needed to get the updated state. If it wasn't patched, use the instance group from the previous step.
+	if patched {
+		log.Info("Instance group patched, getting updated instance group")
+		instanceGroup, err = s.Client.GetInstanceGroup(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name)
+		if err != nil {
+			log.Error(err, "Error getting instance group")
+			return ctrl.Result{}, err
+		}
 	}
-
-	instanceGroupResponse, err := s.Client.ListInstanceGroupInstances(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name)
+	// List the instance group instances. This is needed to get the provider IDs.
+	instanceGroupInstances, err := s.Client.ListInstanceGroupInstances(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name)
 	if err != nil {
 		log.Error(err, "Error listing instance group instances")
 		return ctrl.Result{}, err
 	}
 
-	providerIDList := []string{}
-	for _, managedInstance := range instanceGroupResponse.ManagedInstances {
-		managedInstanceFmt := fmt.Sprintf("gce://%s/%s/%s", s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, managedInstance.Name)
-		providerIDList = append(providerIDList, managedInstanceFmt)
+	// Set the MIG state and instances. This is needed to set the status.
+	if instanceGroup != nil && instanceGroupInstances != nil {
+		s.scope.SetMIGState(instanceGroup)
+		s.scope.SetMIGInstances(instanceGroupInstances.ManagedInstances)
+	} else {
+		err = fmt.Errorf("instance group or instance group list is nil")
+		return ctrl.Result{}, err
 	}
-
-	// update ProviderID and ProviderId List
-	s.scope.MachinePool.Spec.ProviderIDList = providerIDList
-	s.scope.GCPMachinePool.Spec.ProviderID = fmt.Sprintf("gce://%s/%s/%s", s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, instanceGroup.Name)
-	s.scope.GCPMachinePool.Spec.ProviderIDList = providerIDList
-
-	log.Info("Instance group updated", "instance group", instanceGroup.Name, "instance group status", instanceGroup.Status, "instance group target size", instanceGroup.TargetSize, "instance group current size", instanceGroup.TargetSize)
-	// Set the status.
-	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GCPMachinePoolUpdatingCondition, infrav1exp.GCPMachinePoolUpdatedReason, clusterv1.ConditionSeverityInfo, "")
-	s.scope.SetReplicas(int32(instanceGroup.TargetSize))
-	s.scope.MachinePool.Status.Replicas = int32(instanceGroup.TargetSize)
-	s.scope.MachinePool.Status.ReadyReplicas = int32(instanceGroup.TargetSize)
-	s.scope.GCPMachinePool.Status.Ready = true
-	conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GCPMachinePoolReadyCondition)
-	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GCPMachinePoolCreatingCondition, infrav1exp.GCPMachinePoolUpdatedReason, clusterv1.ConditionSeverityInfo, "")
-
 	return ctrl.Result{}, nil
 }
 
@@ -197,52 +186,65 @@ func (s *Service) createInstanceGroup(ctx context.Context, instanceTemplateName 
 }
 
 // patchInstanceGroup patches the instance group.
-func (s *Service) patchInstanceGroup(ctx context.Context, instanceTemplateName string, instanceGroup *compute.InstanceGroupManager) error {
+func (s *Service) patchInstanceGroup(ctx context.Context, instanceTemplateName string, instanceGroup *compute.InstanceGroupManager) (bool, error) {
 	log := log.FromContext(ctx)
 
+	// Reconcile replicas.
 	err := s.scope.ReconcileReplicas(ctx, instanceGroup)
 	if err != nil {
 		log.Error(err, "Error reconciling replicas")
-		return err
+		return false, err
 	}
 
 	lastSlashTemplateURI := strings.LastIndex(instanceGroup.InstanceTemplate, "/")
 	fetchedInstanceTemplateName := instanceGroup.InstanceTemplate[lastSlashTemplateURI+1:]
 
+	patched := false
 	// Check if instance group is already using the instance template.
 	if fetchedInstanceTemplateName != instanceTemplateName {
-		log.Info("Instance group is not using the instance template, setting instance template", "instance group", instanceGroup.InstanceTemplate, "instance template", instanceTemplateName)
+		log.Info("Instance group is not using the latest instance template, setting instance template", "instance group", instanceGroup.InstanceTemplate, "instance template", instanceTemplateName)
 		// Set instance template.
-		_, err := s.Client.SetInstanceGroupTemplate(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.InstanceGroupBuilder(instanceTemplateName))
+		setInstanceTemplateOperation, err := s.Client.SetInstanceGroupTemplate(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.InstanceGroupBuilder(instanceTemplateName))
 		if err != nil {
 			log.Error(err, "Error setting instance group template")
-			return err
+			return false, err
 		}
+
+		err = s.WaitUntilComputeOperationCompleted(s.scope.Project(), s.scope.Zone(), setInstanceTemplateOperation.Name)
+		if err != nil {
+			log.Error(err, "Error waiting for instance group template operation to complete")
+			return false, err
+		}
+
+		patched = true
 	}
 
-	// If the instance group is already using the instance template, update the instance group. Otherwise, set the instance template.
-	if fetchedInstanceTemplateName == instanceTemplateName {
-		log.Info("Instance group is using the instance template, updating instance group")
-		instanceGroupUpdateOperation, err := s.Client.UpdateInstanceGroup(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.InstanceGroupBuilder(instanceTemplateName))
+	machinePoolReplicas := int64(ptr.Deref[int32](s.scope.MachinePool.Spec.Replicas, 0))
+	// Decreases in replica count is handled by deleting GCPMachinePoolMachine instances in the MachinePoolScope
+	if !s.scope.HasReplicasExternallyManaged(ctx) && instanceGroup.TargetSize < machinePoolReplicas {
+		log.Info("Instance Group Target Size does not match the desired replicas in MachinePool, setting replicas", "instance group", instanceGroup.TargetSize, "desired replicas", machinePoolReplicas)
+		// Set replicas.
+		setReplicasOperation, err := s.Client.SetInstanceGroupSize(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name, machinePoolReplicas)
 		if err != nil {
-			log.Error(err, "Error updating instance group")
-			return err
+			log.Error(err, "Error setting instance group size")
+			return patched, err
 		}
 
-		err = s.WaitUntilComputeOperationCompleted(s.scope.Project(), s.scope.Zone(), instanceGroupUpdateOperation.Name)
+		err = s.WaitUntilComputeOperationCompleted(s.scope.Project(), s.scope.Zone(), setReplicasOperation.Name)
 		if err != nil {
-			log.Error(err, "Error waiting for instance group update operation to complete")
-			return err
+			log.Error(err, "Error waiting for instance group size operation to complete")
+			return patched, err
 		}
+
+		patched = true
 	}
 
-	return nil
+	return patched, nil
 }
 
 // removeOldInstanceTemplate removes the old instance templates.
 func (s *Service) removeOldInstanceTemplate(ctx context.Context, instanceTemplateName string) error {
 	log := log.FromContext(ctx)
-	log.Info("Starting to remove old instance templates", "templateName", instanceTemplateName)
 
 	// List all instance templates.
 	instanceTemplates, err := s.Client.ListInstanceTemplates(ctx, s.scope.Project())
@@ -263,7 +265,7 @@ func (s *Service) removeOldInstanceTemplate(ctx context.Context, instanceTemplat
 
 	for _, instanceTemplate := range instanceTemplates.Items {
 		if strings.HasPrefix(instanceTemplate.Name, trimmedInstanceTemplateName) && instanceTemplate.Name != instanceTemplateName {
-			log.Info("Deleting instance template", "templateName", instanceTemplate.Name)
+			log.Info("Deleting old instance template", "templateName", instanceTemplate.Name)
 			_, err := s.Client.DeleteInstanceTemplate(ctx, s.scope.Project(), instanceTemplate.Name)
 			if err != nil {
 				log.Error(err, "Error deleting instance template", "templateName", instanceTemplate.Name)

@@ -18,14 +18,27 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/errors"
 )
 
 const (
-	// MachinePoolFinalizer allows ReconcileGCPMachinePool to clean up GCP resources associated with GCPMachinePool before removing it from the apiserver.
-	MachinePoolFinalizer = "gcpmachinepool.infrastructure.cluster.x-k8s.io"
+	// MachinePoolNameLabel indicates the GCPMachinePool name the GCPMachinePoolMachine belongs.
+	MachinePoolNameLabel = "gcpmachinepool.infrastructure.cluster.x-k8s.io/machine-pool"
+
+	// RollingUpdateGCPMachinePoolDeploymentStrategyType replaces GCPMachinePoolMachines with older models with
+	// GCPMachinePoolMachines based on the latest model.
+	// i.e. gradually scale down the old GCPMachinePoolMachines and scale up the new ones.
+	RollingUpdateGCPMachinePoolDeploymentStrategyType GCPMachinePoolDeploymentStrategyType = "RollingUpdate"
+
+	// OldestDeletePolicyType will delete machines with the oldest creation date first.
+	OldestDeletePolicyType GCPMachinePoolDeletePolicyType = "Oldest"
+	// NewestDeletePolicyType will delete machines with the newest creation date first.
+	NewestDeletePolicyType GCPMachinePoolDeletePolicyType = "Newest"
+	// RandomDeletePolicyType will delete machines in random order.
+	RandomDeletePolicyType GCPMachinePoolDeletePolicyType = "Random"
 )
 
 const (
@@ -157,8 +170,85 @@ type GCPMachinePoolSpec struct {
 	// +optional
 	Subnet *string `json:"subnet,omitempty"`
 
+	// The deployment strategy to use to replace existing GCPMachinePoolMachines with new ones.
+	// +optional
+	// +kubebuilder:default={type: "RollingUpdate", rollingUpdate: {maxSurge: 1, maxUnavailable: 0, deletePolicy: Oldest}}
+	Strategy GCPMachinePoolDeploymentStrategy `json:"strategy,omitempty"`
+
+	// NodeDrainTimeout is the total amount of time that the controller will spend on draining a node.
+	// The default value is 0, meaning that the node can be drained without any time limitations.
+	// NOTE: NodeDrainTimeout is different from `kubectl drain --timeout`
+	// +optional
+	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
+
 	// Zone is the GCP zone location ex us-central1-a
 	Zone string `json:"zone"`
+}
+
+// GCPMachinePoolDeploymentStrategyType is the type of deployment strategy employed to rollout a new version of the GCPMachinePool.
+type GCPMachinePoolDeploymentStrategyType string
+
+// GCPMachinePoolDeploymentStrategy describes how to replace existing machines with new ones.
+type GCPMachinePoolDeploymentStrategy struct {
+	// Type of deployment. Currently the only supported strategy is RollingUpdate
+	// +optional
+	// +kubebuilder:validation:Enum=RollingUpdate
+	// +optional
+	// +kubebuilder:default=RollingUpdate
+	Type GCPMachinePoolDeploymentStrategyType `json:"type,omitempty"`
+
+	// Rolling update config params. Present only if
+	// MachineDeploymentStrategyType = RollingUpdate.
+	// +optional
+	RollingUpdate *MachineRollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+}
+
+// GCPMachinePoolDeletePolicyType is the type of DeletePolicy employed to select machines to be deleted during an
+// upgrade.
+type GCPMachinePoolDeletePolicyType string
+
+// MachineRollingUpdateDeployment is used to control the desired behavior of rolling update.
+type MachineRollingUpdateDeployment struct {
+	// The maximum number of machines that can be unavailable during the update.
+	// Value can be an absolute number (ex: 5) or a percentage of desired
+	// machines (ex: 10%).
+	// Absolute number is calculated from percentage by rounding down.
+	// This can not be 0 if MaxSurge is 0.
+	// Defaults to 0.
+	// Example: when this is set to 30%, the old MachineSet can be scaled
+	// down to 70% of desired machines immediately when the rolling update
+	// starts. Once new machines are ready, old MachineSet can be scaled
+	// down further, followed by scaling up the new MachineSet, ensuring
+	// that the total number of machines available at all times
+	// during the update is at least 70% of desired machines.
+	// +optional
+	// +kubebuilder:default:=0
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
+
+	// The maximum number of machines that can be scheduled above the
+	// desired number of machines.
+	// Value can be an absolute number (ex: 5) or a percentage of
+	// desired machines (ex: 10%).
+	// This can not be 0 if MaxUnavailable is 0.
+	// Absolute number is calculated from percentage by rounding up.
+	// Defaults to 1.
+	// Example: when this is set to 30%, the new MachineSet can be scaled
+	// up immediately when the rolling update starts, such that the total
+	// number of old and new machines do not exceed 130% of desired
+	// machines. Once old machines have been killed, new MachineSet can
+	// be scaled up further, ensuring that total number of machines running
+	// at any time during the update is at most 130% of desired machines.
+	// +optional
+	// +kubebuilder:default:=1
+	MaxSurge *intstr.IntOrString `json:"maxSurge,omitempty"`
+
+	// DeletePolicy defines the policy used by the MachineDeployment to identify nodes to delete when downscaling.
+	// Valid values are "Random, "Newest", "Oldest"
+	// When no value is supplied, the default is Oldest
+	// +optional
+	// +kubebuilder:validation:Enum=Random;Newest;Oldest
+	// +kubebuilder:default:=Oldest
+	DeletePolicy GCPMachinePoolDeletePolicyType `json:"deletePolicy,omitempty"`
 }
 
 // GCPMachinePoolStatus defines the observed state of GCPMachinePool and the GCP instances that it manages.
@@ -167,6 +257,10 @@ type GCPMachinePoolStatus struct {
 	// Ready is true when the provider resource is ready.
 	// +optional
 	Ready bool `json:"ready"`
+
+	// The number of non-terminated machines targeted by this machine pool that have the desired template spec.
+	// +optional
+	Replicas int32 `json:"replicas"`
 
 	// FailureReason will be set in the event that there is a terminal problem
 	// reconciling the MachinePool and will contain a succinct value suitable

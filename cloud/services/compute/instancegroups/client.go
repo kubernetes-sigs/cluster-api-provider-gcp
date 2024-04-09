@@ -33,6 +33,7 @@ type Client interface {
 	CreateInstanceGroup(ctx context.Context, project, zone string, instanceGroup *compute.InstanceGroupManager) (*compute.Operation, error)
 	UpdateInstanceGroup(ctx context.Context, project, zone string, instanceGroup *compute.InstanceGroupManager) (*compute.Operation, error)
 	SetInstanceGroupTemplate(ctx context.Context, project, zone string, instanceGroup *compute.InstanceGroupManager) (*compute.Operation, error)
+	SetInstanceGroupSize(ctx context.Context, project, zone, name string, size int64) (*compute.Operation, error)
 	DeleteInstanceGroup(ctx context.Context, project, zone, name string) (*compute.Operation, error)
 	ListInstanceGroupInstances(ctx context.Context, project, zone, name string) (*compute.InstanceGroupManagersListManagedInstancesResponse, error)
 	// InstanceGroupTemplate Interfaces
@@ -75,6 +76,11 @@ func (c *GCPClient) CreateInstanceGroup(_ context.Context, project, zone string,
 // UpdateInstanceGroup updates an instance group in a project and zone.
 func (c *GCPClient) UpdateInstanceGroup(_ context.Context, project, zone string, instanceGroup *compute.InstanceGroupManager) (*compute.Operation, error) {
 	return c.service.InstanceGroupManagers.Patch(project, zone, instanceGroup.Name, instanceGroup).Do()
+}
+
+// SetInstanceGroupSize resizes an instance group in a project and zone.
+func (c *GCPClient) SetInstanceGroupSize(_ context.Context, project, zone, name string, size int64) (*compute.Operation, error) {
+	return c.service.InstanceGroupManagers.Resize(project, zone, name, size).Do()
 }
 
 // SetInstanceGroupTemplate sets an instance group template in a project and zone.

@@ -27,42 +27,35 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/instancegroups"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/instancegroupinstances"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	kubeadmv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
 	expclusterv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// GCPMachinePoolReconciler reconciles a GCPMachinePool object and the corresponding MachinePool object.
-type GCPMachinePoolReconciler struct {
+// GCPMachinePoolMachineReconciler reconciles a GCPMachinePoolMachine object and the corresponding MachinePool object.
+type GCPMachinePoolMachineReconciler struct {
 	client.Client
 	ReconcileTimeout time.Duration
 	WatchFilterValue string
 }
 
-//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepools,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepools/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepools/finalizers,verbs=update
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepoolmachines,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepoolmachines/status,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepoolmachines/finalizers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepoolmachines/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepoolmachines/finalizers,verbs=update
 // +kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=kubeadmconfigs;kubeadmconfigs/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machinepools;machinepools/status,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
@@ -70,47 +63,31 @@ type GCPMachinePoolReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *GCPMachinePoolReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
-	log := log.FromContext(ctx).WithValues("controller", "GCPMachinePool")
+func (r *GCPMachinePoolMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
+	log := log.FromContext(ctx).WithValues("controller", "GCPMachinePoolMachine")
 
-	gvk, err := apiutil.GVKForObject(new(infrav1exp.GCPMachinePool), mgr.GetScheme())
+	gvk, err := apiutil.GVKForObject(new(infrav1exp.GCPMachinePoolMachine), mgr.GetScheme())
 	if err != nil {
 		return errors.Wrapf(err, "failed to find GVK for GCPMachinePool")
 	}
 
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
-		For(&infrav1exp.GCPMachinePool{}).
+		For(&infrav1exp.GCPMachinePoolMachine{}).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue)).
 		Watches(
 			&expclusterv1.MachinePool{},
 			handler.EnqueueRequestsFromMapFunc(machinePoolToInfrastructureMapFunc(gvk)),
-		).
-		// watch for changes in KubeadmConfig to sync bootstrap token
-		Watches(
-			&kubeadmv1.KubeadmConfig{},
-			handler.EnqueueRequestsFromMapFunc(KubeadmConfigToInfrastructureMapFunc(ctx, r.Client, log)),
-			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Build(r)
 	if err != nil {
 		return errors.Wrapf(err, "error creating controller")
 	}
 
-	// Watch for changes in the GCPMachinePool instances and enqueue the GCPMachinePool object for the controller
-	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &infrav1exp.GCPMachinePoolMachine{}),
-		handler.EnqueueRequestsFromMapFunc(GCPMachinePoolMachineMapper(mgr.GetScheme(), log)),
-		MachinePoolMachineHasStateOrVersionChange(log),
-		predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue),
-	); err != nil {
-		return errors.Wrap(err, "failed adding a watch for GCPMachinePoolMachine")
-	}
-
 	// Add a watch on clusterv1.Cluster object for unpause & ready notifications.
 	if err := c.Watch(
 		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
-		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, gvk, mgr.GetClient(), &infrav1exp.GCPMachinePool{})),
+		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, gvk, mgr.GetClient(), &infrav1exp.GCPMachinePoolMachine{})),
 		predicates.ClusterUnpausedAndInfrastructureReady(log),
 	); err != nil {
 		return errors.Wrap(err, "failed adding a watch for ready clusters")
@@ -119,21 +96,32 @@ func (r *GCPMachinePoolReconciler) SetupWithManager(ctx context.Context, mgr ctr
 	return nil
 }
 
-// Reconcile handles GCPMachinePool events and reconciles the corresponding MachinePool.
-func (r *GCPMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+// Reconcile handles GCPMachinePoolMachine events and reconciles the corresponding MachinePool.
+func (r *GCPMachinePoolMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
 	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
 
 	defer cancel()
 
 	log := ctrl.LoggerFrom(ctx)
 
-	// Fetch the GCPMachinePool instance.
-	gcpMachinePool := &infrav1exp.GCPMachinePool{}
-	if err := r.Get(ctx, req.NamespacedName, gcpMachinePool); err != nil {
+	// Fetch the GCPMachinePoolMachine instance.
+	gcpMachinePoolMachine := &infrav1exp.GCPMachinePoolMachine{}
+	if err := r.Get(ctx, req.NamespacedName, gcpMachinePoolMachine); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Get the GCPMachinePool.
+	gcpMachinePool, err := GetOwnerGCPMachinePool(ctx, r.Client, gcpMachinePoolMachine.ObjectMeta)
+	if err != nil {
+		log.Error(err, "Failed to retrieve owner GCPMachinePool from the API Server")
+		return ctrl.Result{}, err
+	}
+	if gcpMachinePool == nil {
+		log.Info("Waiting for GCPMachinePool Controller to set OwnerRef on GCPMachinePoolMachine")
+		return ctrl.Result{}, nil
 	}
 
 	// Get the MachinePool.
@@ -153,14 +141,15 @@ func (r *GCPMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		log.Error(err, "Failed to retrieve owner Cluster from the API Server")
 		return ctrl.Result{}, err
 	}
-	if annotations.IsPaused(cluster, gcpMachinePool) {
+	if annotations.IsPaused(cluster, gcpMachinePoolMachine) {
 		log.Info("GCPMachinePool or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
 
+	// Create the logger with the GCPMachinePoolMachine name and delegate to the Reconcile method of the GCPMachinePoolMachineReconciler.
 	log = log.WithValues("cluster", cluster.Name)
 	gcpClusterName := client.ObjectKey{
-		Namespace: gcpMachinePool.Namespace,
+		Namespace: gcpMachinePoolMachine.Namespace,
 		Name:      cluster.Spec.InfrastructureRef.Name,
 	}
 	gcpCluster := &infrav1.GCPCluster{}
@@ -180,56 +169,46 @@ func (r *GCPMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Create the machine pool scope
-	machinePoolScope, err := scope.NewMachinePoolScope(scope.MachinePoolScopeParams{
-		Client:         r.Client,
-		MachinePool:    machinePool,
-		GCPMachinePool: gcpMachinePool,
-		ClusterGetter:  clusterScope,
+	machinePoolMachineScope, err := scope.NewMachinePoolMachineScope(scope.MachinePoolMachineScopeParams{
+		Client:                r.Client,
+		MachinePool:           machinePool,
+		ClusterGetter:         clusterScope,
+		GCPMachinePool:        gcpMachinePool,
+		GCPMachinePoolMachine: gcpMachinePoolMachine,
 	})
 	if err != nil {
 		return ctrl.Result{}, errors.Wrapf(err, "failed to create scope")
 	}
 
-	// Make sure bootstrap data is available and populated.
-	if machinePoolScope.MachinePool.Spec.Template.Spec.Bootstrap.DataSecretName == nil {
-		log.Info("Bootstrap data secret reference is not yet available")
-		return reconcile.Result{}, nil
-	}
-
+	// Always close the scope when exiting this function so we can persist any GCPMachinePoolMachine changes.
 	defer func() {
-		if err := machinePoolScope.Close(ctx); err != nil && reterr == nil {
+		if err := machinePoolMachineScope.Close(ctx); err != nil && reterr == nil {
 			reterr = err
 		}
 	}()
 
 	// Handle deleted machine pools
-	if !gcpMachinePool.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, machinePoolScope)
+	if !gcpMachinePoolMachine.DeletionTimestamp.IsZero() {
+		return r.reconcileDelete(ctx, machinePoolMachineScope)
 	}
 
 	// Handle non-deleted machine pools
-	return r.reconcileNormal(ctx, machinePoolScope)
+	return r.reconcileNormal(ctx, machinePoolMachineScope)
 }
 
-// reconcileNormal handles non-deleted GCPMachinePools.
-func (r *GCPMachinePoolReconciler) reconcileNormal(ctx context.Context, machinePoolScope *scope.MachinePoolScope) (ctrl.Result, error) {
+// reconcileNormal handles non-deleted GCPMachinePoolMachine instances.
+func (r *GCPMachinePoolMachineReconciler) reconcileNormal(ctx context.Context, machinePoolMachineScope *scope.MachinePoolMachineScope) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
-	log.Info("Reconciling GCPMachinePool")
+	log.Info("Reconciling GCPMachinePoolMachine")
 
-	// If the GCPMachinePool has a status failure reason, return early. This is to avoid attempting to do anything to the GCPMachinePool if there is a known problem.
-	if machinePoolScope.GCPMachinePool.Status.FailureReason != nil || machinePoolScope.GCPMachinePool.Status.FailureMessage != nil {
-		log.Info("Found failure reason or message, returning early")
+	// If the GCPMachinePoolMachine is in an error state, return early.
+	if machinePoolMachineScope.GCPMachinePool.Status.FailureReason != nil || machinePoolMachineScope.GCPMachinePool.Status.FailureMessage != nil {
+		log.Info("Error state detected, skipping reconciliation")
 		return ctrl.Result{}, nil
 	}
 
-	// If the GCPMachinePool doesn't have our finalizer, add it.
-	controllerutil.AddFinalizer(machinePoolScope.GCPMachinePool, expclusterv1.MachinePoolFinalizer)
-	if err := machinePoolScope.PatchObject(ctx); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	reconcilers := []cloud.ReconcilerWithResult{
-		instancegroups.New(machinePoolScope),
+		instancegroupinstances.New(machinePoolMachineScope),
 	}
 
 	for _, r := range reconcilers {
@@ -242,40 +221,32 @@ func (r *GCPMachinePoolReconciler) reconcileNormal(ctx context.Context, machineP
 					return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 				}
 			}
-			log.Error(err, "Failed to reconcile GCPMachinePool")
-			record.Warnf(machinePoolScope.GCPMachinePool, "FailedReconcile", "Failed to reconcile GCPMachinePool: %v", err)
+			log.Error(err, "Failed to reconcile GCPMachinePoolMachine")
+			record.Warnf(machinePoolMachineScope.GCPMachinePoolMachine, "FailedReconcile", "Failed to reconcile GCPMachinePoolMachine: %v", err)
 			return ctrl.Result{}, err
 		}
-		if res.Requeue {
-			log.Info("Requeueing GCPMachinePool reconcile")
+		if res.Requeue || res.RequeueAfter > 0 {
 			return res, nil
 		}
-	}
-
-	if machinePoolScope.NeedsRequeue() {
-		log.Info("Requeueing GCPMachinePool reconcile", "RequeueAfter", 30*time.Second)
-		return reconcile.Result{
-			RequeueAfter: 30 * time.Second,
-		}, nil
 	}
 
 	return ctrl.Result{}, nil
 }
 
-// reconcileDelete handles deleted GCPMachinePools.
-func (r *GCPMachinePoolReconciler) reconcileDelete(ctx context.Context, machinePoolScope *scope.MachinePoolScope) (ctrl.Result, error) {
+// reconcileDelete handles deleted GCPMachinePoolMachine instances.
+func (r *GCPMachinePoolMachineReconciler) reconcileDelete(ctx context.Context, machinePoolMachineScope *scope.MachinePoolMachineScope) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-	log.Info("Reconciling GCPMachinePool delete")
+	log.Info("Reconciling GCPMachinePoolMachine delete")
 
 	reconcilers := []cloud.ReconcilerWithResult{
-		instancegroups.New(machinePoolScope),
+		instancegroupinstances.New(machinePoolMachineScope),
 	}
 
 	for _, r := range reconcilers {
 		res, err := r.Delete(ctx)
 		if err != nil {
-			log.Error(err, "Failed to reconcile GCPMachinePool")
-			record.Warnf(machinePoolScope.GCPMachinePool, "FailedReconcile", "Failed to reconcile GCPMachinePool: %v", err)
+			log.Error(err, "Failed to reconcile GCPMachinePoolMachine delete")
+			record.Warnf(machinePoolMachineScope.GCPMachinePoolMachine, "FailedDelete", "Failed to delete GCPMachinePoolMachine: %v", err)
 			return ctrl.Result{}, err
 		}
 		if res.Requeue {
@@ -283,8 +254,21 @@ func (r *GCPMachinePoolReconciler) reconcileDelete(ctx context.Context, machineP
 		}
 	}
 
-	// Remove the finalizer from the GCPMachinePool
-	controllerutil.RemoveFinalizer(machinePoolScope.GCPMachinePool, expclusterv1.MachinePoolFinalizer)
+	// Remove the finalizer from the GCPMachinePoolMachine.
+	controllerutil.RemoveFinalizer(machinePoolMachineScope.GCPMachinePoolMachine, infrav1exp.GCPMachinePoolMachineFinalizer)
 
-	return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
+	return ctrl.Result{}, nil
+}
+
+// getGCPMachinePoolByName returns the GCPMachinePool object owning the current resource.
+func getGCPMachinePoolByName(ctx context.Context, c client.Client, namespace, name string) (*infrav1exp.GCPMachinePool, error) {
+	gcpMachinePool := &infrav1exp.GCPMachinePool{}
+	key := client.ObjectKey{
+		Namespace: namespace,
+		Name:      name,
+	}
+	if err := c.Get(ctx, key, gcpMachinePool); err != nil {
+		return nil, err
+	}
+	return gcpMachinePool, nil
 }

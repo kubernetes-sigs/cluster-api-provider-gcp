@@ -22,4 +22,7 @@ const (
 	// See https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 	// for annotation formatting rules.
 	CustomDataHashAnnotation = "sigs.k8s.io/cluster-api-provider-gcp-mig-custom-data-hash"
+
+	// ClusterAPIImagePrefix is the prefix for the image name used by the Cluster API provider for GCP.
+	ClusterAPIImagePrefix = "capi-ubuntu-1804-k8s-"
 )

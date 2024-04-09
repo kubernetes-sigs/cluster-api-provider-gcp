@@ -22,9 +22,16 @@ import (
 
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	kubeadmv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pkg/errors"
@@ -47,6 +54,23 @@ func GetOwnerMachinePool(ctx context.Context, c client.Client, obj metav1.Object
 		}
 		if gv.Group == expclusterv1.GroupVersion.Group {
 			return getMachinePoolByName(ctx, c, obj.Namespace, ref.Name)
+		}
+	}
+	return nil, nil
+}
+
+// GetOwnerGCPMachinePool returns the GCPMachinePool object owning the current resource.
+func GetOwnerGCPMachinePool(ctx context.Context, c client.Client, obj metav1.ObjectMeta) (*infrav1exp.GCPMachinePool, error) {
+	for _, ref := range obj.OwnerReferences {
+		if ref.Kind != "GCPMachinePool" {
+			continue
+		}
+		gv, err := schema.ParseGroupVersion(ref.APIVersion)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		if gv.Group == infrav1exp.GroupVersion.Group {
+			return getGCPMachinePoolByName(ctx, c, obj.Namespace, ref.Name)
 		}
 	}
 	return nil, nil
@@ -108,5 +132,80 @@ func KubeadmConfigToInfrastructureMapFunc(_ context.Context, c client.Client, lo
 				NamespacedName: key,
 			},
 		}
+	}
+}
+
+// GCPMachinePoolMachineMapper returns a handler.ToRequestsFunc that watches for GCPMachinePool events and returns.
+func GCPMachinePoolMachineMapper(scheme *runtime.Scheme, log logr.Logger) handler.MapFunc {
+	return func(ctx context.Context, o client.Object) []ctrl.Request {
+		gvk, err := apiutil.GVKForObject(new(infrav1exp.GCPMachinePool), scheme)
+		if err != nil {
+			log.Error(errors.WithStack(err), "failed to find GVK for GCPMachinePool")
+			return nil
+		}
+
+		gcpMachinePoolMachine, ok := o.(*infrav1exp.GCPMachinePoolMachine)
+		if !ok {
+			log.Error(errors.Errorf("expected an GCPCluster, got %T instead", o), "failed to map GCPMachinePoolMachine")
+			return nil
+		}
+
+		log := log.WithValues("GCPMachinePoolMachine", gcpMachinePoolMachine.Name, "Namespace", gcpMachinePoolMachine.Namespace)
+		for _, ref := range gcpMachinePoolMachine.OwnerReferences {
+			if ref.Kind != gvk.Kind {
+				continue
+			}
+
+			gv, err := schema.ParseGroupVersion(ref.APIVersion)
+			if err != nil {
+				log.Error(errors.WithStack(err), "unable to parse group version", "APIVersion", ref.APIVersion)
+				return nil
+			}
+
+			if gv.Group == gvk.Group {
+				return []ctrl.Request{
+					{
+						NamespacedName: types.NamespacedName{
+							Name:      ref.Name,
+							Namespace: gcpMachinePoolMachine.Namespace,
+						},
+					},
+				}
+			}
+		}
+
+		return nil
+	}
+}
+
+// MachinePoolMachineHasStateOrVersionChange predicates any events based on changes to the GCPMachinePoolMachine status
+// relevant for the GCPMachinePool controller.
+func MachinePoolMachineHasStateOrVersionChange(logger logr.Logger) predicate.Funcs {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			log := logger.WithValues("predicate", "MachinePoolModelHasChanged", "eventType", "update")
+
+			oldGmp, ok := e.ObjectOld.(*infrav1exp.GCPMachinePoolMachine)
+			if !ok {
+				log.V(4).Info("Expected GCPMachinePoolMachine", "type", e.ObjectOld.GetObjectKind().GroupVersionKind().String())
+				return false
+			}
+			log = log.WithValues("namespace", oldGmp.Namespace, "machinePoolMachine", oldGmp.Name)
+
+			newGmp := e.ObjectNew.(*infrav1exp.GCPMachinePoolMachine)
+
+			// if any of these are not equal, run the update
+			shouldUpdate := oldGmp.Status.LatestModelApplied != newGmp.Status.LatestModelApplied ||
+				oldGmp.Status.Version != newGmp.Status.Version ||
+				oldGmp.Status.Ready != newGmp.Status.Ready
+
+			if shouldUpdate {
+				log.Info("machine pool machine predicate", "shouldUpdate", shouldUpdate)
+			}
+			return shouldUpdate
+		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
 	}
 }
