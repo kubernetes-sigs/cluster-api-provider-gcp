@@ -108,6 +108,17 @@ spec:
                 items:
                   type: string
                 type: array
+              loadBalancer:
+                description: LoadBalancer contains configuration for one or more LoadBalancers.
+                properties:
+                  apiServerInstanceGroupTagOverride:
+                    description: |-
+                      APIServerInstanceGroupTagOverride overrides the default setting for the
+                      tag used when creating the API Server Instance Group.
+                    maxLength: 16
+                    pattern: (^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)
+                    type: string
+                type: object
               network:
                 description: NetworkSpec encapsulates all things related to GCP network.
                 properties:
