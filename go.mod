@@ -15,7 +15,7 @@ require (
 	cloud.google.com/go/container v1.35.0
 	cloud.google.com/go/iam v1.1.7
 	cloud.google.com/go/resourcemanager v1.9.6
-	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
+	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.27.0
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.12.3
@@ -25,7 +25,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/crypto v0.22.0
-	golang.org/x/mod v0.16.0
+	golang.org/x/mod v0.17.0
 	golang.org/x/net v0.24.0
 	google.golang.org/api v0.172.0
 	google.golang.org/grpc v1.63.2
