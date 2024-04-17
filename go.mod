@@ -15,7 +15,7 @@ require (
 	cloud.google.com/go/container v1.35.0
 	cloud.google.com/go/iam v1.1.7
 	cloud.google.com/go/resourcemanager v1.9.6
-	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.24.0
+	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.27.0
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.12.3
@@ -25,10 +25,10 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/crypto v0.22.0
-	golang.org/x/mod v0.16.0
+	golang.org/x/mod v0.17.0
 	golang.org/x/net v0.24.0
-	google.golang.org/api v0.172.0
-	google.golang.org/grpc v1.62.1
+	google.golang.org/api v0.173.0
+	google.golang.org/grpc v1.63.2
 	k8s.io/api v0.29.3
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v0.29.3
@@ -157,7 +157,7 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240314234333-6e1732d8331c // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240325203815-454cdb8f5daa // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
