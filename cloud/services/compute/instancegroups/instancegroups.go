@@ -204,7 +204,7 @@ func (s *Service) patchInstanceGroup(ctx context.Context, instanceTemplateName s
 	if fetchedInstanceTemplateName != instanceTemplateName {
 		log.Info("Instance group is not using the latest instance template, setting instance template", "instance group", instanceGroup.InstanceTemplate, "instance template", instanceTemplateName)
 		// Set instance template.
-		setInstanceTemplateOperation, err := s.Client.SetInstanceGroupTemplate(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.InstanceGroupBuilder(instanceTemplateName))
+		setInstanceTemplateOperation, err := s.Client.SetInstanceGroupTemplate(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.InstanceGroupUpdate(instanceTemplateName))
 		if err != nil {
 			log.Error(err, "Error setting instance group template")
 			return false, err

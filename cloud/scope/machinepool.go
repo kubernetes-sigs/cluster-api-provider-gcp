@@ -555,6 +555,16 @@ func (m *MachinePoolScope) InstanceGroupBuilder(instanceTemplateName string) *co
 		Name:             m.GCPMachinePool.Name,
 		BaseInstanceName: m.GCPMachinePool.Name,
 		InstanceTemplate: path.Join("projects", m.ClusterGetter.Project(), "global", "instanceTemplates", instanceTemplateName),
+		TargetSize:       int64(m.DesiredReplicas()),
+	}
+}
+
+// InstanceGroupUpdate returns an instance group manager spec.
+func (m *MachinePoolScope) InstanceGroupUpdate(instanceTemplateName string) *compute.InstanceGroupManager {
+	return &compute.InstanceGroupManager{
+		Name:             m.GCPMachinePool.Name,
+		BaseInstanceName: m.GCPMachinePool.Name,
+		InstanceTemplate: path.Join("projects", m.ClusterGetter.Project(), "global", "instanceTemplates", instanceTemplateName),
 	}
 }
 
