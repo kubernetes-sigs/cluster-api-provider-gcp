@@ -18,6 +18,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+CERT_MANAGER_VERSION=${1}
+
 TEST_RESOURCE=$(cat <<-END
 apiVersion: v1
 kind: Namespace
@@ -52,7 +54,7 @@ KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
 cd "${REPO_ROOT}" && make "${KUBECTL##*/}"
 
 ## Install cert manager and wait for availability
-"${KUBECTL}" apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
+"${KUBECTL}" apply -f "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
 "${KUBECTL}" wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager
 "${KUBECTL}" wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-cainjector
 "${KUBECTL}" wait --for=condition=Available --timeout=5m -n cert-manager deployment/cert-manager-webhook

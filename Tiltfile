@@ -19,7 +19,7 @@ settings = {
     "preload_images_for_kind": True,
     "kind_cluster_name": "capg",
     "capi_version": "v1.7.0",
-    "cert_manager_version": "v1.11.0",
+    "cert_manager_version": "v1.14.4",
     "kubernetes_version": "v1.29.3",
 }
 

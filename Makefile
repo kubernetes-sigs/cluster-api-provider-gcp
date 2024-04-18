@@ -110,6 +110,9 @@ GOTESTSUM_VER := v1.6.4
 GOTESTSUM_BIN := gotestsum
 GOTESTSUM := $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)
 
+# Other tools versions
+CERT_MANAGER_VER := v1.14.4
+
 # Define Docker related variables. Releases should modify and double check these vars.
 export GCP_PROJECT ?= $(shell gcloud config get-value project)
 REGISTRY ?= gcr.io/$(GCP_PROJECT)
@@ -461,7 +464,7 @@ create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KIND) $(KUBECTL)
 	$(KIND) create cluster --name=clusterapi
 
 	# Install cert manager and wait for availability
-	./hack/install-cert-manager.sh
+	./hack/install-cert-manager.sh $(CERT_MANAGER_VER)
 
 	# Deploy CAPI
 	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.6.2/cluster-api-components.yaml | $(ENVSUBST) | $(KUBECTL) apply -f -
