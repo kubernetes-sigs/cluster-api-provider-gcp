@@ -27,10 +27,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -211,7 +213,7 @@ func TestService_createOrGetInstance(t *testing.T) {
 			mockInstance: &cloud.MockInstances{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
-				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockInstances) (bool, *compute.Instance, error) {
+				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockInstances, _ ...cloud.Option) (bool, *compute.Instance, error) {
 					return true, &compute.Instance{}, &googleapi.Error{Code: http.StatusBadRequest}
 				},
 			},

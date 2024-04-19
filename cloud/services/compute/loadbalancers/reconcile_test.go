@@ -96,7 +96,7 @@ func TestService_createOrGetInstanceGroup(t *testing.T) {
 			mockInstanceGroup: &cloud.MockInstanceGroups{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects:       map[meta.Key]*cloud.MockInstanceGroupsObj{},
-				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockInstanceGroups) (bool, *compute.InstanceGroup, error) {
+				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockInstanceGroups, _ ...cloud.Option) (bool, *compute.InstanceGroup, error) {
 					return true, &compute.InstanceGroup{}, &googleapi.Error{Code: http.StatusBadRequest}
 				},
 			},

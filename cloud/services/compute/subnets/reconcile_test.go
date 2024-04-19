@@ -26,9 +26,11 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
+
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -111,7 +113,7 @@ func TestService_Reconcile(t *testing.T) {
 			mockSubnetworks: &cloud.MockSubnetworks{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				Objects:       map[meta.Key]*cloud.MockSubnetworksObj{},
-				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockSubnetworks) (bool, *compute.Subnetwork, error) {
+				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockSubnetworks, _ ...cloud.Option) (bool, *compute.Subnetwork, error) {
 					return true, &compute.Subnetwork{}, &googleapi.Error{Code: http.StatusBadRequest}
 				},
 			},
