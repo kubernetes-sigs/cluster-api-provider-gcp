@@ -445,6 +445,26 @@ RELEASE_ALIAS_TAG=$(PULL_BASE_REF)
 release-alias-tag: # Adds the tag to the last build tag.
 	gcloud container images add-tag $(CONTROLLER_IMG):$(TAG) $(CONTROLLER_IMG):$(RELEASE_ALIAS_TAG)
 
+.PHONY: release-staging-nightly
+release-staging-nightly:
+	# Tags and pushes nightly container images to the staging bucket.
+	# Invoked via cloudbuild-nightly.yaml by image-builder launched via the configured nightly periodic job.
+	$(eval NEW_RELEASE_ALIAS_TAG := nightly_$(RELEASE_ALIAS_TAG)_$(shell date +'%Y%m%d'))
+	echo $(NEW_RELEASE_ALIAS_TAG)
+	$(MAKE) release-alias-tag TAG=$(RELEASE_ALIAS_TAG) RELEASE_ALIAS_TAG=$(NEW_RELEASE_ALIAS_TAG)
+	$(MAKE) set-manifest-image MANIFEST_IMG=$(CONTROLLER_IMG) MANIFEST_TAG=$(NEW_RELEASE_ALIAS_TAG)
+	$(MAKE) set-manifest-pull-policy PULL_POLICY=IfNotPresent
+	$(MAKE) release-manifests
+	$(MAKE) release-metadata
+	$(MAKE) release-templates
+	$(MAKE) upload-staging-artifacts RELEASE_ALIAS_TAG=$(NEW_RELEASE_ALIAS_TAG)
+
+.PHONY: upload-staging-artifacts
+upload-staging-artifacts: ## Upload release artifacts to the staging bucket
+	# Example manifest location: https://storage.googleapis.com/k8s-staging-cluster-api-aws/components/nightly_main_20240425/infrastructure-components.yaml
+	# Please note that these files are deleted after a certain period, at the time of this writing 60 days after file creation.
+	gsutil cp $(RELEASE_DIR)/* gs://$(BUCKET)/components/$(RELEASE_ALIAS_TAG)
+
 .PHONY: release-notes
 release-notes: $(RELEASE_NOTES)
 	$(RELEASE_NOTES)
