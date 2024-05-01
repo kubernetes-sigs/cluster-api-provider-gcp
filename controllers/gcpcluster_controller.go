@@ -200,8 +200,9 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 	reconcilers := []cloud.Reconciler{
 		networks.New(clusterScope),
 		firewalls.New(clusterScope),
-		loadbalancers.New(clusterScope),
+		// Reconcile subnets before loadbalancers since subnet is needed for internal LB
 		subnets.New(clusterScope),
+		loadbalancers.New(clusterScope),
 	}
 
 	for _, r := range reconcilers {
