@@ -129,7 +129,11 @@ func (c *GCPClient) WaitUntilOperationCompleted(projectID, operationName string)
 		}
 		if operation.Status == "DONE" {
 			if operation.Error != nil {
-				return fmt.Errorf("operation failed: %v", operation.Error.Errors)
+				var errorMessages []string
+				for _, e := range operation.Error.Errors {
+					errorMessages = append(errorMessages, e.Message)
+				}
+				return fmt.Errorf("operation failed: %v", errorMessages)
 			}
 			return nil
 		}
@@ -147,7 +151,11 @@ func (c *GCPClient) WaitUntilComputeOperationCompleted(project, zone, operationN
 		}
 		if operation.Status == "DONE" {
 			if operation.Error != nil {
-				return fmt.Errorf("operation failed: %v", operation.Error.Errors)
+				var errorMessages []string
+				for _, e := range operation.Error.Errors {
+					errorMessages = append(errorMessages, e.Message)
+				}
+				return fmt.Errorf("operation failed: %v", errorMessages)
 			}
 			return nil
 		}

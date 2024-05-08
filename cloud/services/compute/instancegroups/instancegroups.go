@@ -75,7 +75,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	instanceTemplate := s.scope.InstanceGroupTemplateBuilder(bootStrapToken)
 	instanceTemplateHash, err := s.scope.GetInstanceTemplateHash(instanceTemplate)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 	}
 
 	// Create the instance template name.
@@ -86,12 +86,12 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	switch {
 	case err != nil && !gcperrors.IsNotFound(err):
 		log.Error(err, "Error looking for instance template")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 	case err != nil && gcperrors.IsNotFound(err):
 		log.Info("Instance template not found, creating")
 		err = s.createInstanceTemplate(ctx, instanceTemplateName, instanceTemplate)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 		}
 	}
 
@@ -100,24 +100,24 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	switch {
 	case err != nil && !gcperrors.IsNotFound(err):
 		log.Error(err, "Error looking for instance group")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 	case err != nil && gcperrors.IsNotFound(err):
 		log.Info("Instance group not found, creating")
 		err = s.createInstanceGroup(ctx, instanceTemplateName)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 		}
 	case err == nil:
 		log.Info("Instance group found", "instance group", instanceGroup.Name)
 		patched, err = s.patchInstanceGroup(ctx, instanceTemplateName, instanceGroup)
 		if err != nil {
 			log.Error(err, "Error updating instance group")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 		}
 		err = s.removeOldInstanceTemplate(ctx, instanceTemplateName)
 		if err != nil {
 			log.Error(err, "Error removing old instance templates")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 		}
 	}
 
@@ -127,14 +127,14 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		instanceGroup, err = s.Client.GetInstanceGroup(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name)
 		if err != nil {
 			log.Error(err, "Error getting instance group")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 		}
 	}
 	// List the instance group instances. This is needed to get the provider IDs.
 	instanceGroupInstances, err := s.Client.ListInstanceGroupInstances(ctx, s.scope.Project(), s.scope.GCPMachinePool.Spec.Zone, s.scope.GCPMachinePool.Name)
 	if err != nil {
 		log.Error(err, "Error listing instance group instances")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 	}
 
 	// Set the MIG state and instances. This is needed to set the status.
@@ -143,7 +143,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		s.scope.SetMIGInstances(instanceGroupInstances.ManagedInstances)
 	} else {
 		err = fmt.Errorf("instance group or instance group list is nil")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 	}
 	return ctrl.Result{}, nil
 }

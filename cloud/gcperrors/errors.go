@@ -18,8 +18,8 @@ limitations under the License.
 package gcperrors
 
 import (
+	"errors"
 	"net/http"
-	"strings"
 
 	"google.golang.org/api/googleapi"
 )
@@ -45,31 +45,20 @@ func IgnoreNotFound(err error) error {
 	return err
 }
 
-// IsAlreadyDeleted reports whether err is a Google API error indicating that the resource is already being deleted.
-func IsAlreadyDeleted(err error) bool {
+func UnwrapGCPError(err error) error {
+	// If the error is nil, return nil.
 	if err == nil {
-		return false
+		return nil
 	}
-	ae, _ := err.(*googleapi.Error)
 
-	return strings.Contains(ae.Errors[0].Message, "Instance is already being deleted.")
-}
-
-// IsMemberNotFound reports whether err is a Google API error indicating that the member is not found.
-func IsMemberNotFound(err error) bool {
-	if err == nil {
-		return false
+	// Check if the error is a Google API error.
+	ae, ok := err.(*googleapi.Error)
+	if !ok {
+		return err
 	}
-	ae, _ := err.(*googleapi.Error)
 
-	return strings.Contains(ae.Errors[0].Message, "is not a member of")
-}
+	// Unwrap the error and add a prefix to it.
+	unwrappedGCPError := "GCP error: " + ae.Error()
 
-// PrintGCPError returns the error message from a Google API error.
-func PrintGCPError(err error) string {
-	if err == nil {
-		return ""
-	}
-	ae, _ := err.(*googleapi.Error)
-	return ae.Message + " " + ae.Errors[0].Message + " " + ae.Errors[0].Reason
+	return errors.New(unwrappedGCPError)
 }

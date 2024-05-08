@@ -62,13 +62,13 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	// Fetch the instance.
 	instance, err := s.GetInstance(ctx, s.scope.Project(), s.scope.Zone(), s.scope.Name())
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 	}
 
 	// Fetch the instances disk.
 	disk, err := s.GetDisk(ctx, s.scope.Project(), s.scope.Zone(), s.scope.Name())
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 	}
 
 	// Update the GCPMachinePoolMachine status.
@@ -114,7 +114,7 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 			Instances: []string{fmt.Sprintf("zones/%s/instances/%s", s.scope.Zone(), s.scope.Name())},
 		})
 		if err != nil {
-			log.Info("Assuming the instance is already deleted", "error", gcperrors.PrintGCPError(err))
+			log.Info("Assuming the instance is already deleted", "error", err)
 			return ctrl.Result{}, nil
 		}
 
@@ -129,7 +129,7 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 	// List the instance group instances to check if the instance is deleted.
 	instances, err := s.ListInstanceGroupInstances(ctx, s.scope.Project(), s.scope.Zone(), s.scope.GCPMachinePool.Name)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, gcperrors.UnwrapGCPError(err)
 	}
 
 	for _, instance := range instances.ManagedInstances {
