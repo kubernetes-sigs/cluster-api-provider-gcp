@@ -45,6 +45,7 @@ func IgnoreNotFound(err error) error {
 	return err
 }
 
+// UnwrapGCPError unwraps the Google API error and returns the error message.
 func UnwrapGCPError(err error) error {
 	// If the error is nil, return nil.
 	if err == nil {
