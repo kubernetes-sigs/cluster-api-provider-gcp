@@ -11,9 +11,11 @@ import (
 	clusterv1exp "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 )
 
-var TestGCPMMP *v1beta1.GCPManagedMachinePool
-var TestMP *clusterv1exp.MachinePool
-var TestClusterName string
+var (
+	TestGCPMMP      *v1beta1.GCPManagedMachinePool
+	TestMP          *clusterv1exp.MachinePool
+	TestClusterName string
+)
 
 var _ = Describe("GCPManagedMachinePool Scope", func() {
 	BeforeEach(func() {

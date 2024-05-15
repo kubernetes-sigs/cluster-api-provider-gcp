@@ -12,7 +12,7 @@ jobs:
 
       - uses: codespell-project/actions-codespell@94259cd8be02ad2903ba34a22d9c13de21a74461 # v2.0
         with:
-          skip: .git,_artifacts,*.sum
+          skip: .git,_artifacts,*.sum,.golangci.yml
           ignore_words_file: .codespellignore
           check_filenames: true
           check_hidden: true

@@ -388,7 +388,8 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 			ClusterName: m.ClusterGetter.Name(),
 			Lifecycle:   infrav1.ResourceLifecycleOwned,
 			Role:        ptr.To[string](m.Role()),
-			// TODO(vincepri): Check what needs to be added for the cloud provider label.
+			//nolint: godox
+			// TODO: Check what needs to be added for the cloud provider label.
 			Additional: m.ClusterGetter.AdditionalLabels().AddLabels(m.GCPMachine.Spec.AdditionalLabels),
 		}),
 		Scheduling: &compute.Scheduling{
