@@ -7,7 +7,7 @@ replace (
 	github.com/google/cel-go => github.com/google/cel-go v0.17.7
 	// kube-openapi should match the version imported by CAPI.
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
-	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.7.1
+	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.7.2
 )
 
 require (
@@ -35,8 +35,8 @@ require (
 	k8s.io/component-base v0.29.3
 	k8s.io/klog/v2 v2.110.1
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
-	sigs.k8s.io/cluster-api v1.7.1
-	sigs.k8s.io/cluster-api/test v1.7.1
+	sigs.k8s.io/cluster-api v1.7.2
+	sigs.k8s.io/cluster-api/test v1.7.2
 	sigs.k8s.io/controller-runtime v0.17.3
 )
 
