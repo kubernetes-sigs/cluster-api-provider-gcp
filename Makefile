@@ -145,7 +145,7 @@ endif
 # Build time versioning details.
 LDFLAGS := $(shell hack/version.sh)
 
-GOLANG_VERSION := 1.21.9
+GOLANG_VERSION := 1.21.10
 
 # CI
 CAPG_WORKER_CLUSTER_KUBECONFIG ?= "/tmp/kubeconfig"
