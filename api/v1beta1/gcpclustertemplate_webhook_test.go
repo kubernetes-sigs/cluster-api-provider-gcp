@@ -39,7 +39,8 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 						Spec: GCPClusterSpec{
 							Project: "test-gcp-cluster",
 							Region:  "ap-south-1",
-						}},
+						},
+					},
 				},
 			},
 			oldTemplate: &GCPClusterTemplate{
@@ -48,7 +49,8 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 						Spec: GCPClusterSpec{
 							Project: "test-gcp-cluster",
 							Region:  "ap-south-1",
-						}},
+						},
+					},
 				},
 			},
 			wantErr: false,
@@ -61,7 +63,8 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 						Spec: GCPClusterSpec{
 							Project: "test-gcp-cluster",
 							Region:  "ap-south-1",
-						}},
+						},
+					},
 				},
 			},
 			oldTemplate: &GCPClusterTemplate{
@@ -70,7 +73,8 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 						Spec: GCPClusterSpec{
 							Project: "test-gcp-cluster",
 							Region:  "ap-east-1",
-						}},
+						},
+					},
 				},
 			},
 			wantErr: true,

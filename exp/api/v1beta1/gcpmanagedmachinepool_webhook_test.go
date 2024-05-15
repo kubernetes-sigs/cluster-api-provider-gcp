@@ -44,19 +44,19 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 		It("should error when node pool name is too long", func() {
 			gcpmmp.Spec.NodePoolName = strings.Repeat("A", maxNodePoolNameLength+1)
 			errs := gcpmmp.validateSpec()
-			Expect(len(errs)).ToNot(BeZero())
+			Expect(errs).ToNot(BeEmpty())
 		})
 		It("should pass when node pool name is within limit", func() {
 			gcpmmp.Spec.NodePoolName = strings.Repeat("A", maxNodePoolNameLength)
 			errs := gcpmmp.validateSpec()
-			Expect(len(errs)).To(BeZero())
+			Expect(errs).To(BeEmpty())
 		})
 	})
 
 	Context("Test validateScaling", func() {
 		It("should pass when scaling is not specified", func() {
 			errs := gcpmmp.validateScaling()
-			Expect(len(errs)).To(BeZero())
+			Expect(errs).To(BeEmpty())
 		})
 		It("should pass when min/max count is valid", func() {
 			minCount := int32(1)
@@ -67,7 +67,7 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 			}
 
 			errs := gcpmmp.validateScaling()
-			Expect(len(errs)).To(BeZero())
+			Expect(errs).To(BeEmpty())
 		})
 		It("should fail when min is negative", func() {
 			minCount := int32(-1)
@@ -76,7 +76,7 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 			}
 
 			errs := gcpmmp.validateScaling()
-			Expect(len(errs)).ToNot(BeZero())
+			Expect(errs).ToNot(BeEmpty())
 		})
 		It("should fail when min > max", func() {
 			minCount := int32(3)
@@ -87,7 +87,7 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 			}
 
 			errs := gcpmmp.validateScaling()
-			Expect(len(errs)).ToNot(BeZero())
+			Expect(errs).ToNot(BeEmpty())
 		})
 		It("should fail when autoscaling is disabled and min/max is specified", func() {
 			minCount := int32(1)
@@ -102,14 +102,14 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 			}
 
 			errs := gcpmmp.validateScaling()
-			Expect(len(errs)).To(Equal(3))
+			Expect(errs).To(HaveLen(3))
 		})
 	})
 	Context("Test validateImmutable", func() {
 		It("should pass when node pool is not mutated", func() {
 			old := gcpmmp.DeepCopy()
 			errs := gcpmmp.validateImmutable(old)
-			Expect(len(errs)).To(BeZero())
+			Expect(errs).To(BeEmpty())
 		})
 		It("should pass when mutable fields are mutated", func() {
 			old := gcpmmp.DeepCopy()
@@ -118,7 +118,7 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 			}
 
 			errs := gcpmmp.validateImmutable(old)
-			Expect(len(errs)).To(BeZero())
+			Expect(errs).To(BeEmpty())
 		})
 		It("should fail when immutable fields are mutated", func() {
 			old := gcpmmp.DeepCopy()
@@ -131,14 +131,14 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 			}
 
 			errs := gcpmmp.validateImmutable(old)
-			Expect(len(errs)).To(Equal(3))
+			Expect(errs).To(HaveLen(3))
 		})
 	})
 
 	Context("Test validateNonNegative", func() {
 		It("should pass when number fields are not specified", func() {
 			errs := gcpmmp.validateNonNegative()
-			Expect(len(errs)).To(BeZero())
+			Expect(errs).To(BeEmpty())
 		})
 		It("should pass when number fields are non-negative", func() {
 			maxPods := int64(10)
@@ -149,7 +149,7 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 			gcpmmp.Spec.DiskSizeGb = &diskSize
 
 			errs := gcpmmp.validateNonNegative()
-			Expect(len(errs)).To(BeZero())
+			Expect(errs).To(BeEmpty())
 		})
 		It("should pass when some number fields are negative", func() {
 			maxPods := int64(-1)
@@ -160,7 +160,7 @@ var _ = Describe("Test GCPManagedMachinePool Webhooks", func() {
 			gcpmmp.Spec.DiskSizeGb = &diskSize
 
 			errs := gcpmmp.validateNonNegative()
-			Expect(len(errs)).To(Equal(2))
+			Expect(errs).To(HaveLen(2))
 		})
 	})
 })

@@ -259,7 +259,7 @@ func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 				"130.211.0.0/22",
 			},
 			TargetTags: []string{
-				fmt.Sprintf("%s-control-plane", s.Name()),
+				s.Name() + "-control-plane",
 			},
 		},
 		{
@@ -272,12 +272,12 @@ func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 			},
 			Direction: "INGRESS",
 			SourceTags: []string{
-				fmt.Sprintf("%s-control-plane", s.Name()),
-				fmt.Sprintf("%s-node", s.Name()),
+				s.Name() + "-control-plane",
+				s.Name() + "-node",
 			},
 			TargetTags: []string{
-				fmt.Sprintf("%s-control-plane", s.Name()),
-				fmt.Sprintf("%s-node", s.Name()),
+				s.Name() + "-control-plane",
+				s.Name() + "-node",
 			},
 		},
 	}

@@ -106,7 +106,7 @@ func TestService_createOrGetInstanceGroup(t *testing.T) {
 		{
 			name: "instanceGroup name is overridden (should create instanceGroup)",
 			scope: func(s *scope.ClusterScope) Scope {
-				var tagOverride = "master"
+				tagOverride := "master"
 				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
 					APIServerInstanceGroupTagOverride: &tagOverride,
 				}

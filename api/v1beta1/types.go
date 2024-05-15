@@ -116,7 +116,6 @@ type NetworkSpec struct {
 
 // LoadBalancerSpec contains configuration for one or more LoadBalancers.
 type LoadBalancerSpec struct {
-
 	// APIServerInstanceGroupTagOverride overrides the default setting for the
 	// tag used when creating the API Server Instance Group.
 	// +kubebuilder:validation:Optional
