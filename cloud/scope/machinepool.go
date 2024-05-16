@@ -404,6 +404,7 @@ func (m *MachinePoolScope) InstanceGroupTemplateBuilder(bootstrapData string) *c
 	instanceTemplate.Properties.Disks = append(instanceTemplate.Properties.Disks, m.InstanceAdditionalDiskSpec()...)
 	instanceTemplate.Properties.ServiceAccounts = append(instanceTemplate.Properties.ServiceAccounts, m.InstanceServiceAccountsSpec())
 	instanceTemplate.Properties.NetworkInterfaces = append(instanceTemplate.Properties.NetworkInterfaces, m.InstanceNetworkInterfaceSpec())
+	instanceTemplate.Properties.Metadata.Items = append(instanceTemplate.Properties.Metadata.Items, m.InstanceAdditionalMetadataSpec())
 
 	return instanceTemplate
 }
