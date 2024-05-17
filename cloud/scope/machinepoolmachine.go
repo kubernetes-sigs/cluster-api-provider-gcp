@@ -218,8 +218,17 @@ func (m *MachinePoolMachineScope) GetNode(ctx context.Context) (*corev1.Node, bo
 
 // GetNodeByObjectReference will fetch a *corev1.Node via a node object reference.
 func (m *MachinePoolMachineScope) GetNodeByObjectReference(ctx context.Context, nodeRef corev1.ObjectReference) (*corev1.Node, error) {
+	// get remote client
+	workloadClient, err := remote.NewClusterClient(ctx, MachinePoolMachineScopeName, m.Client, client.ObjectKey{
+		Name:      m.ClusterGetter.Name(),
+		Namespace: m.GCPMachinePoolMachine.Namespace,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create the workload cluster client")
+	}
+
 	var node corev1.Node
-	err := m.Client.Get(ctx, client.ObjectKey{
+	err = workloadClient.Get(ctx, client.ObjectKey{
 		Namespace: nodeRef.Namespace,
 		Name:      nodeRef.Name,
 	}, &node)
@@ -229,9 +238,18 @@ func (m *MachinePoolMachineScope) GetNodeByObjectReference(ctx context.Context, 
 
 // GetNodeByProviderID returns a node by its providerID. If the node is not found, it returns nil.
 func (m *MachinePoolMachineScope) GetNodeByProviderID(ctx context.Context, providerID string) (*corev1.Node, error) {
+	// get remote client
+	workloadClient, err := remote.NewClusterClient(ctx, MachinePoolMachineScopeName, m.Client, client.ObjectKey{
+		Name:      m.ClusterGetter.Name(),
+		Namespace: m.GCPMachinePoolMachine.Namespace,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create the workload cluster client")
+	}
+
 	nodeList := corev1.NodeList{}
 	for {
-		if err := m.Client.List(ctx, &nodeList, client.Continue(nodeList.Continue)); err != nil {
+		if err := workloadClient.List(ctx, &nodeList, client.Continue(nodeList.Continue)); err != nil {
 			return nil, errors.Wrapf(err, "failed to List nodes")
 		}
 
