@@ -435,7 +435,7 @@ release-metadata: $(RELEASE_DIR)
 
 .PHONY: release-templates
 release-templates: $(RELEASE_DIR)
-	cp templates/cluster-template* $(RELEASE_DIR)/
+	cp templates/custom_network/cluster-template* $(RELEASE_DIR)/
 
 .PHONY: release-staging
 release-staging: ## Builds and push container images to the staging bucket.
