@@ -404,7 +404,7 @@ func (m *MachinePoolScope) InstanceGroupTemplateBuilder(bootstrapData string) *c
 	instanceTemplate.Properties.Disks = append(instanceTemplate.Properties.Disks, m.InstanceAdditionalDiskSpec()...)
 	instanceTemplate.Properties.ServiceAccounts = append(instanceTemplate.Properties.ServiceAccounts, m.InstanceServiceAccountsSpec())
 	instanceTemplate.Properties.NetworkInterfaces = append(instanceTemplate.Properties.NetworkInterfaces, m.InstanceNetworkInterfaceSpec())
-	instanceTemplate.Properties.Metadata.Items = append(instanceTemplate.Properties.Metadata.Items, m.InstanceAdditionalMetadataSpec())
+	instanceTemplate.Properties.Metadata.Items = append(instanceTemplate.Properties.Metadata.Items, m.InstanceAdditionalMetadataSpec()...)
 
 	return instanceTemplate
 }
@@ -432,13 +432,14 @@ func (m *MachinePoolScope) InstanceNetworkInterfaceSpec() *compute.NetworkInterf
 }
 
 // InstanceAdditionalMetadataSpec returns the additional metadata for the instance.
-func (m *MachinePoolScope) InstanceAdditionalMetadataSpec() *compute.MetadataItems {
-	metadataItems := new(compute.MetadataItems)
+func (m *MachinePoolScope) InstanceAdditionalMetadataSpec() []*compute.MetadataItems {
+	metadataItems := make([]*compute.MetadataItems, 0, len(m.GCPMachinePool.Spec.AdditionalMetadata))
+
 	for _, additionalMetadata := range m.GCPMachinePool.Spec.AdditionalMetadata {
-		metadataItems = &compute.MetadataItems{
+		metadataItems = append(metadataItems, &compute.MetadataItems{
 			Key:   additionalMetadata.Key,
 			Value: additionalMetadata.Value,
-		}
+		})
 	}
 	return metadataItems
 }
