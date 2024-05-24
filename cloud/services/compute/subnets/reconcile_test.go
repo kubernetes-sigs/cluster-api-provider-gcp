@@ -61,10 +61,11 @@ var fakeGCPCluster = &infrav1.GCPCluster{
 		Network: infrav1.NetworkSpec{
 			Subnets: infrav1.Subnets{
 				infrav1.SubnetSpec{
-					Name:      "workers",
-					CidrBlock: "10.0.0.1/28",
-					Region:    "us-central1",
-					Purpose:   ptr.To[string]("INTERNAL_HTTPS_LOAD_BALANCER"),
+					Name:        "workers",
+					CidrBlock:   "10.0.0.1/28",
+					Region:      "us-central1",
+					Purpose:     ptr.To[string]("INTERNAL_HTTPS_LOAD_BALANCER"),
+					Description: ptr.To[string](infrav1.ClusterTagKey(fakeCluster.Name)),
 				},
 			},
 		},
@@ -212,8 +213,25 @@ func TestService_Delete(t *testing.T) {
 				DeleteError: map[meta.Key]error{
 					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): &googleapi.Error{Code: http.StatusBadRequest},
 				},
+				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
+					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): {Obj: compute.Subnetwork{Description: infrav1.ClusterTagKey(fakeCluster.Name)}},
+				},
 			},
 			wantErr: true,
+		},
+		{
+			name:  "subnet not created by CAPI, should not try to delete it",
+			scope: func() Scope { return clusterScope },
+			mockSubnetworks: &cloud.MockSubnetworks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				DeleteError: map[meta.Key]error{
+					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): &googleapi.Error{Code: http.StatusBadRequest},
+				},
+				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
+					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): {Obj: compute.Subnetwork{Description: "my-custom-subnet-description"}},
+				},
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
