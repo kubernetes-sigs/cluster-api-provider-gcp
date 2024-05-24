@@ -15,6 +15,7 @@
     - [Flannel](./topics/flannel.md)
 - [Developer Guide](./developers/index.md)
     - [Development](./developers/development.md)
+    - [Try unreleased changes with Nightly Builds](./developers/nightlies.md)
     - [Creating a cluster](./developers/cluster-creation.md)
     - [CI Jobs](./developers/jobs.md)
     - [Releasing](./developers/releasing.md)
