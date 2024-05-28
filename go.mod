@@ -15,11 +15,11 @@ require (
 	cloud.google.com/go/container v1.35.1
 	cloud.google.com/go/iam v1.1.8
 	cloud.google.com/go/resourcemanager v1.9.7
-	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.27.0
-	github.com/go-logr/logr v1.4.1
+	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.28.0
+	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.12.4
-	github.com/onsi/ginkgo/v2 v2.17.3
+	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
@@ -33,7 +33,7 @@ require (
 	k8s.io/apimachinery v0.29.5
 	k8s.io/client-go v0.29.5
 	k8s.io/component-base v0.29.5
-	k8s.io/klog/v2 v2.110.1
+	k8s.io/klog/v2 v2.120.1
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	sigs.k8s.io/cluster-api v1.7.2
 	sigs.k8s.io/cluster-api/test v1.7.2
@@ -154,7 +154,7 @@ require (
 	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.20.0 // indirect
+	golang.org/x/tools v0.21.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20240401170217-c3f982113cda // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240513163218-0867130af1f8 // indirect
