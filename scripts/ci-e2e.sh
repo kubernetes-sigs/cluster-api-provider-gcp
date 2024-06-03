@@ -102,6 +102,9 @@ EOF
 
 # initialize a router and cloud NAT
 init_networks() {
+#  gcloud compute shared-vpc enable "$GCP_PROJECT"
+#  gcloud compute shared-vpc associated-projects add "$GCP_SERVICE_PROJECT" --host-project
+
   if [[ ${GCP_NETWORK_NAME} != "default" ]]; then
     gcloud compute networks create --project "$GCP_PROJECT" "${GCP_NETWORK_NAME}" --subnet-mode auto --quiet
     gcloud compute firewall-rules create "${GCP_NETWORK_NAME}"-allow-http --project "$GCP_PROJECT" \
@@ -125,7 +128,6 @@ init_networks() {
     --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
 }
 
-
 cleanup() {
   # Force a cleanup of cluster api created resources using gcloud commands
   (gcloud compute forwarding-rules list --project "$GCP_PROJECT" | grep capg-e2e \
@@ -143,25 +145,29 @@ cleanup() {
   (gcloud compute instances list --project "$GCP_PROJECT" | grep capg-e2e \
        | awk '{print "gcloud compute instances delete --project '"$GCP_PROJECT"' --quiet " $1 " --zone " $2 "\n"}' \
        | bash) || true
-  (gcloud compute instance-groups list --project "$GCP_PROJECT" | grep capg-e2e \
-       | awk '{print "gcloud compute instance-groups unmanaged delete --project '"$GCP_PROJECT"' --quiet " $1 " --zone " $2 "\n"}' \
-       | bash) || true
   (gcloud compute firewall-rules list --project "$GCP_PROJECT" | grep capg-e2e \
        | awk '{print "gcloud compute firewall-rules delete --project '"$GCP_PROJECT"' --quiet " $1 "\n"}' \
        | bash) || true
+  (gcloud compute instance-groups list --project "$GCP_PROJECT" | grep capg-e2e \
+       | awk '{print "gcloud compute instance-groups unmanaged delete --project '"$GCP_PROJECT"' --quiet " $1 " --zone " $2 "\n"}' \
+       | bash) || true
 
-  # cleanup the networks
-  gcloud compute routers nats delete "${TEST_NAME}-mynat" --project="${GCP_PROJECT}" \
-    --router-region="${GCP_REGION}" --router="${TEST_NAME}-myrouter" --quiet || true
-  gcloud compute routers delete "${TEST_NAME}-myrouter" --project="${GCP_PROJECT}" \
-    --region="${GCP_REGION}" --quiet || true
+  if [[ -n "${SKIP_INIT_NETWORK:-}" ]]; then
+    echo "Skipping GCP network deletion..."
+  else
+    # cleanup the networks
+    gcloud compute routers nats delete "${TEST_NAME}-mynat" --project="${GCP_PROJECT}" \
+      --router-region="${GCP_REGION}" --router="${TEST_NAME}-myrouter" --quiet || true
+    gcloud compute routers delete "${TEST_NAME}-myrouter" --project="${GCP_PROJECT}" \
+      --region="${GCP_REGION}" --quiet || true
 
-  if [[ ${GCP_NETWORK_NAME} != "default" ]]; then
-    (gcloud compute firewall-rules list --project "$GCP_PROJECT" | grep "$GCP_NETWORK_NAME" \
-         | awk '{print "gcloud compute firewall-rules delete --project '"$GCP_PROJECT"' --quiet " $1 "\n"}' \
-         | bash) || true
-    gcloud compute networks delete --project="${GCP_PROJECT}" \
-      --quiet "${GCP_NETWORK_NAME}" || true
+    if [[ ${GCP_NETWORK_NAME} != "default" ]]; then
+      (gcloud compute firewall-rules list --project "$GCP_PROJECT" | grep "$GCP_NETWORK_NAME" \
+           | awk '{print "gcloud compute firewall-rules delete --project '"$GCP_PROJECT"' --quiet " $1 "\n"}' \
+           | bash) || true
+      gcloud compute networks delete --project="${GCP_PROJECT}" \
+        --quiet "${GCP_NETWORK_NAME}" || true
+    fi
   fi
 
   if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
