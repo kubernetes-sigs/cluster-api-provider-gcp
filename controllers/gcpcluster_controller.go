@@ -231,8 +231,8 @@ func (r *GCPClusterReconciler) reconcileDelete(ctx context.Context, clusterScope
 	log.Info("Reconciling Delete GCPCluster")
 
 	reconcilers := []cloud.Reconciler{
-		subnets.New(clusterScope),
 		loadbalancers.New(clusterScope),
+		subnets.New(clusterScope),
 		firewalls.New(clusterScope),
 		networks.New(clusterScope),
 	}
