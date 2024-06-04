@@ -234,7 +234,7 @@ func (s *Service) createInternalLoadBalancer(ctx context.Context, name string, l
 	if err != nil {
 		return err
 	}
-	s.scope.Network().APIInternalAddress = ptr.To[string](addr.Address)
+	s.scope.Network().APIInternalAddress = ptr.To[string](addr.SelfLink)
 	if lbType == infrav1.Internal {
 		// If only creating an internal Load Balancer, set the control plane endpoint
 		endpoint := s.scope.ControlPlaneEndpoint()
