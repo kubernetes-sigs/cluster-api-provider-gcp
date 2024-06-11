@@ -90,9 +90,25 @@ func (s *ClusterScope) Cloud() cloud.Cloud {
 	return newCloud(s.Project(), s.GCPServices)
 }
 
+// NetworkCloud returns initialized cloud.
+func (s *ClusterScope) NetworkCloud() cloud.Cloud {
+	return newCloud(s.NetworkProject(), s.GCPServices)
+}
+
 // Project returns the current project name.
 func (s *ClusterScope) Project() string {
 	return s.GCPCluster.Spec.Project
+}
+
+// NetworkProject returns the project name where network resources should exist.
+// The network project defaults to the Project when one is not supplied.
+func (s *ClusterScope) NetworkProject() string {
+	return ptr.Deref(s.GCPCluster.Spec.Network.HostProject, s.Project())
+}
+
+// IsSharedVpc returns true If sharedVPC used else , returns false.
+func (s *ClusterScope) IsSharedVpc() bool {
+	return s.NetworkProject() != s.Project()
 }
 
 // Region returns the cluster region.
@@ -117,7 +133,7 @@ func (s *ClusterScope) NetworkName() string {
 
 // NetworkLink returns the partial URL for the network.
 func (s *ClusterScope) NetworkLink() string {
-	return fmt.Sprintf("projects/%s/global/networks/%s", s.Project(), s.NetworkName())
+	return fmt.Sprintf("projects/%s/global/networks/%s", s.NetworkProject(), s.NetworkName())
 }
 
 // Network returns the cluster network object.

@@ -132,6 +132,10 @@ type NetworkSpec struct {
 	// Allow for configuration of load balancer backend (useful for changing apiserver port)
 	// +optional
 	LoadBalancerBackendPort *int32 `json:"loadBalancerBackendPort,omitempty"`
+
+	// HostProject is the name of the project hosting the shared VPC network resources.
+	// +optional
+	HostProject *string `json:"hostProject,omitempty"`
 }
 
 // LoadBalancerType defines the Load Balancer that should be created.
