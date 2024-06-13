@@ -405,8 +405,34 @@ func (m *MachinePoolScope) InstanceGroupTemplateBuilder(bootstrapData string) *c
 	instanceTemplate.Properties.ServiceAccounts = append(instanceTemplate.Properties.ServiceAccounts, m.InstanceServiceAccountsSpec())
 	instanceTemplate.Properties.NetworkInterfaces = append(instanceTemplate.Properties.NetworkInterfaces, m.InstanceNetworkInterfaceSpec())
 	instanceTemplate.Properties.Metadata.Items = append(instanceTemplate.Properties.Metadata.Items, m.InstanceAdditionalMetadataSpec()...)
+	instanceTemplate.Properties.ShieldedInstanceConfig = m.GetShieldedInstanceConfigSpec()
 
 	return instanceTemplate
+}
+
+// GetShieldedInstanceConfigSpec returns the shielded config spec for the instance
+// As of now will only build the configuration for using
+// - Integrity Monitoring - enabled by default
+// - Secure Boot - disabled by default
+// - vTPM - enabled by default.
+func (m *MachinePoolScope) GetShieldedInstanceConfigSpec() *compute.ShieldedInstanceConfig {
+	shieldedInstanceConfig := &compute.ShieldedInstanceConfig{
+		EnableSecureBoot:          false,
+		EnableVtpm:                true,
+		EnableIntegrityMonitoring: true,
+	}
+	if m.GCPMachinePool.Spec.ShieldedInstanceConfig != nil {
+		if m.GCPMachinePool.Spec.ShieldedInstanceConfig.SecureBoot == infrav1exp.SecureBootPolicyEnabled {
+			shieldedInstanceConfig.EnableSecureBoot = true
+		}
+		if m.GCPMachinePool.Spec.ShieldedInstanceConfig.VirtualizedTrustedPlatformModule == infrav1exp.VirtualizedTrustedPlatformModulePolicyDisabled {
+			shieldedInstanceConfig.EnableVtpm = false
+		}
+		if m.GCPMachinePool.Spec.ShieldedInstanceConfig.IntegrityMonitoring == infrav1exp.IntegrityMonitoringPolicyDisabled {
+			shieldedInstanceConfig.EnableIntegrityMonitoring = false
+		}
+	}
+	return shieldedInstanceConfig
 }
 
 // InstanceNetworkInterfaceSpec returns the network interface spec for the instance.

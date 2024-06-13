@@ -12,7 +12,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	"sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/processors"
 	clusterv1exp "sigs.k8s.io/cluster-api/exp/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -21,11 +21,12 @@ import (
 var _ = Describe("GCPManagedMachinePool Scope", func() {
 	var TestMachinePoolScope *scope.MachinePoolScope
 	var getter cloud.ClusterGetter
+	var mpscopeparams scope.MachinePoolScopeParams
 	var t *testing.T
 
 	BeforeEach(func() {
 		// Register the MachinePool, GCPMachinePool and GCPMachinePoolList in a schema.
-		schema, err := infrav1.SchemeBuilder.Register(&clusterv1exp.MachinePool{}, &v1beta1.GCPMachinePool{}, &v1beta1.GCPMachinePoolList{}).Build()
+		schema, err := infrav1.SchemeBuilder.Register(&clusterv1exp.MachinePool{}, &infrav1exp.GCPMachinePool{}, &infrav1exp.GCPMachinePoolList{}).Build()
 		// Make sure no errors were triggered.
 		assert.Nil(t, err)
 
@@ -35,19 +36,19 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 		testClient := fake.NewClientBuilder().WithScheme(schema).Build()
 
 		// Create the machinepool scope
-		params := scope.MachinePoolScopeParams{
+		mpscopeparams = scope.MachinePoolScopeParams{
 			Client:        testClient,
 			ClusterGetter: getter,
 			MachinePool: &clusterv1exp.MachinePool{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec:       clusterv1exp.MachinePoolSpec{},
 			},
-			GCPMachinePool: &v1beta1.GCPMachinePool{
+			GCPMachinePool: &infrav1exp.GCPMachinePool{
 				ObjectMeta: metav1.ObjectMeta{},
-				Spec:       v1beta1.GCPMachinePoolSpec{},
+				Spec:       infrav1exp.GCPMachinePoolSpec{},
 			},
 		}
-		TestMachinePoolScope, _ = scope.NewMachinePoolScope(params)
+		TestMachinePoolScope, _ = scope.NewMachinePoolScope(mpscopeparams)
 
 		// Make sure the machinepool scope is created correctly.
 		assert.Nil(t, err)
@@ -66,6 +67,59 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 			It("should not match n2", func() {
 				TestMachinePoolScope.GCPMachinePool.Spec.InstanceType = "n2d-standard-8"
 				Expect(TestMachinePoolScope.MinCPUPlatform()).NotTo(Equal(processors.Processors["n2"]))
+			})
+		})
+	})
+
+	Describe("GCPMachinePool Spec has no ShieldedInstanceConfig passed", func() {
+		It("should have Integrity Monitoring set to true", func() {
+			shieldedVMConfig := TestMachinePoolScope.GetShieldedInstanceConfigSpec()
+			Expect(shieldedVMConfig.EnableIntegrityMonitoring).To(BeTrue())
+		})
+		It("should have Secure Boot set to false", func() {
+			shieldedVMConfig := TestMachinePoolScope.GetShieldedInstanceConfigSpec()
+			Expect(shieldedVMConfig.EnableSecureBoot).To(BeFalse())
+		})
+		It("should have vTPM set to true", func() {
+			shieldedVMConfig := TestMachinePoolScope.GetShieldedInstanceConfigSpec()
+			Expect(shieldedVMConfig.EnableVtpm).To(BeTrue())
+		})
+	})
+
+	Describe("GCPMachinePool Spec has ShieldedInstanceConfig passed", func() {
+		Context("Secure Boot is enabled in gcpmacninepool.spec", func() {
+			It("should have secure boot set to true", func() {
+				mpscopeparams.GCPMachinePool.Spec = infrav1exp.GCPMachinePoolSpec{
+					ShieldedInstanceConfig: &infrav1exp.GCPShieldedInstanceConfig{
+						SecureBoot: infrav1exp.SecureBootPolicyEnabled,
+					},
+				}
+				shieldedVMConfig := TestMachinePoolScope.GetShieldedInstanceConfigSpec()
+				Expect(shieldedVMConfig.EnableIntegrityMonitoring).To(BeTrue())
+			})
+		})
+
+		Context("vTPM is disabled in gcpmacninepool.spec", func() {
+			It("should have secure boot set to false", func() {
+				mpscopeparams.GCPMachinePool.Spec = infrav1exp.GCPMachinePoolSpec{
+					ShieldedInstanceConfig: &infrav1exp.GCPShieldedInstanceConfig{
+						VirtualizedTrustedPlatformModule: infrav1exp.VirtualizedTrustedPlatformModulePolicyDisabled,
+					},
+				}
+				shieldedVMConfig := TestMachinePoolScope.GetShieldedInstanceConfigSpec()
+				Expect(shieldedVMConfig.EnableVtpm).To(BeFalse())
+			})
+		})
+
+		Context("Integrity Monitoring is disabled in gcpmacninepool.spec", func() {
+			It("should have Integrity Monitoring set to false", func() {
+				mpscopeparams.GCPMachinePool.Spec = infrav1exp.GCPMachinePoolSpec{
+					ShieldedInstanceConfig: &infrav1exp.GCPShieldedInstanceConfig{
+						IntegrityMonitoring: infrav1exp.IntegrityMonitoringPolicyDisabled,
+					},
+				}
+				shieldedVMConfig := TestMachinePoolScope.GetShieldedInstanceConfigSpec()
+				Expect(shieldedVMConfig.EnableIntegrityMonitoring).To(BeFalse())
 			})
 		})
 	})

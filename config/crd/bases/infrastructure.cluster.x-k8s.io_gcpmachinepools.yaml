@@ -181,6 +181,46 @@ spec:
                       type: string
                     type: array
                 type: object
+              shieldedInstanceConfig:
+                description: ShieldedInstanceConfig is the Shielded VM configuration
+                  for this machine
+                properties:
+                  integrityMonitoring:
+                    description: IntegrityMonitoring determines whether the instance
+                      should have integrity monitoring that verify the runtime boot
+                      integrity. Compares the most recent boot measurements to the
+                      integrity policy baseline and return a pair of pass/fail results
+                      depending on whether they match or not. If omitted, the platform
+                      chooses a default, which is subject to change over time, currently
+                      that default is Enabled.
+                    enum:
+                    - Enabled
+                    - Disabled
+                    type: string
+                  secureBoot:
+                    description: SecureBoot Defines whether the instance should have
+                      secure boot enabled. Secure Boot verify the digital signature
+                      of all boot components, and halting the boot process if signature
+                      verification fails. If omitted, the platform chooses a default,
+                      which is subject to change over time, currently that default
+                      is Disabled.
+                    enum:
+                    - Enabled
+                    - Disabled
+                    type: string
+                  virtualizedTrustedPlatformModule:
+                    description: VirtualizedTrustedPlatformModule enable virtualized
+                      trusted platform module measurements to create a known good
+                      boot integrity policy baseline. The integrity policy baseline
+                      is used for comparison with measurements from subsequent VM
+                      boots to determine if anything has changed. If omitted, the
+                      platform chooses a default, which is subject to change over
+                      time, currently that default is Enabled.
+                    enum:
+                    - Enabled
+                    - Disabled
+                    type: string
+                type: object
               strategy:
                 default:
                   rollingUpdate:
