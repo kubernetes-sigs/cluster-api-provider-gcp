@@ -30,6 +30,7 @@ import (
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -54,6 +55,14 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Info("Cluster not found, creating")
 		s.scope.GCPManagedControlPlane.Status.Initialized = false
 		s.scope.GCPManagedControlPlane.Status.Ready = false
+
+		if !isNetworkSpecValid(s.scope.GCPManagedCluster.Spec.Network) {
+			log.Error(ErrGCPManagedClusterHasNoNetworkDefined, "Error Reconciling GCPManagedControlPlane", "name", s.scope.ClusterName())
+			conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1.ReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, ErrGCPManagedClusterHasNoNetworkDefined.Error())
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, ErrGCPManagedClusterHasNoNetworkDefined.Error())
+			conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneCreatingCondition, infrav1exp.GKEControlPlaneReconciliationFailedReason, clusterv1.ConditionSeverityError, ErrGCPManagedClusterHasNoNetworkDefined.Error())
+			return ctrl.Result{}, ErrGCPManagedClusterHasNoNetworkDefined
+		}
 
 		nodePools, _, err := s.scope.GetAllNodePools(ctx)
 		if err != nil {
@@ -445,6 +454,15 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 		return true
 	}
 	if !cmp.Equal(a.GetCidrBlocks(), b.GetCidrBlocks()) {
+		return false
+	}
+	return true
+}
+
+// isNetworkSpecValid checks for the Name and Subnets field inside infrav1.NetworkSpec and returns true
+// if both are present. As of now only checking for Name and Subnets field as that is what is being used in the createCluster flow.
+func isNetworkSpecValid(network infrav1.NetworkSpec) bool {
+	if network.Name == nil || len(network.Subnets) == 0 {
 		return false
 	}
 	return true
