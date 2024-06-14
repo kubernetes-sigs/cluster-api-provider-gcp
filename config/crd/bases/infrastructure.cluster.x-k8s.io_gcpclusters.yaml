@@ -168,6 +168,13 @@ spec:
                       (useful for changing apiserver port)
                     format: int32
                     type: integer
+                  mtu:
+                    description: |-
+                      Mtu: Maximum Transmission Unit (MTU), in bytes, of packets passing through
+                      this interconnect attachment. Only 1440 and 1500 are allowed. If not
+                      specified, the value will default to 1440.
+                    format: int64
+                    type: integer
                   name:
                     description: Name is the name of the network to be used.
                     type: string

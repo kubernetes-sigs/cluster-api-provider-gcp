@@ -136,6 +136,12 @@ type NetworkSpec struct {
 	// HostProject is the name of the project hosting the shared VPC network resources.
 	// +optional
 	HostProject *string `json:"hostProject,omitempty"`
+
+	// Mtu: Maximum Transmission Unit (MTU), in bytes, of packets passing through
+	// this interconnect attachment. Only 1440 and 1500 are allowed. If not
+	// specified, the value will default to 1440.
+	// +optional
+	Mtu int64 `json:"mtu,omitempty"`
 }
 
 // LoadBalancerType defines the Load Balancer that should be created.
