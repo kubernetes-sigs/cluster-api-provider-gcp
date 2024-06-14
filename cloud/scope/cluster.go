@@ -131,6 +131,15 @@ func (s *ClusterScope) NetworkName() string {
 	return ptr.Deref(s.GCPCluster.Spec.Network.Name, "default")
 }
 
+// NetworkMtu returns the Network MTU of 1440 which is the default, otherwise returns back what is being set.
+// https://cloud.google.com/vpc/docs/mtu
+func (s *ClusterScope) NetworkMtu() int64 {
+	if s.GCPCluster.Spec.Network.Mtu == 0 {
+		return int64(1440)
+	}
+	return s.GCPCluster.Spec.Network.Mtu
+}
+
 // NetworkLink returns the partial URL for the network.
 func (s *ClusterScope) NetworkLink() string {
 	return fmt.Sprintf("projects/%s/global/networks/%s", s.NetworkProject(), s.NetworkName())
@@ -206,6 +215,7 @@ func (s *ClusterScope) NetworkSpec() *compute.Network {
 		Description:           infrav1.ClusterTagKey(s.Name()),
 		AutoCreateSubnetworks: createSubnet,
 		ForceSendFields:       []string{"AutoCreateSubnetworks"},
+		Mtu:                   s.NetworkMtu(),
 	}
 
 	return network
