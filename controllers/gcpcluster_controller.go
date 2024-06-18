@@ -197,6 +197,8 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 
 	clusterScope.SetFailureDomains(failureDomains)
 
+	log.Info("network scope - shared vpc", "sharedVpc", clusterScope.IsSharedVpc())
+
 	reconcilers := []cloud.Reconciler{
 		networks.New(clusterScope),
 		firewalls.New(clusterScope),
