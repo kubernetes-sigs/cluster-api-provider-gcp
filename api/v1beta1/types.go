@@ -105,6 +105,11 @@ type Network struct {
 	// created for the internal Load Balancer.
 	// +optional
 	APIInternalForwardingRule *string `json:"apiInternalForwardingRule,omitempty"`
+
+	// APIInternalBootstrapInstanceGroup is a map from zone to the full reference
+	// of the bootstrap instance group created in the same zone.
+	// +optional
+	APIInternalBootstrapInstanceGroup map[string]string `json:"apiInternalBootstrapInstanceGroup,omitempty"`
 }
 
 // NetworkSpec encapsulates all things related to a GCP network.
@@ -344,4 +349,14 @@ type LoadBalancer struct {
 	// required for the Load Balancer, if not defined the first configured subnet will be
 	// used.
 	Subnet *string `json:"subnet,omitempty"`
+
+	// CreateBootstrapInstanceGroup: When set to true, an InstanceGroup is created
+	// with the name <cluster-id>-boostrap. This InstanceGroup will be used by the
+	// bootstrap instance.
+	// When set to false, no bootstrap InstanceGroup will be created. If a bootstrap
+	// instance is created, it will be added to an existing InstanceGroup.
+	//
+	// Defaults to false.
+	// +optional
+	CreateBootstrapInstanceGroup *bool `json:"createBootstrapInstanceGroup,omitempty"`
 }

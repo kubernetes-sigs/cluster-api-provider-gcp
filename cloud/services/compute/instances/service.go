@@ -39,6 +39,7 @@ type instancegroupsInterface interface {
 	AddInstances(ctx context.Context, key *meta.Key, req *compute.InstanceGroupsAddInstancesRequest, options ...k8scloud.Option) error
 	ListInstances(ctx context.Context, key *meta.Key, req *compute.InstanceGroupsListInstancesRequest, fl *filter.F, options ...k8scloud.Option) ([]*compute.InstanceWithNamedPorts, error)
 	RemoveInstances(ctx context.Context, key *meta.Key, req *compute.InstanceGroupsRemoveInstancesRequest, options ...k8scloud.Option) error
+	Get(ctx context.Context, key *meta.Key, options ...k8scloud.Option) (*compute.InstanceGroup, error)
 }
 
 // Scope is an interfaces that hold used methods.

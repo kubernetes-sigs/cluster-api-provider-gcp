@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
@@ -44,6 +45,8 @@ const (
 	loadBalancingModeConnection = loadBalancingMode("CONNECTION")
 
 	loadBalanceTrafficInternal = "INTERNAL"
+
+	bootstrapInstanceGroup = "bootstrap"
 )
 
 // Reconcile reconcile cluster control-plane loadbalancer components.
@@ -58,6 +61,14 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	}
 
 	lbSpec := s.scope.LoadBalancer()
+	createBootstrapInstanceGroup := ptr.Deref(lbSpec.InternalLoadBalancer.CreateBootstrapInstanceGroup, false)
+	if createBootstrapInstanceGroup {
+		instancegroups, err = s.addBootstrapInstanceGroup(ctx, instancegroups)
+		if err != nil {
+			return err
+		}
+	}
+
 	lbType := ptr.Deref(lbSpec.LoadBalancerType, infrav1.External)
 	// Create a Global External Proxy Load Balancer by default
 	if lbType == infrav1.External || lbType == infrav1.InternalExternal {
@@ -163,6 +174,15 @@ func (s *Service) deleteInternalLoadBalancer(ctx context.Context, name string) e
 		return fmt.Errorf("deleting RegionalHealthCheck: %w", err)
 	}
 	s.scope.Network().APIInternalHealthCheck = nil
+
+	lbSpec := s.scope.LoadBalancer()
+	createBootstrapInstanceGroup := ptr.Deref(lbSpec.InternalLoadBalancer.CreateBootstrapInstanceGroup, false)
+	if createBootstrapInstanceGroup {
+		if err := s.deleteBootstrapInstanceGroups(ctx); err != nil {
+			return fmt.Errorf("deleting BootstrapInstanceGroup: %w", err)
+		}
+		s.scope.Network().APIInternalBootstrapInstanceGroup = nil
+	}
 
 	return nil
 }
@@ -293,6 +313,57 @@ func (s *Service) createOrGetInstanceGroups(ctx context.Context) ([]*compute.Ins
 	}
 
 	s.scope.Network().APIServerInstanceGroups = groupsMap
+	return groups, nil
+}
+
+func (s *Service) addBootstrapInstanceGroup(ctx context.Context, groups []*compute.InstanceGroup) ([]*compute.InstanceGroup, error) {
+	log := log.FromContext(ctx)
+	fd := s.scope.FailureDomains()
+	zones := make([]string, 0, len(fd))
+	for zone := range fd {
+		zones = append(zones, zone)
+	}
+	sort.Strings(zones)
+	bootstrapzone := zones[0] // use first zone
+
+	instancegroupSpec := &compute.InstanceGroup{
+		Name: fmt.Sprintf("%s-%s", s.scope.Name(), bootstrapInstanceGroup),
+		NamedPorts: []*compute.NamedPort{
+			{
+				Name: bootstrapInstanceGroup,
+				Port: 6443,
+			},
+		},
+	}
+	groupsMap := s.scope.Network().APIInternalBootstrapInstanceGroup
+	if groupsMap == nil {
+		groupsMap = make(map[string]string)
+	}
+
+	log.V(2).Info("Looking for bootstrap instancegroup in zone", "zone", bootstrapzone)
+	instancegroup, err := s.instancegroups.Get(ctx, meta.ZonalKey(instancegroupSpec.Name, bootstrapzone))
+	if err != nil {
+		if !gcperrors.IsNotFound(err) {
+			log.Error(err, "Error looking for bootstrap instancegroup in zone", "zone", bootstrapzone)
+			return groups, err
+		}
+
+		log.V(2).Info("Creating bootstrap instancegroup in zone", "zone", bootstrapzone)
+		err := s.instancegroups.Insert(ctx, meta.ZonalKey(instancegroupSpec.Name, bootstrapzone), instancegroupSpec)
+		if err != nil {
+			log.Error(err, "Error creating bootstrap instancegroup")
+			return groups, err
+		}
+
+		instancegroup, err = s.instancegroups.Get(ctx, meta.ZonalKey(instancegroupSpec.Name, bootstrapzone))
+		if err != nil {
+			return groups, err
+		}
+	}
+
+	groups = append(groups, instancegroup)
+	groupsMap[bootstrapzone] = instancegroup.SelfLink
+	s.scope.Network().APIInternalBootstrapInstanceGroup = groupsMap
 	return groups, nil
 }
 
@@ -745,14 +816,30 @@ func (s *Service) deleteInstanceGroups(ctx context.Context) error {
 	for zone := range s.scope.Network().APIServerInstanceGroups {
 		spec := s.scope.InstanceGroupSpec(zone)
 		key := meta.ZonalKey(spec.Name, zone)
-		log.V(2).Info("Deleting a instancegroup", "name", spec.Name)
+		log.V(2).Info("Deleting an instancegroup", "name", spec.Name)
 		if err := s.instancegroups.Delete(ctx, key); err != nil {
 			if !gcperrors.IsNotFound(err) {
-				log.Error(err, "Error deleting a instancegroup", "name", spec.Name)
+				log.Error(err, "Error deleting an instancegroup", "name", spec.Name)
 				return err
 			}
 
 			delete(s.scope.Network().APIServerInstanceGroups, zone)
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) deleteBootstrapInstanceGroups(ctx context.Context) error {
+	log := log.FromContext(ctx)
+	for zone := range s.scope.Network().APIInternalBootstrapInstanceGroup {
+		key := meta.ZonalKey(bootstrapInstanceGroup, zone)
+		log.V(2).Info("Deleting bootstrap instancegroup")
+		if err := s.instancegroups.Delete(ctx, key); err != nil {
+			if !gcperrors.IsNotFound(err) {
+				log.Error(err, "Error deleting bootstrap instancegroup")
+				return err
+			}
 		}
 	}
 

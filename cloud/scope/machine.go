@@ -131,10 +131,23 @@ func (m *MachineScope) Namespace() string {
 	return m.GCPMachine.Namespace
 }
 
+// BootstrapGroupName returns the instance group name for bootstrap machine.
+func (m *MachineScope) BootstrapGroupName() string {
+	return fmt.Sprintf("%s-%s", m.ClusterGetter.Name(), "bootstrap")
+}
+
 // ControlPlaneGroupName returns the control-plane instance group name.
 func (m *MachineScope) ControlPlaneGroupName() string {
 	tag := ptr.Deref(m.ClusterGetter.LoadBalancer().APIServerInstanceGroupTagOverride, infrav1.APIServerRoleTagValue)
 	return fmt.Sprintf("%s-%s-%s", m.ClusterGetter.Name(), tag, m.Zone())
+}
+
+// IsBootstrap returns true if the machine is a control plane machine that is used for bootstrap.
+func (m *MachineScope) IsBootstrap() bool {
+	if util.IsControlPlaneMachine(m.Machine) {
+		return strings.Contains(m.Machine.ObjectMeta.Name, "bootstrap")
+	}
+	return false
 }
 
 // IsControlPlane returns true if the machine is a control plane.
