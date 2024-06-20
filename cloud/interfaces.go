@@ -87,7 +87,9 @@ type MachineGetter interface {
 	Project() string
 	Role() string
 	IsControlPlane() bool
+	IsBootstrap() bool
 	ControlPlaneGroupName() string
+	BootstrapGroupName() string
 	GetInstanceID() *string
 	GetProviderID() string
 	GetBootstrapData() (string, error)

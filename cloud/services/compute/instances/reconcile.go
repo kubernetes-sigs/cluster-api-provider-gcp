@@ -168,8 +168,13 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 func (s *Service) registerControlPlaneInstance(ctx context.Context, instance *compute.Instance) error {
 	log := log.FromContext(ctx)
 	instancegroupName := s.scope.ControlPlaneGroupName()
-	log.V(2).Info("Ensuring instance already registered in the instancegroup", "name", instance.Name, "instancegroup", instancegroupName)
+	if s.scope.IsBootstrap() && s.bootstrapGroupExists(ctx) {
+		// If this is the bootstrap instance, use the bootstrap instance group if one exists
+		instancegroupName = s.scope.BootstrapGroupName()
+	}
 	instancegroupKey := meta.ZonalKey(instancegroupName, s.scope.Zone())
+
+	log.V(2).Info("Ensuring instance already registered in the instancegroup", "name", instance.Name, "instancegroup", instancegroupName)
 	instanceList, err := s.instancegroups.ListInstances(ctx, instancegroupKey, &compute.InstanceGroupsListInstancesRequest{
 		InstanceState: "RUNNING",
 	}, filter.None)
@@ -200,9 +205,20 @@ func (s *Service) registerControlPlaneInstance(ctx context.Context, instance *co
 	return nil
 }
 
+func (s *Service) bootstrapGroupExists(ctx context.Context) bool {
+	bootstrapGroupName := s.scope.BootstrapGroupName()
+	bootstrapgroupKey := meta.ZonalKey(bootstrapGroupName, s.scope.Zone())
+	_, err := s.instancegroups.Get(ctx, bootstrapgroupKey)
+	return err == nil
+}
+
 func (s *Service) deregisterControlPlaneInstance(ctx context.Context, instance *compute.Instance) error {
 	log := log.FromContext(ctx)
 	instancegroupName := s.scope.ControlPlaneGroupName()
+	if s.scope.IsBootstrap() && s.bootstrapGroupExists(ctx) {
+		// If this is the bootstrap instance, use the bootstrap instance group if one exists
+		instancegroupName = s.scope.BootstrapGroupName()
+	}
 	log.V(2).Info("Ensuring instance already registered in the instancegroup", "name", instance.Name, "instancegroup", instancegroupName)
 	instancegroupKey := meta.ZonalKey(instancegroupName, s.scope.Zone())
 	instanceList, err := s.instancegroups.ListInstances(ctx, instancegroupKey, &compute.InstanceGroupsListInstancesRequest{

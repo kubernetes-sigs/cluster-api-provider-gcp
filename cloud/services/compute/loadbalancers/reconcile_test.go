@@ -713,3 +713,61 @@ func TestService_createOrGetRegionalForwardingRule(t *testing.T) {
 		})
 	}
 }
+
+func TestService_addBootstrapInstanceGroup(t *testing.T) {
+	tests := []struct {
+		name              string
+		scope             func(s *scope.ClusterScope) Scope
+		mockInstanceGroup *cloud.MockInstanceGroups
+		inputGroups       []*compute.InstanceGroup
+		want              []*compute.InstanceGroup
+		wantErr           bool
+	}{
+		{
+			name:  "bootstrap instanceGroup does not exist (should create bootstrap instanceGroup)",
+			scope: func(s *scope.ClusterScope) Scope { return s },
+			mockInstanceGroup: &cloud.MockInstanceGroups{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstanceGroupsObj{},
+			},
+			inputGroups: []*compute.InstanceGroup{
+				{
+					Name:       "my-cluster-apiserver-us-central1-a",
+					NamedPorts: []*compute.NamedPort{{Name: "apiserver", Port: 6443}},
+					SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-apiserver-us-central1-a",
+				},
+			},
+			want: []*compute.InstanceGroup{
+				{
+					Name:       "my-cluster-apiserver-us-central1-a",
+					NamedPorts: []*compute.NamedPort{{Name: "apiserver", Port: 6443}},
+					SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-apiserver-us-central1-a",
+				},
+				{
+					Name:       "my-cluster-bootstrap",
+					NamedPorts: []*compute.NamedPort{{Name: "bootstrap", Port: 6443}},
+					SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-bootstrap",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
+			clusterScope, err := getBaseClusterScope()
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := New(tt.scope(clusterScope))
+			s.instancegroups = tt.mockInstanceGroup
+			got, err := s.addBootstrapInstanceGroup(ctx, tt.inputGroups)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Service s.addBootstrapInstanceGroup() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Errorf("Service s.addBootstrapInstanceGroup() mismatch (-want +got):\n%s", d)
+			}
+		})
+	}
+}
