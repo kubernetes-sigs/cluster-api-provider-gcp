@@ -7,7 +7,7 @@ replace (
 	github.com/google/cel-go => github.com/google/cel-go v0.17.7
 	// kube-openapi should match the version imported by CAPI.
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
-	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.7.2
+	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.7.3
 )
 
 require (
@@ -35,9 +35,9 @@ require (
 	k8s.io/component-base v0.29.5
 	k8s.io/klog/v2 v2.120.1
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
-	sigs.k8s.io/cluster-api v1.7.2
-	sigs.k8s.io/cluster-api/test v1.7.2
-	sigs.k8s.io/controller-runtime v0.17.3
+	sigs.k8s.io/cluster-api v1.7.3
+	sigs.k8s.io/cluster-api/test v1.7.3
+	sigs.k8s.io/controller-runtime v0.17.5
 )
 
 require (
@@ -169,7 +169,7 @@ require (
 	k8s.io/cluster-bootstrap v0.29.5 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/kind v0.22.0 // indirect
+	sigs.k8s.io/kind v0.23.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
