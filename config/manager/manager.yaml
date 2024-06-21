@@ -33,7 +33,7 @@ spec:
           name: healthz
           protocol: TCP
         - containerPort: 8443
-          name: metrics
+          name: metrics-2
           protocol: TCP
         readinessProbe:
           httpGet:
