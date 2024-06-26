@@ -1,6 +1,6 @@
 module sigs.k8s.io/cluster-api-provider-gcp/hack/tools
 
-go 1.21.10
+go 1.21
 
 replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.7.3
 
