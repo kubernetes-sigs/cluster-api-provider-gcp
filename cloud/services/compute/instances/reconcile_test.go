@@ -237,6 +237,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 					},
 				},
@@ -302,6 +305,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 					},
 				},
@@ -369,6 +375,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 					},
 				},
@@ -436,6 +445,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 					},
 				},
@@ -506,6 +518,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 					},
 				},
@@ -569,6 +584,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-a/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 					},
 				},
@@ -639,6 +657,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 						DiskEncryptionKey: &compute.CustomerEncryptionKey{
 							KmsKeyName: "projects/my-project/locations/us-central1/keyRings/us-central1/cryptoKeys/some-key",
@@ -712,6 +733,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 						DiskEncryptionKey: &compute.CustomerEncryptionKey{
 							RawKey: "SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0=",
@@ -785,6 +809,9 @@ func TestService_createOrGetInstance(t *testing.T) {
 							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
 							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
 						},
 						DiskEncryptionKey: &compute.CustomerEncryptionKey{
 							RsaEncryptedKey: "ieCx/NcW06PcT7Ep1X6LUTc/hLvUDYyzSZPPVCVPTVEohpeHASqC8uw5TzyO9U+Fka9JFHiz0mBibXUInrC/jEk014kCK/NPjYgEMOyssZ4ZINPKxlUh2zn1bV+MCaTICrdmuSBTWlUUiFoDiD6PYznLwh8ZNdaheCeZ8ewEXgFQ8V+sDroLaN3Xs3MDTXQEMMoNUXMCZEIpg9Vtp9x2oe==",

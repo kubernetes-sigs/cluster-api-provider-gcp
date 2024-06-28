@@ -95,6 +95,18 @@ func getBaseClusterScope() (*scope.ClusterScope, error) {
 	return clusterScope, nil
 }
 
+func getBaseClusterScopeWithLabels() (*scope.ClusterScope, error) {
+	clusterScope, err := getBaseClusterScope()
+	if err != nil {
+		return nil, err
+	}
+
+	clusterScope.GCPCluster.Spec.AdditionalLabels = map[string]string{
+		"foo": "bar",
+	}
+	return clusterScope, nil
+}
+
 func TestService_createOrGetInstanceGroup(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -596,6 +608,7 @@ func TestService_createOrGetForwardingRule(t *testing.T) {
 		mockForwardingRule *cloud.MockGlobalForwardingRules
 		want               *compute.ForwardingRule
 		wantErr            bool
+		includeLabels      bool
 	}{
 		{
 			name:   "forwarding rule does not exist for external load balancer (should create forwardingrule)",
@@ -622,11 +635,46 @@ func TestService_createOrGetForwardingRule(t *testing.T) {
 				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/global/forwardingRules/my-cluster-apiserver",
 			},
 		},
+		{
+			name:   "forwarding rule does not exist for external load balancer (should create forwardingrule with labels)",
+			scope:  func(s *scope.ClusterScope) Scope { return s },
+			lbName: infrav1.APIServerRoleTagValue,
+			address: &compute.Address{
+				Name:     "my-cluster-apiserver",
+				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+			},
+			backendService: &compute.BackendService{},
+			targetTcpproxy: &compute.TargetTcpProxy{
+				Name: "my-cluster-apiserver",
+			},
+			mockForwardingRule: &cloud.MockGlobalForwardingRules{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockGlobalForwardingRulesObj{},
+			},
+			want: &compute.ForwardingRule{
+				IPAddress:           "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+				IPProtocol:          "TCP",
+				LoadBalancingScheme: "EXTERNAL",
+				PortRange:           "443-443",
+				Name:                "my-cluster-apiserver",
+				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/global/forwardingRules/my-cluster-apiserver",
+				Labels: map[string]string{
+					"foo": "bar",
+				},
+			},
+			includeLabels: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			var err error
+			var clusterScope *scope.ClusterScope
+			if tt.includeLabels {
+				clusterScope, err = getBaseClusterScopeWithLabels()
+			} else {
+				clusterScope, err = getBaseClusterScope()
+			}
 			if err != nil {
 				t.Fatal(err)
 			}

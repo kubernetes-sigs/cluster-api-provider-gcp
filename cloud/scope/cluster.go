@@ -337,6 +337,7 @@ func (s *ClusterScope) ForwardingRuleSpec(lbname string) *compute.ForwardingRule
 		IPProtocol:          "TCP",
 		LoadBalancingScheme: "EXTERNAL",
 		PortRange:           portRange,
+		Labels:              s.AdditionalLabels(),
 	}
 }
 
