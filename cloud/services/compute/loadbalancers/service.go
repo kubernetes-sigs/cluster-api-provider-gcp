@@ -44,6 +44,14 @@ type forwardingrulesInterface interface {
 	Get(ctx context.Context, key *meta.Key, options ...k8scloud.Option) (*compute.ForwardingRule, error)
 	Insert(ctx context.Context, key *meta.Key, obj *compute.ForwardingRule, options ...k8scloud.Option) error
 	Delete(ctx context.Context, key *meta.Key, options ...k8scloud.Option) error
+	SetLabels(ctx context.Context, key *meta.Key, obj *compute.GlobalSetLabelsRequest, options ...k8scloud.Option) error
+}
+
+type regionalforwardingrulesInterface interface {
+	Get(ctx context.Context, key *meta.Key, options ...k8scloud.Option) (*compute.ForwardingRule, error)
+	Insert(ctx context.Context, key *meta.Key, obj *compute.ForwardingRule, options ...k8scloud.Option) error
+	Delete(ctx context.Context, key *meta.Key, options ...k8scloud.Option) error
+	SetLabels(ctx context.Context, key *meta.Key, obj *compute.RegionSetLabelsRequest, options ...k8scloud.Option) error
 }
 
 type healthchecksInterface interface {
@@ -89,7 +97,7 @@ type Service struct {
 	backendservices         backendservicesInterface
 	regionalbackendservices backendservicesInterface
 	forwardingrules         forwardingrulesInterface
-	regionalforwardingrules forwardingrulesInterface
+	regionalforwardingrules regionalforwardingrulesInterface
 	healthchecks            healthchecksInterface
 	regionalhealthchecks    healthchecksInterface
 	instancegroups          instancegroupsInterface
