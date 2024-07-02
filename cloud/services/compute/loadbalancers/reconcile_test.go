@@ -107,6 +107,16 @@ func getBaseClusterScopeWithLabels() (*scope.ClusterScope, error) {
 	return clusterScope, nil
 }
 
+func getBaseClusterScopeWithSharedVPC() (*scope.ClusterScope, error) {
+	clusterScope, err := getBaseClusterScope()
+	if err != nil {
+		return nil, err
+	}
+
+	clusterScope.GCPCluster.Spec.Network.HostProject = ptr.To("my-shared-vpc-project")
+	return clusterScope, nil
+}
+
 func TestService_createOrGetInstanceGroup(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -243,6 +253,7 @@ func TestService_createOrGetRegionalHealthCheck(t *testing.T) {
 		mockHealthChecks *cloud.MockRegionHealthChecks
 		want             *compute.HealthCheck
 		wantErr          bool
+		sharedVPC        bool
 	}{
 		{
 			name: "regional health check does not exist for internal load balancer (should create healthcheck)",
@@ -269,11 +280,43 @@ func TestService_createOrGetRegionalHealthCheck(t *testing.T) {
 				UnhealthyThreshold: 3,
 			},
 		},
+		{
+			name: "regional health check does not exist for internal load balancer in shared VPC (should create healthcheck)",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
+					LoadBalancerType: &lbTypeInternal,
+				}
+				return s
+			},
+			lbName: infrav1.InternalRoleTagValue,
+			mockHealthChecks: &cloud.MockRegionHealthChecks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockRegionHealthChecksObj{},
+			},
+			want: &compute.HealthCheck{
+				CheckIntervalSec:   10,
+				HealthyThreshold:   5,
+				HttpsHealthCheck:   &compute.HTTPSHealthCheck{Port: 6443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
+				Name:               "my-cluster-api-internal",
+				Region:             "us-central1",
+				SelfLink:           "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/healthChecks/my-cluster-api-internal",
+				TimeoutSec:         5,
+				Type:               "HTTPS",
+				UnhealthyThreshold: 3,
+			},
+			sharedVPC: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			var err error
+			var clusterScope *scope.ClusterScope
+			if tt.sharedVPC {
+				clusterScope, err = getBaseClusterScopeWithSharedVPC()
+			} else {
+				clusterScope, err = getBaseClusterScope()
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -451,6 +494,7 @@ func TestService_createOrGetAddress(t *testing.T) {
 		mockAddress *cloud.MockGlobalAddresses
 		want        *compute.Address
 		wantErr     bool
+		sharedVPC   bool
 	}{
 		{
 			name:   "address does not exist for external load balancer (should create address)",
@@ -467,11 +511,33 @@ func TestService_createOrGetAddress(t *testing.T) {
 				AddressType: "EXTERNAL",
 			},
 		},
+		{
+			name:   "address does not exist for external load balancer in shared VPC (should create address)",
+			scope:  func(s *scope.ClusterScope) Scope { return s },
+			lbName: infrav1.APIServerRoleTagValue,
+			mockAddress: &cloud.MockGlobalAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockGlobalAddressesObj{},
+			},
+			want: &compute.Address{
+				IpVersion:   "IPV4",
+				Name:        "my-cluster-apiserver",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/global/addresses/my-cluster-apiserver",
+				AddressType: "EXTERNAL",
+			},
+			sharedVPC: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			var err error
+			var clusterScope *scope.ClusterScope
+			if tt.sharedVPC {
+				clusterScope, err = getBaseClusterScopeWithSharedVPC()
+			} else {
+				clusterScope, err = getBaseClusterScope()
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -498,6 +564,7 @@ func TestService_createOrGetInternalAddress(t *testing.T) {
 		mockSubnetworks *cloud.MockSubnetworks
 		want            *compute.Address
 		wantErr         bool
+		sharedVPC       bool
 	}{
 		{
 			name: "address does not exist for internal load balancer (should create address)",
@@ -527,11 +594,46 @@ func TestService_createOrGetInternalAddress(t *testing.T) {
 				Purpose:     "GCE_ENDPOINT",
 			},
 		},
+		{
+			name: "address does not exist for internal load balancer using SharedVPC subnet (should create address)",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
+					LoadBalancerType: &lbTypeInternal,
+				}
+				return s
+			},
+			lbName: infrav1.InternalRoleTagValue,
+			mockAddress: &cloud.MockAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockAddressesObj{},
+			},
+			mockSubnetworks: &cloud.MockSubnetworks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
+					*meta.RegionalKey("control-plane", "us-central1"): {},
+				},
+			},
+			want: &compute.Address{
+				IpVersion:   "IPV4",
+				Name:        "my-cluster-api-internal",
+				Region:      "us-central1",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-api-internal",
+				AddressType: "INTERNAL",
+				Purpose:     "GCE_ENDPOINT",
+			},
+			sharedVPC: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			var err error
+			var clusterScope *scope.ClusterScope
+			if tt.sharedVPC {
+				clusterScope, err = getBaseClusterScopeWithSharedVPC()
+			} else {
+				clusterScope, err = getBaseClusterScope()
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -558,6 +660,7 @@ func TestService_createOrGetTargetTCPProxy(t *testing.T) {
 		mockTargetTCPProxy *cloud.MockTargetTcpProxies
 		want               *compute.TargetTcpProxy
 		wantErr            bool
+		sharedVPC          bool
 	}{
 		{
 			name:  "target tcp proxy does not exist for external load balancer (should create target tp proxy)",
@@ -575,11 +678,34 @@ func TestService_createOrGetTargetTCPProxy(t *testing.T) {
 				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/global/targetTcpProxies/my-cluster-apiserver",
 			},
 		},
+		{
+			name:  "target tcp proxy does not exist for external load balancer in shared VPC (should create target tp proxy)",
+			scope: func(s *scope.ClusterScope) Scope { return s },
+			backendService: &compute.BackendService{
+				Name: "my-cluster-api-internal",
+			},
+			mockTargetTCPProxy: &cloud.MockTargetTcpProxies{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockTargetTcpProxiesObj{},
+			},
+			want: &compute.TargetTcpProxy{
+				Name:        "my-cluster-apiserver",
+				ProxyHeader: "NONE",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/global/targetTcpProxies/my-cluster-apiserver",
+			},
+			sharedVPC: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			var err error
+			var clusterScope *scope.ClusterScope
+			if tt.sharedVPC {
+				clusterScope, err = getBaseClusterScopeWithSharedVPC()
+			} else {
+				clusterScope, err = getBaseClusterScope()
+			}
 			if err != nil {
 				t.Fatal(err)
 			}

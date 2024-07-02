@@ -101,6 +101,11 @@ var _ cloud.Reconciler = &Service{}
 
 // New returns Service from given scope.
 func New(scope Scope) *Service {
+	cloudScope := scope.Cloud()
+	if scope.IsSharedVpc() {
+		cloudScope = scope.NetworkCloud()
+	}
+
 	return &Service{
 		scope:                   scope,
 		addresses:               scope.Cloud().GlobalAddresses(),
@@ -110,9 +115,9 @@ func New(scope Scope) *Service {
 		forwardingrules:         scope.Cloud().GlobalForwardingRules(),
 		regionalforwardingrules: scope.Cloud().ForwardingRules(),
 		healthchecks:            scope.Cloud().HealthChecks(),
-		regionalhealthchecks:    scope.Cloud().RegionHealthChecks(),
+		regionalhealthchecks:    cloudScope.RegionHealthChecks(),
 		instancegroups:          scope.Cloud().InstanceGroups(),
-		targettcpproxies:        scope.Cloud().TargetTcpProxies(),
-		subnets:                 scope.Cloud().Subnetworks(),
+		targettcpproxies:        cloudScope.TargetTcpProxies(),
+		subnets:                 cloudScope.Subnetworks(),
 	}
 }
