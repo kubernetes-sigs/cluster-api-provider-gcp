@@ -138,6 +138,17 @@ spec:
                             description: InternalLoadBalancer is the configuration
                               for an Internal Passthrough Network Load Balancer.
                             properties:
+                              createBootstrapInstanceGroup:
+                                description: |-
+                                  CreateBootstrapInstanceGroup: When set to true, an InstanceGroup is created
+                                  will be created named <cluster-id>-boostrap. This InstanceGroup will be used
+                                  by the bootstrap instance.
+                                  When set to false, no bootstrap InstanceGroup will be created. If a bootstrap
+                                  instance is created, it will be added to an existing InstanceGroup.
+
+
+                                  Defaults to false.
+                                type: boolean
                               name:
                                 description: |-
                                   Name is the name of the Load Balancer. If not set a default name
