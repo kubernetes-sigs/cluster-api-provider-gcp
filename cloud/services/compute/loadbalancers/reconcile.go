@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
@@ -579,6 +580,19 @@ func (s *Service) createOrGetForwardingRule(ctx context.Context, lbname string, 
 		}
 	}
 
+	// Labels on ForwardingRules must be added after resource is created
+	labels := s.scope.AdditionalLabels()
+	if !reflect.DeepEqual(labels, forwarding.Labels) {
+		setLabelsRequest := &compute.GlobalSetLabelsRequest{
+			LabelFingerprint: forwarding.LabelFingerprint,
+			Labels:           labels,
+		}
+		err = s.forwardingrules.SetLabels(ctx, key, setLabelsRequest)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return forwarding, nil
 }
 
@@ -617,6 +631,19 @@ func (s *Service) createOrGetRegionalForwardingRule(ctx context.Context, lbname 
 		}
 
 		forwarding, err = s.regionalforwardingrules.Get(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Labels on ForwardingRules must be added after resource is created
+	labels := s.scope.AdditionalLabels()
+	if !reflect.DeepEqual(labels, forwarding.Labels) {
+		setLabelsRequest := &compute.RegionSetLabelsRequest{
+			LabelFingerprint: forwarding.LabelFingerprint,
+			Labels:           labels,
+		}
+		err = s.regionalforwardingrules.SetLabels(ctx, key, setLabelsRequest)
 		if err != nil {
 			return nil, err
 		}
