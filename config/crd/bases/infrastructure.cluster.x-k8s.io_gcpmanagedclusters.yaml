@@ -165,6 +165,7 @@ spec:
                     format: int32
                     type: integer
                   mtu:
+                    default: 1460
                     description: |-
                       Mtu: Maximum Transmission Unit in bytes. The minimum value for this field is
                       1300 and the maximum value is 8896. The suggested value is 1500, which is

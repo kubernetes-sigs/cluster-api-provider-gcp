@@ -132,10 +132,16 @@ func (s *ClusterScope) NetworkName() string {
 }
 
 // NetworkMtu returns the Network MTU of 1440 which is the default, otherwise returns back what is being set.
-// https://cloud.google.com/vpc/docs/mtu
+// Mtu: Maximum Transmission Unit in bytes. The minimum value for this field is
+// 1300 and the maximum value is 8896. The suggested value is 1500, which is
+// the default MTU used on the Internet, or 8896 if you want to use Jumbo
+// frames. If unspecified, the value defaults to 1460.
+// More info
+// - https://pkg.go.dev/google.golang.org/api/compute/v1#Network
+// - https://cloud.google.com/vpc/docs/mtu
 func (s *ClusterScope) NetworkMtu() int64 {
 	if s.GCPCluster.Spec.Network.Mtu == 0 {
-		return int64(1440)
+		return int64(1460)
 	}
 	return s.GCPCluster.Spec.Network.Mtu
 }

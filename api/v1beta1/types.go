@@ -144,6 +144,7 @@ type NetworkSpec struct {
 	// More info: https://pkg.go.dev/google.golang.org/api/compute/v1#Network
 	// +kubebuilder:validation:Minimum:=1300
 	// +kubebuilder:validation:Maximum:=8896
+	// +kubebuilder:default:=1460
 	// +optional
 	Mtu int64 `json:"mtu,omitempty"`
 }
