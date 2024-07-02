@@ -23,6 +23,9 @@ import (
 // ErrAutopilotClusterMachinePoolsNotAllowed is used when there are machine pools specified for an autopilot enabled cluster.
 var ErrAutopilotClusterMachinePoolsNotAllowed = errors.New("cannot use machine pools with an autopilot enabled cluster")
 
+// ErrGCPManagedClusterHasNoNetworkDefined is used when there is no Network definition provided in a GCPManagedCluster.
+var ErrGCPManagedClusterHasNoNetworkDefined = errors.New("cannot reconcile GCPManagedCluster if Network is not defined")
+
 // NewErrUnexpectedClusterStatus creates a new error for an unexpected cluster status.
 func NewErrUnexpectedClusterStatus(status string) error {
 	return &UnexpectedClusterStatusError{status}
