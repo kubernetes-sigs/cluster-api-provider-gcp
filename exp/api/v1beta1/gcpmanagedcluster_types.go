@@ -41,7 +41,6 @@ type GCPManagedClusterSpec struct {
 	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 
 	// NetworkSpec encapsulates all things related to the GCP network.
-	// +optional
 	Network infrav1.NetworkSpec `json:"network"`
 
 	// AdditionalLabels is an optional set of tags to add to GCP resources managed by the GCP provider, in addition to the
