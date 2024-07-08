@@ -19,6 +19,10 @@ package cloud
 import (
 	"context"
 
+	"cloud.google.com/go/container/apiv1/containerpb"
+
+	"github.com/googleapis/gax-go/v2"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
@@ -47,6 +51,23 @@ type ReconcilerWithResult interface {
 type Client interface {
 	Cloud() Cloud
 	NetworkCloud() Cloud
+}
+
+// Container is an interface which implements bits of internalClusterManagerClient from since there is no Public Interface for it.
+// ref: https://github.com/googleapis/google-cloud-go/blob/a187451a912835703078e5b6a339c514edebe5de/container/apiv1/cluster_manager_client.go#L468
+type Container interface {
+	Close() error
+	CreateCluster(context.Context, *containerpb.CreateClusterRequest, ...gax.CallOption) (*containerpb.Operation, error)
+	UpdateCluster(context.Context, *containerpb.UpdateClusterRequest, ...gax.CallOption) (*containerpb.Operation, error)
+	DeleteCluster(context.Context, *containerpb.DeleteClusterRequest, ...gax.CallOption) (*containerpb.Operation, error)
+	GetCluster(context.Context, *containerpb.GetClusterRequest, ...gax.CallOption) (*containerpb.Cluster, error)
+	ListNodePools(context.Context, *containerpb.ListNodePoolsRequest, ...gax.CallOption) (*containerpb.ListNodePoolsResponse, error)
+	GetNodePool(context.Context, *containerpb.GetNodePoolRequest, ...gax.CallOption) (*containerpb.NodePool, error)
+	CreateNodePool(context.Context, *containerpb.CreateNodePoolRequest, ...gax.CallOption) (*containerpb.Operation, error)
+	DeleteNodePool(context.Context, *containerpb.DeleteNodePoolRequest, ...gax.CallOption) (*containerpb.Operation, error)
+	SetNodePoolSize(context.Context, *containerpb.SetNodePoolSizeRequest, ...gax.CallOption) (*containerpb.Operation, error)
+	SetNodePoolAutoscaling(context.Context, *containerpb.SetNodePoolAutoscalingRequest, ...gax.CallOption) (*containerpb.Operation, error)
+	UpdateNodePool(context.Context, *containerpb.UpdateNodePoolRequest, ...gax.CallOption) (*containerpb.Operation, error)
 }
 
 // ClusterGetter is an interface which can get cluster information.

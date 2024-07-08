@@ -20,17 +20,15 @@ import (
 	"context"
 	"fmt"
 
-	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
-
-	"sigs.k8s.io/cluster-api/util/conditions"
-
-	container "cloud.google.com/go/container/apiv1"
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	clusterv1exp "sigs.k8s.io/cluster-api/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -43,7 +41,7 @@ const (
 // ManagedControlPlaneScopeParams defines the input parameters used to create a new Scope.
 type ManagedControlPlaneScopeParams struct {
 	CredentialsClient      *credentials.IamCredentialsClient
-	ManagedClusterClient   *container.ClusterManagerClient
+	ManagedClusterClient   cloud.Container
 	TagBindingsClient      *resourcemanager.TagBindingsClient
 	Client                 client.Client
 	Cluster                *clusterv1.Cluster
@@ -118,7 +116,7 @@ type ManagedControlPlaneScope struct {
 	Cluster                *clusterv1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
-	mcClient               *container.ClusterManagerClient
+	mcClient               cloud.Container
 	tagBindingsClient      *resourcemanager.TagBindingsClient
 	credentialsClient      *credentials.IamCredentialsClient
 	credential             *Credential
@@ -159,7 +157,7 @@ func (s *ManagedControlPlaneScope) Client() client.Client {
 }
 
 // ManagedControlPlaneClient returns a client used to interact with GKE.
-func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.ClusterManagerClient {
+func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() cloud.Container {
 	return s.mcClient
 }
 
