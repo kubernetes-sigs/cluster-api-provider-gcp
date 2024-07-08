@@ -103,7 +103,7 @@ var _ = Describe("ManagedControlPlaneScope Reconcile", func() {
 			}
 			mockInternalClusterManagerClient.EXPECT().GetCluster(ctx, getClusterRequest).Return(nil, nil).Times(1)
 
-			testManagedControlPlaneScope, err := cloudScope.NewMockManagedControlPlaneScope(ctx, cloudScope.ManagedControlPlaneScopeParams{
+			testManagedControlPlaneScope, _ := cloudScope.NewMockManagedControlPlaneScope(ctx, cloudScope.ManagedControlPlaneScopeParams{
 				Client:                 fakec,
 				Cluster:                fakeCluster,
 				GCPManagedCluster:      fakeGCPManagedCluster,
@@ -115,7 +115,6 @@ var _ = Describe("ManagedControlPlaneScope Reconcile", func() {
 			result, err := reconcile.Reconcile(ctx)
 
 			Expect(result).To(Equal(ctrl.Result{}))
-			Expect(err).NotTo(BeNil())
 			Expect(err).To(Equal(ErrGCPManagedClusterHasNoNetworkDefined))
 		})
 	})
