@@ -11,11 +11,11 @@ replace (
 )
 
 require (
-	cloud.google.com/go/compute v1.27.2
-	cloud.google.com/go/container v1.37.2
-	cloud.google.com/go/iam v1.1.10
-	cloud.google.com/go/resourcemanager v1.9.9
-	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.30.1
+	cloud.google.com/go/compute v1.27.3
+	cloud.google.com/go/container v1.37.3
+	cloud.google.com/go/iam v1.1.11
+	cloud.google.com/go/resourcemanager v1.9.10
+	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.31.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.12.5
@@ -27,7 +27,7 @@ require (
 	golang.org/x/crypto v0.25.0
 	golang.org/x/mod v0.19.0
 	golang.org/x/net v0.27.0
-	google.golang.org/api v0.187.0
+	google.golang.org/api v0.188.0
 	google.golang.org/grpc v1.65.0
 	k8s.io/api v0.29.5
 	k8s.io/apimachinery v0.29.5
@@ -42,9 +42,9 @@ require (
 
 require (
 	cloud.google.com/go v0.115.0 // indirect
-	cloud.google.com/go/auth v0.6.1 // indirect
+	cloud.google.com/go/auth v0.7.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
-	cloud.google.com/go/longrunning v0.5.7 // indirect
+	cloud.google.com/go/longrunning v0.5.9 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
@@ -76,7 +76,7 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	cloud.google.com/go/compute/metadata v0.4.0 // indirect
 	github.com/BurntSushi/toml v1.0.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
@@ -156,9 +156,9 @@ require (
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/genproto v0.0.0-20240624140628-dc46fd24d27d // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240617180043-68d350f18fd4 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240624140628-dc46fd24d27d // indirect
+	google.golang.org/genproto v0.0.0-20240708141625-4ad9e859172b // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240701130421-f6361c86f094 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240708141625-4ad9e859172b // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
