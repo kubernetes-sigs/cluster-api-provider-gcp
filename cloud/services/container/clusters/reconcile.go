@@ -302,6 +302,12 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	}
 	if !s.scope.IsAutopilotCluster() {
 		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional, cluster.GetName())
+		if s.scope.GCPManagedControlPlane.Spec.LoggingService != nil {
+			cluster.LoggingService = s.scope.GCPManagedControlPlane.Spec.LoggingService.String()
+		}
+		if s.scope.GCPManagedControlPlane.Spec.MonitoringService != nil {
+			cluster.MonitoringService = s.scope.GCPManagedControlPlane.Spec.MonitoringService.String()
+		}
 	}
 
 	createClusterRequest := &containerpb.CreateClusterRequest{
@@ -434,6 +440,20 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			clusterUpdate.DesiredMasterVersion = desiredMasterVersion
 			log.V(2).Info("Master version update required", "current", existingClusterMasterVersion, "desired", desiredMasterVersion)
 		}
+	}
+
+	// LoggingService
+	if existingCluster.GetLoggingService() != s.scope.GCPManagedControlPlane.Spec.LoggingService.String() {
+		needUpdate = true
+		clusterUpdate.DesiredLoggingService = s.scope.GCPManagedControlPlane.Spec.LoggingService.String()
+		log.V(2).Info("LoggingService config update required", "current", existingCluster.GetLoggingService(), "desired", s.scope.GCPManagedControlPlane.Spec.LoggingService.String())
+	}
+
+	// MonitoringService
+	if existingCluster.GetMonitoringService() != s.scope.GCPManagedControlPlane.Spec.MonitoringService.String() {
+		needUpdate = true
+		clusterUpdate.DesiredLoggingService = s.scope.GCPManagedControlPlane.Spec.MonitoringService.String()
+		log.V(2).Info("MonitoringService config update required", "current", existingCluster.GetMonitoringService(), "desired", s.scope.GCPManagedControlPlane.Spec.MonitoringService.String())
 	}
 
 	// DesiredMasterAuthorizedNetworksConfig
