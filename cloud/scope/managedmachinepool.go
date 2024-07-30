@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/cluster-api/util/conditions"
 
 	compute "cloud.google.com/go/compute/apiv1"
-	container "cloud.google.com/go/container/apiv1"
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/pkg/errors"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -41,7 +40,7 @@ import (
 
 // ManagedMachinePoolScopeParams defines the input parameters used to create a new Scope.
 type ManagedMachinePoolScopeParams struct {
-	ManagedClusterClient        *container.ClusterManagerClient
+	ManagedClusterClient        cloud.Container
 	InstanceGroupManagersClient *compute.InstanceGroupManagersClient
 	Client                      client.Client
 	Cluster                     *clusterv1.Cluster
@@ -112,7 +111,7 @@ type ManagedMachinePoolScope struct {
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	GCPManagedMachinePool  *infrav1exp.GCPManagedMachinePool
-	mcClient               *container.ClusterManagerClient
+	mcClient               cloud.Container
 	migClient              *compute.InstanceGroupManagersClient
 }
 
@@ -142,7 +141,7 @@ func (s *ManagedMachinePoolScope) ConditionSetter() conditions.Setter {
 }
 
 // ManagedMachinePoolClient returns a client used to interact with GKE.
-func (s *ManagedMachinePoolScope) ManagedMachinePoolClient() *container.ClusterManagerClient {
+func (s *ManagedMachinePoolScope) ManagedMachinePoolClient() cloud.Container {
 	return s.mcClient
 }
 
