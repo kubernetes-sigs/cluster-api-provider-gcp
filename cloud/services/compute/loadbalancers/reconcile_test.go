@@ -117,6 +117,19 @@ func getBaseClusterScopeWithSharedVPC() (*scope.ClusterScope, error) {
 	return clusterScope, nil
 }
 
+func getBaseClusterScopeWithPortSet() (*scope.ClusterScope, error) {
+	clusterScope, err := getBaseClusterScope()
+	if err != nil {
+		return nil, err
+	}
+
+	port := int32(6443)
+	clusterScope.Cluster.Spec.ClusterNetwork = &clusterv1.ClusterNetwork{
+		APIServerPort: &port,
+	}
+	return clusterScope, nil
+}
+
 func TestService_createOrGetInstanceGroup(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -811,7 +824,7 @@ func TestService_createOrGetRegionalForwardingRule(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			clusterScope, err := getBaseClusterScopeWithPortSet()
 			if err != nil {
 				t.Fatal(err)
 			}
