@@ -161,6 +161,12 @@ spec:
                   Location represents the location (region or zone) in which the GKE cluster
                   will be created.
                 type: string
+              loggingService:
+                description: |-
+                  LoggingService represents configuration of logging service feature of the GKE cluster.
+                  Possible values: none, logging.googleapis.com/kubernetes (default).
+                  Value is ignored when enableAutopilot = true.
+                type: string
               master_authorized_networks_config:
                 description: |-
                   MasterAuthorizedNetworksConfig represents configuration options for master authorized networks feature of the GKE cluster.
@@ -189,6 +195,12 @@ spec:
                       Public IP addresses.
                     type: boolean
                 type: object
+              monitoringService:
+                description: |-
+                  MonitoringService represents configuration of monitoring service feature of the GKE cluster.
+                  Possible values: none, monitoring.googleapis.com/kubernetes (default).
+                  Value is ignored when enableAutopilot = true.
+                type: string
               project:
                 description: Project is the name of the project to deploy the cluster
                   to.
