@@ -47,7 +47,10 @@ type AttachedDiskSpec struct {
 	// 1. "pd-standard" - Standard (HDD) persistent disk
 	// 2. "pd-ssd" - SSD persistent disk
 	// 3. "local-ssd" - Local SSD disk (https://cloud.google.com/compute/docs/disks/local-ssd).
+	// 4. "pd-balanced" - Balanced Persistent Disk
+	// 5. "hyperdisk-balanced" - Hyperdisk Balanced
 	// Default is "pd-standard".
+	// +kubebuilder:validation:Enum=pd-standard;pd-ssd;local-ssd;pd-balanced;hyperdisk-balanced
 	// +optional
 	DeviceType *DiskType `json:"deviceType,omitempty"`
 	// Size is the size of the disk in GBs.
@@ -281,7 +284,10 @@ type GCPMachineSpec struct {
 	// Supported types of root volumes:
 	// 1. "pd-standard" - Standard (HDD) persistent disk
 	// 2. "pd-ssd" - SSD persistent disk
+	// 3. "pd-balanced" - Balanced Persistent Disk
+	// 4. "hyperdisk-balanced" - Hyperdisk Balanced
 	// Default is "pd-standard".
+	// +kubebuilder:validation:Enum=pd-standard;pd-ssd;pd-balanced;hyperdisk-balanced
 	// +optional
 	RootDeviceType *DiskType `json:"rootDeviceType,omitempty"`
 

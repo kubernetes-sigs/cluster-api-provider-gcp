@@ -87,7 +87,15 @@ spec:
                                 1. "pd-standard" - Standard (HDD) persistent disk
                                 2. "pd-ssd" - SSD persistent disk
                                 3. "local-ssd" - Local SSD disk (https://cloud.google.com/compute/docs/disks/local-ssd).
+                                4. "pd-balanced" - Balanced Persistent Disk
+                                5. "hyperdisk-balanced" - Hyperdisk Balanced
                                 Default is "pd-standard".
+                              enum:
+                              - pd-standard
+                              - pd-ssd
+                              - local-ssd
+                              - pd-balanced
+                              - hyperdisk-balanced
                               type: string
                             encryptionKey:
                               description: EncryptionKey defines the KMS key to be
@@ -312,7 +320,14 @@ spec:
                           Supported types of root volumes:
                           1. "pd-standard" - Standard (HDD) persistent disk
                           2. "pd-ssd" - SSD persistent disk
+                          3. "pd-balanced" - Balanced Persistent Disk
+                          4. "hyperdisk-balanced" - Hyperdisk Balanced
                           Default is "pd-standard".
+                        enum:
+                        - pd-standard
+                        - pd-ssd
+                        - pd-balanced
+                        - hyperdisk-balanced
                         type: string
                       rootDiskEncryptionKey:
                         description: RootDiskEncryptionKey defines the KMS key to
