@@ -212,7 +212,7 @@ func (s *ManagedControlPlaneScope) Region() string {
 
 // ClusterLocation returns the location of the cluster.
 func (s *ManagedControlPlaneScope) ClusterLocation() string {
-	return fmt.Sprintf("projects/%s/locations/%s", s.GCPManagedControlPlane.Spec.Project, s.Region())
+	return fmt.Sprintf("projects/%s/locations/%s", s.GCPManagedControlPlane.Spec.Project, s.GCPManagedControlPlane.Spec.Location)
 }
 
 // ClusterFullName returns the full name of the cluster.
