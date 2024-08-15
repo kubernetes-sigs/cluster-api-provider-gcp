@@ -27,6 +27,7 @@ import (
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -260,9 +261,10 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 
 	isRegional := shared.IsRegional(s.scope.Region())
 	cluster := &containerpb.Cluster{
-		Name:       s.scope.ClusterName(),
-		Network:    *s.scope.GCPManagedCluster.Spec.Network.Name,
-		Subnetwork: s.getSubnetNameInClusterRegion(),
+		Name:        s.scope.ClusterName(),
+		Description: s.scope.GCPManagedControlPlane.Spec.Description,
+		Network:     *s.scope.GCPManagedCluster.Spec.Network.Name,
+		Subnetwork:  s.getSubnetNameInClusterRegion(),
 		Autopilot: &containerpb.Autopilot{
 			Enabled: s.scope.GCPManagedControlPlane.Spec.EnableAutopilot,
 		},
@@ -273,6 +275,34 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	}
 	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
 		cluster.InitialClusterVersion = convertToSdkMasterVersion(*s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion)
+	}
+	if s.scope.GCPManagedControlPlane.Spec.ClusterNetwork != nil {
+		cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork
+		if cn.UseIPAliases {
+			cluster.IpAllocationPolicy = &containerpb.IPAllocationPolicy{}
+			cluster.IpAllocationPolicy.UseIpAliases = cn.UseIPAliases
+		}
+		if cn.PrivateCluster != nil {
+			cluster.PrivateClusterConfig = &containerpb.PrivateClusterConfig{}
+			cluster.PrivateClusterConfig.EnablePrivateEndpoint = cn.PrivateCluster.EnablePrivateEndpoint
+			if cn.PrivateCluster.EnablePrivateEndpoint {
+				cluster.MasterAuthorizedNetworksConfig = &containerpb.MasterAuthorizedNetworksConfig{
+					Enabled: true,
+				}
+			}
+			cluster.PrivateClusterConfig.EnablePrivateNodes = cn.PrivateCluster.EnablePrivateNodes
+
+			cluster.PrivateClusterConfig.MasterIpv4CidrBlock = cn.PrivateCluster.ControlPlaneCidrBlock
+			cluster.PrivateClusterConfig.MasterGlobalAccessConfig = &containerpb.PrivateClusterMasterGlobalAccessConfig{
+				Enabled: cn.PrivateCluster.ControlPlaneGlobalAccess,
+			}
+
+			cluster.NetworkConfig = &containerpb.NetworkConfig{
+				DefaultSnatStatus: &containerpb.DefaultSnatStatus{
+					Disabled: cn.PrivateCluster.DisableDefaultSNAT,
+				},
+			}
+		}
 	}
 	if !s.scope.IsAutopilotCluster() {
 		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional, cluster.GetName())
@@ -453,7 +483,7 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 	if (a.CidrBlocks == nil && b.CidrBlocks != nil && len(b.GetCidrBlocks()) == 0) || (b.CidrBlocks == nil && a.CidrBlocks != nil && len(a.GetCidrBlocks()) == 0) {
 		return true
 	}
-	if !cmp.Equal(a.GetCidrBlocks(), b.GetCidrBlocks()) {
+	if !cmp.Equal(a.GetCidrBlocks(), b.GetCidrBlocks(), cmpopts.IgnoreUnexported(containerpb.MasterAuthorizedNetworksConfig_CidrBlock{})) {
 		return false
 	}
 	return true

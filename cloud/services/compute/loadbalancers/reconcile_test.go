@@ -95,6 +95,41 @@ func getBaseClusterScope() (*scope.ClusterScope, error) {
 	return clusterScope, nil
 }
 
+func getBaseClusterScopeWithLabels() (*scope.ClusterScope, error) {
+	clusterScope, err := getBaseClusterScope()
+	if err != nil {
+		return nil, err
+	}
+
+	clusterScope.GCPCluster.Spec.AdditionalLabels = map[string]string{
+		"foo": "bar",
+	}
+	return clusterScope, nil
+}
+
+func getBaseClusterScopeWithSharedVPC() (*scope.ClusterScope, error) {
+	clusterScope, err := getBaseClusterScope()
+	if err != nil {
+		return nil, err
+	}
+
+	clusterScope.GCPCluster.Spec.Network.HostProject = ptr.To("my-shared-vpc-project")
+	return clusterScope, nil
+}
+
+func getBaseClusterScopeWithPortSet() (*scope.ClusterScope, error) {
+	clusterScope, err := getBaseClusterScope()
+	if err != nil {
+		return nil, err
+	}
+
+	port := int32(6443)
+	clusterScope.Cluster.Spec.ClusterNetwork = &clusterv1.ClusterNetwork{
+		APIServerPort: &port,
+	}
+	return clusterScope, nil
+}
+
 func TestService_createOrGetInstanceGroup(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -439,6 +474,7 @@ func TestService_createOrGetAddress(t *testing.T) {
 		mockAddress *cloud.MockGlobalAddresses
 		want        *compute.Address
 		wantErr     bool
+		sharedVPC   bool
 	}{
 		{
 			name:   "address does not exist for external load balancer (should create address)",
@@ -455,11 +491,33 @@ func TestService_createOrGetAddress(t *testing.T) {
 				AddressType: "EXTERNAL",
 			},
 		},
+		{
+			name:   "address does not exist for external load balancer in shared VPC (should create address)",
+			scope:  func(s *scope.ClusterScope) Scope { return s },
+			lbName: infrav1.APIServerRoleTagValue,
+			mockAddress: &cloud.MockGlobalAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockGlobalAddressesObj{},
+			},
+			want: &compute.Address{
+				IpVersion:   "IPV4",
+				Name:        "my-cluster-apiserver",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/global/addresses/my-cluster-apiserver",
+				AddressType: "EXTERNAL",
+			},
+			sharedVPC: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			var err error
+			var clusterScope *scope.ClusterScope
+			if tt.sharedVPC {
+				clusterScope, err = getBaseClusterScopeWithSharedVPC()
+			} else {
+				clusterScope, err = getBaseClusterScope()
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -486,6 +544,7 @@ func TestService_createOrGetInternalAddress(t *testing.T) {
 		mockSubnetworks *cloud.MockSubnetworks
 		want            *compute.Address
 		wantErr         bool
+		sharedVPC       bool
 	}{
 		{
 			name: "address does not exist for internal load balancer (should create address)",
@@ -515,11 +574,46 @@ func TestService_createOrGetInternalAddress(t *testing.T) {
 				Purpose:     "GCE_ENDPOINT",
 			},
 		},
+		{
+			name: "address does not exist for internal load balancer using SharedVPC subnet (should create address)",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
+					LoadBalancerType: &lbTypeInternal,
+				}
+				return s
+			},
+			lbName: infrav1.InternalRoleTagValue,
+			mockAddress: &cloud.MockAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockAddressesObj{},
+			},
+			mockSubnetworks: &cloud.MockSubnetworks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
+					*meta.RegionalKey("control-plane", "us-central1"): {},
+				},
+			},
+			want: &compute.Address{
+				IpVersion:   "IPV4",
+				Name:        "my-cluster-api-internal",
+				Region:      "us-central1",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-api-internal",
+				AddressType: "INTERNAL",
+				Purpose:     "GCE_ENDPOINT",
+			},
+			sharedVPC: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			var err error
+			var clusterScope *scope.ClusterScope
+			if tt.sharedVPC {
+				clusterScope, err = getBaseClusterScopeWithSharedVPC()
+			} else {
+				clusterScope, err = getBaseClusterScope()
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -596,6 +690,7 @@ func TestService_createOrGetForwardingRule(t *testing.T) {
 		mockForwardingRule *cloud.MockGlobalForwardingRules
 		want               *compute.ForwardingRule
 		wantErr            bool
+		includeLabels      bool
 	}{
 		{
 			name:   "forwarding rule does not exist for external load balancer (should create forwardingrule)",
@@ -622,11 +717,46 @@ func TestService_createOrGetForwardingRule(t *testing.T) {
 				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/global/forwardingRules/my-cluster-apiserver",
 			},
 		},
+		{
+			name:   "forwarding rule does not exist for external load balancer (should create forwardingrule with labels)",
+			scope:  func(s *scope.ClusterScope) Scope { return s },
+			lbName: infrav1.APIServerRoleTagValue,
+			address: &compute.Address{
+				Name:     "my-cluster-apiserver",
+				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+			},
+			backendService: &compute.BackendService{},
+			targetTcpproxy: &compute.TargetTcpProxy{
+				Name: "my-cluster-apiserver",
+			},
+			mockForwardingRule: &cloud.MockGlobalForwardingRules{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockGlobalForwardingRulesObj{},
+			},
+			want: &compute.ForwardingRule{
+				IPAddress:           "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+				IPProtocol:          "TCP",
+				LoadBalancingScheme: "EXTERNAL",
+				PortRange:           "443-443",
+				Name:                "my-cluster-apiserver",
+				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/global/forwardingRules/my-cluster-apiserver",
+				Labels: map[string]string{
+					"foo": "bar",
+				},
+			},
+			includeLabels: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			var err error
+			var clusterScope *scope.ClusterScope
+			if tt.includeLabels {
+				clusterScope, err = getBaseClusterScopeWithLabels()
+			} else {
+				clusterScope, err = getBaseClusterScope()
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -694,7 +824,7 @@ func TestService_createOrGetRegionalForwardingRule(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			clusterScope, err := getBaseClusterScope()
+			clusterScope, err := getBaseClusterScopeWithPortSet()
 			if err != nil {
 				t.Fatal(err)
 			}

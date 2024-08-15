@@ -185,6 +185,18 @@ spec:
                               backend (useful for changing apiserver port)
                             format: int32
                             type: integer
+                          mtu:
+                            default: 1460
+                            description: |-
+                              Mtu: Maximum Transmission Unit in bytes. The minimum value for this field is
+                              1300 and the maximum value is 8896. The suggested value is 1500, which is
+                              the default MTU used on the Internet, or 8896 if you want to use Jumbo
+                              frames. If unspecified, the value defaults to 1460.
+                              More info: https://pkg.go.dev/google.golang.org/api/compute/v1#Network
+                            format: int64
+                            maximum: 8896
+                            minimum: 1300
+                            type: integer
                           name:
                             description: Name is the name of the network to be used.
                             type: string
