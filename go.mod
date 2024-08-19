@@ -27,7 +27,7 @@ require (
 	golang.org/x/crypto v0.26.0
 	golang.org/x/mod v0.20.0
 	golang.org/x/net v0.28.0
-	google.golang.org/api v0.191.0
+	google.golang.org/api v0.192.0
 	google.golang.org/grpc v1.65.0
 	k8s.io/api v0.29.5
 	k8s.io/apimachinery v0.29.5
@@ -42,7 +42,7 @@ require (
 
 require (
 	cloud.google.com/go v0.115.0 // indirect
-	cloud.google.com/go/auth v0.8.0 // indirect
+	cloud.google.com/go/auth v0.8.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect
 	cloud.google.com/go/longrunning v0.5.11 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
