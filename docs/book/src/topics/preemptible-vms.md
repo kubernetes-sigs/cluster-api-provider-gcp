@@ -28,3 +28,27 @@ spec:
     vmSize: E2
     preemptible: true
 ```
+
+## Spot VMs
+[Spot VMs are the latest version of preemptible VMs.](https://cloud.google.com/compute/docs/instances/spot)
+
+To use a Spot VM instead of a Preemptible VM, add `provisioningModel` to `GCPMachineTemplate` and set it to `Spot`.
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: capg-md-0
+spec:
+  region: us-west-1
+  template:
+    osDisk:
+      diskSizeGB: 30
+      managedDisk:
+        storageAccountType: STANDARD
+      osType: Linux
+    vmSize: E2
+    provisioningModel: Spot
+```
+
+NOTE: specifying `preemptible: true` and `provisioningModel: Spot` is equivalent to only `provisioningModel: Spot`. Spot takes priority. 
