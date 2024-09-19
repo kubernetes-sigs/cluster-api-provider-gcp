@@ -435,6 +435,16 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 
 		instance.Scheduling.OnHostMaintenance = strings.ToUpper(string(*m.GCPMachine.Spec.OnHostMaintenance))
 	}
+	if m.GCPMachine.Spec.InstanceTerminationAction != nil {
+		switch *m.GCPMachine.Spec.InstanceTerminationAction {
+		case infrav1.InstanceTerminationActionDelete:
+			instance.Scheduling.InstanceTerminationAction = "DELETE"
+		case infrav1.InstanceTerminationActionStop:
+			instance.Scheduling.InstanceTerminationAction = "STOP"
+		default:
+			log.Error(errors.New("Invalid value"), "Unknown InstanceTerminationAction value", "Spec.InstanceTerminationAction", *m.GCPMachine.Spec.InstanceTerminationAction)
+		}
+	}
 	if m.GCPMachine.Spec.ConfidentialCompute != nil {
 		enabled := *m.GCPMachine.Spec.ConfidentialCompute == infrav1.ConfidentialComputePolicyEnabled
 		instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{

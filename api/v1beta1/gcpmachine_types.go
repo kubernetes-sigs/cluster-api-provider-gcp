@@ -329,7 +329,23 @@ type GCPMachineSpec struct {
 	// RootDiskEncryptionKey defines the KMS key to be used to encrypt the root disk.
 	// +optional
 	RootDiskEncryptionKey *CustomerEncryptionKey `json:"rootDiskEncryptionKey,omitempty"`
+
+	// InstanceTerminationAction specifies the termination action for the instance upon preemption.
+	//  GCP API defaults to "Unspecified", which defaults the action to "Stop".
+	// +kubebuilder:validation:Enum=Delete;Stop
+	// +optional
+	InstanceTerminationAction *InstanceTerminationAction `json:"instanceTerminationAction,omitempty"`
 }
+
+// InstanceTerminationAction is a type for specifying to Delete or Stop a VM upon preemption.
+type InstanceTerminationAction string
+
+const (
+	// InstanceTerminationActionDelete means to delete an instance upon preemption termination.
+	InstanceTerminationActionDelete InstanceTerminationAction = "Delete"
+	// InstanceTerminationActionStop means to stop an instance upon preemption termination.
+	InstanceTerminationActionStop InstanceTerminationAction = "Stop"
+)
 
 // MetadataItem defines a single piece of metadata associated with an instance.
 type MetadataItem struct {

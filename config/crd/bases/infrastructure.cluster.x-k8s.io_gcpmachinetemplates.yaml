@@ -222,6 +222,14 @@ spec:
                         description: ImageFamily is the full reference to a valid
                           image family to be used for this machine.
                         type: string
+                      instanceTerminationAction:
+                        description: |-
+                          InstanceTerminationAction specifies the termination action for the instance upon preemption.
+                           GCP API defaults to "Unspecified", which defaults the action to "Stop".
+                        enum:
+                        - Delete
+                        - Stop
+                        type: string
                       instanceType:
                         description: 'InstanceType is the type of instance to create.
                           Example: n1.standard-2'
