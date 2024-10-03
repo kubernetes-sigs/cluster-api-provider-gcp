@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.3
   name: gcpmachinetemplates.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
@@ -125,6 +125,8 @@ spec:
                                       maxLength: 160
                                       pattern: projects\/[-_[A-Za-z0-9]+\/locations\/[-_[A-Za-z0-9]+\/keyRings\/[-_[A-Za-z0-9]+\/cryptoKeys\/[-_[A-Za-z0-9]+
                                       type: string
+                                  required:
+                                  - kmsKeyName
                                   type: object
                                 suppliedKey:
                                   description: SuppliedKey provides the key used to
@@ -352,6 +354,8 @@ spec:
                                 maxLength: 160
                                 pattern: projects\/[-_[A-Za-z0-9]+\/locations\/[-_[A-Za-z0-9]+\/keyRings\/[-_[A-Za-z0-9]+\/cryptoKeys\/[-_[A-Za-z0-9]+
                                 type: string
+                            required:
+                            - kmsKeyName
                             type: object
                           suppliedKey:
                             description: SuppliedKey provides the key used to create
