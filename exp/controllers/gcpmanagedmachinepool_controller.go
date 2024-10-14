@@ -178,10 +178,10 @@ func (r *GCPManagedMachinePoolReconciler) SetupWithManager(ctx context.Context, 
 
 	// Add a watch on clusterv1.Cluster object for unpause & ready notifications.
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
-		handler.EnqueueRequestsFromMapFunc(clusterToObjectFunc),
-		predicates.ClusterUnpausedAndInfrastructureReady(log),
-	); err != nil {
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
+			handler.EnqueueRequestsFromMapFunc(clusterToObjectFunc),
+			predicates.ClusterUnpausedAndInfrastructureReady(log),
+		)); err != nil {
 		return errors.Wrap(err, "failed adding a watch for ready clusters")
 	}
 
