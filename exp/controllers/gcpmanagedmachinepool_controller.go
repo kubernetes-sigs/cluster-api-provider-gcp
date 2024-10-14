@@ -266,7 +266,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 		Name:      cluster.Spec.InfrastructureRef.Name,
 	}
 	gcpManagedCluster := &infrav1exp.GCPManagedCluster{}
-	if err := r.Client.Get(ctx, gcpManagedClusterKey, gcpManagedCluster); err != nil || gcpManagedCluster == nil {
+	if err := r.Client.Get(ctx, gcpManagedClusterKey, gcpManagedCluster); err != nil {
 		log.Error(err, "Failed to retrieve GCPManagedCluster from the API Server")
 		return ctrl.Result{}, err
 	}

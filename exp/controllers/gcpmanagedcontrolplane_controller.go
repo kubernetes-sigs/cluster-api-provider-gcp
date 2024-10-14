@@ -121,7 +121,7 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 		Namespace: gcpManagedControlPlane.Namespace,
 		Name:      cluster.Spec.InfrastructureRef.Name,
 	}
-	if err := r.Client.Get(ctx, key, managedCluster); err != nil || managedCluster == nil {
+	if err := r.Client.Get(ctx, key, managedCluster); err != nil {
 		log.Error(err, "Failed to retrieve GCPManagedCluster from the API Server")
 		return ctrl.Result{}, err
 	}
