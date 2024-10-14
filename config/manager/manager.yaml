@@ -47,6 +47,7 @@ spec:
             port: healthz
           initialDelaySeconds: 10
           periodSeconds: 10
+        terminationMessagePolicy: FallbackToLogsOnError
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

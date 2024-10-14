@@ -50,9 +50,8 @@ func init() {
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 	// fetch the current config
-	suiteConfig, reporterConfig := GinkgoConfiguration()
+	_, reporterConfig := GinkgoConfiguration()
 	// adjust it
-	suiteConfig.FailFast = true
 	reporterConfig.FullTrace = true
 	RunSpecs(t, "Controller Suite", reporterConfig)
 }

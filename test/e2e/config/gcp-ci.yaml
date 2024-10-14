@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.7.3
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.7.3/core-components.yaml
+      - name: v1.8.3
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.8.3/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-      - name: v1.7.3
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.7.3/bootstrap-components.yaml
+      - name: v1.8.3
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.8.3/bootstrap-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -41,8 +41,8 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-      - name: v1.7.3
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.7.3/control-plane-components.yaml
+      - name: v1.8.3
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.8.3/control-plane-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -54,7 +54,7 @@ providers:
   - name: gcp
     type: InfrastructureProvider
     versions:
-      - name: v1.7.99 # next; use manifest from source files
+      - name: v1.8.99 # next; use manifest from source files
         value: "${PWD}/config/default"
     files:
       - sourcePath: "${PWD}/metadata.yaml"
@@ -75,16 +75,16 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
 
 variables:
-  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.29.0}"
-  KUBERNETES_VERSION_MANAGEMENT: "v1.29.0"
+  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.30.5}"
+  KUBERNETES_VERSION_MANAGEMENT: "v1.30.0"
   ETCD_VERSION_UPGRADE_TO: "3.5.12-0"
-  COREDNS_VERSION_UPGRADE_TO: "v1.11.1"
-  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-28-3-nightly"
-  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-29-2-nightly"
+  COREDNS_VERSION_UPGRADE_TO: "v1.11.3"
+  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-30-5-nightly"
+  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-29-5-nightly"
   CONTROL_PLANE_MACHINE_TEMPLATE_UPGRADE_TO: "cp-k8s-upgrade-and-conformance"
   WORKERS_MACHINE_TEMPLATE_UPGRADE_TO: "worker-k8s-upgrade-and-conformance"
-  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.29.2}"
-  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.28.3}"
+  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.30.5}"
+  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.29.5}"
   EXP_CLUSTER_RESOURCE_SET: "true"
   CLUSTER_TOPOLOGY: "true"
   # Cluster Addons

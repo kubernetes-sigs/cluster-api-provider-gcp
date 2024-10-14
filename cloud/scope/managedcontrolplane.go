@@ -180,7 +180,7 @@ func (s *ManagedControlPlaneScope) GetCredential() *Credential {
 
 // GetAllNodePools gets all node pools for the control plane.
 func (s *ManagedControlPlaneScope) GetAllNodePools(ctx context.Context) ([]infrav1exp.GCPManagedMachinePool, []clusterv1exp.MachinePool, error) {
-	if s.AllManagedMachinePools == nil || len(s.AllManagedMachinePools) == 0 {
+	if len(s.AllManagedMachinePools) == 0 {
 		listOptions := []client.ListOption{
 			client.InNamespace(s.GCPManagedControlPlane.Namespace),
 			client.MatchingLabels(map[string]string{clusterv1.ClusterNameLabel: s.Cluster.Name}),
