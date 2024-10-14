@@ -252,6 +252,15 @@ spec:
                         description: ProviderID is the unique identifier as specified
                           by the cloud provider.
                         type: string
+                      provisioningModel:
+                        description: |-
+                          ProvisioningModel defines if instance is spot.
+                          If set to "Standard" while preemptible is true, then the VM will be of type "Preemptible".
+                          If "Spot", VM type is "Spot". When unspecified, defaults to "Standard".
+                        enum:
+                        - Standard
+                        - Spot
+                        type: string
                       publicIP:
                         description: |-
                           PublicIP specifies whether the instance should get a public IP.
