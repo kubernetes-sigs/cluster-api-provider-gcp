@@ -21,6 +21,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -48,7 +49,7 @@ type ApplyManagedClusterTemplateAndWaitInput struct {
 	WaitForClusterIntervals        []interface{}
 	WaitForControlPlaneIntervals   []interface{}
 	WaitForMachinePools            []interface{}
-	Args                           []string // extra args to be used during `kubectl apply`
+	Options                        []framework.CreateOrUpdateOption
 	PreWaitForCluster              func()
 	PostMachinesProvisioned        func()
 	WaitForControlPlaneInitialized Waiter
@@ -76,8 +77,7 @@ func ApplyManagedClusterTemplateAndWait(ctx context.Context, input ApplyManagedC
 	Expect(input.ConfigCluster.ControlPlaneMachineCount).ToNot(BeNil())
 	Expect(input.ConfigCluster.WorkerMachineCount).ToNot(BeNil())
 
-	Byf("Creating the GKE workload cluster with name %q using the %q template (Kubernetes %s)",
-		input.ConfigCluster.ClusterName, input.ConfigCluster.Flavor, input.ConfigCluster.KubernetesVersion)
+	By(fmt.Sprintf("Creating the GKE workload cluster with name %q using the %q template (Kubernetes %s)", input.ConfigCluster.ClusterName, input.ConfigCluster.Flavor, input.ConfigCluster.KubernetesVersion))
 
 	By("Getting the cluster template yaml")
 	workloadClusterTemplate := clusterctl.ConfigCluster(ctx, clusterctl.ConfigClusterInput{
@@ -102,7 +102,7 @@ func ApplyManagedClusterTemplateAndWait(ctx context.Context, input ApplyManagedC
 
 	By("Applying the cluster template yaml to the cluster")
 	Eventually(func() error {
-		return input.ClusterProxy.Apply(ctx, workloadClusterTemplate, input.Args...)
+		return input.ClusterProxy.CreateOrUpdate(ctx, workloadClusterTemplate, input.Options...)
 	}, 10*time.Second).Should(Succeed(), "Failed to apply the cluster template")
 
 	// Once we applied the cluster template we can run PreWaitForCluster.
