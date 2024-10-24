@@ -43,20 +43,24 @@ spec:
         name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
         kubeletExtraArgs:
           cloud-provider: gce
+          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
     clusterConfiguration:
       apiServer:
         timeoutForControlPlane: 20m
         extraArgs:
           cloud-provider: gce
+          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
       controllerManager:
         extraArgs:
           cloud-provider: gce
+          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
           allocate-node-cidrs: "false"
     joinConfiguration:
       nodeRegistration:
         name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
         kubeletExtraArgs:
           cloud-provider: gce
+          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
   version: "${KUBERNETES_VERSION}"
 ---
 kind: GCPMachineTemplate
@@ -114,3 +118,4 @@ spec:
           name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
           kubeletExtraArgs:
             cloud-provider: gce
+            feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
