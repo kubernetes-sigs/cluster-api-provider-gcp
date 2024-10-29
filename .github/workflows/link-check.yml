@@ -10,6 +10,8 @@ on:
   pull_request:
     paths: "docs/**"
 
+permissions: {}
+
 jobs:
   lint_docs:
     name: Broken Links
