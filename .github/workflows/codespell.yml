@@ -4,6 +4,8 @@ name: Codespell
 on:
   pull_request:
 
+permissions: {}
+
 jobs:
   codespell:
     runs-on: ubuntu-latest
@@ -16,4 +18,3 @@ jobs:
           ignore_words_file: .codespellignore
           check_filenames: true
           check_hidden: true
-
