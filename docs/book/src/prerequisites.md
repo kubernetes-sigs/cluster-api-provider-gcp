@@ -1,14 +1,8 @@
 # Prerequisites
 
-## Requirements
+Before provisioning clusters via CAPG, there are a few extra tasks you need to take care of, including **configuring the GCP network** and **building images for GCP virtual machines**.
 
-- Linux or MacOS (Windows isn't supported at the moment).
-- A [Google Cloud](https://console.cloud.google.com) account.
-- [Packer](https://www.packer.io/intro/getting-started/install.html) and [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) to build images
-- Make to use `Makefile` targets
-- Install `coreutils` (for timeout) on *OSX*
-
-### Setup environment variables
+### Set environment variables
 
 ```bash
 export GCP_REGION="<GCP_REGION>"
@@ -21,7 +15,7 @@ export GCP_NETWORK_NAME=<GCP_NETWORK_NAME or default>
 export CLUSTER_NAME="<CLUSTER_NAME>"
 ```
 
-### Setup a Network and Cloud NAT
+### Configure Network and Cloud NAT
 
 Google Cloud accounts come with a `default` network which can be found under
 [VPC Networks](https://console.cloud.google.com/networking/networks).
@@ -54,16 +48,6 @@ gcloud compute routers create "${CLUSTER_NAME}-myrouter" --project="${GCP_PROJEC
 gcloud compute routers nats create "${CLUSTER_NAME}-mynat" --project="${GCP_PROJECT}" --router-region="${GCP_REGION}" --router="${CLUSTER_NAME}-myrouter"
 --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
 ```
-
-### Create a Service Account
-
-To create and manage clusters, this infrastructure provider uses a service account to authenticate with GCP's APIs.
-
-From your cloud console, follow [these instructions](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) to create a new service account with `Editor` permissions.
-
-If you plan to use GKE the service account will also need the `iam.serviceAccountTokenCreator` role.
-
-Afterwards, generate a JSON Key and store it somewhere safe.
 
 ### Building images
 
