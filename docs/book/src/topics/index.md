@@ -1,1 +1,1 @@
-This section contains information about the main CAPG features and how to use them.
+This section contains information about relevant CAPG features and how to use them.
