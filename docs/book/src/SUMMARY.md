@@ -24,5 +24,6 @@
     - [Try unreleased changes with Nightly Builds](./developers/nightlies.md)
     - [Creating a cluster](./developers/cluster-creation.md)
     - [CI Jobs](./developers/jobs.md)
+    - [Adding new E2E test](./developers/e2e.md)
     - [Releasing](./developers/releasing.md)
 - [Roadmap](./roadmap.md)
