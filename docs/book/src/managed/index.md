@@ -31,5 +31,5 @@ And a new template is available in the templates folder for creating a managed w
 
 * [Enabling GKE Support](enabling.md)
 * [Disabling GKE Support](disabling.md)
-* [Creating a cluster](creating-a-cluster.md)
-* [Cluster Upgrades](cluster-upgrades.md)
+* [Creating a cluster](provision.md)
+* [Cluster Upgrades](upgrades.md)
