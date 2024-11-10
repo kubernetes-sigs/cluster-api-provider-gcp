@@ -336,11 +336,12 @@ func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managed
 			var e *apierror.APIError
 			if ok := errors.As(err, &e); ok {
 				if e.GRPCStatus().Code() == codes.FailedPrecondition {
-					log.Info("Cannot perform update when there's other operation, retry later", "reconciler", name)
+					log.Info("Cannot perform update while another operation is running, requeuing", "reconciler", name)
 					return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 				}
 			}
 			log.Error(err, "Reconcile error", "reconciler", name)
+
 			record.Warnf(managedMachinePoolScope.GCPManagedMachinePool, "GCPManagedMachinePoolReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
@@ -369,6 +370,13 @@ func (r *GCPManagedMachinePoolReconciler) reconcileDelete(ctx context.Context, m
 		log.V(4).Info("Calling reconciler delete", "reconciler", name)
 		res, err := r.Delete(ctx)
 		if err != nil {
+			var e *apierror.APIError
+			if ok := errors.As(err, &e); ok {
+				if e.GRPCStatus().Code() == codes.FailedPrecondition {
+					log.Info("Cannot perform delete while another operation is running, requeuing", "reconciler", name)
+					return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
+				}
+			}
 			log.Error(err, "Reconcile error", "reconciler", name)
 			record.Warnf(managedMachinePoolScope.GCPManagedMachinePool, "GCPManagedMachinePoolReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
