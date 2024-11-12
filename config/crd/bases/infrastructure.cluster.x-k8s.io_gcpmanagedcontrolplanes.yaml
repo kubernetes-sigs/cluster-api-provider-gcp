@@ -142,7 +142,8 @@ spec:
                   for this GKE cluster.
                 type: boolean
               enableIdentityService:
-                description: EnableIdentityService indicates whether to enable Identity Service component for this GKE cluster.
+                description: EnableIdentityService indicates whether to enable Identity
+                  Service component for this GKE cluster.
                 type: boolean
               endpoint:
                 description: Endpoint represents the endpoint used to communicate
