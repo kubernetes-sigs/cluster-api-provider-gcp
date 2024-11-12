@@ -259,6 +259,9 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		Autopilot: &containerpb.Autopilot{
 			Enabled: s.scope.GCPManagedControlPlane.Spec.EnableAutopilot,
 		},
+		IdentityServiceConfig: &containerpb.IdentityServiceConfig{
+			Enabled: s.scope.GCPManagedControlPlane.Spec.EnableIdentityService,
+		},
 		ReleaseChannel: &containerpb.ReleaseChannel{
 			Channel: convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
 		},
