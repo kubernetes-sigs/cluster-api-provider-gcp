@@ -116,8 +116,8 @@ CERT_MANAGER_VER := v1.14.4
 # Define Docker related variables. Releases should modify and double check these vars.
 export GCP_PROJECT ?= $(shell gcloud config get-value project)
 REGISTRY ?= gcr.io/$(GCP_PROJECT)
-STAGING_REGISTRY := gcr.io/k8s-staging-cluster-api-gcp
-PROD_REGISTRY := registry.k8s.io/cluster-api-gcp
+STAGING_REGISTRY ?= gcr.io/k8s-staging-cluster-api-gcp
+PROD_REGISTRY ?= registry.k8s.io/cluster-api-gcp
 IMAGE_NAME ?= cluster-api-gcp-controller
 STAGING_BUCKET ?= k8s-staging-cluster-api-gcp
 BUCKET ?= $(STAGING_BUCKET)
@@ -407,7 +407,7 @@ set-manifest-pull-policy:
 ## Release
 ## --------------------------------------
 
-RELEASE_TAG := $(shell git describe --abbrev=0 2>/dev/null)
+RELEASE_TAG ?= $(shell git describe --abbrev=0 2>/dev/null)
 RELEASE_DIR := out
 
 $(RELEASE_DIR):
