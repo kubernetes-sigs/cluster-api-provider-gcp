@@ -62,5 +62,5 @@ spec:
     maxCount: ${GKE_MACHINE_POOL_MAX}
   kubernetesTaints:
     - key: "key1"
-      operator: "Exists"
+      value: "value1"
       effect: "NoSchedule"
