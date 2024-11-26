@@ -6,6 +6,7 @@
 - [Self-managed clusters](./self-managed/index.md)
     - [Provisioning a Cluster](./self-managed/provision.md)
     - [CNI](./self-managed/cni.md)
+    - [Flatcar provisioned cluster](./self-managed/flatcar.md)
 - [Managed clusters - GKE](./managed/index.md)
     - [Provisioning a Cluster](./managed/provision.md)
     - [Cluster Upgrades](./managed/upgrades.md)
