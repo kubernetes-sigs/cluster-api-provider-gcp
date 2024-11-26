@@ -347,7 +347,7 @@ lint-full: $(YQ) ## Run slower linters to detect possible issues
 ## Generate
 ## --------------------------------------
 
-CCM_TEMPLATES := templates/cluster-template.yaml templates/cluster-template-topology.yaml
+CCM_TEMPLATES := templates/cluster-template.yaml templates/cluster-template-topology.yaml templates/cluster-template-flatcar.yaml
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
