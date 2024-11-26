@@ -73,6 +73,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-autopilot.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-flatcar.yaml"
 
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.31.0}"
@@ -86,6 +87,10 @@ variables:
   KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.31.0}"
   KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.30.5}"
   EXP_CLUSTER_RESOURCE_SET: "true"
+  # Required for Ignition based images (e.g Flatcar)
+  EXP_KUBEADM_BOOTSTRAP_FORMAT_IGNITION: "true"
+  # TODO: Set this based on latest available image
+  FLATCAR_IMAGE_ID: "projects/kinvolk-public/global/images/flatcar-stable-4081-2-0"
   CLUSTER_TOPOLOGY: "true"
   # Cluster Addons
   CNI: "${PWD}/test/e2e/data/cni/calico/calico.yaml"
