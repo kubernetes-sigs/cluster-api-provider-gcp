@@ -78,6 +78,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-gke-autopilot-cc.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-autopilot-topology.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-flatcar.yaml"
 
 variables:
   # Hand-Edited Version Inputs
@@ -102,10 +103,13 @@ variables:
   ETCD_VERSION_UPGRADE_TO: "${ETCD_VERSION_UPGRADE_TO}"
   EXP_CAPG_GKE: "true"
   EXP_CLUSTER_RESOURCE_SET: "true"
+  # Required for Ignition based images (e.g Flatcar)
+  EXP_KUBEADM_BOOTSTRAP_FORMAT_IGNITION: "true"
   EXP_MACHINE_POOL: "true"
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
   GCP_SSH_KEY: "${GCP_SSH_KEY:-}"
+  FLATCAR_IMAGE_ID: "projects/kinvolk-public/global/images/flatcar-stable-4081-2-0"
   IMAGE_ID: "${IMAGE_ID}"
   IP_FAMILY: "IPv4"
   KUBERNETES_IMAGE_UPGRADE_FROM: "${KUBERNETES_IMAGE_UPGRADE_FROM}"
