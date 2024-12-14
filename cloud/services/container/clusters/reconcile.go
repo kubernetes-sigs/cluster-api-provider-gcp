@@ -31,6 +31,11 @@ import (
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/tools/clientcmd"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -157,7 +162,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition, infrav1exp.GKEControlPlaneUpdatedReason, clusterv1.ConditionSeverityInfo, "")
 
 	// Reconcile kubeconfig
-	err = s.reconcileKubeconfig(ctx, cluster, &log)
+	kubeConfig, err := s.reconcileKubeconfig(ctx, cluster, &log)
 	if err != nil {
 		log.Error(err, "Failed to reconcile CAPI kubeconfig")
 		return ctrl.Result{}, err
@@ -165,6 +170,11 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	err = s.reconcileAdditionalKubeconfigs(ctx, cluster, &log)
 	if err != nil {
 		log.Error(err, "Failed to reconcile additional kubeconfig")
+		return ctrl.Result{}, err
+	}
+
+	err = s.reconcileIdentityService(ctx, kubeConfig, &log)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -485,6 +495,7 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 	if desiredEnableIdentityService != existingCluster.GetIdentityServiceConfig().GetEnabled() {
 		needUpdate = true
 		clusterUpdate.DesiredIdentityServiceConfig = &containerpb.IdentityServiceConfig{Enabled: desiredEnableIdentityService}
+		log.V(2).Info("Identity service config update required", "current", existingCluster.GetIdentityServiceConfig().GetEnabled(), "desired", desiredEnableIdentityService)
 	}
 
 	updateClusterRequest := containerpb.UpdateClusterRequest{
@@ -521,4 +532,79 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 		return false
 	}
 	return true
+}
+
+// reconcileIdentityService set the identity service server in the status of the GCPManagedControlPlane.
+func (s *Service) reconcileIdentityService(ctx context.Context, kubeConfig clientcmd.ClientConfig, log *logr.Logger) error {
+	identityServiceServer, err := s.getIdentityServiceServer(ctx, kubeConfig)
+	if err != nil {
+		err = fmt.Errorf("failed to retrieve identity service: %w", err)
+		log.Error(err, "Failed to retrieve identity service server")
+		return err
+	}
+
+	s.scope.GCPManagedControlPlane.Status.IdentityServiceServer = identityServiceServer
+
+	return nil
+}
+
+// getIdentityServiceServer retrieve the server to use for authentication using the identity service.
+func (s *Service) getIdentityServiceServer(ctx context.Context, kubeConfig clientcmd.ClientConfig) (string, error) {
+	/*
+		# Example of the ClientConfig (see https://cloud.google.com/kubernetes-engine/docs/how-to/oidc#configuring_on_a_cluster):
+		apiVersion: authentication.gke.io/v2alpha1
+		kind: ClientConfig
+		metadata:
+			name: default
+			namespace: kube-public
+		spec:
+			server: https://192.168.0.1:6443
+	*/
+
+	if !s.scope.GCPManagedControlPlane.Spec.EnableIdentityService {
+		// Identity service is not enabled, skipping
+		return "", nil
+	}
+
+	if kubeConfig == nil {
+		return "", errors.New("provided kubernetes configuration is nil")
+	}
+
+	config, err := kubeConfig.ClientConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to get client config: %w", err)
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("failed to create dynamic client: %w", err)
+	}
+
+	resourceID := schema.GroupVersionResource{
+		Group:    "authentication.gke.io",
+		Version:  "v2alpha1",
+		Resource: "clientconfigs",
+	}
+
+	unstructured, err := dynamicClient.Resource(resourceID).Namespace("kube-public").Get(ctx, "default", metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get identity service client config: %w", err)
+	}
+
+	gkeClientConfig := struct {
+		Spec struct {
+			Server string `json:"server"`
+		} `json:"spec"`
+	}{}
+
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unstructured.Object, &gkeClientConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert unstructured to client config: %w", err)
+	}
+
+	if gkeClientConfig.Spec.Server == "" {
+		return "", errors.New("identity service server URL is empty")
+	}
+
+	return gkeClientConfig.Spec.Server, nil
 }
