@@ -18,12 +18,15 @@ package clusters
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 
+	"cloud.google.com/go/compute/apiv1/computepb"
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
@@ -164,6 +167,13 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	if err != nil {
 		log.Error(err, "Failed to reconcile additional kubeconfig")
 		return ctrl.Result{}, err
+	}
+
+	identityServiceServer, err := s.getIdentityServiceServer(ctx, &log)
+	if err != nil {
+		log.Error(err, "Failed to retrieve identity service server")
+	} else if identityServiceServer != "" {
+		s.scope.GCPManagedControlPlane.Status.IdentityServiceServer = identityServiceServer
 	}
 
 	s.scope.SetEndpoint(cluster.GetEndpoint())
@@ -481,4 +491,68 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 		return false
 	}
 	return true
+}
+
+func (s *Service) getIdentityServiceServer(ctx context.Context, log *logr.Logger) (string, error) {
+	if s.scope.GCPManagedControlPlane.Spec.EnableIdentityService == nil || !*s.scope.GCPManagedControlPlane.Spec.EnableIdentityService {
+		// Identity service is not enabled, return empty string
+		return "", nil
+	}
+
+	nodePools, _, err := s.scope.GetAllNodePools(ctx)
+	if err != nil {
+		return "", err
+	}
+	const (
+		indentityServiceFilter = "description:anthos-identity-service"
+		instanceFilterFormat   = "instance:https://www.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s"
+	)
+
+	instanceFilters := []string{}
+	for _, np := range nodePools {
+		for _, providerID := range np.Spec.ProviderIDList {
+			parsedProviderID, err := providerid.NewFromResourceURL(providerID)
+			if err != nil {
+				return "", err
+			}
+			instanceFilters = append(instanceFilters, fmt.Sprintf(instanceFilterFormat, parsedProviderID.Project, parsedProviderID.Location, parsedProviderID.Name))
+		}
+	}
+
+	if len(instanceFilters) == 0 {
+		return "", errors.New("no instances found")
+	}
+
+	targetPoolName := ""
+	req := &computepb.ListTargetPoolsRequest{Filter: indentityServiceFilter + " AND (" + strings.Join(instanceFilters, " OR ") + ")"}
+	for resp, err := range s.scope.TargetPoolsClient().List(ctx, req).All() {
+		if err != nil {
+			return "", err
+		} else if targetPoolName != "" {
+			return "", errors.New("multiple target pools found")
+		}
+		targetPoolName = resp.Name
+	}
+	identityServer := ""
+	nameFilter := "name:" + targetPoolName
+	req := &computepb.ListForwardingRulesRequest{Filter: instanceFilter + " AND " + nameFilter}
+	for resp, err := range s.scope.ForwardingRulesClient().List(ctx, req).All() {
+		if err != nil {
+			return err
+		} else if identityServer != "" {
+			return "", errors.New("multiple forwarding rules found")
+		} else if len(resp.Ports) != 1 {
+			return "", fmt.Errorf("unexpected ports count in forwarding rule: %d", len(resp.Ports))
+		} else if resp.Ports[0] != "443" {
+			return "", fmt.Errorf("unexpected port in forwarding rule: %d", resp.Ports[0])
+		}
+
+		return "https://" + resp.IPAddress + ":" + resp.Ports[0], nil
+	}
+
+	if identityServer == "" {
+		return "", errors.New("no forwarding rules found")
+	}
+
+	return identityServer, nil
 }

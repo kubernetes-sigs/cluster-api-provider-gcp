@@ -171,6 +171,10 @@ type GCPManagedControlPlaneStatus struct {
 	// CurrentVersion shows the current version of the GKE control plane.
 	// +optional
 	CurrentVersion string `json:"currentVersion,omitempty"`
+
+	// IdentityServiceServer shows the server of anthos indentify service when enabled.
+	// +optional
+	IdentityServiceServer string `json:"identityServiceServer,omitempty"`
 }
 
 // +kubebuilder:object:root=true

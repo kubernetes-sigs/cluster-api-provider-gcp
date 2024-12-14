@@ -24,6 +24,7 @@ import (
 
 	"sigs.k8s.io/cluster-api/util/conditions"
 
+	compute "cloud.google.com/go/compute/apiv1"
 	container "cloud.google.com/go/container/apiv1"
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
@@ -43,6 +44,8 @@ const (
 // ManagedControlPlaneScopeParams defines the input parameters used to create a new Scope.
 type ManagedControlPlaneScopeParams struct {
 	CredentialsClient      *credentials.IamCredentialsClient
+	TargetPoolsClient      *compute.TargetPoolsClient
+	ForwardingRulesClient  *compute.ForwardingRulesClient
 	ManagedClusterClient   *container.ClusterManagerClient
 	TagBindingsClient      *resourcemanager.TagBindingsClient
 	Client                 client.Client
@@ -69,12 +72,19 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		return nil, fmt.Errorf("getting gcp credentials: %w", err)
 	}
 
-	if params.ManagedClusterClient == nil {
-		managedClusterClient, err := newClusterManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+	if params.TargetPoolsClient == nil {
+		targetPoolsClient, err := newTargetPoolsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
-			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
+			return nil, errors.Errorf("failed to create gcp target pools client: %v", err)
 		}
-		params.ManagedClusterClient = managedClusterClient
+		params.TargetPoolsClient = targetPoolsClient
+	}
+	if params.ManagedClusterClient == nil {
+		forwardingRulesClient, err := newForwardingRulesClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+		if err != nil {
+			return nil, errors.Errorf("failed to create gcp forwarding rules client: %v", err)
+		}
+		params.ForwardingRulesClient = forwardingRulesClient
 	}
 	if params.TagBindingsClient == nil {
 		tagBindingsClient, err := newTagBindingsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.Region)
@@ -102,6 +112,8 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		Cluster:                params.Cluster,
 		GCPManagedCluster:      params.GCPManagedCluster,
 		GCPManagedControlPlane: params.GCPManagedControlPlane,
+		tpClient:               params.TargetPoolsClient,
+		frClient:               params.ForwardingRulesClient,
 		mcClient:               params.ManagedClusterClient,
 		tagBindingsClient:      params.TagBindingsClient,
 		credentialsClient:      params.CredentialsClient,
@@ -118,6 +130,8 @@ type ManagedControlPlaneScope struct {
 	Cluster                *clusterv1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
+	tpClient               *compute.TargetPoolsClient
+	frClient               *compute.ForwardingRulesClient
 	mcClient               *container.ClusterManagerClient
 	tagBindingsClient      *resourcemanager.TagBindingsClient
 	credentialsClient      *credentials.IamCredentialsClient
@@ -142,6 +156,8 @@ func (s *ManagedControlPlaneScope) PatchObject() error {
 
 // Close closes the current scope persisting the managed control plane configuration and status.
 func (s *ManagedControlPlaneScope) Close() error {
+	s.tpClient.Close()
+	s.frClient.Close()
 	s.mcClient.Close()
 	s.tagBindingsClient.Close()
 	s.credentialsClient.Close()
@@ -156,6 +172,16 @@ func (s *ManagedControlPlaneScope) ConditionSetter() conditions.Setter {
 // Client returns a k8s client.
 func (s *ManagedControlPlaneScope) Client() client.Client {
 	return s.client
+}
+
+// TargetPoolsClient returns a client used to interact with google compute target pools.
+func (s *ManagedControlPlaneScope) TargetPoolsClient() *compute.TargetPoolsClient {
+	return s.tpClient
+}
+
+// ForwardingRulesClient returns a client used to interact with google compute forwarding rules.
+func (s *ManagedControlPlaneScope) ForwardingRulesClient() *compute.ForwardingRulesClient {
+	return s.frClient
 }
 
 // ManagedControlPlaneClient returns a client used to interact with GKE.
