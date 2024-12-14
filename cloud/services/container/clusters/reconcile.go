@@ -33,6 +33,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
@@ -171,7 +172,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 
 	identityServiceServer, err := s.getIdentityServiceServer(ctx, &log)
 	if err != nil {
-		log.Error(err, "Failed to retrieve identity service server")
+		log.Error(fmt.Errorf("Failed to retrieve identity service: [%w]", err), "Failed to set identity service server, skipping until next reconciliation")
 	} else if identityServiceServer != "" {
 		s.scope.GCPManagedControlPlane.Status.IdentityServiceServer = identityServiceServer
 	}
@@ -494,19 +495,20 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 }
 
 func (s *Service) getIdentityServiceServer(ctx context.Context, log *logr.Logger) (string, error) {
-	if s.scope.GCPManagedControlPlane.Spec.EnableIdentityService == nil || !*s.scope.GCPManagedControlPlane.Spec.EnableIdentityService {
+	if !s.scope.GCPManagedControlPlane.Spec.EnableIdentityService {
 		// Identity service is not enabled, return empty string
 		return "", nil
 	}
+
+	const (
+		indentityServiceFilter = "description:anthos-identity-service"
+		instanceFilterFormat   = "instance:https://www.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s"
+	)
 
 	nodePools, _, err := s.scope.GetAllNodePools(ctx)
 	if err != nil {
 		return "", err
 	}
-	const (
-		indentityServiceFilter = "description:anthos-identity-service"
-		instanceFilterFormat   = "instance:https://www.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s"
-	)
 
 	instanceFilters := []string{}
 	for _, np := range nodePools {
@@ -515,6 +517,7 @@ func (s *Service) getIdentityServiceServer(ctx context.Context, log *logr.Logger
 			if err != nil {
 				return "", err
 			}
+
 			instanceFilters = append(instanceFilters, fmt.Sprintf(instanceFilterFormat, parsedProviderID.Project, parsedProviderID.Location, parsedProviderID.Name))
 		}
 	}
@@ -523,31 +526,55 @@ func (s *Service) getIdentityServiceServer(ctx context.Context, log *logr.Logger
 		return "", errors.New("no instances found")
 	}
 
-	targetPoolName := ""
-	req := &computepb.ListTargetPoolsRequest{Filter: indentityServiceFilter + " AND (" + strings.Join(instanceFilters, " OR ") + ")"}
-	for resp, err := range s.scope.TargetPoolsClient().List(ctx, req).All() {
-		if err != nil {
+	var (
+		targetPoolName         string
+		listTargetPoolsRequest = &computepb.ListTargetPoolsRequest{Filter: indentityServiceFilter + " AND (" + strings.Join(instanceFilters, " OR ") + ")"}
+		targetPoolsIT          = s.scope.TargetPoolsClient().List(ctx, listTargetPoolsRequest)
+	)
+
+	for {
+		resp, err := targetPoolsIT.Next()
+		if err == iterator.Done {
+			break
+		} else if err != nil {
 			return "", err
 		} else if targetPoolName != "" {
 			return "", errors.New("multiple target pools found")
+		} else if resp.Name != nil {
+			return "", errors.New("no target pool name found")
 		}
-		targetPoolName = resp.Name
+
+		targetPoolName = *resp.Name
 	}
-	identityServer := ""
-	nameFilter := "name:" + targetPoolName
-	req := &computepb.ListForwardingRulesRequest{Filter: instanceFilter + " AND " + nameFilter}
-	for resp, err := range s.scope.ForwardingRulesClient().List(ctx, req).All() {
-		if err != nil {
-			return err
+
+	if targetPoolName == "" {
+		return "", errors.New("no target pools found")
+	}
+
+	var (
+		identityServer             string
+		nameFilter                 = "name:" + targetPoolName
+		listForwardingRulesRequest = &computepb.ListForwardingRulesRequest{Filter: indentityServiceFilter + " AND " + nameFilter}
+		forwardingRulesIT          = s.scope.ForwardingRulesClient().List(ctx, listForwardingRulesRequest)
+	)
+
+	for {
+		resp, err := forwardingRulesIT.Next()
+		if err == iterator.Done {
+			break
+		} else if err != nil {
+			return "", err
 		} else if identityServer != "" {
 			return "", errors.New("multiple forwarding rules found")
 		} else if len(resp.Ports) != 1 {
 			return "", fmt.Errorf("unexpected ports count in forwarding rule: %d", len(resp.Ports))
 		} else if resp.Ports[0] != "443" {
 			return "", fmt.Errorf("unexpected port in forwarding rule: %d", resp.Ports[0])
+		} else if resp.IPAddress == nil {
+			return "", errors.New("no IP address found")
 		}
 
-		return "https://" + resp.IPAddress + ":" + resp.Ports[0], nil
+		return "https://" + *resp.IPAddress + ":" + resp.Ports[0], nil
 	}
 
 	if identityServer == "" {
