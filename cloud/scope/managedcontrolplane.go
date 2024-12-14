@@ -79,6 +79,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		}
 		params.TargetPoolsClient = targetPoolsClient
 	}
+
 	if params.ManagedClusterClient == nil {
 		forwardingRulesClient, err := newForwardingRulesClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
@@ -86,6 +87,15 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		}
 		params.ForwardingRulesClient = forwardingRulesClient
 	}
+
+	if params.ManagedClusterClient == nil {
+		managedClusterClient, err := newClusterManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+		if err != nil {
+			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
+		}
+		params.ManagedClusterClient = managedClusterClient
+	}
+
 	if params.TagBindingsClient == nil {
 		tagBindingsClient, err := newTagBindingsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.Region)
 		if err != nil {
