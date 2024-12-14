@@ -80,7 +80,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		params.TargetPoolsClient = targetPoolsClient
 	}
 
-	if params.ManagedClusterClient == nil {
+	if params.ForwardingRulesClient == nil {
 		forwardingRulesClient, err := newForwardingRulesClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp forwarding rules client: %v", err)
