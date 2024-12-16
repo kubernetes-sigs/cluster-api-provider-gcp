@@ -259,13 +259,13 @@ spec:
                   - type
                   type: object
                 type: array
-              identityServiceServer:
-                description: identityServiceServer indicates the server for external authentication
-                  when the identity service is enabled.
-                type: boolean
               currentVersion:
                 description: CurrentVersion shows the current version of the GKE control
                   plane.
+                type: string
+              identityServiceServer:
+                description: IdentityServiceServer indicates when the identity service
+                  is enabled, the server for external authentication.
                 type: string
               initialized:
                 description: |-

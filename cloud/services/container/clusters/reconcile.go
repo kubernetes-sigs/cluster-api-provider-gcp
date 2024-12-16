@@ -22,18 +22,20 @@ import (
 	"fmt"
 	"strings"
 
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 
-	"cloud.google.com/go/compute/apiv1/computepb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/tools/clientcmd"
+
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/googleapis/gax-go/v2/apierror"
-	"github.com/pkg/errors"
-	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
@@ -159,7 +161,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition, infrav1exp.GKEControlPlaneUpdatedReason, clusterv1.ConditionSeverityInfo, "")
 
 	// Reconcile kubeconfig
-	err = s.reconcileKubeconfig(ctx, cluster, &log)
+	kubeConfig, err := s.reconcileKubeconfig(ctx, cluster, &log)
 	if err != nil {
 		log.Error(err, "Failed to reconcile CAPI kubeconfig")
 		return ctrl.Result{}, err
@@ -170,11 +172,9 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	identityServiceServer, err := s.getIdentityServiceServer(ctx, &log)
+	err = s.reconcileIdentityService(ctx, kubeConfig, &log)
 	if err != nil {
-		log.Error(fmt.Errorf("Failed to retrieve identity service: [%w]", err), "Failed to set identity service server, skipping until next reconciliation")
-	} else if identityServiceServer != "" {
-		s.scope.GCPManagedControlPlane.Status.IdentityServiceServer = identityServiceServer
+		return ctrl.Result{}, err
 	}
 
 	s.scope.SetEndpoint(cluster.GetEndpoint())
@@ -458,6 +458,11 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		log.V(4).Info("Master authorized networks config update check", "desired", desiredMasterAuthorizedNetworksConfig)
 	}
 
+	desiredEnableIdentityService := s.scope.GCPManagedControlPlane.Spec.EnableIdentityService
+	if desiredEnableIdentityService != existingCluster.GetIdentityServiceConfig().GetEnabled() {
+		clusterUpdate.DesiredIdentityServiceConfig = &containerpb.IdentityServiceConfig{Enabled: desiredEnableIdentityService}
+	}
+
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,
@@ -494,92 +499,69 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 	return true
 }
 
-func (s *Service) getIdentityServiceServer(ctx context.Context, log *logr.Logger) (string, error) {
+// reconcileIdentityService set the identity service server in the status of the GCPManagedControlPlane.
+func (s *Service) reconcileIdentityService(ctx context.Context, kubeConfig clientcmd.ClientConfig, log *logr.Logger) error {
+	identityServiceServer, err := s.getIdentityServiceServer(ctx, kubeConfig, log)
+	if err != nil {
+		err = fmt.Errorf("failed to retrieve identity service: %w", err)
+		log.Error(err, "Failed to retrieve identity service server")
+		return err
+	}
+
+	s.scope.GCPManagedControlPlane.Status.IdentityServiceServer = identityServiceServer
+
+	return nil
+}
+
+// getIdentityServiceServer retrieve the server to use for authentication using the identity service.
+func (s *Service) getIdentityServiceServer(ctx context.Context, kubeConfig clientcmd.ClientConfig, log *logr.Logger) (string, error) {
+	/*
+		# Example of the ClientConfig (see https://cloud.google.com/kubernetes-engine/docs/how-to/oidc#configuring_on_a_cluster):
+		apiVersion: authentication.gke.io/v2alpha1
+		kind: ClientConfig
+		metadata:
+			name: default
+			namespace: kube-public
+		spec:
+			server: https://192.168.0.1:6443
+	*/
+
 	if !s.scope.GCPManagedControlPlane.Spec.EnableIdentityService {
-		// Identity service is not enabled, return empty string
+		// Identity service is not enabled, skipping
 		return "", nil
 	}
 
-	const (
-		indentityServiceFilter = "description:anthos-identity-service"
-		instanceFilterFormat   = "instance:https://www.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s"
-	)
+	if kubeConfig == nil {
+		return "", errors.New("provided kubernetes configuration is nil")
+	}
 
-	nodePools, _, err := s.scope.GetAllNodePools(ctx)
+	config, err := kubeConfig.ClientConfig()
 	if err != nil {
 		return "", err
 	}
 
-	instanceFilters := []string{}
-	for _, np := range nodePools {
-		for _, providerID := range np.Spec.ProviderIDList {
-			parsedProviderID, err := providerid.NewFromResourceURL(providerID)
-			if err != nil {
-				return "", err
-			}
-
-			instanceFilters = append(instanceFilters, fmt.Sprintf(instanceFilterFormat, parsedProviderID.Project, parsedProviderID.Location, parsedProviderID.Name))
-		}
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return "", err
 	}
 
-	if len(instanceFilters) == 0 {
-		return "", errors.New("no instances found")
+	resourceID := schema.GroupVersionResource{
+		Group:    "authentication.gke.io",
+		Version:  "v2alpha1",
+		Resource: "clientconfigs",
 	}
 
-	var (
-		targetPoolName         string
-		listTargetPoolsRequest = &computepb.ListTargetPoolsRequest{Filter: indentityServiceFilter + " AND (" + strings.Join(instanceFilters, " OR ") + ")"}
-		targetPoolsIT          = s.scope.TargetPoolsClient().List(ctx, listTargetPoolsRequest)
-	)
-
-	for {
-		resp, err := targetPoolsIT.Next()
-		if err == iterator.Done {
-			break
-		} else if err != nil {
-			return "", err
-		} else if targetPoolName != "" {
-			return "", errors.New("multiple target pools found")
-		} else if resp.Name != nil {
-			return "", errors.New("no target pool name found")
-		}
-
-		targetPoolName = *resp.Name
+	unstructured, err := dynamicClient.Resource(resourceID).Namespace("kube-public").Get(ctx, "default", metav1.GetOptions{})
+	if err != nil {
+		return "", err
 	}
 
-	if targetPoolName == "" {
-		return "", errors.New("no target pools found")
-	}
+	gkeClientConfig := struct {
+		Spec struct {
+			Server string `json:"server"`
+		} `json:"spec"`
+	}{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unstructured.Object, &gkeClientConfig)
 
-	var (
-		identityServer             string
-		nameFilter                 = "name:" + targetPoolName
-		listForwardingRulesRequest = &computepb.ListForwardingRulesRequest{Filter: indentityServiceFilter + " AND " + nameFilter}
-		forwardingRulesIT          = s.scope.ForwardingRulesClient().List(ctx, listForwardingRulesRequest)
-	)
-
-	for {
-		resp, err := forwardingRulesIT.Next()
-		if err == iterator.Done {
-			break
-		} else if err != nil {
-			return "", err
-		} else if identityServer != "" {
-			return "", errors.New("multiple forwarding rules found")
-		} else if len(resp.Ports) != 1 {
-			return "", fmt.Errorf("unexpected ports count in forwarding rule: %d", len(resp.Ports))
-		} else if resp.Ports[0] != "443" {
-			return "", fmt.Errorf("unexpected port in forwarding rule: %d", resp.Ports[0])
-		} else if resp.IPAddress == nil {
-			return "", errors.New("no IP address found")
-		}
-
-		return "https://" + *resp.IPAddress + ":" + resp.Ports[0], nil
-	}
-
-	if identityServer == "" {
-		return "", errors.New("no forwarding rules found")
-	}
-
-	return identityServer, nil
+	return gkeClientConfig.Spec.Server, err
 }

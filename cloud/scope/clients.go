@@ -103,34 +103,6 @@ func newComputeService(ctx context.Context, credentialsRef *infrav1.ObjectRefere
 	return computeSvc, nil
 }
 
-func newTargetPoolsClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*computerest.TargetPoolsClient, error) {
-	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
-	if err != nil {
-		return nil, fmt.Errorf("getting default gcp client options: %w", err)
-	}
-
-	targetPoolsClient, err := computerest.NewTargetPoolsRESTClient(ctx, opts...)
-	if err != nil {
-		return nil, errors.Errorf("failed to create target pools client: %v", err)
-	}
-
-	return targetPoolsClient, nil
-}
-
-func newForwardingRulesClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*computerest.ForwardingRulesClient, error) {
-	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
-	if err != nil {
-		return nil, fmt.Errorf("getting default gcp client options: %w", err)
-	}
-
-	forwardingRulesClient, err := computerest.NewForwardingRulesRESTClient(ctx, opts...)
-	if err != nil {
-		return nil, errors.Errorf("failed to create gcp forwarding rules client: %v", err)
-	}
-
-	return forwardingRulesClient, nil
-}
-
 func newClusterManagerClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) (*container.ClusterManagerClient, error) {
 	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
 	if err != nil {

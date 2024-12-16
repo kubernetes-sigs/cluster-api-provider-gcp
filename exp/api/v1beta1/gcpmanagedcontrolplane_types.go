@@ -172,7 +172,7 @@ type GCPManagedControlPlaneStatus struct {
 	// +optional
 	CurrentVersion string `json:"currentVersion,omitempty"`
 
-	// IdentityServiceServer shows the server of anthos indentify service when enabled.
+	// IdentityServiceServer indicates when the identity service is enabled, the server for external authentication.
 	// +optional
 	IdentityServiceServer string `json:"identityServiceServer,omitempty"`
 }
