@@ -263,6 +263,10 @@ spec:
                 description: CurrentVersion shows the current version of the GKE control
                   plane.
                 type: string
+              identityServiceServer:
+                description: IdentityServiceServer indicates when the identity service
+                  is enabled, the server for external authentication.
+                type: string
               initialized:
                 description: |-
                   Initialized is true when the control plane is available for initial contact.
