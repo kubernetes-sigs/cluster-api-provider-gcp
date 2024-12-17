@@ -459,6 +459,7 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 
 	desiredEnableIdentityService := s.scope.GCPManagedControlPlane.Spec.EnableIdentityService
 	if desiredEnableIdentityService != existingCluster.GetIdentityServiceConfig().GetEnabled() {
+		needUpdate = true
 		clusterUpdate.DesiredIdentityServiceConfig = &containerpb.IdentityServiceConfig{Enabled: desiredEnableIdentityService}
 	}
 
