@@ -1,0 +1,245 @@
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: GCPCluster
+    name: "${CLUSTER_NAME}"
+  controlPlaneRef:
+    kind: KubeadmControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    name: "${CLUSTER_NAME}-control-plane"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPCluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  project: "${GCP_PROJECT}"
+  region: "${GCP_REGION}"
+  network:
+    name: "${GCP_NETWORK_NAME}"
+---
+kind: KubeadmControlPlane
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  machineTemplate:
+    infrastructureRef:
+      kind: GCPMachineTemplate
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      name: "${CLUSTER_NAME}-control-plane"
+  kubeadmConfigSpec:
+    files: []
+    format: ignition
+    ignition:
+      containerLinuxConfig:
+        additionalConfig: |
+          storage:
+            links:
+              - path: /etc/extensions/kubernetes.raw
+                hard: false
+                target: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+            files:
+              - path: /etc/sysupdate.kubernetes.d/kubernetes-${KUBERNETES_VERSION%.*}.conf
+                mode: 0644
+                contents:
+                  remote:
+                    url: https://github.com/flatcar/sysext-bakery/releases/download/latest/kubernetes-${KUBERNETES_VERSION%.*}.conf
+              - path: /etc/sysupdate.d/noop.conf
+                mode: 0644
+                contents:
+                  remote:
+                    url: https://github.com/flatcar/sysext-bakery/releases/download/latest/noop.conf
+              - path: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+                contents:
+                  remote:
+                    url: https://github.com/flatcar/sysext-bakery/releases/download/latest/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+          systemd:
+            units:
+              - name: systemd-sysupdate.service
+                dropins:
+                  - name: kubernetes.conf
+                    contents: |
+                      [Service]
+                      ExecStartPre=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes"
+                      ExecStartPre=/usr/lib/systemd/systemd-sysupdate -C kubernetes update
+                      ExecStartPost=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes-new"
+                      ExecStartPost=/usr/bin/sh -c "if ! cmp --silent /tmp/kubernetes /tmp/kubernetes-new; then touch /run/reboot-required; fi"
+              - name: update-engine.service
+                # Set this to 'false' if you want to enable Flatcar auto-update
+                mask: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
+              - name: locksmithd.service
+                # NOTE: To coordinate the node reboot in this context, we recommend to use Kured.
+                mask: true
+              - name: systemd-sysupdate.timer
+                # Set this to 'true' if you want to enable the Kubernetes auto-update.
+                # NOTE: Only patches version will be pulled.
+                enabled: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
+              - name: coreos-metadata-sshkeys@.service
+                enabled: true
+              - name: kubeadm.service
+                enabled: true
+                dropins:
+                  - name: 10-flatcar.conf
+                    contents: |
+                      [Unit]
+                      Requires=containerd.service coreos-metadata.service
+                      After=containerd.service coreos-metadata.service
+                      [Service]
+                      EnvironmentFile=/run/metadata/flatcar
+    initConfiguration:
+      nodeRegistration:
+        name: $${COREOS_GCE_HOSTNAME}
+        kubeletExtraArgs:
+          cloud-provider: gce
+          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+    clusterConfiguration:
+      apiServer:
+        timeoutForControlPlane: 20m
+        extraArgs:
+          cloud-provider: gce
+          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+      controllerManager:
+        extraArgs:
+          cloud-provider: gce
+          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+          allocate-node-cidrs: "false"
+    joinConfiguration:
+      nodeRegistration:
+        name: $${COREOS_GCE_HOSTNAME}
+        kubeletExtraArgs:
+          cloud-provider: gce
+          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+    preKubeadmCommands:
+    - export COREOS_GCE_HOSTNAME=$${COREOS_GCE_HOSTNAME%%.*}
+    - envsubst < /etc/kubeadm.yml > /etc/kubeadm.yml.tmp
+    - mv /etc/kubeadm.yml.tmp /etc/kubeadm.yml
+  version: "${KUBERNETES_VERSION}"
+---
+kind: GCPMachineTemplate
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
+      image: "${IMAGE_ID}"
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  clusterName: "${CLUSTER_NAME}"
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+  template:
+    spec:
+      clusterName: "${CLUSTER_NAME}"
+      version: "${KUBERNETES_VERSION}"
+      bootstrap:
+        configRef:
+          name: "${CLUSTER_NAME}-md-0"
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+      infrastructureRef:
+        name: "${CLUSTER_NAME}-md-0"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: GCPMachineTemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_NODE_MACHINE_TYPE}"
+      image: "${IMAGE_ID}"
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      files: []
+      format: ignition
+      ignition:
+        containerLinuxConfig:
+          additionalConfig: |
+            storage:
+              links:
+                - path: /etc/extensions/kubernetes.raw
+                  hard: false
+                  target: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+              files:
+                - path: /etc/sysupdate.kubernetes.d/kubernetes-${KUBERNETES_VERSION%.*}.conf
+                  mode: 0644
+                  contents:
+                    remote:
+                      url: https://github.com/flatcar/sysext-bakery/releases/download/latest/kubernetes-${KUBERNETES_VERSION%.*}.conf
+                - path: /etc/sysupdate.d/noop.conf
+                  mode: 0644
+                  contents:
+                    remote:
+                      url: https://github.com/flatcar/sysext-bakery/releases/download/latest/noop.conf
+                - path: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+                  contents:
+                    remote:
+                      url: https://github.com/flatcar/sysext-bakery/releases/download/latest/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+            systemd:
+              units:
+                - name: systemd-sysupdate.service
+                  dropins:
+                    - name: kubernetes.conf
+                      contents: |
+                        [Service]
+                        ExecStartPre=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes"
+                        ExecStartPre=/usr/lib/systemd/systemd-sysupdate -C kubernetes update
+                        ExecStartPost=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes-new"
+                        ExecStartPost=/usr/bin/sh -c "if ! cmp --silent /tmp/kubernetes /tmp/kubernetes-new; then touch /run/reboot-required; fi"
+                - name: update-engine.service
+                  # Set this to 'false' if you want to enable Flatcar auto-update
+                  mask: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
+                - name: locksmithd.service
+                  # NOTE: To coordinate the node reboot in this context, we recommend to use Kured.
+                  mask: true
+                - name: systemd-sysupdate.timer
+                  # Set this to 'true' if you want to enable the Kubernetes auto-update.
+                  # NOTE: Only patches version will be pulled.
+                  enabled: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
+                - name: coreos-metadata-sshkeys@.service
+                  enabled: true
+                - name: kubeadm.service
+                  enabled: true
+                  dropins:
+                    - name: 10-flatcar.conf
+                      contents: |
+                        [Unit]
+                        Requires=containerd.service coreos-metadata.service
+                        After=containerd.service coreos-metadata.service
+                        [Service]
+                        EnvironmentFile=/run/metadata/flatcar
+      joinConfiguration:
+        nodeRegistration:
+          name: $${COREOS_GCE_HOSTNAME}
+          kubeletExtraArgs:
+            cloud-provider: gce
+            feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+      preKubeadmCommands:
+      - export COREOS_GCE_HOSTNAME=$${COREOS_GCE_HOSTNAME%%.*}
+      - envsubst < /etc/kubeadm.yml > /etc/kubeadm.yml.tmp
+      - mv /etc/kubeadm.yml.tmp /etc/kubeadm.yml
