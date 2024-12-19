@@ -171,6 +171,10 @@ type GCPManagedControlPlaneStatus struct {
 	// CurrentVersion shows the current version of the GKE control plane.
 	// +optional
 	CurrentVersion string `json:"currentVersion,omitempty"`
+
+	// IdentityServiceServer indicates when the identity service is enabled, the server for external authentication.
+	// +optional
+	IdentityServiceServer string `json:"identityServiceServer,omitempty"`
 }
 
 // +kubebuilder:object:root=true
