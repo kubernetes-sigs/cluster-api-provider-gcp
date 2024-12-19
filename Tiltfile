@@ -114,6 +114,7 @@ WORKDIR /
 COPY --from=tilt-helper /process.txt .
 COPY --from=tilt-helper /start.sh .
 COPY --from=tilt-helper /restart.sh .
+COPY --from=tilt-helper /process.txt .
 COPY --from=tilt-helper /go/bin/dlv .
 COPY manager .
 """
