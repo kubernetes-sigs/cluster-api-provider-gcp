@@ -481,6 +481,12 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		log.V(4).Info("Master authorized networks config update check", "desired", desiredMasterAuthorizedNetworksConfig)
 	}
 
+	desiredEnableIdentityService := s.scope.GCPManagedControlPlane.Spec.EnableIdentityService
+	if desiredEnableIdentityService != existingCluster.GetIdentityServiceConfig().GetEnabled() {
+		needUpdate = true
+		clusterUpdate.DesiredIdentityServiceConfig = &containerpb.IdentityServiceConfig{Enabled: desiredEnableIdentityService}
+	}
+
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,
