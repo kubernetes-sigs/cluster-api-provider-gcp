@@ -599,6 +599,9 @@ func (s *Service) createOrGetRegionalForwardingRule(ctx context.Context, lbname 
 	log := log.FromContext(ctx)
 	spec := s.scope.ForwardingRuleSpec(lbname)
 	spec.LoadBalancingScheme = string(loadBalanceTrafficInternal)
+	if lbSpec := s.scope.LoadBalancer(); lbSpec.InternalLoadBalancer != nil {
+		spec.AllowGlobalAccess = lbSpec.InternalLoadBalancer.AllowGlobalAccess
+	}
 	spec.Region = s.scope.Region()
 	spec.BackendService = backendSvc.SelfLink
 	// Ports is used instead or PortRange for passthrough Load Balancer

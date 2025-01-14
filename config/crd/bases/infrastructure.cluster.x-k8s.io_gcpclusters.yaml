@@ -122,6 +122,15 @@ spec:
                     description: InternalLoadBalancer is the configuration for an
                       Internal Passthrough Network Load Balancer.
                     properties:
+                      allowGlobalAccess:
+                        description: |-
+                          AllowGlobalAccess. If set to true, clients can access the internal
+                          passthrough Network Load Balancers, the regional internal Application Load
+                          Balancer, and the regional internal proxy Network Load Balancer from all
+                          regions. If false, only allows access from the local region the load
+                          balancer is located at. Note that for INTERNAL_MANAGED forwarding rules,
+                          this field cannot be changed after the forwarding rule is created.
+                        type: boolean
                       name:
                         description: |-
                           Name is the name of the Load Balancer. If not set a default name

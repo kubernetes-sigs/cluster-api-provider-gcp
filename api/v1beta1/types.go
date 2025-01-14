@@ -371,4 +371,12 @@ type LoadBalancer struct {
 	// required for the Load Balancer, if not defined the first configured subnet will be
 	// used.
 	Subnet *string `json:"subnet,omitempty"`
+
+	// AllowGlobalAccess. If set to true, clients can access the internal
+	// passthrough Network Load Balancers, the regional internal Application Load
+	// Balancer, and the regional internal proxy Network Load Balancer from all
+	// regions. If false, only allows access from the local region the load
+	// balancer is located at. Note that for INTERNAL_MANAGED forwarding rules,
+	// this field cannot be changed after the forwarding rule is created.
+	AllowGlobalAccess bool `json:"allowGlobalAccess,omitempty"`
 }
