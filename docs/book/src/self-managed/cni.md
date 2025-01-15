@@ -1,6 +1,8 @@
-# Flannel
+# CNI
 
-This document describes how to use [Flannel](https://github.com/flannel-io/flannel) as your CNI solution. By default, the CNI plugin is not installed for self-managed clusters, so you have to [install your own](https://cluster-api.sigs.k8s.io/user/quick-start.html#deploy-a-cni-solution) (e.g. Calico with VXLAN)
+By default, no CNI plugin is installed when a self-managed cluster is provisioned. As a user, you need to [install your own](https://cluster-api.sigs.k8s.io/user/quick-start.html#deploy-a-cni-solution) CNI (e.g. Calico with VXLAN) for the control plane of the cluster to become ready.
+
+This document describes how to use [Flannel](https://github.com/flannel-io/flannel) as your CNI solution.
 
 ## Modify the Cluster resources
 

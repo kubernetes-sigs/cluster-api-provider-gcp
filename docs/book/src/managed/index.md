@@ -3,6 +3,14 @@
 - **Feature status:** Experimental
 - **Feature gate (required):** GKE=true
 
+<aside class="note warning">
+
+<h1>Warning</h1>
+
+Provisioning managed clusters (GKE) is an experimental feature and, as such, it may behave unreliably until promoted to the main repository.
+
+</aside>
+
 ## Overview
 
 The GCP provider supports creating GKE based cluster. Currently the following features are supported:
@@ -23,5 +31,5 @@ And a new template is available in the templates folder for creating a managed w
 
 * [Enabling GKE Support](enabling.md)
 * [Disabling GKE Support](disabling.md)
-* [Creating a cluster](creating-a-cluster.md)
-* [Cluster Upgrades](cluster-upgrades.md)
+* [Creating a cluster](provision.md)
+* [Cluster Upgrades](upgrades.md)
