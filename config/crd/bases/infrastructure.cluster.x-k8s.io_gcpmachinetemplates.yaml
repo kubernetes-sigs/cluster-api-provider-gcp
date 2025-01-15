@@ -215,6 +215,31 @@ spec:
                         - Enabled
                         - Disabled
                         type: string
+                      guestAccelerators:
+                        description: |-
+                          GuestAccelerators is a list of the type and count of accelerator cards
+                          attached to the instance.
+                        items:
+                          description: |-
+                            Accelerator is a specification of the type and number of accelerator
+                            cards attached to the instance.
+                          properties:
+                            count:
+                              description: |-
+                                Count is the number of the guest accelerator cards exposed to this
+                                instance.
+                              format: int64
+                              type: integer
+                            type:
+                              description: |-
+                                Type is the full or partial URL of the accelerator type resource to
+                                attach to this instance. For example:
+                                projects/my-project/zones/us-central1-c/acceleratorTypes/nvidia-tesla-p100
+                                If you are creating an instance template, specify only the accelerator name.
+                                See GPUs on Compute Engine for a full list of accelerator types.
+                              type: string
+                          type: object
+                        type: array
                       image:
                         description: |-
                           Image is the full reference to a valid image to be used for this machine.
