@@ -451,6 +451,19 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 			EnableConfidentialCompute: enabled,
 		}
 	}
+	if m.GCPMachine.Spec.ConfidentialInstanceType != nil {
+		if instance.ConfidentialInstanceConfig == nil {
+			instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{}
+		}
+		switch *m.GCPMachine.Spec.ConfidentialInstanceType {
+		case infrav1.ConfidentialVMTechnologySEV:
+			instance.ConfidentialInstanceConfig.ConfidentialInstanceType = "SEV"
+		case infrav1.ConfidentialVMTechnologySEVSNP:
+			instance.ConfidentialInstanceConfig.ConfidentialInstanceType = "SEV_SNP"
+		default:
+			log.Error(errors.New("Invalid value"), "Unknown ConfidentialInstanceType value", "Spec.ConfidentialInstanceType", *m.GCPMachine.Spec.ConfidentialInstanceType)
+		}
+	}
 
 	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
 	instance.Disks = append(instance.Disks, m.InstanceAdditionalDiskSpec()...)

@@ -500,6 +500,11 @@ func (in *GCPMachineSpec) DeepCopyInto(out *GCPMachineSpec) {
 		*out = new(ConfidentialComputePolicy)
 		**out = **in
 	}
+	if in.ConfidentialInstanceType != nil {
+		in, out := &in.ConfidentialInstanceType, &out.ConfidentialInstanceType
+		*out = new(ConfidentialVMTechnology)
+		**out = **in
+	}
 	if in.RootDiskEncryptionKey != nil {
 		in, out := &in.RootDiskEncryptionKey, &out.RootDiskEncryptionKey
 		*out = new(CustomerEncryptionKey)
