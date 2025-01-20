@@ -446,9 +446,16 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 		instance.Scheduling.OnHostMaintenance = strings.ToUpper(string(*m.GCPMachine.Spec.OnHostMaintenance))
 	}
 	if m.GCPMachine.Spec.ConfidentialCompute != nil {
-		enabled := *m.GCPMachine.Spec.ConfidentialCompute == infrav1.ConfidentialComputePolicyEnabled
+		enabled := *m.GCPMachine.Spec.ConfidentialCompute != infrav1.ConfidentialComputePolicyDisabled
 		instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{
 			EnableConfidentialCompute: enabled,
+		}
+		switch *m.GCPMachine.Spec.ConfidentialCompute {
+		case infrav1.ConfidentialComputePolicySEV:
+			instance.ConfidentialInstanceConfig.ConfidentialInstanceType = "SEV"
+		case infrav1.ConfidentialComputePolicySEVSNP:
+			instance.ConfidentialInstanceConfig.ConfidentialInstanceType = "SEV_SNP"
+		default:
 		}
 	}
 

@@ -135,11 +135,18 @@ const (
 	ConfidentialComputePolicyEnabled ConfidentialComputePolicy = "Enabled"
 	// ConfidentialComputePolicyDisabled disables confidential compute for the GCP machine.
 	ConfidentialComputePolicyDisabled ConfidentialComputePolicy = "Disabled"
+	// ConfidentialComputePolicySEV sets AMD SEV as the VM instance's confidential computing technology of choice.
+	ConfidentialComputePolicySEV ConfidentialComputePolicy = "AMDEncrytedVirtualization"
+	// ConfidentialComputePolicySEVSNP sets AMD SEV-SNP as the VM instance's confidential computing technology of choice.
+	ConfidentialComputePolicySEVSNP ConfidentialComputePolicy = "AMDEncrytedVirtualizationNestedPaging"
 )
 
-// Confidential VM supports Compute Engine machine types in the following series:
+// Confidential VM Technology support depends on the configured machine types.
 // reference: https://cloud.google.com/compute/confidential-vm/docs/os-and-machine-type#machine-type
-var confidentialComputeSupportedMachineSeries = []string{"n2d", "c2d"}
+var (
+	confidentialMachineSeriesSupportingSev    = []string{"n2d", "c2d", "c3d"}
+	confidentialMachineSeriesSupportingSevsnp = []string{"n2d"}
+)
 
 // HostMaintenancePolicy represents the desired behavior ase of a host maintenance event.
 type HostMaintenancePolicy string
@@ -336,10 +343,14 @@ type GCPMachineSpec struct {
 	// +optional
 	OnHostMaintenance *HostMaintenancePolicy `json:"onHostMaintenance,omitempty"`
 
-	// ConfidentialCompute Defines whether the instance should have confidential compute enabled.
-	// If enabled OnHostMaintenance is required to be set to "Terminate".
+	// ConfidentialCompute Defines whether the instance should have confidential compute enabled or not, and the confidential computing technology of choice.
+	// If Disabled, the machine will not be configured to be a confidential computing instance.
+	// If Enabled, confidential computing will be configured and AMD Secure Encrypted Virtualization will be configured by default. That is subject to change over time. If using AMD Secure Encrypted Virtualization is vital, use AMDEncryptedVirtualization explicitly instead.
+	// If AMDEncryptedVirtualization, it will configure AMD Secure Encrypted Virtualization (AMD SEV) as the confidential computing technology.
+	// If AMDEncryptedVirtualizationNestedPaging, it will configure AMD Secure Encrypted Virtualization Secure Nested Paging (AMD SEV-SNP) as the confidential computing technology.
+	// If enabled (any value other than Disabled) OnHostMaintenance is required to be set to "Terminate".
 	// If omitted, the platform chooses a default, which is subject to change over time, currently that default is false.
-	// +kubebuilder:validation:Enum=Enabled;Disabled
+	// +kubebuilder:validation:Enum=Enabled;Disabled;AMDEncrytedVirtualization;AMDEncrytedVirtualizationNestedPaging
 	// +optional
 	ConfidentialCompute *ConfidentialComputePolicy `json:"confidentialCompute,omitempty"`
 
