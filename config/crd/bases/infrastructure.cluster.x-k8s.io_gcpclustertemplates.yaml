@@ -341,6 +341,36 @@ spec:
                           - value
                           type: object
                         type: array
+                      serviceEndpoints:
+                        description: |-
+                          ServiceEndpoints contains the custom GCP Service Endpoint urls for each applicable service.
+                          For instance, the user can specify a new endpoint for the compute service.
+                        properties:
+                          compute:
+                            description: ComputeServiceEndpoint is the custom endpoint
+                              url for the Compute Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
+                          container:
+                            description: ContainerServiceEndpoint is the custom endpoint
+                              url for the Container Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
+                          iam:
+                            description: IAMServiceEndpoint is the custom endpoint
+                              url for the IAM Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
+                          resourceManager:
+                            description: ResourceManagerServiceEndpoint is the custom
+                              endpoint url for the Resource Manager Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
+                        type: object
                     required:
                     - project
                     - region
