@@ -25,8 +25,11 @@ import (
 func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 	g := NewWithT(t)
 	confidentialComputeEnabled := ConfidentialComputePolicyEnabled
+	confidentialComputeDisabled := ConfidentialComputePolicyDisabled
 	onHostMaintenanceTerminate := HostMaintenancePolicyTerminate
 	onHostMaintenanceMigrate := HostMaintenancePolicyMigrate
+	confidentialInstanceTypeSEV := ConfidentialVMTechnologySEV
+	confidentialInstanceTypeSEVSNP := ConfidentialVMTechnologySEVSNP
 	tests := []struct {
 		name     string
 		template *GCPMachineTemplate
@@ -99,6 +102,102 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 							InstanceType:        "e2-standard-4",
 							ConfidentialCompute: &confidentialComputeEnabled,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachine with explicit ConfidentialInstanceType and ConfidentialCompute Disabled - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:             "n2d-standard-4",
+							ConfidentialCompute:      &confidentialComputeDisabled,
+							ConfidentialInstanceType: &confidentialInstanceTypeSEVSNP,
+							OnHostMaintenance:        &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachine with explicit ConfidentialInstanceType and OnHostMaintenance Migrate - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:             "n2d-standard-4",
+							ConfidentialCompute:      &confidentialComputeEnabled,
+							ConfidentialInstanceType: &confidentialInstanceTypeSEVSNP,
+							OnHostMaintenance:        &onHostMaintenanceMigrate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachine with SEVSNP ConfidentialInstanceType and unsupported machine type - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:             "c3d-standard-4",
+							ConfidentialCompute:      &confidentialComputeEnabled,
+							ConfidentialInstanceType: &confidentialInstanceTypeSEVSNP,
+							OnHostMaintenance:        &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachine with SEVSNP ConfidentialInstanceType and supported machine type - valid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:             "n2d-standard-4",
+							ConfidentialCompute:      &confidentialComputeEnabled,
+							ConfidentialInstanceType: &confidentialInstanceTypeSEVSNP,
+							OnHostMaintenance:        &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPMachine with explicit SEV ConfidentialInstanceType and supported machine type - valid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:             "c3d-standard-4",
+							ConfidentialCompute:      &confidentialComputeEnabled,
+							ConfidentialInstanceType: &confidentialInstanceTypeSEV,
+							OnHostMaintenance:        &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPMachine with explicit SEV ConfidentialInstanceType and unsupported machine type - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:             "c3-standard-4",
+							ConfidentialCompute:      &confidentialComputeEnabled,
+							ConfidentialInstanceType: &confidentialInstanceTypeSEV,
+							OnHostMaintenance:        &onHostMaintenanceTerminate,
 						},
 					},
 				},
