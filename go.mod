@@ -2,7 +2,7 @@ module sigs.k8s.io/cluster-api-provider-gcp
 
 go 1.22.0
 
-toolchain go1.22.8
+toolchain go1.23.5
 
 replace (
 	// cel-go should match the version imported by CAPI.
