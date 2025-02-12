@@ -233,6 +233,20 @@ const (
 	ProvisioningModelSpot ProvisioningModel = "Spot"
 )
 
+// AliasIPRange is an alias IP range attached to an instance's network interface.
+type AliasIPRange struct {
+	// IPCidrRange is the IP alias ranges to allocate for this interface. This IP
+	// CIDR range must belong to the specified subnetwork and cannot contain IP
+	// addresses reserved by system or used by other network interfaces. This range
+	// may be a single IP address (such as 10.2.3.4), a netmask (such as /24) or a
+	// CIDR-formatted string (such as 10.1.2.0/24).
+	IPCidrRange string `json:"ipCidrRange"`
+	// SubnetworkRangeName is the name of a subnetwork secondary IP range from which
+	// to allocate an IP alias range. If not specified, the primary range of the
+	// subnetwork is used.
+	SubnetworkRangeName string `json:"subnetworkRangeName,omitempty"`
+}
+
 // GCPMachineSpec defines the desired state of GCPMachine.
 type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
@@ -242,6 +256,10 @@ type GCPMachineSpec struct {
 	// the first subnetwork retrieved from the Cluster Region and Network is picked.
 	// +optional
 	Subnet *string `json:"subnet,omitempty"`
+
+	// AliasIPRanges let you assign ranges of internal IP addresses as aliases to a VM's network interfaces.
+	// +optional
+	AliasIPRanges []AliasIPRange `json:"aliasIPRanges,omitempty"`
 
 	// ProviderID is the unique identifier as specified by the cloud provider.
 	// +optional
