@@ -138,6 +138,8 @@ const (
 	ConfidentialComputePolicySEV ConfidentialComputePolicy = "AMDEncrytedVirtualization"
 	// ConfidentialComputePolicySEVSNP sets AMD SEV-SNP as the VM instance's confidential computing technology of choice.
 	ConfidentialComputePolicySEVSNP ConfidentialComputePolicy = "AMDEncrytedVirtualizationNestedPaging"
+	// ConfidentialComputePolicyTDX sets Intel TDX as the VM instance's confidential computing technology of choice.
+	ConfidentialComputePolicyTDX ConfidentialComputePolicy = "IntelTrustedDomainExtensions"
 )
 
 // Confidential VM Technology support depends on the configured machine types.
@@ -145,6 +147,7 @@ const (
 var (
 	confidentialMachineSeriesSupportingSev    = []string{"n2d", "c2d", "c3d"}
 	confidentialMachineSeriesSupportingSevsnp = []string{"n2d"}
+	confidentialMachineSeriesSupportingTdx    = []string{"c3"}
 )
 
 // HostMaintenancePolicy represents the desired behavior ase of a host maintenance event.
@@ -347,9 +350,10 @@ type GCPMachineSpec struct {
 	// If Enabled, confidential computing will be configured and AMD Secure Encrypted Virtualization will be configured by default. That is subject to change over time. If using AMD Secure Encrypted Virtualization is vital, use AMDEncryptedVirtualization explicitly instead.
 	// If AMDEncryptedVirtualization, it will configure AMD Secure Encrypted Virtualization (AMD SEV) as the confidential computing technology.
 	// If AMDEncryptedVirtualizationNestedPaging, it will configure AMD Secure Encrypted Virtualization Secure Nested Paging (AMD SEV-SNP) as the confidential computing technology.
+	// If IntelTrustedDomainExtensions, it will configure Intel TDX as the confidential computing technology.
 	// If enabled (any value other than Disabled) OnHostMaintenance is required to be set to "Terminate".
 	// If omitted, the platform chooses a default, which is subject to change over time, currently that default is false.
-	// +kubebuilder:validation:Enum=Enabled;Disabled;AMDEncrytedVirtualization;AMDEncrytedVirtualizationNestedPaging
+	// +kubebuilder:validation:Enum=Enabled;Disabled;AMDEncrytedVirtualization;AMDEncrytedVirtualizationNestedPaging;IntelTrustedDomainExtensions
 	// +optional
 	ConfidentialCompute *ConfidentialComputePolicy `json:"confidentialCompute,omitempty"`
 
