@@ -124,6 +124,10 @@ func validateConfidentialCompute(spec GCPMachineSpec) error {
 			if !slices.Contains(confidentialMachineSeriesSupportingSevsnp, machineSeries) {
 				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingSevsnp, ", "), spec.InstanceType)
 			}
+		case ConfidentialComputePolicyTDX:
+			if !slices.Contains(confidentialMachineSeriesSupportingTdx, machineSeries) {
+				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingTdx, ", "), spec.InstanceType)
+			}
 		default:
 			return fmt.Errorf("invalid ConfidentialCompute %s", *spec.ConfidentialCompute)
 		}

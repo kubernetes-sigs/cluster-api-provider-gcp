@@ -454,6 +454,8 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 			instance.ConfidentialInstanceConfig.ConfidentialInstanceType = "SEV"
 		case infrav1.ConfidentialComputePolicySEVSNP:
 			instance.ConfidentialInstanceConfig.ConfidentialInstanceType = "SEV_SNP"
+		case infrav1.ConfidentialComputePolicyTDX:
+			instance.ConfidentialInstanceConfig.ConfidentialInstanceType = "TDX"
 		default:
 		}
 	}
