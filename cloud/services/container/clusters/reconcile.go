@@ -271,8 +271,8 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 			},
 		},
 	}
-	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
-		cluster.InitialClusterVersion = convertToSdkMasterVersion(*s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion)
+	if initialClusterVersionFromSpec := getControlPlaneVersionFromSpec(&s.scope.GCPManagedControlPlane.Spec); initialClusterVersionFromSpec != nil {
+		cluster.InitialClusterVersion = convertToSdkMasterVersion(*initialClusterVersionFromSpec)
 	}
 	if s.scope.GCPManagedControlPlane.Spec.ClusterNetwork != nil {
 		cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork
@@ -434,8 +434,8 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		}
 	}
 	// Master version
-	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
-		desiredMasterVersion := convertToSdkMasterVersion(*s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion)
+	if desiredMasterVersionFromSpec := getControlPlaneVersionFromSpec(&s.scope.GCPManagedControlPlane.Spec); desiredMasterVersionFromSpec != nil {
+		desiredMasterVersion := convertToSdkMasterVersion(*desiredMasterVersionFromSpec)
 		existingClusterMasterVersion := convertToSdkMasterVersion(existingCluster.GetCurrentMasterVersion())
 		if desiredMasterVersion != existingClusterMasterVersion {
 			needUpdate = true
@@ -505,4 +505,15 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 		return false
 	}
 	return true
+}
+
+// get the desired master version
+func getControlPlaneVersionFromSpec(spec *infrav1exp.GCPManagedControlPlaneSpec) *string {
+	if spec.Version != nil {
+		return spec.Version
+	}
+	if spec.ControlPlaneVersion != nil {
+		return spec.ControlPlaneVersion
+	}
+	return nil
 }

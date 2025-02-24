@@ -147,7 +147,14 @@ type GCPManagedControlPlaneSpec struct {
 	// If not specified, the default version currently supported by GKE will be
 	// used.
 	// +optional
+	//
+	// Deprecated: This field will soon be removed and you are expected to use Version instead.
 	ControlPlaneVersion *string `json:"controlPlaneVersion,omitempty"`
+	// Version represents the control plane version of the GKE cluster.
+	// If not specified, the default version currently supported by GKE will be
+	// used.
+	// +optional
+	Version *string `json:"version,omitempty"`
 	// Endpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	Endpoint clusterv1.APIEndpoint `json:"endpoint"`
@@ -184,7 +191,13 @@ type GCPManagedControlPlaneStatus struct {
 
 	// CurrentVersion shows the current version of the GKE control plane.
 	// +optional
+	//
+	// Deprecated: This field will soon be removed and you are expected to use Version instead.
 	CurrentVersion string `json:"currentVersion,omitempty"`
+
+	// Version represents the version of the GKE control plane.
+	// +optional
+	Version *string `json:"version,omitempty"`
 }
 
 // +kubebuilder:object:root=true
