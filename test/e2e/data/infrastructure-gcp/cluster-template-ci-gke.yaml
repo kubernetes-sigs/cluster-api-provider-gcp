@@ -60,4 +60,7 @@ spec:
   scaling:
     minCount: ${GKE_MACHINE_POOL_MIN}
     maxCount: ${GKE_MACHINE_POOL_MAX}
-
+  kubernetesTaints:
+    - key: "key1"
+      value: "value1"
+      effect: "NoSchedule"
