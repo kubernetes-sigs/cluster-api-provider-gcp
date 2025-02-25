@@ -72,21 +72,21 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 			resourceName: "cluster1",
 			resourceNS:   "default",
 			spec: GCPManagedControlPlaneSpec{
-				ClusterName:         "cluster1_27_1",
-				ControlPlaneVersion: &vV1_27_1,
+				ClusterName: "cluster1_27_1",
+				Version:     &vV1_27_1,
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_27_1", ControlPlaneVersion: &vV1_27_1},
+			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_27_1", Version: &vV1_27_1},
 		},
 		{
 			name:         "with autopilot enabled",
 			resourceName: "cluster1",
 			resourceNS:   "default",
 			spec: GCPManagedControlPlaneSpec{
-				ClusterName:         "cluster1_autopilot",
-				ControlPlaneVersion: &vV1_27_1,
-				EnableAutopilot:     true,
+				ClusterName:     "cluster1_autopilot",
+				Version:         &vV1_27_1,
+				EnableAutopilot: true,
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_autopilot", ControlPlaneVersion: &vV1_27_1, EnableAutopilot: true},
+			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_autopilot", Version: &vV1_27_1, EnableAutopilot: true},
 		},
 	}
 
