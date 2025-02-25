@@ -135,9 +135,9 @@ const (
 	// ConfidentialComputePolicyDisabled disables confidential compute for the GCP machine.
 	ConfidentialComputePolicyDisabled ConfidentialComputePolicy = "Disabled"
 	// ConfidentialComputePolicySEV sets AMD SEV as the VM instance's confidential computing technology of choice.
-	ConfidentialComputePolicySEV ConfidentialComputePolicy = "AMDEncrytedVirtualization"
+	ConfidentialComputePolicySEV ConfidentialComputePolicy = "AMDEncryptedVirtualization"
 	// ConfidentialComputePolicySEVSNP sets AMD SEV-SNP as the VM instance's confidential computing technology of choice.
-	ConfidentialComputePolicySEVSNP ConfidentialComputePolicy = "AMDEncrytedVirtualizationNestedPaging"
+	ConfidentialComputePolicySEVSNP ConfidentialComputePolicy = "AMDEncryptedVirtualizationNestedPaging"
 	// ConfidentialComputePolicyTDX sets Intel TDX as the VM instance's confidential computing technology of choice.
 	ConfidentialComputePolicyTDX ConfidentialComputePolicy = "IntelTrustedDomainExtensions"
 )
@@ -353,7 +353,7 @@ type GCPMachineSpec struct {
 	// If IntelTrustedDomainExtensions, it will configure Intel TDX as the confidential computing technology.
 	// If enabled (any value other than Disabled) OnHostMaintenance is required to be set to "Terminate".
 	// If omitted, the platform chooses a default, which is subject to change over time, currently that default is false.
-	// +kubebuilder:validation:Enum=Enabled;Disabled;AMDEncrytedVirtualization;AMDEncrytedVirtualizationNestedPaging;IntelTrustedDomainExtensions
+	// +kubebuilder:validation:Enum=Enabled;Disabled;AMDEncryptedVirtualization;AMDEncryptedVirtualizationNestedPaging;IntelTrustedDomainExtensions
 	// +optional
 	ConfidentialCompute *ConfidentialComputePolicy `json:"confidentialCompute,omitempty"`
 
