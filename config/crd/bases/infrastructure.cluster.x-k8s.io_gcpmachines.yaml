@@ -204,8 +204,8 @@ spec:
                 enum:
                 - Enabled
                 - Disabled
-                - AMDEncrytedVirtualization
-                - AMDEncrytedVirtualizationNestedPaging
+                - AMDEncryptedVirtualization
+                - AMDEncryptedVirtualizationNestedPaging
                 - IntelTrustedDomainExtensions
                 type: string
               image:
