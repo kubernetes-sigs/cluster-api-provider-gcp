@@ -98,6 +98,15 @@ func (r *GCPManagedControlPlane) ValidateCreate() (admission.Warnings, error) {
 			r.Spec.LoggingService, "can't be set when autopilot is enabled"))
 	}
 
+	if r.Spec.ControlPlaneVersion != nil {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
+			r.Spec.LoggingService, "spec.ControlPlaneVersion is deprecated and will soon be removed: please use spec.Version"))
+		if r.Spec.Version != nil {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
+				r.Spec.LoggingService, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version"))
+		}
+	}
+
 	if len(allErrs) == 0 {
 		return nil, nil
 	}
@@ -147,6 +156,11 @@ func (r *GCPManagedControlPlane) ValidateUpdate(oldRaw runtime.Object) (admissio
 	if old.Spec.EnableAutopilot && r.Spec.MonitoringService != nil {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "MonitoringService"),
 			r.Spec.LoggingService, "can't be set when autopilot is enabled"))
+	}
+
+	if old.Spec.Version != nil && r.Spec.ControlPlaneVersion != nil {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
+			r.Spec.LoggingService, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version"))
 	}
 
 	if r.Spec.LoggingService != nil {

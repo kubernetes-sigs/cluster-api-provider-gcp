@@ -96,7 +96,9 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	}
 
 	log.V(2).Info("gke cluster found", "status", cluster.GetStatus())
-	s.scope.GCPManagedControlPlane.Status.CurrentVersion = convertToSdkMasterVersion(cluster.GetCurrentMasterVersion())
+	controlPlaneVersion := convertToSdkMasterVersion(cluster.GetCurrentMasterVersion())
+	s.scope.GCPManagedControlPlane.Status.CurrentVersion = controlPlaneVersion
+	s.scope.GCPManagedControlPlane.Status.Version = &controlPlaneVersion
 
 	switch cluster.GetStatus() {
 	case containerpb.Cluster_PROVISIONING:
@@ -271,8 +273,8 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 			},
 		},
 	}
-	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
-		cluster.InitialClusterVersion = convertToSdkMasterVersion(*s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion)
+	if initialClusterVersionFromSpec := s.getControlPlaneVersionFromSpec(); initialClusterVersionFromSpec != nil {
+		cluster.InitialClusterVersion = convertToSdkMasterVersion(*initialClusterVersionFromSpec)
 	}
 	if s.scope.GCPManagedControlPlane.Spec.ClusterNetwork != nil {
 		cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork
@@ -434,8 +436,8 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		}
 	}
 	// Master version
-	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
-		desiredMasterVersion := convertToSdkMasterVersion(*s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion)
+	if desiredMasterVersionFromSpec := s.getControlPlaneVersionFromSpec(); desiredMasterVersionFromSpec != nil {
+		desiredMasterVersion := convertToSdkMasterVersion(*desiredMasterVersionFromSpec)
 		existingClusterMasterVersion := convertToSdkMasterVersion(existingCluster.GetCurrentMasterVersion())
 		if desiredMasterVersion != existingClusterMasterVersion {
 			needUpdate = true
@@ -477,6 +479,17 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 	}
 	log.V(4).Info("Update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
 	return needUpdate, &updateClusterRequest
+}
+
+// get the desired master version
+func (s *Service) getControlPlaneVersionFromSpec() *string {
+	if s.scope.GCPManagedControlPlane.Spec.Version != nil {
+		return s.scope.GCPManagedControlPlane.Spec.Version
+	}
+	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
+		return s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion
+	}
+	return nil
 }
 
 // compare if two MasterAuthorizedNetworksConfig are equal.
