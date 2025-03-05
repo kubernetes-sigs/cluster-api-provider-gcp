@@ -72,21 +72,21 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 			resourceName: "cluster1",
 			resourceNS:   "default",
 			spec: GCPManagedControlPlaneSpec{
-				ClusterName:         "cluster1_27_1",
-				ControlPlaneVersion: &vV1_27_1,
+				ClusterName: "cluster1_27_1",
+				Version:     &vV1_27_1,
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_27_1", ControlPlaneVersion: &vV1_27_1},
+			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_27_1", Version: &vV1_27_1},
 		},
 		{
 			name:         "with autopilot enabled",
 			resourceName: "cluster1",
 			resourceNS:   "default",
 			spec: GCPManagedControlPlaneSpec{
-				ClusterName:         "cluster1_autopilot",
-				ControlPlaneVersion: &vV1_27_1,
-				EnableAutopilot:     true,
+				ClusterName:     "cluster1_autopilot",
+				Version:         &vV1_27_1,
+				EnableAutopilot: true,
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_autopilot", ControlPlaneVersion: &vV1_27_1, EnableAutopilot: true},
+			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_autopilot", Version: &vV1_27_1, EnableAutopilot: true},
 		},
 	}
 
@@ -120,11 +120,13 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 	tests := []struct {
 		name        string
 		expectError bool
+		expectWarn  bool
 		spec        GCPManagedControlPlaneSpec
 	}{
 		{
 			name:        "cluster name too long should cause an error",
 			expectError: true,
+			expectWarn:  false,
 			spec: GCPManagedControlPlaneSpec{
 				ClusterName: strings.Repeat("A", maxClusterNameLength+1),
 			},
@@ -132,6 +134,7 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 		{
 			name:        "autopilot enabled without release channel should cause an error",
 			expectError: true,
+			expectWarn:  false,
 			spec: GCPManagedControlPlaneSpec{
 				ClusterName:     "",
 				EnableAutopilot: true,
@@ -141,10 +144,30 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 		{
 			name:        "autopilot enabled with release channel",
 			expectError: false,
+			expectWarn:  false,
 			spec: GCPManagedControlPlaneSpec{
 				ClusterName:     "",
 				EnableAutopilot: true,
 				ReleaseChannel:  &releaseChannel,
+			},
+		},
+		{
+			name:        "using deprecated ControlPlaneVersion should cause a warning",
+			expectError: false,
+			expectWarn:  true,
+			spec: GCPManagedControlPlaneSpec{
+				ClusterName:         "",
+				ControlPlaneVersion: &vV1_27_1,
+			},
+		},
+		{
+			name:        "using both ControlPlaneVersion and Version should cause a warning and an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: GCPManagedControlPlaneSpec{
+				ClusterName:         "",
+				ControlPlaneVersion: &vV1_27_1,
+				Version:             &vV1_27_1,
 			},
 		},
 	}
@@ -163,8 +186,11 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			} else {
 				g.Expect(err).ToNot(HaveOccurred())
 			}
-			// Nothing emits warnings yet
-			g.Expect(warn).To(BeEmpty())
+			if tc.expectWarn {
+				g.Expect(warn).ToNot(BeEmpty())
+			} else {
+				g.Expect(warn).To(BeEmpty())
+			}
 		})
 	}
 }
