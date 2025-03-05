@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  creationTimestamp: null
   labels:
     addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
     component: cloud-controller-manager
@@ -40,7 +39,7 @@ spec:
         - --cloud-provider=gce
         - --use-service-account-credentials=true
         - --cloud-config=/etc/kubernetes/cloud.config
-        image: gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:master
+        image: gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:v32.2.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -78,7 +77,7 @@ spec:
       volumes:
       - hostPath:
           path: /etc/kubernetes/cloud.config
-          type: FileOrCreate
+          type: ""
         name: cloudconfig
   updateStrategy:
     type: RollingUpdate
@@ -86,7 +85,6 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  creationTimestamp: null
   labels:
     k8s-addon: gcp-cloud-controller.addons.k8s.io
   name: cloud-controller-manager
@@ -95,7 +93,6 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  creationTimestamp: null
   labels:
     k8s-addon: gcp-cloud-controller.addons.k8s.io
   name: cloud-controller-manager:apiserver-authentication-reader
@@ -113,7 +110,6 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -216,7 +212,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -244,7 +239,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -296,7 +290,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -314,7 +307,6 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -331,7 +323,6 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -348,7 +339,6 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -374,7 +364,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -396,7 +385,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -424,7 +412,6 @@ metadata:
   annotations:
     kubernetes.io/deprecation: cloud-provider role is DEPRECATED in the concern of
       potential collisions and will be removed in 1.16. Do not use this role.
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -449,7 +436,6 @@ metadata:
   annotations:
     kubernetes.io/deprecation: cloud-provider clusterrole is DEPRECATED in the concern
       of potential collisions and will be removed in 1.16. Do not use this role.
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -467,7 +453,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
@@ -485,7 +470,6 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  creationTimestamp: null
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
     k8s-addon: gcp-cloud-controller.addons.k8s.io
