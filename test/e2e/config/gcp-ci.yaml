@@ -75,6 +75,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-autopilot.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-autopilot-topology.yaml"
 
 variables:
   KUBERNETES_VERSION: "v1.32.5"

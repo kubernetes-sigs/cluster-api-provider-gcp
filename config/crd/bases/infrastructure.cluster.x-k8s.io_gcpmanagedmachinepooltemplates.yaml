@@ -1,0 +1,294 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.3
+  name: gcpmanagedmachinepooltemplates.infrastructure.cluster.x-k8s.io
+spec:
+  group: infrastructure.cluster.x-k8s.io
+  names:
+    categories:
+    - cluster-api
+    kind: GCPManagedMachinePoolTemplate
+    listKind: GCPManagedMachinePoolTemplateList
+    plural: gcpmanagedmachinepooltemplates
+    shortNames:
+    - ammpt
+    singular: gcpmanagedmachinepooltemplate
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: GCPManagedMachinePoolTemplate is the Schema for the GCPManagedMachinePoolTemplates
+          API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: GCPManagedMachinePoolTemplateSpec defines the desired state
+              of GCPManagedMachinePoolTemplate.
+            properties:
+              template:
+                description: GCPManagedMachinePoolTemplateResource describes the data
+                  needed to create an GCPManagedCluster from a template.
+                properties:
+                  spec:
+                    description: GCPManagedMachinePoolTemplateResourceSpec specifies
+                      an GCP managed control plane template resource.
+                    properties:
+                      additionalLabels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          AdditionalLabels is an optional set of tags to add to GCP resources managed by the GCP provider, in addition to the
+                          ones added by default.
+                        type: object
+                      diskSizeGB:
+                        description: |-
+                          DiskSizeGB is size of the disk attached to each node,
+                          specified in GB.
+                        format: int64
+                        minimum: 10
+                        type: integer
+                      diskSizeGb:
+                        description: |-
+                          DiskSizeGb is the size of the disk attached to each node, specified in GB.
+                          The smallest allowed disk size is 10GB. If unspecified, the default disk size is 100GB.
+                        format: int32
+                        type: integer
+                      diskType:
+                        description: DiskType is type of the disk attached to each
+                          node.
+                        enum:
+                        - pd-standard
+                        - pd-ssd
+                        - pd-balanced
+                        type: string
+                      imageType:
+                        description: ImageType is image type to use for this nodepool.
+                        type: string
+                      instanceType:
+                        description: InstanceType is name of Compute Engine machine
+                          type.
+                        type: string
+                      kubernetesLabels:
+                        additionalProperties:
+                          type: string
+                        description: KubernetesLabels specifies the labels to apply
+                          to the nodes of the node pool.
+                        type: object
+                      kubernetesTaints:
+                        description: KubernetesTaints specifies the taints to apply
+                          to the nodes of the node pool.
+                        items:
+                          description: Taint represents a Kubernetes taint.
+                          properties:
+                            effect:
+                              description: Effect specifies the effect for the taint.
+                              enum:
+                              - NoSchedule
+                              - NoExecute
+                              - PreferNoSchedule
+                              type: string
+                            key:
+                              description: Key is the key of the taint
+                              type: string
+                            value:
+                              description: Value is the value of the taint
+                              type: string
+                          required:
+                          - effect
+                          - key
+                          - value
+                          type: object
+                        type: array
+                      linuxNodeConfig:
+                        description: LinuxNodeConfig specifies the settings for Linux
+                          agent nodes.
+                        properties:
+                          cgroupMode:
+                            description: CgroupMode specifies the cgroup mode for
+                              this node pool.
+                            format: int32
+                            type: integer
+                          sysctls:
+                            description: Sysctls specifies the sysctl settings for
+                              this node pool.
+                            items:
+                              description: SysctlConfig specifies the sysctl settings
+                                for Linux nodes.
+                              properties:
+                                parameter:
+                                  description: Parameter specifies sysctl parameter
+                                    name.
+                                  type: string
+                                value:
+                                  description: Value specifies sysctl parameter value.
+                                  type: string
+                              type: object
+                            type: array
+                        type: object
+                      localSsdCount:
+                        description: LocalSsdCount is the number of local SSD disks
+                          to be attached to the node.
+                        format: int32
+                        type: integer
+                      machineType:
+                        description: |-
+                          MachineType is the name of a Google Compute Engine [machine
+                          type](https://cloud.google.com/compute/docs/machine-types).
+                          If unspecified, the default machine type is `e2-medium`.
+                        type: string
+                      management:
+                        description: Management specifies the node pool management
+                          options.
+                        properties:
+                          autoRepair:
+                            description: |-
+                              AutoRepair specifies whether the node auto-repair is enabled for the node
+                              pool. If enabled, the nodes in this node pool will be monitored and, if
+                              they fail health checks too many times, an automatic repair action will be
+                              triggered.
+                            type: boolean
+                          autoUpgrade:
+                            description: |-
+                              AutoUpgrade specifies whether node auto-upgrade is enabled for the node
+                              pool. If enabled, node auto-upgrade helps keep the nodes in your node pool
+                              up to date with the latest release version of Kubernetes.
+                            type: boolean
+                        type: object
+                      maxPodsPerNode:
+                        description: |-
+                          MaxPodsPerNode is constraint enforced on the max num of
+                          pods per node.
+                        format: int64
+                        maximum: 256
+                        minimum: 8
+                        type: integer
+                      nodeLocations:
+                        description: |-
+                          NodeLocations is the list of zones in which the NodePool's
+                          nodes should be located.
+                        items:
+                          type: string
+                        type: array
+                      nodeNetwork:
+                        description: |-
+                          NodeNetwork specifies the node network configuration
+                          options.
+                        properties:
+                          createPodRange:
+                            description: |-
+                              CreatePodRange specifies whether to create a new range for
+                              pod IPs in this node pool.
+                            type: boolean
+                          podRangeCidrBlock:
+                            description: |-
+                              PodRangeCidrBlock is the IP address range for pod IPs in
+                              this node pool.
+                            type: string
+                          podRangeName:
+                            description: PodRangeName is ID of the secondary range
+                              for pod IPs.
+                            type: string
+                          tags:
+                            description: |-
+                              Tags is list of instance tags applied to all nodes. Tags
+                              are used to identify valid sources or targets for network
+                              firewalls.
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                      nodePoolName:
+                        description: |-
+                          NodePoolName specifies the name of the GKE node pool corresponding to this MachinePool. If you don't specify a name
+                          then a default name will be created based on the namespace and name of the managed machine pool.
+                        type: string
+                      nodeSecurity:
+                        description: NodeSecurity specifies the node security options.
+                        properties:
+                          enableIntegrityMonitoring:
+                            description: |-
+                              EnableIntegrityMonitoring defines whether the instance has
+                              integrity monitoring enabled.
+                            type: boolean
+                          enableSecureBoot:
+                            description: |-
+                              EnableSecureBoot defines whether the instance has Secure
+                              Boot enabled.
+                            type: boolean
+                          sandboxType:
+                            description: SandboxType is type of the sandbox to use
+                              for the node.
+                            type: string
+                          serviceAccount:
+                            description: |-
+                              ServiceAccount specifies the identity details for node
+                              pool.
+                            properties:
+                              email:
+                                description: |-
+                                  Email is the Google Cloud Platform Service Account to be
+                                  used by the node VMs.
+                                type: string
+                              scopes:
+                                description: |-
+                                  Scopes is a set of Google API scopes to be made available
+                                  on all of the node VMs under the "default" service account.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                        type: object
+                      scaling:
+                        description: Scaling specifies scaling for the node pool
+                        properties:
+                          enableAutoscaling:
+                            description: Is autoscaling enabled for this node pool.
+                              If unspecified, the default value is true.
+                            type: boolean
+                          locationPolicy:
+                            description: Location policy used when scaling up a nodepool.
+                            enum:
+                            - balanced
+                            - any
+                            type: string
+                          maxCount:
+                            description: MaxCount specifies the maximum number of
+                              nodes in the node pool
+                            format: int32
+                            type: integer
+                          minCount:
+                            description: MinCount specifies the minimum number of
+                              nodes in the node pool
+                            format: int32
+                            type: integer
+                        type: object
+                    type: object
+                required:
+                - spec
+                type: object
+            required:
+            - template
+            type: object
+        type: object
+    served: true
+    storage: true

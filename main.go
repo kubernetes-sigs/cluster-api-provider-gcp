@@ -252,11 +252,20 @@ func setupWebhooks(mgr ctrl.Manager) error {
 		if err := (&infrav1exp.GCPManagedCluster{}).SetupWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("setting up GCPManagedCluster webhook: %w", err)
 		}
+		if err := (&infrav1exp.GCPManagedClusterTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("setting up GCPManagedClusterTemplate webhook: %w", err)
+		}
 		if err := (&infrav1exp.GCPManagedControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("setting up GCPManagedControlPlane webhook: %w", err)
 		}
+		if err := (&infrav1exp.GCPManagedControlPlaneTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("setting up GCPManagedControlPlaneTemplate webhook: %w", err)
+		}
 		if err := (&infrav1exp.GCPManagedMachinePool{}).SetupWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("setting up GCPManagedMachinePool webhook: %w", err)
+		}
+		if err := (&infrav1exp.GCPManagedMachinePoolTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("setting up GCPManagedMachinePoolTemplate webhook: %w", err)
 		}
 	}
 
