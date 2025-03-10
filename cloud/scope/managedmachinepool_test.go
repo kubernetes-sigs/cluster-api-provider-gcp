@@ -31,7 +31,9 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 				Namespace: namespace,
 			},
 			Spec: v1beta1.GCPManagedMachinePoolSpec{
-				NodePoolName: nodePoolName,
+				GCPManagedMachinePoolClassSpec: v1beta1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: nodePoolName,
+				},
 			},
 		}
 		TestMP = &clusterv1exp.MachinePool{

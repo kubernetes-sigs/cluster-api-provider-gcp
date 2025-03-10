@@ -1,0 +1,127 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: ClusterClass
+metadata:
+  name: gke-autopilot-cc
+  namespace: default
+spec:
+  controlPlane:
+    ref:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: GCPManagedControlPlaneTemplate
+      name: capg-gke-cluster-control-plane
+  infrastructure:
+    ref:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: GCPManagedClusterTemplate
+      name: capg-gke-cluster
+  variables:
+    - name: region
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: string
+          default: us-east4
+    - name: networkName
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: string
+          default: gke-default-network
+  patches:
+    - name: managedClusterRegion
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            kind: GCPManagedClusterTemplate
+            matchResources:
+              infrastructureCluster: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec/region
+              valueFrom:
+                variable: region
+    - name: managedControlPlaneRegion
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            kind: GCPManagedControlPlaneTemplate
+            matchResources:
+              controlPlane: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec/location
+              valueFrom:
+                variable: region
+    - name: managedClusterNetwork
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            kind: GCPManagedClusterTemplate
+            matchResources:
+              infrastructureCluster: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec/network/name
+              valueFrom:
+                variable: networkName
+---
+kind: GCPManagedControlPlaneTemplate
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+metadata:
+  name: "capg-gke-cluster-control-plane"
+spec:
+  template:
+    spec:
+      project: "ei-container-eco"
+      location: "set-by-patch"
+      enableAutopilot: true
+      releaseChannel: "regular"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedClusterTemplate
+metadata:
+  name: capg-gke-cluster
+spec:
+  template:
+    spec:
+      project: "ei-container-eco"
+      region: "set-by-patch"
+      network:
+        name: "set-by-patch"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: "capg-gke-cluster-md-0"
+spec:
+  template:
+    spec:
+      instanceType: "n1-standard-2"
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: capg-gke-cluster-md-0
+  namespace: default
+spec:
+  template:
+    spec: {}
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: capg-gke-cluster
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - 192.168.0.0/16
+  topology:
+    class: gke-autopilot-cc
+    version: v1.31.6
+    variables:
+    - name: region
+      value: europe-west2
+    - name: networkName
+      value: csalas-net
+
