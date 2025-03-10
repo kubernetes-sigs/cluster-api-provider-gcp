@@ -1,0 +1,89 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: ClusterClass
+metadata:
+  name: ${CLUSTER_CLASS_NAME}
+spec:
+  controlPlane:
+    ref:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: GCPManagedControlPlaneTemplate
+      name: ${CLUSTER_NAME}-control-plane
+  infrastructure:
+    ref:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: GCPManagedClusterTemplate
+      name: ${CLUSTER_NAME}
+  variables:
+    - name: region
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: string
+          default: us-east4
+    - name: networkName
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: string
+          default: gke-default-network
+  patches:
+    - name: managedClusterRegion
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            kind: GCPManagedClusterTemplate
+            matchResources:
+              infrastructureCluster: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec/region
+              valueFrom:
+                variable: region
+    - name: managedControlPlaneRegion
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            kind: GCPManagedControlPlaneTemplate
+            matchResources:
+              controlPlane: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec/location
+              valueFrom:
+                variable: region
+    - name: managedClusterNetwork
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            kind: GCPManagedClusterTemplate
+            matchResources:
+              infrastructureCluster: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec/network/name
+              valueFrom:
+                variable: networkName
+---
+kind: GCPManagedControlPlaneTemplate
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  template:
+    spec:
+      project: "${GCP_PROJECT}"
+      location: "set-by-patch"
+      enableAutopilot: true
+      releaseChannel: "regular"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedClusterTemplate
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  template:
+    spec:
+      project: "${GCP_PROJECT}"
+      region: "set-by-patch"
+      network:
+        name: "set-by-patch"
