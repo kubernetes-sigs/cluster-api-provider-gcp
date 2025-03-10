@@ -178,6 +178,13 @@ spec:
                   Possible values: none, logging.googleapis.com/kubernetes (default).
                   Value is ignored when enableAutopilot = true.
                 type: string
+              machineTemplate:
+                description: |-
+                  MachineTemplate contains information about how machines
+                  should be shaped when creating or updating a control plane.
+                  For the GCPManagedControlPlaneTemplate, this field is used
+                  only to fulfill the CAPI contract.
+                type: object
               master_authorized_networks_config:
                 description: |-
                   MasterAuthorizedNetworksConfig represents configuration options for master authorized networks feature of the GKE cluster.

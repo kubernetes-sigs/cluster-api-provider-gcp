@@ -148,6 +148,26 @@ webhooks:
     resources:
     - gcpmanagedmachinepools
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedmachinepooltemplate
+  failurePolicy: Fail
+  name: mgcpmanagedmachinepooltemplate.kb.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpmanagedmachinepooltemplates
+  sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -264,6 +284,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedclustertemplate
+  failurePolicy: Fail
+  name: vgcpmanagedclustertemplate.kb.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpmanagedclustertemplates
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcontrolplane
   failurePolicy: Fail
   name: vgcpmanagedcontrolplane.kb.io
@@ -277,6 +317,26 @@ webhooks:
     - UPDATE
     resources:
     - gcpmanagedcontrolplanes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcontrolplanetemplate
+  failurePolicy: Fail
+  name: vgcpmanagedcontrolplanetemplate.kb.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpmanagedcontrolplanetemplates
   sideEffects: None
 - admissionReviewVersions:
   - v1
