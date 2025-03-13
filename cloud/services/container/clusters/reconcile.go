@@ -447,17 +447,21 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 	}
 
 	// LoggingService
-	if existingCluster.GetLoggingService() != s.scope.GCPManagedControlPlane.Spec.LoggingService.String() {
-		needUpdate = true
-		clusterUpdate.DesiredLoggingService = s.scope.GCPManagedControlPlane.Spec.LoggingService.String()
-		log.V(2).Info("LoggingService config update required", "current", existingCluster.GetLoggingService(), "desired", s.scope.GCPManagedControlPlane.Spec.LoggingService.String())
+	if specLoggingService := s.scope.GCPManagedControlPlane.Spec.LoggingService; specLoggingService != nil {
+		if existingCluster.GetLoggingService() != specLoggingService.String() {
+			needUpdate = true
+			clusterUpdate.DesiredLoggingService = specLoggingService.String()
+			log.V(2).Info("LoggingService config update required", "current", existingCluster.GetLoggingService(), "desired", specLoggingService.String())
+		}
 	}
 
 	// MonitoringService
-	if existingCluster.GetMonitoringService() != s.scope.GCPManagedControlPlane.Spec.MonitoringService.String() {
-		needUpdate = true
-		clusterUpdate.DesiredLoggingService = s.scope.GCPManagedControlPlane.Spec.MonitoringService.String()
-		log.V(2).Info("MonitoringService config update required", "current", existingCluster.GetMonitoringService(), "desired", s.scope.GCPManagedControlPlane.Spec.MonitoringService.String())
+	if specMonitoringService := s.scope.GCPManagedControlPlane.Spec.MonitoringService; specMonitoringService != nil {
+		if existingCluster.GetMonitoringService() != specMonitoringService.String() {
+			needUpdate = true
+			clusterUpdate.DesiredLoggingService = specMonitoringService.String()
+			log.V(2).Info("MonitoringService config update required", "current", existingCluster.GetMonitoringService(), "desired", specMonitoringService.String())
+		}
 	}
 
 	// DesiredMasterAuthorizedNetworksConfig
