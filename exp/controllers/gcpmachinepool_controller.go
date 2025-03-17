@@ -81,7 +81,7 @@ func (r *GCPMachinePoolReconciler) SetupWithManager(ctx context.Context, mgr ctr
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		For(&infrav1exp.GCPMachinePool{}).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(mgr.GetScheme(), log, r.WatchFilterValue)).
 		Watches(
 			&expclusterv1.MachinePool{},
 			handler.EnqueueRequestsFromMapFunc(machinePoolToInfrastructureMapFunc(gvk)),
@@ -99,20 +99,21 @@ func (r *GCPMachinePoolReconciler) SetupWithManager(ctx context.Context, mgr ctr
 
 	// Watch for changes in the GCPMachinePool instances and enqueue the GCPMachinePool object for the controller
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &infrav1exp.GCPMachinePoolMachine{}),
-		handler.EnqueueRequestsFromMapFunc(GCPMachinePoolMachineMapper(mgr.GetScheme(), log)),
-		MachinePoolMachineHasStateOrVersionChange(log),
-		predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue),
+		source.Kind[client.Object](mgr.GetCache(), &infrav1exp.GCPMachinePoolMachine{},
+			handler.EnqueueRequestsFromMapFunc(GCPMachinePoolMachineMapper(mgr.GetScheme(), log)),
+			MachinePoolMachineHasStateOrVersionChange(log),
+			predicates.ResourceNotPausedAndHasFilterLabel(mgr.GetScheme(), log, r.WatchFilterValue),
+		),
 	); err != nil {
 		return errors.Wrap(err, "failed adding a watch for GCPMachinePoolMachine")
 	}
 
 	// Add a watch on clusterv1.Cluster object for unpause & ready notifications.
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
-		handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, gvk, mgr.GetClient(), &infrav1exp.GCPMachinePool{})),
-		predicates.ClusterUnpausedAndInfrastructureReady(log),
-	); err != nil {
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
+			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, gvk, mgr.GetClient(), &infrav1exp.GCPMachinePool{})),
+			predicates.ClusterUnpausedAndInfrastructureReady(mgr.GetScheme(), log),
+		)); err != nil {
 		return errors.Wrap(err, "failed adding a watch for ready clusters")
 	}
 
