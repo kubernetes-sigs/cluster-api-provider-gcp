@@ -80,7 +80,6 @@ type ServiceAccount struct {
 // MetadataItem is a key/value pair to add to the instance's metadata.
 type MetadataItem struct {
 	// Key is the identifier for the metadata entry.
-	// +optional
 	Key string `json:"key"`
 	// Value is the value of the metadata entry.
 	// +optional

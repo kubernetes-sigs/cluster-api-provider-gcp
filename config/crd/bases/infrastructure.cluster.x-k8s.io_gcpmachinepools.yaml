@@ -98,6 +98,8 @@ spec:
                     value:
                       description: Value is the value of the metadata entry.
                       type: string
+                  required:
+                  - key
                   type: object
                 type: array
                 x-kubernetes-list-map-keys:
