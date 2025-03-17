@@ -18,6 +18,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - secrets
   verbs:
   - create
@@ -53,8 +61,6 @@ rules:
   resources:
   - clusters
   - clusters/status
-  - machinepools
-  - machinepools/status
   - machines
   - machines/status
   verbs:
@@ -62,17 +68,24 @@ rules:
   - list
   - watch
 - apiGroups:
-  - ""
+  - cluster.x-k8s.io
   resources:
-  - nodes
+  - machinepools
+  - machinepools/status
   verbs:
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
   - gcpclusters
+  - gcpmachinepoolmachines
+  - gcpmachinepoolmachines/finalizers
+  - gcpmachinepoolmachines/status
+  - gcpmachinepools
   - gcpmachines
   - gcpmanagedclusters
   - gcpmanagedcontrolplanes
@@ -89,6 +102,7 @@ rules:
   - infrastructure.cluster.x-k8s.io
   resources:
   - gcpclusters/status
+  - gcpmachinepools/status
   - gcpmachines/status
   - gcpmanagedclusters/status
   - gcpmanagedcontrolplanes/status
@@ -100,6 +114,7 @@ rules:
 - apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
+  - gcpmachinepools/finalizers
   - gcpmanagedclusters/finalizers
   - gcpmanagedcontrolplanes/finalizers
   - gcpmanagedmachinepools/finalizers
