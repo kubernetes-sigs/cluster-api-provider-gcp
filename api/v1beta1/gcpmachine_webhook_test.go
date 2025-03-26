@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -272,7 +273,7 @@ func TestGCPMachine_ValidateCreate(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			warn, err := test.GCPMachine.ValidateCreate()
+			warn, err := (&gcpMachineWebhook{}).ValidateCreate(context.Background(), test.GCPMachine)
 			if test.wantErr {
 				g.Expect(err).To(HaveOccurred())
 			} else {
