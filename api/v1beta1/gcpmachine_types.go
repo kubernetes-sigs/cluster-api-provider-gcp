@@ -360,6 +360,25 @@ type GCPMachineSpec struct {
 	// RootDiskEncryptionKey defines the KMS key to be used to encrypt the root disk.
 	// +optional
 	RootDiskEncryptionKey *CustomerEncryptionKey `json:"rootDiskEncryptionKey,omitempty"`
+
+	// GuestAccelerators is a list of the type and count of accelerator cards
+	// attached to the instance.
+	// +optional
+	GuestAccelerators []Accelerator `json:"guestAccelerators,omitempty"`
+}
+
+// Accelerator is a specification of the type and number of accelerator
+// cards attached to the instance.
+type Accelerator struct {
+	// Count is the number of the guest accelerator cards exposed to this
+	// instance.
+	Count int64 `json:"count,omitempty"`
+	// Type is the full or partial URL of the accelerator type resource to
+	// attach to this instance. For example:
+	// projects/my-project/zones/us-central1-c/acceleratorTypes/nvidia-tesla-p100
+	// If you are creating an instance template, specify only the accelerator name.
+	// See GPUs on Compute Engine for a full list of accelerator types.
+	Type string `json:"type,omitempty"`
 }
 
 // MetadataItem defines a single piece of metadata associated with an instance.
