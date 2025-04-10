@@ -321,6 +321,7 @@ func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managed
 	log.Info("Reconciling GCPManagedMachinePool")
 
 	controllerutil.AddFinalizer(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.ManagedMachinePoolFinalizer)
+	managedMachinePoolScope.SetInfrastructureMachineKind()
 	if err := managedMachinePoolScope.PatchObject(); err != nil {
 		return ctrl.Result{}, err
 	}
