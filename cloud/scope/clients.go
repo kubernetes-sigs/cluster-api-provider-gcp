@@ -95,13 +95,13 @@ func newComputeService(ctx context.Context, credentialsRef *infrav1.ObjectRefere
 		return nil, fmt.Errorf("getting default gcp client options: %w", err)
 	}
 
-	if endpoints != nil && endpoints.ComputeServiceEndpoint != "" {
-		opts = append(opts, option.WithEndpoint(endpoints.ComputeServiceEndpoint))
-	}
-
 	computeSvc, err := compute.NewService(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("creating new compute service instance: %w", err)
+	}
+
+	if endpoints.ComputeServiceEndpoint != "" {
+		computeSvc.BasePath = endpoints.ComputeServiceEndpoint
 	}
 
 	return computeSvc, nil
