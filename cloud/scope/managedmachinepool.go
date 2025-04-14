@@ -71,14 +71,14 @@ func NewManagedMachinePoolScope(ctx context.Context, params ManagedMachinePoolSc
 	}
 
 	if params.ManagedClusterClient == nil {
-		managedClusterClient, err := newClusterManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+		managedClusterClient, err := newClusterManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
 		}
 		params.ManagedClusterClient = managedClusterClient
 	}
 	if params.InstanceGroupManagersClient == nil {
-		instanceGroupManagersClient, err := newInstanceGroupManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+		instanceGroupManagersClient, err := newInstanceGroupManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp instance group manager client: %v", err)
 		}

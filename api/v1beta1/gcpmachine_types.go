@@ -19,7 +19,6 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/cluster-api/errors"
 )
 
 const (
@@ -135,11 +134,21 @@ const (
 	ConfidentialComputePolicyEnabled ConfidentialComputePolicy = "Enabled"
 	// ConfidentialComputePolicyDisabled disables confidential compute for the GCP machine.
 	ConfidentialComputePolicyDisabled ConfidentialComputePolicy = "Disabled"
+	// ConfidentialComputePolicySEV sets AMD SEV as the VM instance's confidential computing technology of choice.
+	ConfidentialComputePolicySEV ConfidentialComputePolicy = "AMDEncryptedVirtualization"
+	// ConfidentialComputePolicySEVSNP sets AMD SEV-SNP as the VM instance's confidential computing technology of choice.
+	ConfidentialComputePolicySEVSNP ConfidentialComputePolicy = "AMDEncryptedVirtualizationNestedPaging"
+	// ConfidentialComputePolicyTDX sets Intel TDX as the VM instance's confidential computing technology of choice.
+	ConfidentialComputePolicyTDX ConfidentialComputePolicy = "IntelTrustedDomainExtensions"
 )
 
-// Confidential VM supports Compute Engine machine types in the following series:
+// Confidential VM Technology support depends on the configured machine types.
 // reference: https://cloud.google.com/compute/confidential-vm/docs/os-and-machine-type#machine-type
-var confidentialComputeSupportedMachineSeries = []string{"n2d", "c2d"}
+var (
+	confidentialMachineSeriesSupportingSev    = []string{"n2d", "c2d", "c3d"}
+	confidentialMachineSeriesSupportingSevsnp = []string{"n2d"}
+	confidentialMachineSeriesSupportingTdx    = []string{"c3"}
+)
 
 // HostMaintenancePolicy represents the desired behavior ase of a host maintenance event.
 type HostMaintenancePolicy string
@@ -336,10 +345,15 @@ type GCPMachineSpec struct {
 	// +optional
 	OnHostMaintenance *HostMaintenancePolicy `json:"onHostMaintenance,omitempty"`
 
-	// ConfidentialCompute Defines whether the instance should have confidential compute enabled.
-	// If enabled OnHostMaintenance is required to be set to "Terminate".
+	// ConfidentialCompute Defines whether the instance should have confidential compute enabled or not, and the confidential computing technology of choice.
+	// If Disabled, the machine will not be configured to be a confidential computing instance.
+	// If Enabled, confidential computing will be configured and AMD Secure Encrypted Virtualization will be configured by default. That is subject to change over time. If using AMD Secure Encrypted Virtualization is vital, use AMDEncryptedVirtualization explicitly instead.
+	// If AMDEncryptedVirtualization, it will configure AMD Secure Encrypted Virtualization (AMD SEV) as the confidential computing technology.
+	// If AMDEncryptedVirtualizationNestedPaging, it will configure AMD Secure Encrypted Virtualization Secure Nested Paging (AMD SEV-SNP) as the confidential computing technology.
+	// If IntelTrustedDomainExtensions, it will configure Intel TDX as the confidential computing technology.
+	// If enabled (any value other than Disabled) OnHostMaintenance is required to be set to "Terminate".
 	// If omitted, the platform chooses a default, which is subject to change over time, currently that default is false.
-	// +kubebuilder:validation:Enum=Enabled;Disabled
+	// +kubebuilder:validation:Enum=Enabled;Disabled;AMDEncryptedVirtualization;AMDEncryptedVirtualizationNestedPaging;IntelTrustedDomainExtensions
 	// +optional
 	ConfidentialCompute *ConfidentialComputePolicy `json:"confidentialCompute,omitempty"`
 
@@ -386,7 +400,7 @@ type GCPMachineStatus struct {
 	// can be added as events to the Machine object and/or logged in the
 	// controller's output.
 	// +optional
-	FailureReason *errors.MachineStatusError `json:"failureReason,omitempty"`
+	FailureReason *string `json:"failureReason,omitempty"`
 
 	// FailureMessage will be set in the event that there is a terminal problem
 	// reconciling the Machine and will contain a more verbose string suitable

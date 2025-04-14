@@ -24,20 +24,6 @@ updates:
           - "minor"
           - "patch"
 
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: daily
-    labels:
-      - "area/dependency"
-      - "release-note-none"
-      - "ok-to-test"
-    groups:
-      all:
-        update-types:
-          - "minor"
-          - "patch"
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

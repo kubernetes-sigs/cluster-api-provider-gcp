@@ -67,7 +67,7 @@ func (r *GCPManagedControlPlaneReconciler) SetupWithManager(ctx context.Context,
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
 		For(gcpManagedControlPlane).
-		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(log, r.WatchFilterValue)).
+		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(mgr.GetScheme(), log, r.WatchFilterValue)).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
@@ -76,7 +76,7 @@ func (r *GCPManagedControlPlaneReconciler) SetupWithManager(ctx context.Context,
 	if err = c.Watch(
 		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, gcpManagedControlPlane.GroupVersionKind(), mgr.GetClient(), &infrav1exp.GCPManagedControlPlane{})),
-			predicates.ClusterUnpausedAndInfrastructureReady(log),
+			predicates.ClusterPausedTransitionsOrInfrastructureReady(mgr.GetScheme(), log),
 		)); err != nil {
 		return fmt.Errorf("failed adding a watch for ready clusters: %w", err)
 	}
@@ -215,7 +215,8 @@ func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, 
 		}
 	}
 
-	if conditions.Get(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneDeletingCondition).Reason == infrav1exp.GKEControlPlaneDeletedReason {
+	if managedControlPlaneScope.GCPManagedControlPlane != nil &&
+		conditions.Get(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneDeletingCondition).Reason == infrav1exp.GKEControlPlaneDeletedReason {
 		controllerutil.RemoveFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
 	}
 

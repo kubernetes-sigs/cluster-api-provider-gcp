@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
+    controller-gen.kubebuilder.io/version: v0.17.1
   name: gcpmanagedcontrolplanes.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
@@ -30,6 +30,10 @@ spec:
     - description: The current Kubernetes version
       jsonPath: .status.currentVersion
       name: CurrentVersion
+      type: string
+    - description: The Kubernetes version of the GKE control plane
+      jsonPath: .status.version
+      name: Version
       type: string
     - description: API Endpoint
       jsonPath: .spec.endpoint
@@ -133,6 +137,8 @@ spec:
                   ControlPlaneVersion represents the control plane version of the GKE cluster.
                   If not specified, the default version currently supported by GKE will be
                   used.
+
+                  Deprecated: This field will soon be removed and you are expected to use Version instead.
                 type: string
               description:
                 description: Description describe the cluster.
@@ -165,6 +171,12 @@ spec:
                   Location represents the location (region or zone) in which the GKE cluster
                   will be created.
                 type: string
+              loggingService:
+                description: |-
+                  LoggingService represents configuration of logging service feature of the GKE cluster.
+                  Possible values: none, logging.googleapis.com/kubernetes (default).
+                  Value is ignored when enableAutopilot = true.
+                type: string
               master_authorized_networks_config:
                 description: |-
                   MasterAuthorizedNetworksConfig represents configuration options for master authorized networks feature of the GKE cluster.
@@ -193,6 +205,12 @@ spec:
                       Public IP addresses.
                     type: boolean
                 type: object
+              monitoringService:
+                description: |-
+                  MonitoringService represents configuration of monitoring service feature of the GKE cluster.
+                  Possible values: none, monitoring.googleapis.com/kubernetes (default).
+                  Value is ignored when enableAutopilot = true.
+                type: string
               project:
                 description: Project is the name of the project to deploy the cluster
                   to.
@@ -204,6 +222,12 @@ spec:
                 - rapid
                 - regular
                 - stable
+                type: string
+              version:
+                description: |-
+                  Version represents the control plane version of the GKE cluster.
+                  If not specified, the default version currently supported by GKE will be
+                  used.
                 type: string
             required:
             - location
@@ -236,20 +260,20 @@ spec:
                       description: |-
                         The reason for the condition's last transition in CamelCase.
                         The specific API may choose whether or not this field is considered a guaranteed API.
-                        This field may not be empty.
+                        This field may be empty.
                       type: string
                     severity:
                       description: |-
-                        Severity provides an explicit classification of Reason code, so the users or machines can immediately
+                        severity provides an explicit classification of Reason code, so the users or machines can immediately
                         understand the current situation and act accordingly.
                         The Severity field MUST be set only when Status=False.
                       type: string
                     status:
-                      description: Status of the condition, one of True, False, Unknown.
+                      description: status of the condition, one of True, False, Unknown.
                       type: string
                     type:
                       description: |-
-                        Type of condition in CamelCase or in foo.example.com/CamelCase.
+                        type of condition in CamelCase or in foo.example.com/CamelCase.
                         Many .condition.type values are consistent across resources like Available, but because arbitrary conditions
                         can be useful (see .node.status.conditions), the ability to deconflict is important.
                       type: string
@@ -260,8 +284,10 @@ spec:
                   type: object
                 type: array
               currentVersion:
-                description: CurrentVersion shows the current version of the GKE control
-                  plane.
+                description: |-
+                  CurrentVersion shows the current version of the GKE control plane.
+
+                  Deprecated: This field will soon be removed and you are expected to use Version instead.
                 type: string
               initialized:
                 description: |-
@@ -274,6 +300,9 @@ spec:
                   Ready denotes that the GCPManagedControlPlane API Server is ready to
                   receive requests.
                 type: boolean
+              version:
+                description: Version represents the version of the GKE control plane.
+                type: string
             required:
             - ready
             type: object

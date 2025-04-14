@@ -70,14 +70,14 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 	}
 
 	if params.ManagedClusterClient == nil {
-		managedClusterClient, err := newClusterManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+		managedClusterClient, err := newClusterManagerClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp managed cluster client: %v", err)
 		}
 		params.ManagedClusterClient = managedClusterClient
 	}
 	if params.TagBindingsClient == nil {
-		tagBindingsClient, err := newTagBindingsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.Region)
+		tagBindingsClient, err := newTagBindingsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.Region, params.GCPManagedCluster.Spec.ServiceEndpoints)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp tag bindings client: %v", err)
 		}
@@ -85,7 +85,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 	}
 	if params.CredentialsClient == nil {
 		var credentialsClient *credentials.IamCredentialsClient
-		credentialsClient, err = newIamCredentialsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
+		credentialsClient, err = newIamCredentialsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp credentials client: %v", err)
 		}
@@ -236,4 +236,15 @@ func (s *ManagedControlPlaneScope) SetEndpoint(host string) {
 // IsAutopilotCluster returns true if this is an autopilot cluster.
 func (s *ManagedControlPlaneScope) IsAutopilotCluster() bool {
 	return s.GCPManagedControlPlane.Spec.EnableAutopilot
+}
+
+// GetControlPlaneVersion returns the control plane version from the specification.
+func (s *ManagedControlPlaneScope) GetControlPlaneVersion() *string {
+	if s.GCPManagedControlPlane.Spec.Version != nil {
+		return s.GCPManagedControlPlane.Spec.Version
+	}
+	if s.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
+		return s.GCPManagedControlPlane.Spec.ControlPlaneVersion
+	}
+	return nil
 }
