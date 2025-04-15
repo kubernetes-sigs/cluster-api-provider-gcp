@@ -95,7 +95,7 @@ var _ = Describe("Conformance Tests", func() {
 	It("Should run conformance tests", func() {
 		var err error
 
-		kubernetesVersion := e2eConfig.GetVariable(capi_e2e.KubernetesVersion)
+		kubernetesVersion := e2eConfig.MustGetVariable(capi_e2e.KubernetesVersion)
 
 		flavor := clusterctl.DefaultFlavor
 		// clusters with CI artifacts or PR artifacts are based on a known CI version
@@ -108,9 +108,9 @@ var _ = Describe("Conformance Tests", func() {
 			flavor = "conformance-ci-artifacts"
 		}
 
-		workerMachineCount, err := strconv.ParseInt(e2eConfig.GetVariable("CONFORMANCE_WORKER_MACHINE_COUNT"), 10, 64)
+		workerMachineCount, err := strconv.ParseInt(e2eConfig.MustGetVariable("CONFORMANCE_WORKER_MACHINE_COUNT"), 10, 64)
 		Expect(err).NotTo(HaveOccurred())
-		controlPlaneMachineCount, err := strconv.ParseInt(e2eConfig.GetVariable("CONFORMANCE_CONTROL_PLANE_MACHINE_COUNT"), 10, 64)
+		controlPlaneMachineCount, err := strconv.ParseInt(e2eConfig.MustGetVariable("CONFORMANCE_CONTROL_PLANE_MACHINE_COUNT"), 10, 64)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Initializes the work cluster")
@@ -134,7 +134,7 @@ var _ = Describe("Conformance Tests", func() {
 		}, result)
 
 		workloadProxy := bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, clusterName)
-		ginkgoNodes, err := strconv.Atoi(e2eConfig.GetVariable("CONFORMANCE_NODES"))
+		ginkgoNodes, err := strconv.Atoi(e2eConfig.MustGetVariable("CONFORMANCE_NODES"))
 		Expect(err).NotTo(HaveOccurred())
 
 		kubetest.Run(context.Background(),
