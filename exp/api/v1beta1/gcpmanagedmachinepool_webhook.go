@@ -53,7 +53,7 @@ type gcpManagedMachinePoolWebhook struct{}
 var _ webhook.CustomDefaulter = &gcpManagedMachinePoolWebhook{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (_ *gcpManagedMachinePoolWebhook) Default(_ context.Context, _ runtime.Object) error {
+func (*gcpManagedMachinePoolWebhook) Default(_ context.Context, _ runtime.Object) error {
 	return nil
 }
 
@@ -176,7 +176,7 @@ func (r *GCPManagedMachinePool) validateImmutable(old *GCPManagedMachinePool) fi
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedMachinePoolWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedMachinePoolWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*GCPManagedMachinePool)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedMachinePool object but got %T", r)
@@ -197,7 +197,7 @@ func (_ *gcpManagedMachinePoolWebhook) ValidateCreate(_ context.Context, obj run
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedMachinePoolWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedMachinePoolWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*GCPManagedMachinePool)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedMachinePool object but got %T", r)
@@ -223,6 +223,6 @@ func (_ *gcpManagedMachinePoolWebhook) ValidateUpdate(ctx context.Context, oldOb
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedMachinePoolWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedMachinePoolWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

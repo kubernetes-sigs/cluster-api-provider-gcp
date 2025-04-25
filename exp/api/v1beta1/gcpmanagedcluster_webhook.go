@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+
 	"github.com/google/go-cmp/cmp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,7 +50,7 @@ type gcpManagedClusterWebhook struct{}
 var _ webhook.CustomDefaulter = &gcpManagedClusterWebhook{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (_ *gcpManagedClusterWebhook) Default(_ context.Context, _ runtime.Object) error {
+func (*gcpManagedClusterWebhook) Default(_ context.Context, _ runtime.Object) error {
 	return nil
 }
 
@@ -58,7 +59,7 @@ func (_ *gcpManagedClusterWebhook) Default(_ context.Context, _ runtime.Object) 
 var _ webhook.CustomValidator = &gcpManagedClusterWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedClusterWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedClusterWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*GCPManagedCluster)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedCluster object but got %T", r)
@@ -70,7 +71,7 @@ func (_ *gcpManagedClusterWebhook) ValidateCreate(_ context.Context, obj runtime
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*GCPManagedCluster)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedCluster object but got %T", r)
@@ -109,7 +110,7 @@ func (_ *gcpManagedClusterWebhook) ValidateUpdate(_ context.Context, oldObj, new
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedClusterWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedClusterWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 

@@ -57,7 +57,7 @@ var (
 )
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpMachineWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*gcpMachineWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	m, ok := obj.(*GCPMachine)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPMachine object but got %T", m)
@@ -72,7 +72,7 @@ func (_ *gcpMachineWebhook) ValidateCreate(_ context.Context, obj runtime.Object
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpMachineWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*gcpMachineWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	m, ok := newObj.(*GCPMachine)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPMachine object but got %T", m)
@@ -116,12 +116,12 @@ func (_ *gcpMachineWebhook) ValidateUpdate(_ context.Context, oldObj, newObj run
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpMachineWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*gcpMachineWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
 // Default implements webhookutil.defaulter so a webhook will be registered for the type.
-func (_ *gcpMachineWebhook) Default(_ context.Context, _ runtime.Object) error {
+func (*gcpMachineWebhook) Default(_ context.Context, _ runtime.Object) error {
 	return nil
 }
 

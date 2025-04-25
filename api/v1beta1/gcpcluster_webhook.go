@@ -54,17 +54,17 @@ var (
 )
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the type.
-func (_ *gcpClusterWebhook) Default(_ context.Context, _ runtime.Object) error {
+func (*gcpClusterWebhook) Default(_ context.Context, _ runtime.Object) error {
 	return nil
 }
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (_ *gcpClusterWebhook) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*gcpClusterWebhook) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (_ *gcpClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*gcpClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	c, ok := newObj.(*GCPCluster)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPCluster object but got %T", c)
@@ -124,6 +124,6 @@ func (_ *gcpClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj run
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type.
-func (_ *gcpClusterWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*gcpClusterWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

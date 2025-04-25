@@ -102,7 +102,8 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 				},
 				Spec: tc.spec,
 			}
-			(&gcpManagedControlPlaneWebhook{}).Default(context.Background(), mcp)
+			err := (&gcpManagedControlPlaneWebhook{}).Default(context.Background(), mcp)
+			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(mcp.Spec).ToNot(BeNil())
 			g.Expect(mcp.Spec.ClusterName).ToNot(BeEmpty())

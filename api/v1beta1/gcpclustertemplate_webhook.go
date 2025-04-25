@@ -24,13 +24,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
-
-// log is for logging in this package.
-var gcpclustertemplatelog = logf.Log.WithName("gcpclustertemplate-resource")
 
 func (r *GCPClusterTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	w := new(gcpClusterTemplateWebhook)
@@ -52,17 +48,17 @@ var (
 )
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the type.
-func (_ *gcpClusterTemplateWebhook) Default(_ context.Context, _ runtime.Object) error {
+func (*gcpClusterTemplateWebhook) Default(_ context.Context, _ runtime.Object) error {
 	return nil
 }
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (_ *gcpClusterTemplateWebhook) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*gcpClusterTemplateWebhook) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (_ *gcpClusterTemplateWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*gcpClusterTemplateWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*GCPClusterTemplate)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPClusterTemplate object but got %T", r)
@@ -80,6 +76,6 @@ func (_ *gcpClusterTemplateWebhook) ValidateUpdate(_ context.Context, oldObj, ne
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type.
-func (_ *gcpClusterTemplateWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*gcpClusterTemplateWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

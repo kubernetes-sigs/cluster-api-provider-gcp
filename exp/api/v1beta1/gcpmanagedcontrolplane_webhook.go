@@ -58,7 +58,7 @@ type gcpManagedControlPlaneWebhook struct{}
 var _ webhook.CustomDefaulter = &gcpManagedControlPlaneWebhook{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (_ *gcpManagedControlPlaneWebhook) Default(ctx context.Context, obj runtime.Object) error {
+func (*gcpManagedControlPlaneWebhook) Default(_ context.Context, obj runtime.Object) error {
 	r, ok := obj.(*GCPManagedControlPlane)
 	if !ok {
 		return fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
@@ -85,7 +85,7 @@ func (_ *gcpManagedControlPlaneWebhook) Default(ctx context.Context, obj runtime
 var _ webhook.CustomValidator = &gcpManagedControlPlaneWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedControlPlaneWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedControlPlaneWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*GCPManagedControlPlane)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
@@ -133,7 +133,7 @@ func (_ *gcpManagedControlPlaneWebhook) ValidateCreate(_ context.Context, obj ru
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedControlPlaneWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedControlPlaneWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*GCPManagedControlPlane)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
@@ -210,7 +210,7 @@ func (_ *gcpManagedControlPlaneWebhook) ValidateUpdate(_ context.Context, oldObj
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (_ *gcpManagedControlPlaneWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedControlPlaneWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
