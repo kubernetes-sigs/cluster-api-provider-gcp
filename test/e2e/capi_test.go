@@ -64,7 +64,7 @@ var _ = Describe("Running the Cluster API E2E tests", func() {
 				BootstrapClusterProxy: bootstrapClusterProxy,
 				ArtifactFolder:        artifactFolder,
 				SkipCleanup:           skipCleanup,
-				Flavor:                ptr.To[string]("topology"),
+				Flavor:                ptr.To[string]("ci-topology"),
 			}
 		})
 	})
