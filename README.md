@@ -50,7 +50,7 @@ This provider's versions are able to install and manage the following versions o
  
 Each version of Cluster API for Google Cloud will attempt to support at least two versions of Kubernetes e.g., Cluster API for GCP `v0.1` may support Kubernetes 1.13 and Kubernetes 1.14.
 
-**NOTE:** As the versioning for this project is tied to the versioning of Cluster API, future modifications to this policy may be made to more closely align with other providers in the Cluster API ecosystem. 
+**NOTE:** As the versioning for this project is tied to the versioning of Cluster API, future modifications to this policy may be made to more closely align with other providers in the Cluster API ecosystem.
 
 ----
 
