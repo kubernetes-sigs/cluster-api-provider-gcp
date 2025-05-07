@@ -357,6 +357,17 @@ type ObjectReference struct {
 	Name string `json:"name"`
 }
 
+// InternalAccess defines the access for the Internal Passthrough Load Balancer.
+type InternalAccess string
+
+const (
+	// InternalAccessRegional restricts traffic to clients within the same region as the internal load balancer.
+	InternalAccessRegional = InternalAccess("Regional")
+
+	// InternalAccessGlobal allows traffic from any region to access the internal load balancer.
+	InternalAccessGlobal = InternalAccess("Global")
+)
+
 // LoadBalancer specifies the configuration of a LoadBalancer.
 type LoadBalancer struct {
 	// Name is the name of the Load Balancer. If not set a default name
@@ -371,4 +382,17 @@ type LoadBalancer struct {
 	// required for the Load Balancer, if not defined the first configured subnet will be
 	// used.
 	Subnet *string `json:"subnet,omitempty"`
+
+	// InternalAccess defines the access for the Internal Passthrough Load Balancer.
+	// It determines whether the load balancer allows global access,
+	// or restricts traffic to clients within the same region as the load balancer.
+	// If unspecified, the value defaults to "Regional".
+	//
+	// Possible values:
+	//   "Regional" - Only clients in the same region as the load balancer can access it.
+	//   "Global" - Clients from any region can access the load balancer.
+	// +kubebuilder:validation:Enum=Regional;Global
+	// +kubebuilder:default=Regional
+	// +optional
+	InternalAccess InternalAccess `json:"internalAccess,omitempty"`
 }
