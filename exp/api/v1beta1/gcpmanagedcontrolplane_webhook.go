@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -42,17 +43,27 @@ const (
 var gcpmanagedcontrolplanelog = logf.Log.WithName("gcpmanagedcontrolplane-resource")
 
 func (r *GCPManagedControlPlane) SetupWebhookWithManager(mgr ctrl.Manager) error {
+	w := new(gcpManagedControlPlaneWebhook)
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(w).
+		WithDefaulter(w).
 		Complete()
 }
 
 //+kubebuilder:webhook:path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcontrolplane,mutating=true,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=create;update,versions=v1beta1,name=mgcpmanagedcontrolplane.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &GCPManagedControlPlane{}
+type gcpManagedControlPlaneWebhook struct{}
+
+var _ webhook.CustomDefaulter = &gcpManagedControlPlaneWebhook{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *GCPManagedControlPlane) Default() {
+func (*gcpManagedControlPlaneWebhook) Default(_ context.Context, obj runtime.Object) error {
+	r, ok := obj.(*GCPManagedControlPlane)
+	if !ok {
+		return fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
+	}
+
 	gcpmanagedcontrolplanelog.Info("default", "name", r.Name)
 
 	if r.Spec.ClusterName == "" {
@@ -60,20 +71,26 @@ func (r *GCPManagedControlPlane) Default() {
 		name, err := generateGKEName(r.Name, r.Namespace, maxClusterNameLength)
 		if err != nil {
 			gcpmanagedcontrolplanelog.Error(err, "failed to create GKE cluster name")
-			return
+			return nil
 		}
 
 		gcpmanagedcontrolplanelog.Info("defaulting GKE cluster name", "cluster-name", name)
 		r.Spec.ClusterName = name
 	}
+	return nil
 }
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcontrolplane,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=create;update,versions=v1beta1,name=vgcpmanagedcontrolplane.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &GCPManagedControlPlane{}
+var _ webhook.CustomValidator = &gcpManagedControlPlaneWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPManagedControlPlane) ValidateCreate() (admission.Warnings, error) {
+func (*gcpManagedControlPlaneWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*GCPManagedControlPlane)
+	if !ok {
+		return nil, fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
+	}
+
 	gcpmanagedcontrolplanelog.Info("validate create", "name", r.Name)
 	var allErrs field.ErrorList
 	var allWarns admission.Warnings
@@ -116,10 +133,15 @@ func (r *GCPManagedControlPlane) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPManagedControlPlane) ValidateUpdate(oldRaw runtime.Object) (admission.Warnings, error) {
+func (*gcpManagedControlPlaneWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*GCPManagedControlPlane)
+	if !ok {
+		return nil, fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
+	}
+
 	gcpmanagedcontrolplanelog.Info("validate update", "name", r.Name)
 	var allErrs field.ErrorList
-	old := oldRaw.(*GCPManagedControlPlane)
+	old := oldObj.(*GCPManagedControlPlane)
 
 	if !cmp.Equal(r.Spec.ClusterName, old.Spec.ClusterName) {
 		allErrs = append(allErrs,
@@ -188,9 +210,7 @@ func (r *GCPManagedControlPlane) ValidateUpdate(oldRaw runtime.Object) (admissio
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *GCPManagedControlPlane) ValidateDelete() (admission.Warnings, error) {
-	gcpmanagedcontrolplanelog.Info("validate delete", "name", r.Name)
-
+func (*gcpManagedControlPlaneWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
