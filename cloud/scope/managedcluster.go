@@ -27,6 +27,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,6 +45,12 @@ type ManagedClusterScopeParams struct {
 // NewManagedClusterScope creates a new Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
 func NewManagedClusterScope(ctx context.Context, params ManagedClusterScopeParams) (*ManagedClusterScope, error) {
+
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "cloud.managedClusterScope.NewManagedClusterScope",
+	)
+	defer span.End()
+
 	if params.Cluster == nil {
 		return nil, errors.New("failed to generate new scope from nil Cluster")
 	}

@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc/codes"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,6 +42,11 @@ import (
 
 // Reconcile reconcile GKE cluster.
 func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.Reconcile",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx).WithValues("service", "container.clusters")
 	log.Info("Reconciling cluster resources")
 
@@ -182,6 +188,11 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 
 // Delete delete GKE cluster.
 func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.Delete",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx).WithValues("service", "container.clusters")
 	log.Info("Deleting cluster resources")
 
@@ -226,6 +237,11 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 }
 
 func (s *Service) describeCluster(ctx context.Context, log *logr.Logger) (*containerpb.Cluster, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.describeCluster",
+	)
+	defer span.End()
+
 	getClusterRequest := &containerpb.GetClusterRequest{
 		Name: s.scope.ClusterFullName(),
 	}
@@ -245,6 +261,11 @@ func (s *Service) describeCluster(ctx context.Context, log *logr.Logger) (*conta
 }
 
 func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.createCluster",
+	)
+	defer span.End()
+
 	nodePools, machinePools, _ := s.scope.GetAllNodePools(ctx)
 
 	log.V(2).Info("Running pre-flight checks on machine pools before cluster creation")
@@ -351,6 +372,11 @@ func (s *Service) getSubnetNameInClusterRegion() string {
 }
 
 func (s *Service) updateCluster(ctx context.Context, updateClusterRequest *containerpb.UpdateClusterRequest, log *logr.Logger) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.updateCluster",
+	)
+	defer span.End()
+
 	_, err := s.scope.ManagedControlPlaneClient().UpdateCluster(ctx, updateClusterRequest)
 	if err != nil {
 		log.Error(err, "Error updating GKE cluster", "name", s.scope.ClusterName())
@@ -361,6 +387,11 @@ func (s *Service) updateCluster(ctx context.Context, updateClusterRequest *conta
 }
 
 func (s *Service) deleteCluster(ctx context.Context, log *logr.Logger) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.deleteCluster",
+	)
+	defer span.End()
+
 	deleteClusterRequest := &containerpb.DeleteClusterRequest{
 		Name: s.scope.ClusterFullName(),
 	}
