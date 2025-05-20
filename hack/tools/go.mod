@@ -4,7 +4,7 @@ go 1.23.0
 
 toolchain go1.24.2
 
-require sigs.k8s.io/cluster-api/hack/tools v0.0.0-20250429160156-647a1b741bc8
+require sigs.k8s.io/cluster-api/hack/tools v0.0.0-20250520093716-525566440a77
 
 require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
@@ -18,7 +18,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
@@ -28,7 +28,7 @@ require (
 	k8s.io/apimachinery v0.32.3 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
-	sigs.k8s.io/cluster-api v1.10.1 // indirect
+	sigs.k8s.io/cluster-api v1.10.2 // indirect
 	sigs.k8s.io/controller-tools v0.17.3 // indirect
 	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
 	sigs.k8s.io/kubebuilder/docs/book/utils v0.0.0-20211028165026-57688c578b5d // indirect
