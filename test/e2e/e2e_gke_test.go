@@ -70,14 +70,15 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 	AfterEach(func() {
 		cleanInput := cleanupInput{
-			SpecName:        specName,
-			Cluster:         result.Cluster,
-			ClusterProxy:    bootstrapClusterProxy,
-			Namespace:       namespace,
-			CancelWatches:   cancelWatches,
-			IntervalsGetter: e2eConfig.GetIntervals,
-			SkipCleanup:     skipCleanup,
-			ArtifactFolder:  artifactFolder,
+			SpecName:             specName,
+			Cluster:              result.Cluster,
+			ClusterProxy:         bootstrapClusterProxy,
+			ClusterctlConfigPath: clusterctlConfigPath,
+			Namespace:            namespace,
+			CancelWatches:        cancelWatches,
+			IntervalsGetter:      e2eConfig.GetIntervals,
+			SkipCleanup:          skipCleanup,
+			ArtifactFolder:       artifactFolder,
 		}
 
 		dumpSpecResourcesAndCleanup(ctx, cleanInput)
@@ -102,7 +103,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 					Flavor:                   "ci-gke",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](3),
 					ClusterctlVariables: map[string]string{
@@ -149,7 +150,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 					Flavor:                   "ci-gke-autopilot",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](0),
 				},
@@ -174,7 +175,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 					Flavor:                   "ci-gke-custom-subnet",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](3),
 					ClusterctlVariables: map[string]string{
