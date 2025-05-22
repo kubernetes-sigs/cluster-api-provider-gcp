@@ -19,6 +19,7 @@ package gcperrors
 
 import (
 	"net/http"
+	"strings"
 
 	"google.golang.org/api/googleapi"
 )
@@ -42,4 +43,33 @@ func IgnoreNotFound(err error) error {
 	}
 
 	return err
+}
+
+// IsAlreadyDeleted reports whether err is a Google API error indicating that the resource is already being deleted.
+func IsAlreadyDeleted(err error) bool {
+	if err == nil {
+		return false
+	}
+	ae, _ := err.(*googleapi.Error)
+
+	return strings.Contains(ae.Errors[0].Message, "Instance is already being deleted.")
+}
+
+// IsMemberNotFound reports whether err is a Google API error indicating that the member is not found.
+func IsMemberNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	ae, _ := err.(*googleapi.Error)
+
+	return strings.Contains(ae.Errors[0].Message, "is not a member of")
+}
+
+// PrintGCPError returns the error message from a Google API error.
+func PrintGCPError(err error) string {
+	if err == nil {
+		return ""
+	}
+	ae, _ := err.(*googleapi.Error)
+	return ae.Message + " " + ae.Errors[0].Message + " " + ae.Errors[0].Reason
 }

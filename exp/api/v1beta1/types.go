@@ -36,6 +36,24 @@ type Taint struct {
 	Value string `json:"value"`
 }
 
+// ProvisioningState describes the provisioning state of an GCP resource.
+type ProvisioningState string
+
+const (
+	// Creating ...
+	Creating ProvisioningState = "Creating"
+	// Deleting ...
+	Deleting ProvisioningState = "Deleting"
+	// Failed ...
+	Failed ProvisioningState = "Failed"
+	// Succeeded ...
+	Succeeded ProvisioningState = "Succeeded"
+	// Updating ...
+	Updating ProvisioningState = "Updating"
+	// Deleted represents a deleted resource.
+	Deleted ProvisioningState = "Deleted"
+)
+
 // Taints is an array of Taints.
 type Taints []Taint
 
