@@ -45,7 +45,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 		namespace           *corev1.Namespace
 		cancelWatches       context.CancelFunc
 		result              *ApplyManagedClusterTemplateAndWaitResult
-		clusterName         string
+		clusterNamePrefix   string
 		clusterctlLogFolder string
 	)
 
@@ -57,7 +57,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 
-		clusterName = fmt.Sprintf("capg-e2e-%s", util.RandomString(6))
+		clusterNamePrefix = fmt.Sprintf("capg-e2e-gke-%s", util.RandomString(6))
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, bootstrapClusterProxy, artifactFolder)
@@ -86,6 +86,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 	Context("Creating a GKE cluster without autopilot", func() {
 		It("Should create a cluster with 1 machine pool and scale", func() {
+			clusterName := fmt.Sprintf("%s-single", clusterNamePrefix)
 			By("Initializes with 1 machine pool")
 
 			minPoolSize, ok := e2eConfig.Variables["GKE_MACHINE_POOL_MIN"]
@@ -144,6 +145,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 	Context("Creating a GKE cluster with autopilot", func() {
 		It("Should create a cluster with 1 machine pool and scale", func() {
+			clusterName := fmt.Sprintf("%s-autopilot", clusterNamePrefix)
 			By("Initializes with 1 machine pool")
 
 			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
@@ -169,6 +171,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 	Context("Creating a GKE cluster with custom subnet", func() {
 		It("Should create a cluster with 3 machine pool and custom subnet", func() {
+			clusterName := fmt.Sprintf("%s-custom-subnet", clusterNamePrefix)
 			By("Initializes with 3 machine pool")
 
 			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
