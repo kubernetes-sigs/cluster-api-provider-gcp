@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	"sigs.k8s.io/cluster-api/util/kubeconfig"
 	"sigs.k8s.io/cluster-api/util/secret"
 )
@@ -42,6 +43,11 @@ const (
 )
 
 func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.Cluster, log *logr.Logger) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.reconcileKubeconfig",
+	)
+	defer span.End()
+
 	log.Info("Reconciling kubeconfig")
 	clusterRef := types.NamespacedName{
 		Name:      s.scope.Cluster.Name,
@@ -72,6 +78,11 @@ func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.
 }
 
 func (s *Service) reconcileAdditionalKubeconfigs(ctx context.Context, cluster *containerpb.Cluster, log *logr.Logger) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.reconcileAdditionalKubeconfigs",
+	)
+	defer span.End()
+
 	log.Info("Reconciling additional kubeconfig")
 	clusterRef := types.NamespacedName{
 		Name:      s.scope.Cluster.Name + "-user",
@@ -99,6 +110,11 @@ func (s *Service) reconcileAdditionalKubeconfigs(ctx context.Context, cluster *c
 }
 
 func (s *Service) createUserKubeconfigSecret(ctx context.Context, cluster *containerpb.Cluster, clusterRef *types.NamespacedName) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.createUserKubeconfigSecret",
+	)
+	defer span.End()
+
 	controllerOwnerRef := *metav1.NewControllerRef(s.scope.GCPManagedControlPlane, infrav1exp.GroupVersion.WithKind("GCPManagedControlPlane"))
 
 	contextName := s.getKubeConfigContextName(false)
@@ -134,6 +150,11 @@ func (s *Service) createUserKubeconfigSecret(ctx context.Context, cluster *conta
 }
 
 func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *containerpb.Cluster, clusterRef *types.NamespacedName, log *logr.Logger) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.createCAPIKubeconfigSecret",
+	)
+	defer span.End()
+
 	controllerOwnerRef := *metav1.NewControllerRef(s.scope.GCPManagedControlPlane, infrav1exp.GroupVersion.WithKind("GCPManagedControlPlane"))
 
 	contextName := s.getKubeConfigContextName(false)
@@ -171,6 +192,11 @@ func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *conta
 }
 
 func (s *Service) updateCAPIKubeconfigSecret(ctx context.Context, configSecret *corev1.Secret) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.updateCAPIKubeconfigSecret",
+	)
+	defer span.End()
+
 	data, ok := configSecret.Data[secret.KubeconfigDataName]
 	if !ok {
 		return errors.Errorf("missing key %q in secret data", secret.KubeconfigDataName)
@@ -238,6 +264,11 @@ func (s *Service) createBaseKubeConfig(contextName string, cluster *containerpb.
 }
 
 func (s *Service) generateToken(ctx context.Context) (string, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "clusters.Services.generateToken",
+	)
+	defer span.End()
+
 	req := &credentialspb.GenerateAccessTokenRequest{
 		Name: "projects/-/serviceAccounts/" + s.scope.GetCredential().ClientEmail,
 		Scope: []string{
