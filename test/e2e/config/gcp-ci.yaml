@@ -77,7 +77,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
 
 variables:
-  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.32.0}"
+  KUBERNETES_VERSION: "v1.32.0"
   KUBERNETES_VERSION_MANAGEMENT: "v1.32.0"
   ETCD_VERSION_UPGRADE_TO: "3.5.16-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.11.3"
