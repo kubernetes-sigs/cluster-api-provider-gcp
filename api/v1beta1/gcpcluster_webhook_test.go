@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -89,7 +90,7 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			warn, err := test.newCluster.ValidateUpdate(test.oldCluster)
+			warn, err := (&gcpClusterWebhook{}).ValidateUpdate(context.Background(), test.oldCluster, test.newCluster)
 			if test.wantErr {
 				g.Expect(err).To(HaveOccurred())
 			} else {

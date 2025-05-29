@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -131,7 +132,7 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 			mmp := &GCPManagedMachinePool{
 				Spec: tc.spec,
 			}
-			warn, err := mmp.ValidateCreate()
+			warn, err := (&gcpManagedMachinePoolWebhook{}).ValidateCreate(context.Background(), mmp)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())
@@ -190,7 +191,7 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 				},
 			}
 
-			warn, err := newMMP.ValidateUpdate(oldMMP)
+			warn, err := (&gcpManagedMachinePoolWebhook{}).ValidateUpdate(context.Background(), oldMMP, newMMP)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())
