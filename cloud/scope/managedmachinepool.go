@@ -312,3 +312,15 @@ func (s *ManagedMachinePoolScope) NodePoolLocation() string {
 func (s *ManagedMachinePoolScope) NodePoolFullName() string {
 	return fmt.Sprintf("%s/nodePools/%s", s.NodePoolLocation(), s.NodePoolName())
 }
+
+// SetInfrastructureMachineKind sets the infrastructure machine kind in the status if it is not set already, returning
+// `true` if the status was updated. This supports MachinePool Machines.
+func (s *ManagedMachinePoolScope) SetInfrastructureMachineKind() bool {
+	if s.GCPManagedMachinePool.Status.InfrastructureMachineKind != infrav1exp.GCPManagedMachinePoolMachineKind {
+		s.GCPManagedMachinePool.Status.InfrastructureMachineKind = infrav1exp.GCPManagedMachinePoolMachineKind
+
+		return true
+	}
+
+	return false
+}

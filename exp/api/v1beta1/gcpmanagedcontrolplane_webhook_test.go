@@ -83,11 +83,19 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 			resourceName: "cluster1",
 			resourceNS:   "default",
 			spec: GCPManagedControlPlaneSpec{
-				ClusterName:     "cluster1_autopilot",
-				Version:         &vV1_27_1,
-				EnableAutopilot: true,
+				ClusterName: "cluster1_autopilot",
+				Version:     &vV1_27_1,
+				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+				},
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_autopilot", Version: &vV1_27_1, EnableAutopilot: true},
+			expectSpec: GCPManagedControlPlaneSpec{
+				ClusterName: "cluster1_autopilot",
+				Version:     &vV1_27_1,
+				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+				},
+			},
 		},
 	}
 
@@ -138,9 +146,11 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			expectError: true,
 			expectWarn:  false,
 			spec: GCPManagedControlPlaneSpec{
-				ClusterName:     "",
-				EnableAutopilot: true,
-				ReleaseChannel:  nil,
+				ClusterName: "",
+				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  nil,
+				},
 			},
 		},
 		{
@@ -148,9 +158,11 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			expectError: false,
 			expectWarn:  false,
 			spec: GCPManagedControlPlaneSpec{
-				ClusterName:     "",
-				EnableAutopilot: true,
-				ReleaseChannel:  &releaseChannel,
+				ClusterName: "",
+				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+				},
 			},
 		},
 		{
@@ -215,7 +227,9 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 			expectError: true,
 			spec: GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster1",
-				Project:     "new-project",
+				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+					Project: "new-project",
+				},
 			},
 		},
 		{
@@ -223,15 +237,19 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 			expectError: true,
 			spec: GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster1",
-				Location:    "us-west4",
+				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+					Location: "us-west4",
+				},
 			},
 		},
 		{
 			name:        "request to enable/disable autopilot should cause an error",
 			expectError: true,
 			spec: GCPManagedControlPlaneSpec{
-				ClusterName:     "default_cluster1",
-				EnableAutopilot: true,
+				ClusterName: "default_cluster1",
+				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+				},
 			},
 		},
 		{
@@ -239,9 +257,11 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 			expectError: false,
 			spec: GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster1",
-				ClusterNetwork: &ClusterNetwork{
-					PrivateCluster: &PrivateCluster{
-						EnablePrivateEndpoint: false,
+				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &ClusterNetwork{
+						PrivateCluster: &PrivateCluster{
+							EnablePrivateEndpoint: false,
+						},
 					},
 				},
 			},
@@ -258,9 +278,11 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 			oldMCP := &GCPManagedControlPlane{
 				Spec: GCPManagedControlPlaneSpec{
 					ClusterName: "default_cluster1",
-					ClusterNetwork: &ClusterNetwork{
-						PrivateCluster: &PrivateCluster{
-							EnablePrivateEndpoint: true,
+					GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+						ClusterNetwork: &ClusterNetwork{
+							PrivateCluster: &PrivateCluster{
+								EnablePrivateEndpoint: true,
+							},
 						},
 					},
 				},
