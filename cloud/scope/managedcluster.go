@@ -51,13 +51,13 @@ func NewManagedClusterScope(ctx context.Context, params ManagedClusterScopeParam
 		return nil, errors.New("failed to generate new scope from nil GCPManagedCluster")
 	}
 
-	if params.GCPServices.Compute == nil {
+	if params.Compute == nil {
 		computeSvc, err := newComputeService(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp compute client: %v", err)
 		}
 
-		params.GCPServices.Compute = computeSvc
+		params.Compute = computeSvc
 	}
 
 	helper, err := patch.NewHelper(params.GCPManagedCluster, params.Client)
