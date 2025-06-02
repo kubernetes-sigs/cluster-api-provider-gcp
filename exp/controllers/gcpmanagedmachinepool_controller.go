@@ -112,7 +112,7 @@ func managedControlPlaneToManagedMachinePoolMapFunc(c client.Client, gvk schema.
 			panic(fmt.Sprintf("Expected a GCPManagedControlPlane but got a %T", o))
 		}
 
-		if !gcpManagedControlPlane.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !gcpManagedControlPlane.DeletionTimestamp.IsZero() {
 			return nil
 		}
 
@@ -231,7 +231,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 
 	// Get the managed machine pool
 	gcpManagedMachinePool := &infrav1exp.GCPManagedMachinePool{}
-	if err := r.Client.Get(ctx, req.NamespacedName, gcpManagedMachinePool); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, gcpManagedMachinePool); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -266,7 +266,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 		Name:      cluster.Spec.InfrastructureRef.Name,
 	}
 	gcpManagedCluster := &infrav1exp.GCPManagedCluster{}
-	if err := r.Client.Get(ctx, gcpManagedClusterKey, gcpManagedCluster); err != nil {
+	if err := r.Get(ctx, gcpManagedClusterKey, gcpManagedCluster); err != nil {
 		log.Error(err, "Failed to retrieve GCPManagedCluster from the API Server")
 		return ctrl.Result{}, err
 	}
@@ -276,7 +276,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 		Name:      cluster.Spec.ControlPlaneRef.Name,
 	}
 	gcpManagedControlPlane := &infrav1exp.GCPManagedControlPlane{}
-	if err := r.Client.Get(ctx, gcpManagedControlPlaneKey, gcpManagedControlPlane); err != nil {
+	if err := r.Get(ctx, gcpManagedControlPlaneKey, gcpManagedControlPlane); err != nil {
 		log.Info("Failed to retrieve ManagedControlPlane from ManagedMachinePool")
 		return reconcile.Result{}, nil
 	}

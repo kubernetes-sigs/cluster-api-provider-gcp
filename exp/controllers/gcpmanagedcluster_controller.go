@@ -275,7 +275,7 @@ func (r *GCPManagedClusterReconciler) managedControlPlaneMapper() handler.MapFun
 
 		log = log.WithValues("objectMapper", "cpTomc", "gcpmanagedcontrolplane", klog.KRef(gcpManagedControlPlane.Namespace, gcpManagedControlPlane.Name))
 
-		if !gcpManagedControlPlane.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !gcpManagedControlPlane.DeletionTimestamp.IsZero() {
 			log.Info("GCPManagedControlPlane has a deletion timestamp, skipping mapping")
 			return nil
 		}
@@ -319,7 +319,7 @@ func (r *GCPManagedClusterReconciler) dependencyCount(ctx context.Context, clust
 	}
 
 	managedMachinePools := &infrav1exp.GCPManagedMachinePoolList{}
-	if err := r.Client.List(ctx, managedMachinePools, listOptions...); err != nil {
+	if err := r.List(ctx, managedMachinePools, listOptions...); err != nil {
 		return 0, fmt.Errorf("failed to list managed machine pools for cluster %s/%s: %w", clusterNamespace, clusterName, err)
 	}
 
