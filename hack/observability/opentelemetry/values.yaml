@@ -1,0 +1,69 @@
+mode: "deployment"
+
+config:
+  receivers:
+    # using default configs for otlp
+    jaeger: null # disable Jaeger receiver
+    prometheus: null # disable Prometheus receiver
+    zipkin: null #  disable Zipkin receiver
+
+  # (2) Processors
+  processors:
+    memory_limiter:
+      limit_percentage: 50
+      check_interval: 1s
+      spike_limit_percentage: 30
+    batch:
+      send_batch_size: 8192
+
+  # (3) exporter
+  exporters:
+    jaeger:
+      endpoint: jaeger-all-in-one:14250
+      tls:
+        insecure: true
+    #export to Cloud Trace on GCP
+    googlecloud:
+      # disable metric + logging collections
+      # use default configs for trace
+      metric: null
+      log: null
+
+  # (4) service
+  service:
+    # A pipeline = a set of receivers, processors and exporters.
+    pipelines:
+      metrics: null
+      logs: null
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [jaeger, googlecloud]
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  pullPolicy: IfNotPresent
+  tag: 0.75.0
+command:
+  name: otelcol-contrib
+
+# Configuration for connecting to GCP's Cloud Trace
+extraEnvs:
+  - name: GOOGLE_APPLICATION_CREDENTIALS
+    value: /home/.gcp/credentials.json
+
+# retrieve GOOGLE_APPLICATION_CREDENTIALS env var from Secret
+extraVolumes:
+  - name: credentials
+    secret:
+      # prefix should match `namePrefix: capg-` from kustomization.yml
+      secretName: capg-manager-bootstrap-credentials
+
+extraVolumeMounts:
+  - name: credentials
+    mountPath: /home/.gcp
+
+ports:
+  jaeger-thrift: null
+  jaeger-grpc: null
+  zipkin: null

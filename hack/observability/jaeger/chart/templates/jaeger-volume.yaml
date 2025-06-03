@@ -1,0 +1,18 @@
+{{- if .Values.enabled }}
+{{- if .Values.volume.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "jaeger-all-in-one.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  {{- if .Values.volume.className }}
+  storageClassName: {{ .Values.volume.className }}
+  {{- end }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage:  {{ .Values.volume.size }}
+{{- end }}
+{{- end }}

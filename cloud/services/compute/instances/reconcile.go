@@ -32,11 +32,17 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Reconcile reconcile machine instance.
 func (s *Service) Reconcile(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "instances.Services.Reconcile",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	log.Info("Reconciling instance resources")
 	instance, err := s.createOrGetInstance(ctx)
@@ -99,6 +105,11 @@ func (s *Service) Reconcile(ctx context.Context) error {
 
 // Delete delete machine instance.
 func (s *Service) Delete(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "instances.Services.Reconcile",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	log.Info("Deleting instance resources")
 	instanceSpec := s.scope.InstanceSpec(log)
