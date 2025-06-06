@@ -603,6 +603,70 @@ func TestService_createOrGetInternalAddress(t *testing.T) {
 			},
 			sharedVPC: true,
 		},
+		{
+			name: "static address set for internal load balancer",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
+					LoadBalancerType: &lbTypeInternal,
+				}
+
+				s.GCPCluster.Spec.LoadBalancer.InternalLoadBalancer.IPAddress = ptr.To("1.2.3.4")
+				return s
+			},
+			
+			lbName: infrav1.InternalRoleTagValue,
+			mockAddress: &cloud.MockAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockAddressesObj{},
+			},
+			mockSubnetworks: &cloud.MockSubnetworks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
+					*meta.RegionalKey("control-plane", "us-central1"): {},
+				},
+			},
+			want: &compute.Address{
+				Address:     "1.2.3.4",
+				IpVersion:   "IPV4",
+				Name:        "my-cluster-api-internal",
+				Region:      "us-central1",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-api-internal",
+				AddressType: "INTERNAL",
+				Purpose:     "GCE_ENDPOINT",
+			},
+		},
+		{
+			name: "static address set for internal load balancer using SharedVPC subnet (should create address)",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
+					LoadBalancerType: &lbTypeInternal,
+				}
+
+				s.GCPCluster.Spec.LoadBalancer.InternalLoadBalancer.IPAddress = ptr.To("1.2.3.4")
+				return s
+			},
+			lbName: infrav1.InternalRoleTagValue,
+			mockAddress: &cloud.MockAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockAddressesObj{},
+			},
+			mockSubnetworks: &cloud.MockSubnetworks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
+					*meta.RegionalKey("control-plane", "us-central1"): {},
+				},
+			},
+			want: &compute.Address{
+				Address:     "1.2.3.4",
+				IpVersion:   "IPV4",
+				Name:        "my-cluster-api-internal",
+				Region:      "us-central1",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-api-internal",
+				AddressType: "INTERNAL",
+				Purpose:     "GCE_ENDPOINT",
+			},
+			sharedVPC: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
