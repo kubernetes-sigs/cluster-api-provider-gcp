@@ -395,4 +395,10 @@ type LoadBalancer struct {
 	// +kubebuilder:default=Regional
 	// +optional
 	InternalAccess InternalAccess `json:"internalAccess,omitempty"`
+
+	// IPAddress is the static IP address to use for the Load Balancer.
+	// If not set, a new static IP address will be allocated.
+	// If set, it must be a valid free IP address from the LoadBalancer Subnet.
+	// +optional
+	IPAddress *string `json:"ipAddress,omitempty"`
 }
