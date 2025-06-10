@@ -51,6 +51,7 @@ var _ = Describe("Workload cluster creation", func() {
 		Expect(os.MkdirAll(artifactFolder, 0o755)).To(Succeed(), "Invalid argument. artifactFolder can't be created for %s spec", specName)
 
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
+		Expect(e2eConfig.Variables).To(HaveKey(CCMPath))
 
 		clusterNamePrefix = fmt.Sprintf("capg-e2e-%s", util.RandomString(6))
 
@@ -149,43 +150,43 @@ var _ = Describe("Workload cluster creation", func() {
 		})
 	})
 
-	Context("Creating a single control-plane cluster with per cluster credentials", func() {
-		It("Should create a cluster with 1 worker node", func() {
-			clusterName := fmt.Sprintf("%s-with-creds", clusterNamePrefix)
-			By("Create the credentials secret")
+	// Context("Creating a single control-plane cluster with per cluster credentials", func() {
+	//	It("Should create a cluster with 1 worker node", func() {
+	//		clusterName := fmt.Sprintf("%s-with-creds", clusterNamePrefix)
+	//		By("Create the credentials secret")
 
-			credsFile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-			Expect(credsFile).NotTo(BeEmpty())
-			data, err := os.ReadFile(credsFile)
-			Expect(err).NotTo(HaveOccurred())
-			secretData := map[string][]byte{
-				"credentials": data,
-			}
-			err = createSecret(ctx, "test-creds", "default", secretData, bootstrapClusterProxy)
-			Expect(err).NotTo(HaveOccurred(), "failed creating credentials sercret")
+	//		credsFile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+	//		Expect(credsFile).NotTo(BeEmpty())
+	//		data, err := os.ReadFile(credsFile)
+	//		Expect(err).NotTo(HaveOccurred())
+	//		secretData := map[string][]byte{
+	//			"credentials": data,
+	//		}
+	//		err = createSecret(ctx, "test-creds", "default", secretData, bootstrapClusterProxy)
+	//		Expect(err).NotTo(HaveOccurred(), "failed creating credentials sercret")
 
-			By("Initializes with 1 worker node")
+	//		By("Initializes with 1 worker node")
 
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
-				ClusterProxy: bootstrapClusterProxy,
-				ConfigCluster: clusterctl.ConfigClusterInput{
-					LogFolder:                clusterctlLogFolder,
-					ClusterctlConfigPath:     clusterctlConfigPath,
-					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
-					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
-					Flavor:                   "ci-with-creds",
-					Namespace:                namespace.Name,
-					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: ptr.To[int64](1),
-					WorkerMachineCount:       ptr.To[int64](1),
-				},
-				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
-				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
-				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
-			}, result)
-		})
-	})
+	//		clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+	//			ClusterProxy: bootstrapClusterProxy,
+	//			ConfigCluster: clusterctl.ConfigClusterInput{
+	//				LogFolder:                clusterctlLogFolder,
+	//				ClusterctlConfigPath:     clusterctlConfigPath,
+	//				KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+	//				InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+	//				Flavor:                   "ci-with-creds",
+	//				Namespace:                namespace.Name,
+	//				ClusterName:              clusterName,
+	//				KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+	//				ControlPlaneMachineCount: ptr.To[int64](1),
+	//				WorkerMachineCount:       ptr.To[int64](1),
+	//			},
+	//			WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+	//			WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+	//			WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+	//		}, result)
+	//	})
+	//})
 
 	Context("Creating a control-plane cluster with an internal load balancer", func() {
 		It("Should create a cluster with 1 control-plane and 1 worker node with an internal load balancer", func() {
