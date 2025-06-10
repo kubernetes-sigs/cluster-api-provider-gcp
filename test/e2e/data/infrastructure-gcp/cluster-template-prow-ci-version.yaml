@@ -42,7 +42,6 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       name: "${CLUSTER_NAME}-control-plane"
   kubeadmConfigSpec:
-    useExperimentalRetryJoin: true
     initConfiguration:
       nodeRegistration:
         name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
@@ -130,6 +129,7 @@ spec:
 
         project-id = "${GCP_PROJECT}"
         network-name = "${GCP_NETWORK_NAME}"
+        multizone = true
       owner: root:root
       path: /etc/kubernetes/cloud.config
       permissions: "0744"
