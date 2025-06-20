@@ -31,7 +31,9 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 				Namespace: namespace,
 			},
 			Spec: v1beta1.GCPManagedMachinePoolSpec{
-				NodePoolName: nodePoolName,
+				GCPManagedMachinePoolClassSpec: v1beta1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: nodePoolName,
+				},
 			},
 		}
 		TestMP = &clusterv1exp.MachinePool{
@@ -49,6 +51,32 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 				"test-key":                             "test-value",
 				infrav1.ClusterTagKey(TestClusterName): string(infrav1.ResourceLifecycleOwned),
 			}))
+		})
+	})
+
+	Context("Test MachinePool InfrastructureMachineKind", func() {
+		It("should set infrastructure machine kind when empty", func() {
+			TestGCPMMP.Status = v1beta1.GCPManagedMachinePoolStatus{}
+			machinePoolScope := ManagedMachinePoolScope{
+				GCPManagedMachinePool: TestGCPMMP,
+			}
+
+			update := machinePoolScope.SetInfrastructureMachineKind()
+			Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(Equal(v1beta1.GCPManagedMachinePoolMachineKind))
+			Expect(update).To(BeTrue())
+		})
+
+		It("should not update infrastructure machine kind if already set", func() {
+			TestGCPMMP.Status = v1beta1.GCPManagedMachinePoolStatus{
+				InfrastructureMachineKind: v1beta1.GCPManagedMachinePoolMachineKind,
+			}
+			machinePoolScope := ManagedMachinePoolScope{
+				GCPManagedMachinePool: TestGCPMMP,
+			}
+
+			update := machinePoolScope.SetInfrastructureMachineKind()
+			Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(Equal(v1beta1.GCPManagedMachinePoolMachineKind))
+			Expect(update).To(BeFalse())
 		})
 	})
 

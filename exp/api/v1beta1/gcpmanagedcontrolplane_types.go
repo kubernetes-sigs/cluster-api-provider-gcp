@@ -115,6 +115,8 @@ type AuthenticatorGroupConfig struct {
 
 // GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
 type GCPManagedControlPlaneSpec struct {
+	GCPManagedControlPlaneClassSpec `json:",inline"`
+
 	// ClusterName allows you to specify the name of the GKE cluster.
 	// If you don't specify a name then a default name will be created
 	// based on the namespace and name of the managed control plane.
@@ -125,24 +127,6 @@ type GCPManagedControlPlaneSpec struct {
 	// +optional
 	Description string `json:"description,omitempty"`
 
-	// ClusterNetwork define the cluster network.
-	// +optional
-	ClusterNetwork *ClusterNetwork `json:"clusterNetwork,omitempty"`
-
-	// Project is the name of the project to deploy the cluster to.
-	Project string `json:"project"`
-	// Location represents the location (region or zone) in which the GKE cluster
-	// will be created.
-	Location string `json:"location"`
-	// EnableAutopilot indicates whether to enable autopilot for this GKE cluster.
-	// +optional
-	EnableAutopilot bool `json:"enableAutopilot"`
-	// EnableIdentityService indicates whether to enable Identity Service component for this GKE cluster.
-	// +optional
-	EnableIdentityService bool `json:"enableIdentityService"`
-	// ReleaseChannel represents the release channel of the GKE cluster.
-	// +optional
-	ReleaseChannel *ReleaseChannel `json:"releaseChannel,omitempty"`
 	// ControlPlaneVersion represents the control plane version of the GKE cluster.
 	// If not specified, the default version currently supported by GKE will be
 	// used.
@@ -151,28 +135,16 @@ type GCPManagedControlPlaneSpec struct {
 	//
 	// +optional
 	ControlPlaneVersion *string `json:"controlPlaneVersion,omitempty"`
+
 	// Version represents the control plane version of the GKE cluster.
 	// If not specified, the default version currently supported by GKE will be
 	// used.
 	// +optional
 	Version *string `json:"version,omitempty"`
+
 	// Endpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	Endpoint clusterv1.APIEndpoint `json:"endpoint"`
-	// MasterAuthorizedNetworksConfig represents configuration options for master authorized networks feature of the GKE cluster.
-	// This feature is disabled if this field is not specified.
-	// +optional
-	MasterAuthorizedNetworksConfig *MasterAuthorizedNetworksConfig `json:"master_authorized_networks_config,omitempty"`
-	// LoggingService represents configuration of logging service feature of the GKE cluster.
-	// Possible values: none, logging.googleapis.com/kubernetes (default).
-	// Value is ignored when enableAutopilot = true.
-	// +optional
-	LoggingService *LoggingService `json:"loggingService,omitempty"`
-	// MonitoringService represents configuration of monitoring service feature of the GKE cluster.
-	// Possible values: none, monitoring.googleapis.com/kubernetes (default).
-	// Value is ignored when enableAutopilot = true.
-	// +optional
-	MonitoringService *MonitoringService `json:"monitoringService,omitempty"`
 }
 
 // GCPManagedControlPlaneStatus defines the observed state of GCPManagedControlPlane.
