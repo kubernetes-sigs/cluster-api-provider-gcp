@@ -133,6 +133,12 @@ spec:
                         - Regional
                         - Global
                         type: string
+                      ipAddress:
+                        description: |-
+                          IPAddress is the static IP address to use for the Load Balancer.
+                          If not set, a new static IP address will be allocated.
+                          If set, it must be a valid free IP address from the LoadBalancer Subnet.
+                        type: string
                       name:
                         description: |-
                           Name is the name of the Load Balancer. If not set a default name

@@ -525,6 +525,11 @@ func (s *Service) createOrGetInternalAddress(ctx context.Context, lbname string)
 		log.Error(err, "Error getting subnet for Internal Load Balancer")
 		return nil, err
 	}
+	lbSpec := s.scope.LoadBalancer()
+	if lbSpec.InternalLoadBalancer != nil && lbSpec.InternalLoadBalancer.IPAddress != nil {
+		// If an IP address is configured, use it instead of creating a new one.
+		addrSpec.Address = *lbSpec.InternalLoadBalancer.IPAddress
+	}
 	addrSpec.Subnetwork = subnet.SelfLink
 	addrSpec.Purpose = "GCE_ENDPOINT"
 	log.V(2).Info("Looking for internal address", "name", addrSpec.Name)
