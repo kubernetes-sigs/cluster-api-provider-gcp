@@ -47,10 +47,12 @@ export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
 GCP_B64ENCODED_CREDENTIALS=$(base64 "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
 export GCP_B64ENCODED_CREDENTIALS
-export KUBERNETES_MAJOR_VERSION="1"
-export KUBERNETES_MINOR_VERSION="27"
-export KUBERNETES_PATCH_VERSION="3"
-export KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
+KUBERNETES_VERSION=$(go run github.com/mikefarah/yq/v4@v4.45.4 '.variables.KUBERNETES_VERSION' test/e2e/config/gcp-ci.yaml)
+export KUBERNETES_VERSION
+read -ra VERSION_PARTS <<< "$(echo "${KUBERNETES_VERSION#v}" | tr '.' ' ')"
+export KUBERNETES_MAJOR_VERSION="${VERSION_PARTS[0]}"
+export KUBERNETES_MINOR_VERSION="${VERSION_PARTS[1]}"
+export KUBERNETES_PATCH_VERSION="${VERSION_PARTS[2]}"
 # using prebuilt image from image-builder project the image is built everyday and the job is available here https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
 export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-${KUBERNETES_VERSION//[.+]/-}-nightly"
 

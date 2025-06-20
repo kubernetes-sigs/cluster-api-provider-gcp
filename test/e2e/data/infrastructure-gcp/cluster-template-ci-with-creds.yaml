@@ -5,6 +5,7 @@ metadata:
   name: "${CLUSTER_NAME}"
   labels:
     cni: "${CLUSTER_NAME}-crs-cni"
+    ccm: "${CLUSTER_NAME}-crs-ccm"
 spec:
   clusterNetwork:
     pods:
@@ -43,27 +44,36 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       name: "${CLUSTER_NAME}-control-plane"
   kubeadmConfigSpec:
-    useExperimentalRetryJoin: true
     initConfiguration:
       nodeRegistration:
         name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
         kubeletExtraArgs:
-          cloud-provider: gce
+          cloud-provider: external
     clusterConfiguration:
       apiServer:
         timeoutForControlPlane: 20m
         extraArgs:
-          cloud-provider: gce
+          cloud-provider: external
       controllerManager:
         extraArgs:
-          cloud-provider: gce
+          cloud-provider: external
           allocate-node-cidrs: "false"
       kubernetesVersion: "${KUBERNETES_VERSION}"
+    files:
+    - content: |
+        [Global]
+
+        project-id = "${GCP_PROJECT}"
+        network-name = "${GCP_NETWORK_NAME}"
+        multizone = true
+      owner: root:root
+      path: /etc/kubernetes/cloud.config
+      permissions: "0744"
     joinConfiguration:
       nodeRegistration:
         name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
         kubeletExtraArgs:
-          cloud-provider: gce
+          cloud-provider: external
   version: "${KUBERNETES_VERSION}"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -120,7 +130,7 @@ spec:
         nodeRegistration:
           name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
           kubeletExtraArgs:
-            cloud-provider: gce
+            cloud-provider: external
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -139,4 +149,23 @@ spec:
       cni: "${CLUSTER_NAME}-crs-cni"
   resources:
     - name: "${CLUSTER_NAME}-crs-cni"
+      kind: ConfigMap
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "${CLUSTER_NAME}-crs-ccm"
+data: ${CCM_RESOURCES}
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: "${CLUSTER_NAME}-crs-ccm"
+spec:
+  strategy: ApplyOnce
+  clusterSelector:
+    matchLabels:
+      ccm: "${CLUSTER_NAME}-crs-ccm"
+  resources:
+    - name: "${CLUSTER_NAME}-crs-ccm"
       kind: ConfigMap
