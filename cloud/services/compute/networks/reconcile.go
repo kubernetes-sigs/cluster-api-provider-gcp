@@ -26,11 +26,17 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Reconcile reconcile cluster network components.
 func (s *Service) Reconcile(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "networks.Services.Reconcile",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	log.Info("Reconciling network resources")
 	network, err := s.createOrGetNetwork(ctx)
@@ -53,6 +59,11 @@ func (s *Service) Reconcile(ctx context.Context) error {
 
 // Delete delete cluster network components.
 func (s *Service) Delete(ctx context.Context) error {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "networks.Services.Delete",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	if s.scope.IsSharedVpc() {
 		log.V(2).Info("Shared VPC enabled. Ignore Deleting network resources")
@@ -100,6 +111,11 @@ func (s *Service) Delete(ctx context.Context) error {
 
 // createOrGetNetwork creates a network if not exist otherwise return existing network.
 func (s *Service) createOrGetNetwork(ctx context.Context) (*compute.Network, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "networks.Services.createOrGetNetwork",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	log.V(2).Info("Looking for network", "name", s.scope.NetworkName())
 	networkKey := meta.GlobalKey(s.scope.NetworkName())
@@ -132,6 +148,11 @@ func (s *Service) createOrGetNetwork(ctx context.Context) (*compute.Network, err
 
 // createOrGetRouter creates a cloudnat router if not exist otherwise return the existing.
 func (s *Service) createOrGetRouter(ctx context.Context, network *compute.Network) (*compute.Router, error) {
+	ctx, span := telemetry.Tracer().Start(
+		ctx, "networks.Services.createOrGetRouter",
+	)
+	defer span.End()
+
 	log := log.FromContext(ctx)
 	spec := s.scope.NatRouterSpec()
 	log.V(2).Info("Looking for cloudnat router", "name", spec.Name)

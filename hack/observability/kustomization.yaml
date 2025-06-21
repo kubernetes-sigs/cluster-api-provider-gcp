@@ -1,0 +1,6 @@
+resources:
+  - ../../config/default
+
+patchesStrategicMerge:
+  - opentelemetry/secrets-dev-env-otel-patch.yaml
+  - opentelemetry/controller-manager-dev-env-otel-patch.yml
