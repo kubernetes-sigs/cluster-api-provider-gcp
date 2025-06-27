@@ -342,6 +342,10 @@ spec:
                   - type
                   type: object
                 type: array
+              infrastructureMachineKind:
+                description: InfrastructureMachineKind is the kind of the infrastructure
+                  resources behind MachinePool Machines.
+                type: string
               ready:
                 default: false
                 description: Ready denotes that the GCPManagedMachinePool has joined
