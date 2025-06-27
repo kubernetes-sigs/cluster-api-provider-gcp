@@ -23,8 +23,6 @@ aliases:
     - cpanato
     - damdo
     - dims
-    - richardcase
     - salasberryfin
 
   cluster-api-gcp-reviewers:
-
