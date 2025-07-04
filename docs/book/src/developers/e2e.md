@@ -32,7 +32,7 @@ Context("Creating a control-plane cluster with an internal load balancer", func(
                 Flavor:                   "ci-with-internal-lb",
                 Namespace:                namespace.Name,
                 ClusterName:              clusterName,
-                KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+                KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
                 ControlPlaneMachineCount: ptr.To[int64](1),
                 WorkerMachineCount:       ptr.To[int64](1),
             },
