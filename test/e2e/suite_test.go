@@ -45,6 +45,7 @@ import (
 const (
 	KubernetesVersion           = "KUBERNETES_VERSION"
 	KubernetesVersionManagement = "KUBERNETES_VERSION_MANAGEMENT"
+	KubernetesVersionGKE        = "KUBERNETES_VERSION_GKE"
 
 	CNIPath      = "CNI"
 	CNIResources = "CNI_RESOURCES"
