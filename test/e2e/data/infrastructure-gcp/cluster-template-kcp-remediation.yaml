@@ -54,7 +54,7 @@ spec:
         extraArgs:
           cloud-provider: external
           allocate-node-cidrs: "false"
-      kubernetesVersion: "${KUBERNETES_VERSION}"
+      kubernetesVersion: "${KUBERNETES_VERSION_GKE}"
     files:
     - content: |
         [Global]
