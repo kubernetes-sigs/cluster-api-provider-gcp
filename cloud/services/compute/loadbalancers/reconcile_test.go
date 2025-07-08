@@ -818,6 +818,7 @@ func TestService_createOrGetRegionalForwardingRule(t *testing.T) {
 				Region:              "us-central1",
 				Name:                "my-cluster-api-internal",
 				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/forwardingRules/my-cluster-api-internal",
+				AllowGlobalAccess:   false,
 			},
 		},
 	}

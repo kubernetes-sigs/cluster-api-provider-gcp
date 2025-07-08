@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.3
+    controller-gen.kubebuilder.io/version: v0.17.3
   name: gcpclustertemplates.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
@@ -56,7 +56,7 @@ spec:
                         additionalProperties:
                           type: string
                         description: |-
-                          Annotations is an unstructured key value map stored with a resource that may be
+                          annotations is an unstructured key value map stored with a resource that may be
                           set by external tools to store and retrieve arbitrary metadata. They are not
                           queryable and should be preserved when modifying objects.
                           More info: http://kubernetes.io/docs/user-guide/annotations
@@ -65,7 +65,7 @@ spec:
                         additionalProperties:
                           type: string
                         description: |-
-                          Map of string keys and values that can be used to organize and categorize
+                          labels is a map of string keys and values that can be used to organize and categorize
                           (scope and select) objects. May match selectors of replication controllers
                           and services.
                           More info: http://kubernetes.io/docs/user-guide/labels
@@ -86,10 +86,13 @@ spec:
                           used to communicate with the control plane.
                         properties:
                           host:
-                            description: The hostname on which the API server is serving.
+                            description: host is the hostname on which the API server
+                              is serving.
+                            maxLength: 512
                             type: string
                           port:
-                            description: The port on which the API server is serving.
+                            description: port is the port on which the API server
+                              is serving.
                             format: int32
                             type: integer
                         required:
@@ -138,6 +141,21 @@ spec:
                             description: InternalLoadBalancer is the configuration
                               for an Internal Passthrough Network Load Balancer.
                             properties:
+                              internalAccess:
+                                default: Regional
+                                description: |-
+                                  InternalAccess defines the access for the Internal Passthrough Load Balancer.
+                                  It determines whether the load balancer allows global access,
+                                  or restricts traffic to clients within the same region as the load balancer.
+                                  If unspecified, the value defaults to "Regional".
+
+                                  Possible values:
+                                    "Regional" - Only clients in the same region as the load balancer can access it.
+                                    "Global" - Clients from any region can access the load balancer.
+                                enum:
+                                - Regional
+                                - Global
+                                type: string
                               name:
                                 description: |-
                                   Name is the name of the Load Balancer. If not set a default name
@@ -341,6 +359,36 @@ spec:
                           - value
                           type: object
                         type: array
+                      serviceEndpoints:
+                        description: |-
+                          ServiceEndpoints contains the custom GCP Service Endpoint urls for each applicable service.
+                          For instance, the user can specify a new endpoint for the compute service.
+                        properties:
+                          compute:
+                            description: ComputeServiceEndpoint is the custom endpoint
+                              url for the Compute Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
+                          container:
+                            description: ContainerServiceEndpoint is the custom endpoint
+                              url for the Container Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
+                          iam:
+                            description: IAMServiceEndpoint is the custom endpoint
+                              url for the IAM Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
+                          resourceManager:
+                            description: ResourceManagerServiceEndpoint is the custom
+                              endpoint url for the Resource Manager Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
+                        type: object
                     required:
                     - project
                     - region

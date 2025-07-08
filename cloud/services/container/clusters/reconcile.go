@@ -96,7 +96,9 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	}
 
 	log.V(2).Info("gke cluster found", "status", cluster.GetStatus())
-	s.scope.GCPManagedControlPlane.Status.CurrentVersion = convertToSdkMasterVersion(cluster.GetCurrentMasterVersion())
+	controlPlaneVersion := convertToSdkMasterVersion(cluster.GetCurrentMasterVersion())
+	s.scope.GCPManagedControlPlane.Status.CurrentVersion = controlPlaneVersion
+	s.scope.GCPManagedControlPlane.Status.Version = &controlPlaneVersion
 
 	switch cluster.GetStatus() {
 	case containerpb.Cluster_PROVISIONING:
@@ -265,31 +267,37 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		ReleaseChannel: &containerpb.ReleaseChannel{
 			Channel: convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
 		},
-		MasterAuthorizedNetworksConfig: convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig),
+		ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
+			IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+				AuthorizedNetworksConfig: convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig),
+			},
+		},
 	}
-	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
-		cluster.InitialClusterVersion = convertToSdkMasterVersion(*s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion)
+	if initialClusterVersionFromSpec := s.scope.GetControlPlaneVersion(); initialClusterVersionFromSpec != nil {
+		cluster.InitialClusterVersion = convertToSdkMasterVersion(*initialClusterVersionFromSpec)
 	}
 	if s.scope.GCPManagedControlPlane.Spec.ClusterNetwork != nil {
 		cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork
 		if cn.UseIPAliases {
 			cluster.IpAllocationPolicy = &containerpb.IPAllocationPolicy{}
 			cluster.IpAllocationPolicy.UseIpAliases = cn.UseIPAliases
+			cluster.IpAllocationPolicy.ClusterIpv4CidrBlock = cn.Pod.CidrBlock
+			cluster.IpAllocationPolicy.ServicesIpv4CidrBlock = cn.Service.CidrBlock
 		}
 		if cn.PrivateCluster != nil {
 			cluster.PrivateClusterConfig = &containerpb.PrivateClusterConfig{}
-			cluster.PrivateClusterConfig.EnablePrivateEndpoint = cn.PrivateCluster.EnablePrivateEndpoint
+
+			enablePublicEndpoint := !cn.PrivateCluster.EnablePrivateEndpoint
+			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.EnablePublicEndpoint = &enablePublicEndpoint
 			if cn.PrivateCluster.EnablePrivateEndpoint {
-				cluster.MasterAuthorizedNetworksConfig = &containerpb.MasterAuthorizedNetworksConfig{
+				cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = &containerpb.MasterAuthorizedNetworksConfig{
 					Enabled: true,
 				}
 			}
-			cluster.PrivateClusterConfig.EnablePrivateNodes = cn.PrivateCluster.EnablePrivateNodes
+			cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
 
 			cluster.PrivateClusterConfig.MasterIpv4CidrBlock = cn.PrivateCluster.ControlPlaneCidrBlock
-			cluster.PrivateClusterConfig.MasterGlobalAccessConfig = &containerpb.PrivateClusterMasterGlobalAccessConfig{
-				Enabled: cn.PrivateCluster.ControlPlaneGlobalAccess,
-			}
+			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
 
 			cluster.NetworkConfig = &containerpb.NetworkConfig{
 				DefaultSnatStatus: &containerpb.DefaultSnatStatus{
@@ -300,6 +308,12 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	}
 	if !s.scope.IsAutopilotCluster() {
 		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional, cluster.GetName())
+		if s.scope.GCPManagedControlPlane.Spec.LoggingService != nil {
+			cluster.LoggingService = s.scope.GCPManagedControlPlane.Spec.LoggingService.String()
+		}
+		if s.scope.GCPManagedControlPlane.Spec.MonitoringService != nil {
+			cluster.MonitoringService = s.scope.GCPManagedControlPlane.Spec.MonitoringService.String()
+		}
 	}
 
 	createClusterRequest := &containerpb.CreateClusterRequest{
@@ -424,8 +438,8 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		}
 	}
 	// Master version
-	if s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion != nil {
-		desiredMasterVersion := convertToSdkMasterVersion(*s.scope.GCPManagedControlPlane.Spec.ControlPlaneVersion)
+	if desiredMasterVersionFromSpec := s.scope.GetControlPlaneVersion(); desiredMasterVersionFromSpec != nil {
+		desiredMasterVersion := convertToSdkMasterVersion(*desiredMasterVersionFromSpec)
 		existingClusterMasterVersion := convertToSdkMasterVersion(existingCluster.GetCurrentMasterVersion())
 		if desiredMasterVersion != existingClusterMasterVersion {
 			needUpdate = true
@@ -434,15 +448,33 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		}
 	}
 
+	// LoggingService
+	if specLoggingService := s.scope.GCPManagedControlPlane.Spec.LoggingService; specLoggingService != nil {
+		if existingCluster.GetLoggingService() != specLoggingService.String() {
+			needUpdate = true
+			clusterUpdate.DesiredLoggingService = specLoggingService.String()
+			log.V(2).Info("LoggingService config update required", "current", existingCluster.GetLoggingService(), "desired", specLoggingService.String())
+		}
+	}
+
+	// MonitoringService
+	if specMonitoringService := s.scope.GCPManagedControlPlane.Spec.MonitoringService; specMonitoringService != nil {
+		if existingCluster.GetMonitoringService() != specMonitoringService.String() {
+			needUpdate = true
+			clusterUpdate.DesiredLoggingService = specMonitoringService.String()
+			log.V(2).Info("MonitoringService config update required", "current", existingCluster.GetMonitoringService(), "desired", specMonitoringService.String())
+		}
+	}
+
 	// DesiredMasterAuthorizedNetworksConfig
 	// When desiredMasterAuthorizedNetworksConfig is nil, it means that the user wants to disable the feature.
 	desiredMasterAuthorizedNetworksConfig := convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig)
-	if !compareMasterAuthorizedNetworksConfig(desiredMasterAuthorizedNetworksConfig, existingCluster.GetMasterAuthorizedNetworksConfig()) {
+	if !compareMasterAuthorizedNetworksConfig(desiredMasterAuthorizedNetworksConfig, existingCluster.GetControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetAuthorizedNetworksConfig()) {
 		needUpdate = true
-		clusterUpdate.DesiredMasterAuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
-		log.V(2).Info("Master authorized networks config update required", "current", existingCluster.GetMasterAuthorizedNetworksConfig(), "desired", desiredMasterAuthorizedNetworksConfig)
+		clusterUpdate.DesiredControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
+		log.V(2).Info("Master authorized networks config update required", "current", existingCluster.GetControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetAuthorizedNetworksConfig(), "desired", desiredMasterAuthorizedNetworksConfig)
 	}
-	log.V(4).Info("Master authorized networks config update check", "current", existingCluster.GetMasterAuthorizedNetworksConfig())
+	log.V(4).Info("Master authorized networks config update check", "current", existingCluster.GetControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetAuthorizedNetworksConfig())
 	if desiredMasterAuthorizedNetworksConfig != nil {
 		log.V(4).Info("Master authorized networks config update check", "desired", desiredMasterAuthorizedNetworksConfig)
 	}

@@ -155,7 +155,7 @@ func TestService_Reconcile(t *testing.T) {
 				Objects:       map[meta.Key]*cloud.MockFirewallsObj{},
 			},
 			assert: func(ctx context.Context, t testCase) error {
-				key := meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.ObjectMeta.Name))
+				key := meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.Name))
 				fwRule, err := t.mockFirewalls.Get(ctx, key)
 				if err != nil {
 					return err
@@ -173,7 +173,7 @@ func TestService_Reconcile(t *testing.T) {
 			mockFirewalls: &cloud.MockFirewalls{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				Objects: map[meta.Key]*cloud.MockFirewallsObj{
-					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.ObjectMeta.Name)): {},
+					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.Name)): {},
 				},
 			},
 		},
@@ -196,7 +196,7 @@ func TestService_Reconcile(t *testing.T) {
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				Objects:       map[meta.Key]*cloud.MockFirewallsObj{},
 				InsertError: map[meta.Key]error{
-					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.ObjectMeta.Name)): &googleapi.Error{Code: http.StatusBadRequest},
+					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.Name)): &googleapi.Error{Code: http.StatusBadRequest},
 				},
 			},
 			wantErr: true,
@@ -207,7 +207,7 @@ func TestService_Reconcile(t *testing.T) {
 			mockFirewalls: &cloud.MockFirewalls{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				Objects: map[meta.Key]*cloud.MockFirewallsObj{
-					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.ObjectMeta.Name)): {},
+					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.Name)): {},
 				},
 			},
 		},
@@ -269,7 +269,7 @@ func TestService_Delete(t *testing.T) {
 			mockFirewalls: &cloud.MockFirewalls{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				DeleteError: map[meta.Key]error{
-					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.ObjectMeta.Name)): &googleapi.Error{Code: http.StatusNotFound},
+					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.Name)): &googleapi.Error{Code: http.StatusNotFound},
 				},
 			},
 		},
@@ -279,7 +279,7 @@ func TestService_Delete(t *testing.T) {
 			mockFirewalls: &cloud.MockFirewalls{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				DeleteError: map[meta.Key]error{
-					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.ObjectMeta.Name)): &googleapi.Error{Code: http.StatusBadRequest},
+					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.Name)): &googleapi.Error{Code: http.StatusBadRequest},
 				},
 			},
 			wantErr: true,

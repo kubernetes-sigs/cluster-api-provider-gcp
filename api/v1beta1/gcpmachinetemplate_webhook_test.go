@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -25,6 +26,9 @@ import (
 func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 	g := NewWithT(t)
 	confidentialComputeEnabled := ConfidentialComputePolicyEnabled
+	confidentialComputeSEV := ConfidentialComputePolicySEV
+	confidentialComputeSEVSNP := ConfidentialComputePolicySEVSNP
+	confidentialComputeTDX := ConfidentialComputePolicyTDX
 	onHostMaintenanceTerminate := HostMaintenancePolicyTerminate
 	onHostMaintenanceMigrate := HostMaintenancePolicyMigrate
 	tests := []struct {
@@ -105,11 +109,131 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualization and unsupported instance type - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:        "e2-standard-4",
+							ConfidentialCompute: &confidentialComputeSEV,
+							OnHostMaintenance:   &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualization and supported instance type - valid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:        "c2d-standard-4",
+							ConfidentialCompute: &confidentialComputeSEV,
+							OnHostMaintenance:   &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualization and OnHostMaintenance Migrate - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:        "c2d-standard-4",
+							ConfidentialCompute: &confidentialComputeSEV,
+							OnHostMaintenance:   &onHostMaintenanceMigrate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualizationNestedPaging and unsupported instance type - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:        "c2d-standard-4",
+							ConfidentialCompute: &confidentialComputeSEVSNP,
+							OnHostMaintenance:   &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualizationNestedPaging and supported instance type - valid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:        "n2d-standard-4",
+							ConfidentialCompute: &confidentialComputeSEVSNP,
+							OnHostMaintenance:   &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualizationNestedPaging and OnHostMaintenance Migrate - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:        "c2d-standard-4",
+							ConfidentialCompute: &confidentialComputeSEVSNP,
+							OnHostMaintenance:   &onHostMaintenanceMigrate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPMachine with explicit TDX ConfidentialInstanceType and supported machine type - valid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:        "c3-standard-4",
+							ConfidentialCompute: &confidentialComputeTDX,
+							OnHostMaintenance:   &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPMachine with explicit TDX ConfidentialInstanceType and unsupported machine type - invalid",
+			template: &GCPMachineTemplate{
+				Spec: GCPMachineTemplateSpec{
+					Template: GCPMachineTemplateResource{
+						Spec: GCPMachineSpec{
+							InstanceType:        "c3d-standard-4",
+							ConfidentialCompute: &confidentialComputeTDX,
+							OnHostMaintenance:   &onHostMaintenanceTerminate,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			warn, err := test.template.ValidateCreate()
+			warn, err := (&gcpMachineTemplateWebhook{}).ValidateCreate(context.Background(), test.template)
 			if test.wantErr {
 				g.Expect(err).To(HaveOccurred())
 			} else {

@@ -40,7 +40,7 @@ var _ = Describe("Workload cluster creation", func() {
 		namespace           *corev1.Namespace
 		cancelWatches       context.CancelFunc
 		result              *clusterctl.ApplyClusterTemplateAndWaitResult
-		clusterName         string
+		clusterNamePrefix   string
 		clusterctlLogFolder string
 	)
 
@@ -51,8 +51,9 @@ var _ = Describe("Workload cluster creation", func() {
 		Expect(os.MkdirAll(artifactFolder, 0o755)).To(Succeed(), "Invalid argument. artifactFolder can't be created for %s spec", specName)
 
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
+		Expect(e2eConfig.Variables).To(HaveKey(CCMPath))
 
-		clusterName = fmt.Sprintf("capg-e2e-%s", util.RandomString(6))
+		clusterNamePrefix = fmt.Sprintf("capg-e2e-%s", util.RandomString(6))
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, bootstrapClusterProxy, artifactFolder)
@@ -65,14 +66,15 @@ var _ = Describe("Workload cluster creation", func() {
 
 	AfterEach(func() {
 		cleanInput := cleanupInput{
-			SpecName:        specName,
-			Cluster:         result.Cluster,
-			ClusterProxy:    bootstrapClusterProxy,
-			Namespace:       namespace,
-			CancelWatches:   cancelWatches,
-			IntervalsGetter: e2eConfig.GetIntervals,
-			SkipCleanup:     skipCleanup,
-			ArtifactFolder:  artifactFolder,
+			SpecName:             specName,
+			Cluster:              result.Cluster,
+			ClusterProxy:         bootstrapClusterProxy,
+			ClusterctlConfigPath: clusterctlConfigPath,
+			Namespace:            namespace,
+			CancelWatches:        cancelWatches,
+			IntervalsGetter:      e2eConfig.GetIntervals,
+			SkipCleanup:          skipCleanup,
+			ArtifactFolder:       artifactFolder,
 		}
 
 		dumpSpecResourcesAndCleanup(ctx, cleanInput)
@@ -80,6 +82,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 	Context("Creating a single control-plane cluster", func() {
 		It("Should create a cluster with 1 worker node and can be scaled", func() {
+			clusterName := fmt.Sprintf("%s-single", clusterNamePrefix)
 			By("Initializes with 1 worker node")
 			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
@@ -91,7 +94,7 @@ var _ = Describe("Workload cluster creation", func() {
 					Flavor:                   clusterctl.DefaultFlavor,
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](1),
 				},
@@ -111,7 +114,7 @@ var _ = Describe("Workload cluster creation", func() {
 					Flavor:                   clusterctl.DefaultFlavor,
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](3),
 				},
@@ -124,6 +127,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 	Context("Creating a highly available control-plane cluster", func() {
 		It("Should create a cluster with 3 control-plane and 2 worker nodes", func() {
+			clusterName := fmt.Sprintf("%s-ha", clusterNamePrefix)
 			By("Creating a high available cluster")
 			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
@@ -135,7 +139,7 @@ var _ = Describe("Workload cluster creation", func() {
 					Flavor:                   clusterctl.DefaultFlavor,
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](3),
 					WorkerMachineCount:       ptr.To[int64](2),
 				},
@@ -148,6 +152,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 	Context("Creating a single control-plane cluster with per cluster credentials", func() {
 		It("Should create a cluster with 1 worker node", func() {
+			clusterName := fmt.Sprintf("%s-with-creds", clusterNamePrefix)
 			By("Create the credentials secret")
 
 			credsFile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -172,7 +177,7 @@ var _ = Describe("Workload cluster creation", func() {
 					Flavor:                   "ci-with-creds",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](1),
 				},
@@ -185,6 +190,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 	Context("Creating a control-plane cluster with an internal load balancer", func() {
 		It("Should create a cluster with 1 control-plane and 1 worker node with an internal load balancer", func() {
+			clusterName := fmt.Sprintf("%s-internal-lb", clusterNamePrefix)
 			By("Creating a cluster with internal load balancer")
 			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
@@ -196,7 +202,32 @@ var _ = Describe("Workload cluster creation", func() {
 					Flavor:                   "ci-with-internal-lb",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](1),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+			}, result)
+		})
+	})
+
+	Context("Creating a cluster using a cluster class", func() {
+		It("Should create a cluster class and then a cluster based on it", func() {
+			clusterName := fmt.Sprintf("%s-topology", clusterNamePrefix)
+			By("Creating a cluster from a topology")
+			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-topology",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](1),
 				},

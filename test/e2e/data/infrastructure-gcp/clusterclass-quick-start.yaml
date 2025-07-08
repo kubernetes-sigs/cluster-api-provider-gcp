@@ -13,7 +13,7 @@ spec:
       ref:
         kind: GCPMachineTemplate
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-        name: quick-start-control-plane
+        name: quick-start-machine-control-plane
   infrastructure:
     ref:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -112,31 +112,40 @@ spec:
   template:
     spec:
       kubeadmConfigSpec:
-        useExperimentalRetryJoin: true
         initConfiguration:
           nodeRegistration:
             name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
             kubeletExtraArgs:
-              cloud-provider: gce
+              cloud-provider: external
         clusterConfiguration:
           apiServer:
             timeoutForControlPlane: 20m
             extraArgs:
-              cloud-provider: gce
+              cloud-provider: external
           controllerManager:
             extraArgs:
-              cloud-provider: gce
+              cloud-provider: external
               allocate-node-cidrs: "false"
+        files:
+        - content: |
+            [Global]
+
+            project-id = "${GCP_PROJECT}"
+            network-name = "${GCP_NETWORK_NAME}"
+            multizone = true
+          owner: root:root
+          path: /etc/kubernetes/cloud.config
+          permissions: "0744"
         joinConfiguration:
           nodeRegistration:
             name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
             kubeletExtraArgs:
-              cloud-provider: gce
+              cloud-provider: external
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: quick-start-control-plane
+  name: quick-start-machine-control-plane
 spec:
   template:
     spec:
@@ -164,4 +173,4 @@ spec:
         nodeRegistration:
           name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
           kubeletExtraArgs:
-            cloud-provider: gce
+            cloud-provider: external

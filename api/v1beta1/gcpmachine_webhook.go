@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -37,18 +38,31 @@ import (
 var _ = logf.Log.WithName("gcpmachine-resource")
 
 func (m *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
+	w := new(gcpMachineWebhook)
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(m).
+		WithValidator(w).
+		WithDefaulter(w).
 		Complete()
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachine,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines,versions=v1beta1,name=validation.gcpmachine.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1beta1
 // +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachine,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachines,versions=v1beta1,name=default.gcpmachine.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1beta1
 
-var _ webhook.Validator = &GCPMachine{}
+type gcpMachineWebhook struct{}
+
+var (
+	_ webhook.CustomValidator = &gcpMachineWebhook{}
+	_ webhook.CustomDefaulter = &gcpMachineWebhook{}
+)
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (m *GCPMachine) ValidateCreate() (admission.Warnings, error) {
+func (*gcpMachineWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	m, ok := obj.(*GCPMachine)
+	if !ok {
+		return nil, fmt.Errorf("expected an GCPMachine object but got %T", m)
+	}
+
 	clusterlog.Info("validate create", "name", m.Name)
 
 	if err := validateConfidentialCompute(m.Spec); err != nil {
@@ -58,14 +72,19 @@ func (m *GCPMachine) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (m *GCPMachine) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (*gcpMachineWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	m, ok := newObj.(*GCPMachine)
+	if !ok {
+		return nil, fmt.Errorf("expected an GCPMachine object but got %T", m)
+	}
+
 	newGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(m)
 	if err != nil {
 		return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.InternalError(nil, errors.Wrap(err, "failed to convert new GCPMachine to unstructured object")),
 		})
 	}
-	oldGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(old)
+	oldGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(oldObj)
 	if err != nil {
 		return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
 			field.InternalError(nil, errors.Wrap(err, "failed to convert old GCPMachine to unstructured object")),
@@ -97,26 +116,37 @@ func (m *GCPMachine) ValidateUpdate(old runtime.Object) (admission.Warnings, err
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (m *GCPMachine) ValidateDelete() (admission.Warnings, error) {
-	clusterlog.Info("validate delete", "name", m.Name)
-
+func (*gcpMachineWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
 // Default implements webhookutil.defaulter so a webhook will be registered for the type.
-func (m *GCPMachine) Default() {
-	clusterlog.Info("default", "name", m.Name)
+func (*gcpMachineWebhook) Default(_ context.Context, _ runtime.Object) error {
+	return nil
 }
 
 func validateConfidentialCompute(spec GCPMachineSpec) error {
-	if spec.ConfidentialCompute != nil && *spec.ConfidentialCompute == ConfidentialComputePolicyEnabled {
+	if spec.ConfidentialCompute != nil && *spec.ConfidentialCompute != ConfidentialComputePolicyDisabled {
 		if spec.OnHostMaintenance == nil || *spec.OnHostMaintenance == HostMaintenancePolicyMigrate {
 			return fmt.Errorf("ConfidentialCompute require OnHostMaintenance to be set to %s, the current value is: %s", HostMaintenancePolicyTerminate, HostMaintenancePolicyMigrate)
 		}
 
 		machineSeries := strings.Split(spec.InstanceType, "-")[0]
-		if !slices.Contains(confidentialComputeSupportedMachineSeries, machineSeries) {
-			return fmt.Errorf("ConfidentialCompute require instance type in the following series: %s", confidentialComputeSupportedMachineSeries)
+		switch *spec.ConfidentialCompute {
+		case ConfidentialComputePolicyEnabled, ConfidentialComputePolicySEV:
+			if !slices.Contains(confidentialMachineSeriesSupportingSev, machineSeries) {
+				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingSev, ", "), spec.InstanceType)
+			}
+		case ConfidentialComputePolicySEVSNP:
+			if !slices.Contains(confidentialMachineSeriesSupportingSevsnp, machineSeries) {
+				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingSevsnp, ", "), spec.InstanceType)
+			}
+		case ConfidentialComputePolicyTDX:
+			if !slices.Contains(confidentialMachineSeriesSupportingTdx, machineSeries) {
+				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingTdx, ", "), spec.InstanceType)
+			}
+		default:
+			return fmt.Errorf("invalid ConfidentialCompute %s", *spec.ConfidentialCompute)
 		}
 	}
 	return nil
