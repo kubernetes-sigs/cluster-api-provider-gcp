@@ -158,7 +158,7 @@ It will setup the network, if you already setup the network you can skip this st
 ```
 
 By default, the Cluster API components deployed by Tilt have experimental features turned off.
-If you would like to enable these features, add `extra_args` as specified in [The Cluster API Book](https://cluster-api.sigs.k8s.io/developer/tilt.html#create-a-tilt-settingsjson-file).
+If you would like to enable these features, add `extra_args` as specified in [The Cluster API Book](https://cluster-api.sigs.k8s.io/developer/core/tilt.html?highlight=tilt#create-a-tilt-settings-file).
 
 Once your kind management cluster is up and running, you can [deploy a workload cluster](#deploying-a-workload-cluster).
 
