@@ -27,7 +27,7 @@ const (
 	ManagedMachinePoolFinalizer = "gcpmanagedmachinepool.infrastructure.cluster.x-k8s.io"
 
 	// GCPManagedMachinePoolMachineKind indicates the kind of an GCPManagedMachinePoolMachine.
-	GCPManagedMachinePoolMachineKind = "GCPManagedMachinePoolMachine"
+	GCPManagedMachinePoolMachineKind = "GCPManagedMachinePool"
 )
 
 // DiskType is type of the disk attached to node.

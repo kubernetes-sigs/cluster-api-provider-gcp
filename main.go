@@ -35,14 +35,18 @@ import (
 	infrav1beta1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/controllers"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	gkebootstrapv1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/bootstrap/gke/api/v1beta1"
+	gkeboostrapcontrollersv1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/bootstrap/gke/controllers"
 	expcontrollers "sigs.k8s.io/cluster-api-provider-gcp/exp/controllers"
 	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	expclusterv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
+	capifeature "sigs.k8s.io/cluster-api/feature"
 	"sigs.k8s.io/cluster-api/util/flags"
 	"sigs.k8s.io/cluster-api/util/record"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -63,6 +67,7 @@ func init() {
 	_ = clusterv1.AddToScheme(scheme)
 	_ = expclusterv1.AddToScheme(scheme)
 	_ = infrav1exp.AddToScheme(scheme)
+	_ = gkebootstrapv1exp.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -76,6 +81,7 @@ var (
 	webhookCertDir              string
 	gcpClusterConcurrency       int
 	gcpMachineConcurrency       int
+	gkeConfigConcurrency        int
 	webhookPort                 int
 	reconcileTimeout            time.Duration
 	syncPeriod                  time.Duration
@@ -227,6 +233,16 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) error {
 		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachineConcurrency}); err != nil {
 			return fmt.Errorf("setting up GCPManagedMachinePool controller: %w", err)
 		}
+
+		if feature.Gates.Enabled(capifeature.MachinePool) {
+			if err := (&gkeboostrapcontrollersv1exp.GKEConfigReconciler{
+				Client:           mgr.GetClient(),
+				ReconcileTimeout: reconcileTimeout,
+				WatchFilterValue: watchFilterValue,
+			}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gkeConfigConcurrency}); err != nil {
+				return fmt.Errorf("setting up GKEConfig controller: %w", err)
+			}
+		}
 	}
 
 	return nil
@@ -351,6 +367,12 @@ func initFlags(fs *pflag.FlagSet) {
 		"gcpmachine-concurrency",
 		10,
 		"Number of GCPMachines to process simultaneously",
+	)
+
+	fs.IntVar(&gkeConfigConcurrency,
+		"gkeconfig-concurrency",
+		10,
+		"Number of GKEConfigs to process simultaneously",
 	)
 
 	fs.DurationVar(&syncPeriod,
