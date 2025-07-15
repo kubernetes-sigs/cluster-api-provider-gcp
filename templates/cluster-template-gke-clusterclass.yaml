@@ -21,7 +21,7 @@ spec:
         bootstrap:
           ref:
             apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-            kind: KubeadmConfigTemplate
+            kind: GKEConfigTemplate
             name: ${CLUSTER_NAME}-pool0
         infrastructure:
           ref:
@@ -33,7 +33,7 @@ spec:
         bootstrap:
           ref:
             apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-            kind: KubeadmConfigTemplate
+            kind: GKEConfigTemplate
             name: ${CLUSTER_NAME}-pool1
         infrastructure:
           ref:
@@ -88,7 +88,7 @@ spec:
         - "${GCP_REGION}-a"
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-kind: KubeadmConfigTemplate
+kind: GKEConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-pool0
   namespace: default
@@ -97,7 +97,7 @@ spec:
     spec: {}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-kind: KubeadmConfigTemplate
+kind: GKEConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-pool1
   namespace: default

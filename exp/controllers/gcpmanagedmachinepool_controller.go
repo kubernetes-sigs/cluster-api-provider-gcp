@@ -81,7 +81,7 @@ func GetOwnerClusterKey(obj metav1.ObjectMeta) (*client.ObjectKey, error) {
 }
 
 func machinePoolToInfrastructureMapFunc(gvk schema.GroupVersionKind) handler.MapFunc {
-	return func(_ context.Context, o client.Object) []reconcile.Request {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		m, ok := o.(*expclusterv1.MachinePool)
 		if !ok {
 			panic(fmt.Sprintf("Expected a MachinePool but got a %T", o))
@@ -91,6 +91,7 @@ func machinePoolToInfrastructureMapFunc(gvk schema.GroupVersionKind) handler.Map
 		// Return early if the GroupKind doesn't match what we expect
 		infraGK := m.Spec.Template.Spec.InfrastructureRef.GroupVersionKind().GroupKind()
 		if gk != infraGK {
+			log.FromContext(ctx).Info("gk does not match", "gk", gk, "infraGK", infraGK)
 			return nil
 		}
 
@@ -220,6 +221,7 @@ func getOwnerMachinePool(ctx context.Context, c client.Client, obj metav1.Object
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepools/finalizers,verbs=update
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=get;list;watch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedclusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch;patch
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machinepools;machinepools/status,verbs=get;list;watch
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 
@@ -259,6 +261,8 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 		log.Info("Reconciliation is paused for this object")
 		return ctrl.Result{}, nil
 	}
+
+	log.WithValues("ownerCluster", cluster.Name)
 
 	// Get the managed cluster
 	gcpManagedClusterKey := client.ObjectKey{
