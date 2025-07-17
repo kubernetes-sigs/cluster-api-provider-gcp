@@ -61,4 +61,33 @@ spec:
   scaling:
     minCount: ${GKE_MACHINE_POOL_MIN}
     maxCount: ${GKE_MACHINE_POOL_MAX}
-
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachinePool
+metadata:
+  name: ${CLUSTER_NAME}-critical-addons-only
+spec:
+  clusterName: ${CLUSTER_NAME}
+  replicas: ${WORKER_MACHINE_COUNT}
+  template:
+    spec:
+      bootstrap:
+        dataSecretName: ""
+      clusterName: ${CLUSTER_NAME}
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: GCPManagedMachinePool
+        name: ${CLUSTER_NAME}-critical-addons-only
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedMachinePool
+metadata:
+  name: ${CLUSTER_NAME}-critical-addons-only
+spec:
+  scaling:
+    minCount: ${GKE_MACHINE_POOL_MIN_CRITICAL_ADDONS_ONLY}
+    maxCount: ${GKE_MACHINE_POOL_MAX_CRITICAL_ADDONS_ONLY}
+  kubernetesTaints:
+    - effect: NoSchedule
+      key: CriticalAddonsOnly
+      value: "true"
