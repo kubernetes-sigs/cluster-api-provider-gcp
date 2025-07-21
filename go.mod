@@ -3,8 +3,8 @@ module sigs.k8s.io/cluster-api-provider-gcp
 go 1.23.7
 
 require (
-	cloud.google.com/go/compute v1.40.0
-	cloud.google.com/go/container v1.43.0
+	cloud.google.com/go/compute v1.41.0
+	cloud.google.com/go/container v1.44.0
 	cloud.google.com/go/iam v1.5.2
 	cloud.google.com/go/resourcemanager v1.10.6
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.34.0
@@ -14,12 +14,12 @@ require (
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/pflag v1.0.7
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.39.0
-	golang.org/x/mod v0.25.0
-	golang.org/x/net v0.41.0
-	google.golang.org/api v0.239.0
+	golang.org/x/crypto v0.40.0
+	golang.org/x/mod v0.26.0
+	golang.org/x/net v0.42.0
+	google.golang.org/api v0.242.0
 	google.golang.org/grpc v1.73.0
 	k8s.io/api v0.32.3
 	k8s.io/apimachinery v0.32.3
@@ -27,7 +27,7 @@ require (
 	k8s.io/component-base v0.32.3
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
-	sigs.k8s.io/cluster-api v1.10.3
+	sigs.k8s.io/cluster-api v1.10.4
 	sigs.k8s.io/cluster-api/test v1.10.2
 	sigs.k8s.io/controller-runtime v0.20.4
 )
@@ -77,7 +77,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
+	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/gobuffalo/flect v1.0.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
@@ -145,12 +145,12 @@ require (
 	go.uber.org/zap v1.27.0 // indirect; indirect// indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/term v0.33.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/tools v0.33.0 // indirect
+	golang.org/x/tools v0.34.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
