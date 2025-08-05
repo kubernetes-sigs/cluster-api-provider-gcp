@@ -370,7 +370,7 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 		}
 	}
 	// Kubernetes taints
-	if !cmp.Equal(desiredNodePool.GetConfig().GetTaints(), existingNodePool.GetConfig().GetTaints()) {
+	if !cmp.Equal(desiredNodePool.GetConfig().GetTaints(), existingNodePool.GetConfig().GetTaints(), cmpopts.IgnoreUnexported(containerpb.NodeTaint{})) {
 		needUpdate = true
 		updateNodePoolRequest.Taints = &containerpb.NodeTaints{
 			Taints: desiredNodePool.GetConfig().GetTaints(),
