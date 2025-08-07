@@ -221,6 +221,10 @@ spec:
                 description: 'InstanceType is the type of instance to create. Example:
                   n1.standard-2'
                 type: string
+              ipAddress:
+                description: IPAddress is the internal ip address to assign to the
+                  machine
+                type: string
               ipForwarding:
                 default: Enabled
                 description: |-

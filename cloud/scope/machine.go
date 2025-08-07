@@ -340,6 +340,9 @@ func (m *MachineScope) InstanceNetworkInterfaceSpec() *compute.NetworkInterface 
 		networkInterface.Subnetwork = path.Join("projects", m.ClusterGetter.NetworkProject(), "regions", m.ClusterGetter.Region(), "subnetworks", *m.GCPMachine.Spec.Subnet)
 	}
 
+	if m.GCPMachine.Spec.IPAddress != nil {
+		networkInterface.NetworkIP = *m.GCPMachine.Spec.IPAddress
+	}
 	return networkInterface
 }
 

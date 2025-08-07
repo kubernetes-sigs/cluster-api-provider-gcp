@@ -360,6 +360,10 @@ type GCPMachineSpec struct {
 	// RootDiskEncryptionKey defines the KMS key to be used to encrypt the root disk.
 	// +optional
 	RootDiskEncryptionKey *CustomerEncryptionKey `json:"rootDiskEncryptionKey,omitempty"`
+
+	// IPAddress is the internal ip address to assign to the machine
+	// +optional
+	IPAddress *string `json:"ipAddress,omitempty"`
 }
 
 // MetadataItem defines a single piece of metadata associated with an instance.
