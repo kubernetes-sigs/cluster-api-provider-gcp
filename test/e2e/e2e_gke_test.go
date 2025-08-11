@@ -195,4 +195,29 @@ var _ = Describe("GKE workload cluster creation", func() {
 			}, result)
 		})
 	})
+
+	Context("Creating a GKE cluster with autopilot from a cluster class", func() {
+		It("Should create a cluster class and a cluster from it", func() {
+			By("Initializes a managed control plane and managed cluster")
+
+			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-gke-autopilot-topology",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](0),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-worker-machine-pools"),
+			}, result)
+		})
+	})
 })
