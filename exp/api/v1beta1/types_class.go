@@ -31,6 +31,31 @@ type GCPManagedControlPlaneClassSpec struct {
 	// +optional
 	ClusterNetwork *ClusterNetwork `json:"clusterNetwork,omitempty"`
 
+	// ClusterSecurity defines the cluster security.
+	// +optional
+	ClusterSecurity *ClusterSecurity `json:"clusterSecurity,omitempty"`
+
+	// AddonsConfig defines the enabled Cluster Addons.
+	// +optional
+	AddonsConfig *AddonsConfig `json:"addonsConfig,omitempty"`
+
+	// LoggingConfig defines the logging on Cluster.
+	// +optional
+	LoggingConfig *LoggingConfig `json:"loggingConfig,omitempty"`
+
+	// MonitoringConfig defines the monitoring on Cluster.
+	// +optional
+	MonitoringConfig *MonitoringConfig `json:"monitoringConfig,omitempty"`
+
+	// DefaultNodeLocation is the list of Google Compute Engine zones in which the cluster's Node should be located.
+	// +optional
+	DefaultNodeLocation []string `json:"defaultNodeLocation,omitempty"`
+
+	// DefaultMaXPodsPerNode is the maximum number of pods can be run simultaneously on a Node, and only honored if
+	// Cluster is created with IP Alias support.
+	// +optional
+	DefaultMaxPodsPerNode int `json:"defaultMaxPodsPerNode,omitempty"`
+
 	// Project is the name of the project to deploy the cluster to.
 	Project string `json:"project"`
 
