@@ -285,8 +285,6 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 			cluster.IpAllocationPolicy.ServicesIpv4CidrBlock = cn.Service.CidrBlock
 		}
 		if cn.PrivateCluster != nil {
-			cluster.PrivateClusterConfig = &containerpb.PrivateClusterConfig{}
-
 			enablePublicEndpoint := !cn.PrivateCluster.EnablePrivateEndpoint
 			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.EnablePublicEndpoint = &enablePublicEndpoint
 			if cn.PrivateCluster.EnablePrivateEndpoint {
@@ -294,16 +292,21 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 					Enabled: true,
 				}
 			}
-			cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
-
-			cluster.PrivateClusterConfig.MasterIpv4CidrBlock = cn.PrivateCluster.ControlPlaneCidrBlock
-			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
-
 			cluster.NetworkConfig = &containerpb.NetworkConfig{
 				DefaultSnatStatus: &containerpb.DefaultSnatStatus{
 					Disabled: cn.PrivateCluster.DisableDefaultSNAT,
 				},
 			}
+
+			cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
+
+			cluster.PrivateClusterConfig = &containerpb.PrivateClusterConfig{
+				MasterIpv4CidrBlock: cn.PrivateCluster.ControlPlaneCidrBlock,
+				// EnablePrivateNodes is deprecated but GCP SDK raises an error if the value
+				// of this field is different from the value of NetworkConfig.DefaultEnablePrivateNodes
+				EnablePrivateNodes: cn.PrivateCluster.EnablePrivateNodes,
+			}
+			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
 		}
 	}
 	if !s.scope.IsAutopilotCluster() {
@@ -469,6 +472,7 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 	// DesiredMasterAuthorizedNetworksConfig
 	// When desiredMasterAuthorizedNetworksConfig is nil, it means that the user wants to disable the feature.
 	desiredMasterAuthorizedNetworksConfig := convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig)
+	// TODO: condition is false when creatin private GKE cluster, but then `DesiredControlPlaneEndpoint` is nil
 	if !compareMasterAuthorizedNetworksConfig(desiredMasterAuthorizedNetworksConfig, existingCluster.GetControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetAuthorizedNetworksConfig()) {
 		needUpdate = true
 		clusterUpdate.DesiredControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
