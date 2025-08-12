@@ -294,16 +294,16 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 					Enabled: true,
 				}
 			}
-			cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
-
-			cluster.PrivateClusterConfig.MasterIpv4CidrBlock = cn.PrivateCluster.ControlPlaneCidrBlock
-			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
-
 			cluster.NetworkConfig = &containerpb.NetworkConfig{
 				DefaultSnatStatus: &containerpb.DefaultSnatStatus{
 					Disabled: cn.PrivateCluster.DisableDefaultSNAT,
 				},
 			}
+
+			cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
+
+			cluster.PrivateClusterConfig.MasterIpv4CidrBlock = cn.PrivateCluster.ControlPlaneCidrBlock
+			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
 		}
 	}
 	if !s.scope.IsAutopilotCluster() {
