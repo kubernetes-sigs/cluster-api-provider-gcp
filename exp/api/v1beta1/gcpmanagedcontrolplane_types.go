@@ -203,7 +203,7 @@ type GCPManagedControlPlaneList struct {
 }
 
 // ReleaseChannel is the release channel of the GKE cluster
-// +kubebuilder:validation:Enum=rapid;regular;stable
+// +kubebuilder:validation:Enum=rapid;regular;stable;extended
 type ReleaseChannel string
 
 const (
@@ -213,6 +213,8 @@ const (
 	Regular ReleaseChannel = "regular"
 	// Stable release channel.
 	Stable ReleaseChannel = "stable"
+	// Extended release channel.
+	Extended ReleaseChannel = "extended"
 )
 
 // MasterAuthorizedNetworksConfig contains configuration options for the master authorized networks feature.
