@@ -113,6 +113,100 @@ type AuthenticatorGroupConfig struct {
 	SecurityGroups string `json:"securityGroups,omitempty"`
 }
 
+// ClusterSecurity defines the cluster security.
+
+type ClusterSecurity struct {
+	// WorkloadIdentityConfig allows workloads in your GKE clusters to impersonate Identity and Access Management (IAM)
+	// service accounts to access Google Cloud services
+	// +optional
+	WorkloadIdentityConfig *WorkloadIdentityConfig `json:"workloadIdentityConfig,omitempty"`
+
+	// AuthenticatorGroupConfig is RBAC security group for use with Google security groups in Kubernetes RBAC.
+	// +optional
+	AuthenticatorGroupConfig *AuthenticatorGroupConfig `json:"authenticatorGroupConfig,omitempty"`
+
+	// EnableLegacyAuthorization Whether the legacy (ABAC) authorizer is enabled for this cluster.
+	// +optional
+	EnableLegacyAuthorization bool `json:"enableLegacyAuthorization,omitempty"`
+
+	// IssueClientCertificate is weather to issue a client certificate.
+	// +optional
+	IssueClientCertificate bool `json:"issueClientCertificate,omitempty"`
+}
+
+// AddonsConfig defines the enabled Cluster Addons.
+type AddonsConfig struct {
+	// CloudRun enable the Cloud Run addon, which allows  the user to use a managed Knative service.
+	// +optional
+	CloudRun bool `json:"cloudRun,omitempty"`
+
+	// KalmConfig enable the KALM addon, which manages the lifecycle of k8s applications.
+	// +optional
+	KalmConfig bool `json:"kalmConfig,omitempty"`
+
+	// GKEBackup whether the Backup for GKE agent is enabled for this cluster.
+	// +optional
+	GKEBackup bool `json:"GKEBackup,omitempty"`
+
+	// GCEPersistentDiskCsiDriver whether the Compute Engine PD CSI driver is enabled for this cluster.
+	// +optional
+	GCEPersistentDiskCsiDriver bool `json:"GCEPersistentDiskCsiDriver,omitempty"`
+
+	// GCPFileStoreCsiDriver whether the GCP Filestore CSI driver is enabled for this cluster.
+	// +optional
+	GCPFileStoreCsiDriver bool `json:"GCPFileStoreCsiDriver,omitempty"`
+
+	// ImageStreaming whether to use GCFS (Google Container File System).
+	// +optional
+	ImageStreaming bool `json:"ImageStreaming,omitempty"`
+}
+
+// LoggingConfig defines the logging on Cluster.
+type LoggingConfig struct {
+	// SystemComponents enables the system component logging.
+	// +optional
+	SystemComponents bool `json:"systemComponents,omitempty"`
+
+	// Workloads enables the Workloads logging.
+	// +optional
+	Workloads bool `json:"workloads,omitempty"`
+
+	// APIServer enables the api server logging.
+	// +optional
+	APIServer bool `json:"apiServer,omitempty"`
+
+	// Scheduler enables the scheduler logging.
+	// +optional
+	Scheduler bool `json:"scheduler,omitempty"`
+
+	// ControllerManager enables the controller manager logging.
+	// +optional
+	ControllerManager bool `json:"controllerManager,omitempty"`
+}
+
+// MonitoringConfig defines the monitoring on Cluster.
+type MonitoringConfig struct {
+	// SystemComponents enables the system component monitoring.
+	// +optional
+	SystemComponents bool `json:"systemComponents,omitempty"`
+
+	// APIServer enables the api server monitoring.
+	// +optional
+	APIServer bool `json:"apiServer,omitempty"`
+
+	// Scheduler enables the scheduler monitoring.
+	// +optional
+	Scheduler bool `json:"scheduler,omitempty"`
+
+	// ControllerManager enables the controller manager monitoring.
+	// +optional
+	ControllerManager bool `json:"controllerManager,omitempty"`
+
+	// EnableManagedPrometheus Enable Google Cloud Managed Service for Prometheus in the cluster.
+	// +optional
+	EnableManagedPrometheus bool `json:"enableManagedPrometheus,omitempty"`
+}
+
 // GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
 type GCPManagedControlPlaneSpec struct {
 	GCPManagedControlPlaneClassSpec `json:",inline"`
