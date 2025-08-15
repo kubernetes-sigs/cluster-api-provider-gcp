@@ -80,6 +80,7 @@ providers:
 variables:
   KUBERNETES_VERSION: "v1.32.5"
   KUBERNETES_VERSION_MANAGEMENT: "v1.32.5"
+  KUBERNETES_VERSION_GKE: "v1.32.4"
   ETCD_VERSION_UPGRADE_TO: "3.5.16-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.11.3"
   KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-32-5-nightly"
