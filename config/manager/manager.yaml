@@ -21,7 +21,7 @@ spec:
       containers:
       - args:
         - --leader-elect
-        - --feature-gates=GKE=${EXP_CAPG_GKE:=false}
+        - --feature-gates=GKE=${EXP_CAPG_GKE:=false},MachinePool=${EXP_MACHINE_POOL:=false}
         - "--diagnostics-address=${CAPG_DIAGNOSTICS_ADDRESS:=:8443}"
         - "--insecure-diagnostics=${CAPG_INSECURE_DIAGNOSTICS:=false}"
         - "--v=${CAPG_LOGLEVEL:=0}"
