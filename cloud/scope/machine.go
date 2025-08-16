@@ -274,16 +274,16 @@ func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 	return disk
 }
 
-// InstanceAdditionalDiskSpec returns compute instance additional attched-disk spec.
-func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
-	additionalDisks := make([]*compute.AttachedDisk, 0, len(m.GCPMachine.Spec.AdditionalDisks))
-	for _, disk := range m.GCPMachine.Spec.AdditionalDisks {
+// instanceAdditionalDiskSpec returns compute instance additional attched-disk spec.
+func instanceAdditionalDiskSpec(ctx context.Context, spec []infrav1.AttachedDiskSpec, rootDiskEncryptionKey *infrav1.CustomerEncryptionKey, zone string, resourceManagerTags infrav1.ResourceManagerTags) []*compute.AttachedDisk {
+	additionalDisks := make([]*compute.AttachedDisk, 0, len(spec))
+	for _, disk := range spec {
 		additionalDisk := &compute.AttachedDisk{
 			AutoDelete: true,
 			InitializeParams: &compute.AttachedDiskInitializeParams{
 				DiskSizeGb:          ptr.Deref(disk.Size, 30),
-				DiskType:            path.Join("zones", m.Zone(), "diskTypes", string(*disk.DeviceType)),
-				ResourceManagerTags: shared.ResourceTagConvert(context.TODO(), m.GCPMachine.Spec.ResourceManagerTags),
+				DiskType:            path.Join("zones", zone, "diskTypes", string(*disk.DeviceType)),
+				ResourceManagerTags: shared.ResourceTagConvert(ctx, resourceManagerTags),
 			},
 		}
 		if strings.HasSuffix(additionalDisk.InitializeParams.DiskType, string(infrav1.LocalSsdDiskType)) {
@@ -297,20 +297,20 @@ func (m *MachineScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk {
 			additionalDisk.Interface = "NVME"
 		}
 		if disk.EncryptionKey != nil {
-			if m.GCPMachine.Spec.RootDiskEncryptionKey.KeyType == infrav1.CustomerManagedKey && m.GCPMachine.Spec.RootDiskEncryptionKey.ManagedKey != nil {
+			if rootDiskEncryptionKey.KeyType == infrav1.CustomerManagedKey && rootDiskEncryptionKey.ManagedKey != nil {
 				additionalDisk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
-					KmsKeyName: m.GCPMachine.Spec.RootDiskEncryptionKey.ManagedKey.KMSKeyName,
+					KmsKeyName: rootDiskEncryptionKey.ManagedKey.KMSKeyName,
 				}
-				if m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount != nil {
-					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount
+				if rootDiskEncryptionKey.KMSKeyServiceAccount != nil {
+					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *rootDiskEncryptionKey.KMSKeyServiceAccount
 				}
-			} else if m.GCPMachine.Spec.RootDiskEncryptionKey.KeyType == infrav1.CustomerSuppliedKey && m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey != nil {
+			} else if rootDiskEncryptionKey.KeyType == infrav1.CustomerSuppliedKey && rootDiskEncryptionKey.SuppliedKey != nil {
 				additionalDisk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
-					RawKey:          string(m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey.RawKey),
-					RsaEncryptedKey: string(m.GCPMachine.Spec.RootDiskEncryptionKey.SuppliedKey.RSAEncryptedKey),
+					RawKey:          string(rootDiskEncryptionKey.SuppliedKey.RawKey),
+					RsaEncryptedKey: string(rootDiskEncryptionKey.SuppliedKey.RSAEncryptedKey),
 				}
-				if m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount != nil {
-					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *m.GCPMachine.Spec.RootDiskEncryptionKey.KMSKeyServiceAccount
+				if rootDiskEncryptionKey.KMSKeyServiceAccount != nil {
+					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *rootDiskEncryptionKey.KMSKeyServiceAccount
 				}
 			}
 		}
@@ -375,6 +375,8 @@ func (m *MachineScope) InstanceAdditionalMetadataSpec() *compute.Metadata {
 
 // InstanceSpec returns instance spec.
 func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
+	ctx := context.TODO()
+
 	instance := &compute.Instance{
 		Name:        m.Name(),
 		Zone:        m.Zone(),
@@ -461,7 +463,7 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 	}
 
 	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
-	instance.Disks = append(instance.Disks, m.InstanceAdditionalDiskSpec()...)
+	instance.Disks = append(instance.Disks, instanceAdditionalDiskSpec(ctx, m.GCPMachine.Spec.AdditionalDisks, m.GCPMachine.Spec.RootDiskEncryptionKey, m.Zone(), m.ResourceManagerTags())...)
 	instance.Metadata = m.InstanceAdditionalMetadataSpec()
 	instance.ServiceAccounts = append(instance.ServiceAccounts, m.InstanceServiceAccountsSpec())
 	instance.NetworkInterfaces = append(instance.NetworkInterfaces, m.InstanceNetworkInterfaceSpec())
