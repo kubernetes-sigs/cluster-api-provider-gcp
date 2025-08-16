@@ -30,6 +30,11 @@ const (
 	// owner: @richardchen331 & @richardcase
 	// alpha: v0.1
 	GKE featuregate.Feature = "GKE"
+
+	// MachinePool is used to enable MIG support
+	// owner: @justinsb
+	// alpha: v0.1
+	MachinePool featuregate.Feature = "MachinePool"
 )
 
 func init() {
