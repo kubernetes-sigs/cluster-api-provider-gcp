@@ -230,6 +230,7 @@ spec:
                 - rapid
                 - regular
                 - stable
+                - extended
                 type: string
               version:
                 description: |-

@@ -386,6 +386,8 @@ func convertToSdkReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.
 		return containerpb.ReleaseChannel_REGULAR
 	case infrav1exp.Stable:
 		return containerpb.ReleaseChannel_STABLE
+	case infrav1exp.Extended:
+		return containerpb.ReleaseChannel_EXTENDED
 	default:
 		return containerpb.ReleaseChannel_UNSPECIFIED
 	}
