@@ -8,7 +8,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
-	clusterv1exp "sigs.k8s.io/cluster-api/exp/api/v1beta1"
+	clusterv1exp "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 var (
