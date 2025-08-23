@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
-	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -138,16 +137,22 @@ func (m *MachineScope) ControlPlaneGroupName() string {
 
 // IsControlPlane returns true if the machine is a control plane.
 func (m *MachineScope) IsControlPlane() bool {
-	return util.IsControlPlaneMachine(m.Machine)
+	return IsControlPlaneMachine(m.Machine)
 }
 
 // Role returns the machine role from the labels.
 func (m *MachineScope) Role() string {
-	if util.IsControlPlaneMachine(m.Machine) {
+	if IsControlPlaneMachine(m.Machine) {
 		return "control-plane"
 	}
 
 	return "node"
+}
+
+// IsControlPlaneMachine checks machine is a control plane node.
+func IsControlPlaneMachine(machine *clusterv1.Machine) bool {
+	_, ok := machine.Labels[clusterv1.MachineControlPlaneLabel]
+	return ok
 }
 
 // GetInstanceID returns the GCPMachine instance id by parsing Spec.ProviderID.
