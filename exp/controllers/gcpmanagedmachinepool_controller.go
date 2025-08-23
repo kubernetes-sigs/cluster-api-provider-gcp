@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/nodepools"
-	"sigs.k8s.io/cluster-api/util/annotations"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/capiutils"
 	"sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	"sigs.k8s.io/cluster-api/util/record"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -180,7 +180,7 @@ func (r *GCPManagedMachinePoolReconciler) SetupWithManager(ctx context.Context, 
 	if err := c.Watch(
 		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(clusterToObjectFunc),
-			predicates.ClusterPausedTransitionsOrInfrastructureReady(mgr.GetScheme(), log),
+			capiutils.ClusterPausedTransitionsOrInfrastructureReady(mgr.GetScheme(), log),
 		)); err != nil {
 		return errors.Wrap(err, "failed adding a watch for ready clusters")
 	}
@@ -251,12 +251,12 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	// Get the cluster
-	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machinePool.ObjectMeta)
+	cluster, err := capiutils.GetClusterFromMetadata(ctx, r.Client, machinePool.ObjectMeta)
 	if err != nil {
 		log.Info("Failed to retrieve Cluster from MachinePool")
 		return ctrl.Result{}, err
 	}
-	if annotations.IsPaused(cluster, gcpManagedMachinePool) {
+	if capiutils.IsPaused(cluster, gcpManagedMachinePool) {
 		log.Info("Reconciliation is paused for this object")
 		return ctrl.Result{}, nil
 	}
