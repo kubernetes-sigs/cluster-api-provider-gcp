@@ -305,6 +305,10 @@ spec:
 
                   Deprecated: This field will soon be removed and you are expected to use Version instead.
                 type: string
+              identityServiceServer:
+                description: IdentityServiceServer indicates when the identity service
+                  is enabled, the server for external authentication.
+                type: string
               initialized:
                 description: |-
                   Initialized is true when the control plane is available for initial contact.
