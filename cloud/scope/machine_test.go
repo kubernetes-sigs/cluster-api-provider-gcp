@@ -1,6 +1,7 @@
 package scope
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,8 @@ import (
 // This test verifies that if a user selects "local-ssd"
 // as a disk type then the MachineScope correctly detects it as such.
 func TestMachineLocalSSDDiskType(t *testing.T) {
+	ctx := context.Background()
+
 	// Register the GCPMachine and GCPMachineList in a schema.
 	schema, err := infrav1.SchemeBuilder.Register(&infrav1.GCPMachine{}, &infrav1.GCPMachineList{}).Build()
 
@@ -62,7 +65,7 @@ func TestMachineLocalSSDDiskType(t *testing.T) {
 	assert.NotNil(t, testMachineScope)
 
 	// Now make sure the local-ssd disk type is detected as SCRATCH.
-	diskSpec := testMachineScope.InstanceAdditionalDiskSpec()
+	diskSpec := instanceAdditionalDiskSpec(ctx, testGCPMachine.Spec.AdditionalDisks, testGCPMachine.Spec.RootDiskEncryptionKey, testMachineScope.Zone(), testGCPMachine.Spec.ResourceManagerTags)
 	assert.NotEmpty(t, diskSpec)
 
 	// Get the local-ssd disk now.
