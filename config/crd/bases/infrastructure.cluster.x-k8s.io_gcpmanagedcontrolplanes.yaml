@@ -66,6 +66,14 @@ spec:
           spec:
             description: GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
             properties:
+              binaryAuthorization:
+                description: |-
+                  BinaryAuthorization represents the mode of operation of Binary Authorization for the GKE cluster.
+                  This feature is disabled if this field is not specified.
+                enum:
+                - disabled
+                - project_singleton_policy_enforce
+                type: string
               clusterName:
                 description: |-
                   ClusterName allows you to specify the name of the GKE cluster.
@@ -131,6 +139,34 @@ spec:
                       UseIPAliases is whether alias IPs will be used for pod IPs in the cluster. If false, routes will be used for
                       pod IPs in the cluster.
                     type: boolean
+                type: object
+              clusterSecurity:
+                description: ClusterSecurity defines the cluster security.
+                properties:
+                  authenticatorGroupConfig:
+                    description: AuthenticatorGroupConfig is RBAC security group for
+                      use with Google security groups in Kubernetes RBAC.
+                    properties:
+                      securityGroups:
+                        description: SecurityGroups is the name of the security group-of-groups
+                          to be used.
+                        type: string
+                    required:
+                    - securityGroups
+                    type: object
+                  workloadIdentityConfig:
+                    description: |-
+                      WorkloadIdentityConfig allows workloads in your GKE clusters to impersonate Identity and Access Management (IAM)
+                      service accounts to access Google Cloud services
+                    properties:
+                      workloadPool:
+                        description: |-
+                          WorkloadPool is the workload pool to attach all Kubernetes service accounts to Google Cloud services.
+                          Only relevant when enabled is true
+                        type: string
+                    required:
+                    - workloadPool
+                    type: object
                 type: object
               controlPlaneVersion:
                 description: |-

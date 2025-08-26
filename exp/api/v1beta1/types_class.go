@@ -31,6 +31,10 @@ type GCPManagedControlPlaneClassSpec struct {
 	// +optional
 	ClusterNetwork *ClusterNetwork `json:"clusterNetwork,omitempty"`
 
+	// ClusterSecurity defines the cluster security.
+	// +optional
+	ClusterSecurity *ClusterSecurity `json:"clusterSecurity,omitempty"`
+
 	// Project is the name of the project to deploy the cluster to.
 	Project string `json:"project"`
 
@@ -49,6 +53,11 @@ type GCPManagedControlPlaneClassSpec struct {
 	// ReleaseChannel represents the release channel of the GKE cluster.
 	// +optional
 	ReleaseChannel *ReleaseChannel `json:"releaseChannel,omitempty"`
+
+	// BinaryAuthorization represents the mode of operation of Binary Authorization for the GKE cluster.
+	// This feature is disabled if this field is not specified.
+	// +optional
+	BinaryAuthorization *BinaryAuthorization `json:"binaryAuthorization,omitempty"`
 
 	// MasterAuthorizedNetworksConfig represents configuration options for master authorized networks feature of the GKE cluster.
 	// This feature is disabled if this field is not specified.
