@@ -53,6 +53,14 @@ spec:
                     description: GCPManagedControlPlaneTemplateResourceSpec specifies
                       an GCP managed control plane template resource.
                     properties:
+                      binaryAuthorization:
+                        description: |-
+                          BinaryAuthorization represents the mode of operation of Binary Authorization for the GKE cluster.
+                          This feature is disabled if this field is not specified.
+                        enum:
+                        - disabled
+                        - project_singleton_policy_enforce
+                        type: string
                       clusterNetwork:
                         description: ClusterNetwork define the cluster network.
                         properties:

@@ -54,6 +54,11 @@ type GCPManagedControlPlaneClassSpec struct {
 	// +optional
 	ReleaseChannel *ReleaseChannel `json:"releaseChannel,omitempty"`
 
+	// BinaryAuthorization represents the mode of operation of Binary Authorization for the GKE cluster.
+	// This feature is disabled if this field is not specified.
+	// +optional
+	BinaryAuthorization *BinaryAuthorization `json:"binaryAuthorization,omitempty"`
+
 	// MasterAuthorizedNetworksConfig represents configuration options for master authorized networks feature of the GKE cluster.
 	// This feature is disabled if this field is not specified.
 	// +optional

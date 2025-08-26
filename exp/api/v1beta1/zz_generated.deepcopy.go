@@ -435,6 +435,11 @@ func (in *GCPManagedControlPlaneClassSpec) DeepCopyInto(out *GCPManagedControlPl
 		*out = new(ReleaseChannel)
 		**out = **in
 	}
+	if in.BinaryAuthorization != nil {
+		in, out := &in.BinaryAuthorization, &out.BinaryAuthorization
+		*out = new(BinaryAuthorization)
+		**out = **in
+	}
 	if in.MasterAuthorizedNetworksConfig != nil {
 		in, out := &in.MasterAuthorizedNetworksConfig, &out.MasterAuthorizedNetworksConfig
 		*out = new(MasterAuthorizedNetworksConfig)

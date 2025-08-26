@@ -267,15 +267,20 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		ReleaseChannel: &containerpb.ReleaseChannel{
 			Channel: convertToSdkReleaseChannel(s.scope.GCPManagedControlPlane.Spec.ReleaseChannel),
 		},
+		BinaryAuthorization: &containerpb.BinaryAuthorization{
+			EvaluationMode: convertToSdkBinaryAuthorizationEvaluationMode(s.scope.GCPManagedControlPlane.Spec.BinaryAuthorization),
+		},
 		ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
 			IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
 				AuthorizedNetworksConfig: convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig),
 			},
 		},
 	}
+
 	if initialClusterVersionFromSpec := s.scope.GetControlPlaneVersion(); initialClusterVersionFromSpec != nil {
 		cluster.InitialClusterVersion = convertToSdkMasterVersion(*initialClusterVersionFromSpec)
 	}
+
 	if s.scope.GCPManagedControlPlane.Spec.ClusterNetwork != nil {
 		cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork
 		if cn.UseIPAliases {
@@ -284,16 +289,19 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 			cluster.IpAllocationPolicy.ClusterIpv4CidrBlock = cn.Pod.CidrBlock
 			cluster.IpAllocationPolicy.ServicesIpv4CidrBlock = cn.Service.CidrBlock
 		}
+
 		if cn.PrivateCluster != nil {
 			cluster.PrivateClusterConfig = &containerpb.PrivateClusterConfig{}
 
 			enablePublicEndpoint := !cn.PrivateCluster.EnablePrivateEndpoint
 			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.EnablePublicEndpoint = &enablePublicEndpoint
+
 			if cn.PrivateCluster.EnablePrivateEndpoint {
 				cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = &containerpb.MasterAuthorizedNetworksConfig{
 					Enabled: true,
 				}
 			}
+
 			cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
 
 			cluster.PrivateClusterConfig.MasterIpv4CidrBlock = cn.PrivateCluster.ControlPlaneCidrBlock
@@ -439,6 +447,22 @@ func convertToSdkMasterAuthorizedNetworksConfig(config *infrav1exp.MasterAuthori
 		Enabled:                     true,
 		CidrBlocks:                  cidrBlocks,
 		GcpPublicCidrsAccessEnabled: config.GcpPublicCidrsAccessEnabled,
+	}
+}
+
+// convertToSdkBinaryAuthorizationEvaluationMode converts the BinaryAuthorization string to the SDK int32 value.
+func convertToSdkBinaryAuthorizationEvaluationMode(mode *infrav1exp.BinaryAuthorization) containerpb.BinaryAuthorization_EvaluationMode {
+	if mode == nil {
+		return containerpb.BinaryAuthorization_EVALUATION_MODE_UNSPECIFIED
+	}
+
+	switch *mode {
+	case infrav1exp.EvaluationModeDisabled:
+		return containerpb.BinaryAuthorization_DISABLED
+	case infrav1exp.EvaluationModeProjectSingletonPolicyEnforce:
+		return containerpb.BinaryAuthorization_PROJECT_SINGLETON_POLICY_ENFORCE
+	default:
+		return containerpb.BinaryAuthorization_EVALUATION_MODE_UNSPECIFIED
 	}
 }
 

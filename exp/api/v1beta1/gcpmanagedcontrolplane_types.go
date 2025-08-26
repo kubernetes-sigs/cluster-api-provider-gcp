@@ -113,6 +113,18 @@ type AuthenticatorGroupConfig struct {
 	SecurityGroups string `json:"securityGroups,omitempty"`
 }
 
+// BinaryAuthorization is the Binary Authorization evaluation mode of the GKE cluster
+// +kubebuilder:validation:Enum=disabled;project_singleton_policy_enforce
+type BinaryAuthorization string
+
+const (
+	// EvaluationModeDisabled disables BinaryAuthorization.
+	EvaluationModeDisabled BinaryAuthorization = "disabled"
+	// EvaluationModeProjectSingletonPolicyEnforce enforces Kubernetes admission requests with BinaryAuthorization using the
+	// project's singleton policy. This is equivalent to setting the
+	EvaluationModeProjectSingletonPolicyEnforce BinaryAuthorization = "project_singleton_policy_enforce"
+)
+
 // ClusterSecurity defines the cluster security options.
 type ClusterSecurity struct {
 	// WorkloadIdentityConfig allows workloads in your GKE clusters to impersonate Identity and Access Management (IAM)
