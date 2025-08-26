@@ -31,6 +31,10 @@ type GCPManagedControlPlaneClassSpec struct {
 	// +optional
 	ClusterNetwork *ClusterNetwork `json:"clusterNetwork,omitempty"`
 
+	// ClusterSecurity defines the cluster security.
+	// +optional
+	ClusterSecurity *ClusterSecurity `json:"clusterSecurity,omitempty"`
+
 	// Project is the name of the project to deploy the cluster to.
 	Project string `json:"project"`
 

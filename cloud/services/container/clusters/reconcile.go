@@ -306,13 +306,32 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 			}
 		}
 	}
+
 	if !s.scope.IsAutopilotCluster() {
 		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional, cluster.GetName())
+
 		if s.scope.GCPManagedControlPlane.Spec.LoggingService != nil {
 			cluster.LoggingService = s.scope.GCPManagedControlPlane.Spec.LoggingService.String()
 		}
+
 		if s.scope.GCPManagedControlPlane.Spec.MonitoringService != nil {
 			cluster.MonitoringService = s.scope.GCPManagedControlPlane.Spec.MonitoringService.String()
+		}
+	}
+
+	if s.scope.GCPManagedControlPlane.Spec.ClusterSecurity != nil {
+		cs := s.scope.GCPManagedControlPlane.Spec.ClusterSecurity
+		if cs.WorkloadIdentityConfig != nil {
+			cluster.WorkloadIdentityConfig = &containerpb.WorkloadIdentityConfig{
+				WorkloadPool: cs.WorkloadIdentityConfig.WorkloadPool,
+			}
+		}
+
+		if cs.AuthenticatorGroupConfig != nil {
+			cluster.AuthenticatorGroupsConfig = &containerpb.AuthenticatorGroupsConfig{
+				Enabled:       true,
+				SecurityGroup: cs.AuthenticatorGroupConfig.SecurityGroups,
+			}
 		}
 	}
 

@@ -113,6 +113,18 @@ type AuthenticatorGroupConfig struct {
 	SecurityGroups string `json:"securityGroups,omitempty"`
 }
 
+// ClusterSecurity defines the cluster security options.
+type ClusterSecurity struct {
+	// WorkloadIdentityConfig allows workloads in your GKE clusters to impersonate Identity and Access Management (IAM)
+	// service accounts to access Google Cloud services
+	// +optional
+	WorkloadIdentityConfig *WorkloadIdentityConfig `json:"workloadIdentityConfig,omitempty"`
+
+	// AuthenticatorGroupConfig is RBAC security group for use with Google security groups in Kubernetes RBAC.
+	// +optional
+	AuthenticatorGroupConfig *AuthenticatorGroupConfig `json:"authenticatorGroupConfig,omitempty"`
+}
+
 // GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
 type GCPManagedControlPlaneSpec struct {
 	GCPManagedControlPlaneClassSpec `json:",inline"`

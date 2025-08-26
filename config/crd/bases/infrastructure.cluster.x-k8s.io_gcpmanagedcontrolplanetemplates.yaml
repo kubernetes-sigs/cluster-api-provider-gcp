@@ -115,6 +115,35 @@ spec:
                               pod IPs in the cluster.
                             type: boolean
                         type: object
+                      clusterSecurity:
+                        description: ClusterSecurity defines the cluster security.
+                        properties:
+                          authenticatorGroupConfig:
+                            description: AuthenticatorGroupConfig is RBAC security
+                              group for use with Google security groups in Kubernetes
+                              RBAC.
+                            properties:
+                              securityGroups:
+                                description: SecurityGroups is the name of the security
+                                  group-of-groups to be used.
+                                type: string
+                            required:
+                            - securityGroups
+                            type: object
+                          workloadIdentityConfig:
+                            description: |-
+                              WorkloadIdentityConfig allows workloads in your GKE clusters to impersonate Identity and Access Management (IAM)
+                              service accounts to access Google Cloud services
+                            properties:
+                              workloadPool:
+                                description: |-
+                                  WorkloadPool is the workload pool to attach all Kubernetes service accounts to Google Cloud services.
+                                  Only relevant when enabled is true
+                                type: string
+                            required:
+                            - workloadPool
+                            type: object
+                        type: object
                       enableAutopilot:
                         description: EnableAutopilot indicates whether to enable autopilot
                           for this GKE cluster.
