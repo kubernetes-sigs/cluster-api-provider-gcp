@@ -41,7 +41,7 @@ const (
 var _ = Describe("GKE workload cluster creation", func() {
 	var (
 		ctx                 = context.TODO()
-		specName            = "create-gke-workload-cluster"
+		specName            = "gke"
 		namespace           *corev1.Namespace
 		cancelWatches       context.CancelFunc
 		result              *ApplyManagedClusterTemplateAndWaitResult
@@ -57,7 +57,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
 
-		clusterNamePrefix = fmt.Sprintf("capg-e2e-gke-%s", util.RandomString(6))
+		clusterNamePrefix = fmt.Sprintf("%s-%s", specName, util.RandomString(6))
 
 		// Setup a Namespace where to host objects for this spec and create a watcher for the namespace events.
 		namespace, cancelWatches = setupSpecNamespace(ctx, specName, bootstrapClusterProxy, artifactFolder)
@@ -145,7 +145,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 	Context("Creating a GKE cluster with autopilot", func() {
 		It("Should create a cluster with 1 machine pool and scale", func() {
-			clusterName := fmt.Sprintf("%s-autopilot", clusterNamePrefix)
+			clusterName := fmt.Sprintf("%s-ap", clusterNamePrefix)
 			By("Initializes with 1 machine pool")
 
 			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
@@ -171,7 +171,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 	Context("Creating a GKE cluster with custom subnet", func() {
 		It("Should create a cluster with 3 machine pool and custom subnet", func() {
-			clusterName := fmt.Sprintf("%s-custom-subnet", clusterNamePrefix)
+			clusterName := fmt.Sprintf("%s-cust-snet", clusterNamePrefix)
 			By("Initializes with 3 machine pool")
 
 			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
@@ -201,6 +201,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 
 	Context("Creating a GKE cluster with autopilot from a cluster class", func() {
 		It("Should create a cluster class and a cluster from it", func() {
+			clusterName := fmt.Sprintf("%s-cc", clusterNamePrefix)
 			By("Initializes a managed control plane and managed cluster")
 
 			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
