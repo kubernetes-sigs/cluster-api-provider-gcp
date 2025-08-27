@@ -55,7 +55,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 		Expect(bootstrapClusterProxy).ToNot(BeNil(), "Invalid argument. bootstrapClusterProxy can't be nil when calling %s spec", specName)
 		Expect(os.MkdirAll(artifactFolder, 0o755)).To(Succeed(), "Invalid argument. artifactFolder can't be created for %s spec", specName)
 
-		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
+		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersionGKE))
 
 		clusterNamePrefix = fmt.Sprintf("%s-%s", specName, util.RandomString(6))
 
@@ -158,7 +158,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 					Flavor:                   "ci-gke-autopilot",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersionGKE),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](0),
 				},
@@ -184,7 +184,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 					Flavor:                   "ci-gke-custom-subnet",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersionGKE),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](3),
 					ClusterctlVariables: map[string]string{
@@ -214,7 +214,7 @@ var _ = Describe("GKE workload cluster creation", func() {
 					Flavor:                   "ci-gke-autopilot-topology",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersionGKE),
 					ControlPlaneMachineCount: ptr.To[int64](1),
 					WorkerMachineCount:       ptr.To[int64](0),
 				},
