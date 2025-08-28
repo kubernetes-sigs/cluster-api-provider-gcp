@@ -63,6 +63,23 @@ Example versions:
 - Patch release: `v0.1.1`
 - Major release: `v1.0.0`
 
+The major and minor versions mirror the version of Cluster-API.  Thus CAPG 1.11.x releases will use CAPI versions 1.11
+
+The patch version is incremented for each release.  Thus the first release of CAPG using CAPI 1.11 will 1.11.0, the second will be 1.11.1, etc
+
+## Branches
+
+We maintain release branches to facilitate backporting fixes.  These branches are named `release-<major>.<minor>`.  Patch releases are tagged from the corresponding release branch.
+
+Feature development happens on the `main` branch, and [nightlies](nightlies.md) are released from the `main` branch also.
+While we aim to keep the `main` branch healthy, it is intended for development and testing, and should not be used in production.
+
+As such, we will aim to keep the main branch up to date with the latest versions of all dependencies (go toolchain, CAPI, other go module dependencies).
+
+Release branches lock to a particular minor version of CAPI, but will update other dependencies on these branches while they are supported.
+Currently we maintain only one release branch (and the `main` branch).  Once a branch is no longer supported there will be no new releases
+of the corresponding minor, including no further security fixes.
+
 ## Expected artifacts
 
 1. A release yaml file `infrastructure-components.yaml` containing the resources needed to deploy to Kubernetes
