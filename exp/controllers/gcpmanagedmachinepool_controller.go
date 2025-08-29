@@ -235,7 +235,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{}, fmt.Errorf("getting GCPManagedMachinePool: %w", err)
 	}
 
 	// Get the machine pool
@@ -349,10 +349,6 @@ func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managed
 			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
 			return res, nil
 		}
-		if res.Requeue {
-			log.V(4).Info("Reconciler requested requeue", "reconciler", name)
-			return res, nil
-		}
 	}
 
 	return ctrl.Result{}, nil
@@ -383,10 +379,6 @@ func (r *GCPManagedMachinePoolReconciler) reconcileDelete(ctx context.Context, m
 		}
 		if res.RequeueAfter > 0 {
 			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
-			return res, nil
-		}
-		if res.Requeue {
-			log.V(4).Info("Reconciler requested requeue", "reconciler", name)
 			return res, nil
 		}
 	}
