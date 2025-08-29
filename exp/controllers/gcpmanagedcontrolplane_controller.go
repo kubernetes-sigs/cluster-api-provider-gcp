@@ -96,7 +96,7 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{}, fmt.Errorf("getting GCPManagedControlPlane: %w", err)
 	}
 
 	// Get the cluster
@@ -181,10 +181,6 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
 			return res, nil
 		}
-		if res.Requeue {
-			log.V(4).Info("Reconciler requested requeue", "reconciler", name)
-			return res, nil
-		}
 	}
 
 	return ctrl.Result{}, nil
@@ -207,10 +203,6 @@ func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, 
 		}
 		if res.RequeueAfter > 0 {
 			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
-			return res, nil
-		}
-		if res.Requeue {
-			log.V(4).Info("Reconciler requested requeue", "reconciler", name)
 			return res, nil
 		}
 	}
