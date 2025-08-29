@@ -576,10 +576,11 @@ clean-release: ## Remove the release folder
 	rm -rf $(RELEASE_DIR)
 
 .PHONY: apidiff
-apidiff: $(GO_APIDIFF) ## Check for API differences.
+apidiff: APIDIFF_OLD_COMMIT ?= $(shell git rev-parse origin/main)
+apidiff: $(GO_APIDIFF) ## Check for API differences
 	@$(call checkdiff) > /dev/null
 	@if ($(call checkdiff) | grep "api/"); then \
-		$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible; \
+		$(GO_APIDIFF) $(APIDIFF_OLD_COMMIT) --print-compatible; \
 	else \
 		echo "No changes to 'api/'. Nothing to do."; \
 	fi
