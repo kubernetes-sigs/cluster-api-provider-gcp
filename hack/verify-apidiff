@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2022 The Kubernetes Authors.
+# Copyright 2025 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,23 @@ set -o nounset
 set -o pipefail
 
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-
 cd "${REPO_ROOT}"
 
-APIDIFF_OLD_COMMIT="${PULL_BASE_SHA}" make apidiff
+if [[ -z "${APIDIFF_OLD_COMMIT:-}" ]]; then
+  APIDIFF_OLD_COMMIT=$(git rev-parse origin/main)
+fi
+
+
+echo "*** Running go-apidiff ***"
+
+# Run go-apidiff and filter for changes in api/ or exp/api/
+apidiffs=$(go run github.com/joelanford/go-apidiff@v0.8.3 ${APIDIFF_OLD_COMMIT} || true)
+filtered=$(echo "$apidiffs" | grep -E 'cluster-api-provider-gcp/(api/|exp/api/)' || true)
+
+if [[ -n "$filtered" ]]; then
+  echo "API differences found in api/ or exp/api/:"
+  echo "$apidiffs"
+  exit 1
+else
+  echo "No differences found in api/ or exp/api/ packages"
+fi

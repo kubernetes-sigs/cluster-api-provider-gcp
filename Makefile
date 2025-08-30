@@ -103,10 +103,6 @@ SETUP_ENVTEST_VER := v0.0.0-20240522175850-2e9781e9fc60
 SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(TOOLS_BIN_DIR)/$(SETUP_ENVTEST_BIN)
 
-GO_APIDIFF_VER := v0.8.3
-GO_APIDIFF_BIN := go-apidiff
-GO_APIDIFF := $(TOOLS_BIN_DIR)/$(GO_APIDIFF_BIN)
-
 GOTESTSUM_VER := v1.6.4
 GOTESTSUM_BIN := gotestsum
 GOTESTSUM := $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)
@@ -260,9 +256,6 @@ $(CONVERSION_GEN): ## Build conversion-gen.
 $(RELEASE_NOTES): ## Build release notes.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) k8s.io/release/cmd/release-notes $(RELEASE_NOTES_BIN) $(RELEASE_NOTES_VER)
 
-$(GO_APIDIFF): ## Build go-apidiff from tools folder.
-	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/joelanford/go-apidiff $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
-
 $(CONVERSION_VERIFIER): go.mod
 	cd $(TOOLS_DIR); go build -tags=tools -o $@ sigs.k8s.io/cluster-api/hack/tools/conversion-verifier
 
@@ -281,9 +274,6 @@ $(KIND): ## Build kind into tools folder
 
 .PHONY: $(KUBECTL_BIN)
 $(KUBECTL_BIN): $(KUBECTL) ## Building kubectl from tools folder
-
-.PHONY: $(GO_APIDIFF_BIN)
-$(GO_APIDIFF_BIN): $(GO_APIDIFF)
 
 .PHONY: $(KIND_BIN)
 $(KIND_BIN): $(KIND) ## Building Kind from tools folder
@@ -576,13 +566,10 @@ clean-release: ## Remove the release folder
 	rm -rf $(RELEASE_DIR)
 
 .PHONY: apidiff
-apidiff: $(GO_APIDIFF) ## Check for API differences.
+apidiff: APIDIFF_OLD_COMMIT ?= $(shell git rev-parse origin/main)
+apidiff: $(GO_APIDIFF) ## Check for API differences
 	@$(call checkdiff) > /dev/null
-	@if ($(call checkdiff) | grep "api/"); then \
-		$(GO_APIDIFF) $(shell git rev-parse origin/main) --print-compatible; \
-	else \
-		echo "No changes to 'api/'. Nothing to do."; \
-	fi
+	APIDIFF_OLD_COMMIT="$(APIDIFF_OLD_COMMIT)" hack/verify-apidiff
 
 define checkdiff
 	git --no-pager diff --name-only FETCH_HEAD
