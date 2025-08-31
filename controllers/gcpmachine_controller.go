@@ -245,7 +245,7 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	default:
 		machineScope.SetFailureReason("UpdateError")
 		machineScope.SetFailureMessage(errors.Errorf("GCPMachine instance state %s is unexpected", instanceState))
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 }
 

@@ -55,7 +55,6 @@ var _ = Describe("GCPClusterReconciler", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(BeZero())
-			Expect(result.Requeue).To(BeFalse())
 		})
 	})
 })
