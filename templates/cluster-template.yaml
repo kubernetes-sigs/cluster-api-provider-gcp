@@ -47,9 +47,6 @@ spec:
     clusterConfiguration:
       apiServer:
         timeoutForControlPlane: 20m
-        extraArgs:
-          cloud-provider: gce
-          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
       controllerManager:
         extraArgs:
           cloud-provider: gce
