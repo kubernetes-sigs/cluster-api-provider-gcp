@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -101,7 +100,7 @@ func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 				},
 			}
 
-			warn, err := (&gcpManagedClusterWebhook{}).ValidateUpdate(context.Background(), oldMC, newMC)
+			warn, err := (&gcpManagedClusterWebhook{}).ValidateUpdate(t.Context(), oldMC, newMC)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())
