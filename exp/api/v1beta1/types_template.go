@@ -18,7 +18,7 @@ package v1beta1
 
 import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 // GCPManagedControlPlaneTemplateResourceSpec specifies an GCP managed control plane template resource.

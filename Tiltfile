@@ -18,9 +18,9 @@ settings = {
     "deploy_cert_manager": True,
     "preload_images_for_kind": True,
     "kind_cluster_name": "capg",
-    "capi_version": "v1.7.3",
+    "capi_version": "v1.11.0",
     "cert_manager_version": "v1.14.4",
-    "kubernetes_version": "v1.29.3",
+    "kubernetes_version": "v1.33.2",
 }
 
 keys = ["GCP_B64ENCODED_CREDENTIALS"]
@@ -98,9 +98,9 @@ def validate_auth():
 
 tilt_helper_dockerfile_header = """
 # Tilt image
-FROM golang:1.23.6 as tilt-helper
+FROM golang:1.24.6 as tilt-helper
 # Install delve. Note this should be kept in step with the Go release minor version.
-RUN go install github.com/go-delve/delve/cmd/dlv@v1.23
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.24
 # Support live reloading with Tilt
 RUN wget --output-document /restart.sh --quiet https://raw.githubusercontent.com/tilt-dev/rerun-process-wrapper/master/restart.sh  && \
     wget --output-document /start.sh --quiet https://raw.githubusercontent.com/tilt-dev/rerun-process-wrapper/master/start.sh && \
@@ -109,7 +109,7 @@ RUN wget --output-document /restart.sh --quiet https://raw.githubusercontent.com
 """
 
 tilt_dockerfile_header = """
-FROM golang:1.23.6 as tilt
+FROM golang:1.24.6 as tilt
 WORKDIR /
 COPY --from=tilt-helper /process.txt .
 COPY --from=tilt-helper /start.sh .
