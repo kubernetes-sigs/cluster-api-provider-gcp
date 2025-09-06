@@ -34,6 +34,7 @@ import (
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/kubeconfig"
 	"sigs.k8s.io/cluster-api/util/secret"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -238,12 +239,14 @@ func (s *Service) createBaseKubeConfig(contextName string, cluster *containerpb.
 }
 
 func (s *Service) generateToken(ctx context.Context) (string, error) {
+	log := log.FromContext(ctx)
 	req := &credentialspb.GenerateAccessTokenRequest{
 		Name: "projects/-/serviceAccounts/" + s.scope.GetCredential().ClientEmail,
 		Scope: []string{
 			GkeScope,
 		},
 	}
+	log.Info("DEBUG - Generating Token", "serviceAccount", req.Name, "scopes", req.Scope)
 	resp, err := s.scope.CredentialsClient().GenerateAccessToken(ctx, req)
 	if err != nil {
 		return "", errors.Errorf("error generating access token: %v", err)
