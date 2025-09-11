@@ -41,8 +41,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	expclusterv1 "sigs.k8s.io/cluster-api/exp/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	capifeature "sigs.k8s.io/cluster-api/feature"
 	"sigs.k8s.io/cluster-api/util/flags"
 	"sigs.k8s.io/cluster-api/util/record"
@@ -65,7 +64,6 @@ func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = infrav1beta1.AddToScheme(scheme)
 	_ = clusterv1.AddToScheme(scheme)
-	_ = expclusterv1.AddToScheme(scheme)
 	_ = infrav1exp.AddToScheme(scheme)
 	_ = gkebootstrapv1exp.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme

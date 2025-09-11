@@ -21,18 +21,17 @@ import (
 	"fmt"
 	"time"
 
-	"sigs.k8s.io/cluster-api/util/annotations"
-
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/pkg/capiutils"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
-	"sigs.k8s.io/cluster-api/util/conditions"
+	"sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -76,7 +75,7 @@ func (r *GCPManagedControlPlaneReconciler) SetupWithManager(ctx context.Context,
 	if err = c.Watch(
 		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, gcpManagedControlPlane.GroupVersionKind(), mgr.GetClient(), &infrav1exp.GCPManagedControlPlane{})),
-			predicates.ClusterPausedTransitionsOrInfrastructureReady(mgr.GetScheme(), log),
+			capiutils.ClusterPausedTransitionsOrInfrastructureReady(mgr.GetScheme(), log),
 		)); err != nil {
 		return fmt.Errorf("failed adding a watch for ready clusters: %w", err)
 	}
@@ -100,7 +99,7 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	// Get the cluster
-	cluster, err := util.GetOwnerCluster(ctx, r.Client, gcpManagedControlPlane.ObjectMeta)
+	cluster, err := capiutils.GetOwnerCluster(ctx, r.Client, gcpManagedControlPlane.ObjectMeta)
 	if err != nil {
 		log.Error(err, "Failed to retrieve owner Cluster from the API Server")
 		return ctrl.Result{}, err
@@ -110,7 +109,7 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, nil
 	}
 
-	if annotations.IsPaused(cluster, gcpManagedControlPlane) {
+	if capiutils.IsPaused(cluster, gcpManagedControlPlane) {
 		log.Info("Reconciliation is paused for this object")
 		return ctrl.Result{}, nil
 	}
