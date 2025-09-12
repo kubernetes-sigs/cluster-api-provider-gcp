@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -110,7 +109,7 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 				},
 				Spec: tc.spec,
 			}
-			err := (&gcpManagedControlPlaneWebhook{}).Default(context.Background(), mcp)
+			err := (&gcpManagedControlPlaneWebhook{}).Default(t.Context(), mcp)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(mcp.Spec).ToNot(BeNil())
@@ -193,7 +192,7 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			mcp := &GCPManagedControlPlane{
 				Spec: tc.spec,
 			}
-			warn, err := (&gcpManagedControlPlaneWebhook{}).ValidateCreate(context.Background(), mcp)
+			warn, err := (&gcpManagedControlPlaneWebhook{}).ValidateCreate(t.Context(), mcp)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())
@@ -288,7 +287,7 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 				},
 			}
 
-			warn, err := (&gcpManagedControlPlaneWebhook{}).ValidateUpdate(context.Background(), oldMCP, newMCP)
+			warn, err := (&gcpManagedControlPlaneWebhook{}).ValidateUpdate(t.Context(), oldMCP, newMCP)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())
