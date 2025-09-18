@@ -199,6 +199,11 @@ spec:
                   name:
                     description: Name is the name of the network to be used.
                     type: string
+                  skipFirewallRuleCreation:
+                    description: |-
+                      SkipFirewallRuleCreation should be set to true when no firewall rules should be
+                      created by the provider.
+                    type: boolean
                   subnets:
                     description: Subnets configuration.
                     items:

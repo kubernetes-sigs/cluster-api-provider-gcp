@@ -106,6 +106,12 @@ func (s *ClusterScope) NetworkProject() string {
 	return ptr.Deref(s.GCPCluster.Spec.Network.HostProject, s.Project())
 }
 
+// SkipFirewallRuleCreation returns whether the spec indicates that firewall rules
+// should be created or not.
+func (s *ClusterScope) SkipFirewallRuleCreation() bool {
+	return ptr.Deref(s.GCPCluster.Spec.Network.SkipFirewallRuleCreation, false) || s.IsSharedVpc()
+}
+
 // IsSharedVpc returns true If sharedVPC used else , returns false.
 func (s *ClusterScope) IsSharedVpc() bool {
 	return s.NetworkProject() != s.Project()
