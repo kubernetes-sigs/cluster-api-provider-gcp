@@ -137,6 +137,10 @@ type NetworkSpec struct {
 	// +optional
 	HostProject *string `json:"hostProject,omitempty"`
 
+	// SkipFirewallRuleCreation should be set to true when no firewall rules should be
+	// created by the provider.
+	SkipFirewallRuleCreation *bool `json:"skipFirewallRuleCreation,omitempty"`
+
 	// Mtu: Maximum Transmission Unit in bytes. The minimum value for this field is
 	// 1300 and the maximum value is 8896. The suggested value is 1500, which is
 	// the default MTU used on the Internet, or 8896 if you want to use Jumbo
