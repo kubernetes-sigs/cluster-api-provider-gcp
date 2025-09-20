@@ -41,34 +41,35 @@ const (
 	GkeScope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
-func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.Cluster, log *logr.Logger) error {
+func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.Cluster, log *logr.Logger) (clientcmd.ClientConfig, error) {
 	log.Info("Reconciling kubeconfig")
 	clusterRef := types.NamespacedName{
 		Name:      s.scope.Cluster.Name,
 		Namespace: s.scope.Cluster.Namespace,
 	}
+	var kubeConfig *api.Config
 
 	configSecret, err := secret.GetFromNamespacedName(ctx, s.scope.Client(), clusterRef, secret.Kubeconfig)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			log.Error(err, "getting kubeconfig secret", "name", clusterRef)
-			return fmt.Errorf("getting kubeconfig secret %s: %w", clusterRef, err)
+			return nil, fmt.Errorf("getting kubeconfig secret %s: %w", clusterRef, err)
 		}
 		log.Info("kubeconfig secret not found, creating")
 
-		if createErr := s.createCAPIKubeconfigSecret(
+		if kubeConfig, err = s.createCAPIKubeconfigSecret(
 			ctx,
 			cluster,
 			&clusterRef,
 			log,
-		); createErr != nil {
-			return fmt.Errorf("creating kubeconfig secret: %w", createErr)
+		); err != nil {
+			return nil, fmt.Errorf("creating kubeconfig secret: %w", err)
 		}
-	} else if updateErr := s.updateCAPIKubeconfigSecret(ctx, configSecret); updateErr != nil {
-		return fmt.Errorf("updating kubeconfig secret: %w", err)
+	} else if kubeConfig, err = s.updateCAPIKubeconfigSecret(ctx, configSecret); err != nil {
+		return nil, fmt.Errorf("updating kubeconfig secret: %w", err)
 	}
 
-	return nil
+	return clientcmd.NewDefaultClientConfig(*kubeConfig, nil), nil
 }
 
 func (s *Service) reconcileAdditionalKubeconfigs(ctx context.Context, cluster *containerpb.Cluster, log *logr.Logger) error {
@@ -133,7 +134,7 @@ func (s *Service) createUserKubeconfigSecret(ctx context.Context, cluster *conta
 	return nil
 }
 
-func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *containerpb.Cluster, clusterRef *types.NamespacedName, log *logr.Logger) error {
+func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *containerpb.Cluster, clusterRef *types.NamespacedName, log *logr.Logger) (*api.Config, error) {
 	controllerOwnerRef := *metav1.NewControllerRef(s.scope.GCPManagedControlPlane, infrav1exp.GroupVersion.WithKind("GCPManagedControlPlane"))
 
 	contextName := s.getKubeConfigContextName(false)
@@ -141,13 +142,13 @@ func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *conta
 	cfg, err := s.createBaseKubeConfig(contextName, cluster)
 	if err != nil {
 		log.Error(err, "failed creating base config")
-		return fmt.Errorf("creating base kubeconfig: %w", err)
+		return nil, fmt.Errorf("creating base kubeconfig: %w", err)
 	}
 
 	token, err := s.generateToken(ctx)
 	if err != nil {
 		log.Error(err, "failed generating token")
-		return err
+		return nil, err
 	}
 	cfg.AuthInfos = map[string]*api.AuthInfo{
 		contextName: {
@@ -158,32 +159,32 @@ func (s *Service) createCAPIKubeconfigSecret(ctx context.Context, cluster *conta
 	out, err := clientcmd.Write(*cfg)
 	if err != nil {
 		log.Error(err, "failed serializing kubeconfig to yaml")
-		return fmt.Errorf("serialize kubeconfig to yaml: %w", err)
+		return nil, fmt.Errorf("serialize kubeconfig to yaml: %w", err)
 	}
 
 	kubeconfigSecret := kubeconfig.GenerateSecretWithOwner(*clusterRef, out, controllerOwnerRef)
 	if err := s.scope.Client().Create(ctx, kubeconfigSecret); err != nil {
 		log.Error(err, "failed creating secret")
-		return fmt.Errorf("creating secret: %w", err)
+		return nil, fmt.Errorf("creating secret: %w", err)
 	}
 
-	return nil
+	return cfg, nil
 }
 
-func (s *Service) updateCAPIKubeconfigSecret(ctx context.Context, configSecret *corev1.Secret) error {
+func (s *Service) updateCAPIKubeconfigSecret(ctx context.Context, configSecret *corev1.Secret) (*api.Config, error) {
 	data, ok := configSecret.Data[secret.KubeconfigDataName]
 	if !ok {
-		return errors.Errorf("missing key %q in secret data", secret.KubeconfigDataName)
+		return nil, errors.Errorf("missing key %q in secret data", secret.KubeconfigDataName)
 	}
 
 	config, err := clientcmd.Load(data)
 	if err != nil {
-		return errors.Wrap(err, "failed to convert kubeconfig Secret into a clientcmdapi.Config")
+		return nil, errors.Wrap(err, "failed to convert kubeconfig Secret into a clientcmdapi.Config")
 	}
 
 	token, err := s.generateToken(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	contextName := s.getKubeConfigContextName(false)
@@ -191,17 +192,17 @@ func (s *Service) updateCAPIKubeconfigSecret(ctx context.Context, configSecret *
 
 	out, err := clientcmd.Write(*config)
 	if err != nil {
-		return errors.Wrap(err, "failed to serialize config to yaml")
+		return nil, errors.Wrap(err, "failed to serialize config to yaml")
 	}
 
 	configSecret.Data[secret.KubeconfigDataName] = out
 
 	err = s.scope.Client().Update(ctx, configSecret)
 	if err != nil {
-		return fmt.Errorf("updating kubeconfig secret: %w", err)
+		return nil, fmt.Errorf("updating kubeconfig secret: %w", err)
 	}
 
-	return nil
+	return config, nil
 }
 
 func (s *Service) getKubeConfigContextName(isUser bool) string {
