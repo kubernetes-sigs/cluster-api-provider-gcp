@@ -89,8 +89,13 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	s.scope.SetInstanceStatus(infrav1.InstanceStatus(instance.Status))
 
 	if s.scope.IsControlPlane() {
-		if err := s.registerControlPlaneInstance(ctx, instance); err != nil {
-			return err
+		if s.scope.IsMachineProvisioned() {
+			log.V(2).Info("[DEBUG] Registering control plane instance in the instancegroup", "name", instance.Name)
+			if err := s.registerControlPlaneInstance(ctx, instance); err != nil {
+				return err
+			}
+		} else {
+			log.V(2).Info("[DEBUG] Skipping registering control plane instance in the instancegroup because machine is not yet provisioned", "name", instance.Name)
 		}
 	}
 

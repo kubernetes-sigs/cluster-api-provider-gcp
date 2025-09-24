@@ -140,6 +140,17 @@ func (m *MachineScope) IsControlPlane() bool {
 	return IsControlPlaneMachine(m.Machine)
 }
 
+// IsMachineProvisioned returns true if the machine has been provisioned.
+func (m *MachineScope) IsMachineProvisioned() bool {
+	// return m.Machine.Status.GetTypedPhase() == clusterv1.MachinePhaseProvisioned
+	for _, condition := range m.Machine.Status.Conditions {
+		if condition.Type == clusterv1.MachineNodeHealthyCondition && condition.Reason == clusterv1.WaitingForNodeRefReason {
+			return true
+		}
+	}
+	return false
+}
+
 // Role returns the machine role from the labels.
 func (m *MachineScope) Role() string {
 	if IsControlPlaneMachine(m.Machine) {
