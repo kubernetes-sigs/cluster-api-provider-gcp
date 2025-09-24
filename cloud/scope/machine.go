@@ -378,13 +378,13 @@ func (m *MachineScope) InstanceAdditionalMetadataSpec() *compute.Metadata {
 	return metadata
 }
 
-// InstanceGuestAcceleratorsSpec returns a slice of Guest Accelerator Config specs.
-func (m *MachineScope) InstanceGuestAcceleratorsSpec() []*compute.AcceleratorConfig {
-	if len(m.GCPMachine.Spec.GuestAccelerators) == 0 {
+// instanceGuestAcceleratorsSpec returns a slice of Guest Accelerator Config specs.
+func instanceGuestAcceleratorsSpec(guestAccelerators []infrav1.Accelerator) []*compute.AcceleratorConfig {
+	if len(guestAccelerators) == 0 {
 		return nil
 	}
-	accelConfigs := make([]*compute.AcceleratorConfig, 0, len(m.GCPMachine.Spec.GuestAccelerators))
-	for _, accel := range m.GCPMachine.Spec.GuestAccelerators {
+	accelConfigs := make([]*compute.AcceleratorConfig, 0, len(guestAccelerators))
+	for _, accel := range guestAccelerators {
 		accelConfig := &compute.AcceleratorConfig{
 			AcceleratorType:  accel.Type,
 			AcceleratorCount: accel.Count,
@@ -488,7 +488,7 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 	instance.Metadata = m.InstanceAdditionalMetadataSpec()
 	instance.ServiceAccounts = append(instance.ServiceAccounts, m.InstanceServiceAccountsSpec())
 	instance.NetworkInterfaces = append(instance.NetworkInterfaces, m.InstanceNetworkInterfaceSpec())
-	instance.GuestAccelerators = m.InstanceGuestAcceleratorsSpec()
+	instance.GuestAccelerators = instanceGuestAcceleratorsSpec(m.GCPMachine.Spec.GuestAccelerators)
 	if len(instance.GuestAccelerators) > 0 {
 		instance.Scheduling.OnHostMaintenance = "TERMINATE"
 	}
