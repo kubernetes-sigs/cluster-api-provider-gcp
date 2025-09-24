@@ -348,21 +348,21 @@ func (m *MachineScope) InstanceNetworkInterfaceSpec() *compute.NetworkInterface 
 	return networkInterface
 }
 
-// InstanceServiceAccountsSpec returns service-account spec.
-func (m *MachineScope) InstanceServiceAccountsSpec() *compute.ServiceAccount {
-	serviceAccount := &compute.ServiceAccount{
+// instanceServiceAccountsSpec returns service-account spec.
+func instanceServiceAccountsSpec(serviceAccount *infrav1.ServiceAccount) *compute.ServiceAccount {
+	out := &compute.ServiceAccount{
 		Email: "default",
 		Scopes: []string{
 			compute.CloudPlatformScope,
 		},
 	}
 
-	if m.GCPMachine.Spec.ServiceAccount != nil {
-		serviceAccount.Email = m.GCPMachine.Spec.ServiceAccount.Email
-		serviceAccount.Scopes = m.GCPMachine.Spec.ServiceAccount.Scopes
+	if serviceAccount != nil {
+		out.Email = serviceAccount.Email
+		out.Scopes = serviceAccount.Scopes
 	}
 
-	return serviceAccount
+	return out
 }
 
 // InstanceAdditionalMetadataSpec returns additional metadata spec.
@@ -486,7 +486,7 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
 	instance.Disks = append(instance.Disks, instanceAdditionalDiskSpec(ctx, m.GCPMachine.Spec.AdditionalDisks, m.GCPMachine.Spec.RootDiskEncryptionKey, m.Zone(), m.ResourceManagerTags())...)
 	instance.Metadata = m.InstanceAdditionalMetadataSpec()
-	instance.ServiceAccounts = append(instance.ServiceAccounts, m.InstanceServiceAccountsSpec())
+	instance.ServiceAccounts = append(instance.ServiceAccounts, instanceServiceAccountsSpec(m.GCPMachine.Spec.ServiceAccount))
 	instance.NetworkInterfaces = append(instance.NetworkInterfaces, m.InstanceNetworkInterfaceSpec())
 	instance.GuestAccelerators = m.InstanceGuestAcceleratorsSpec()
 	if len(instance.GuestAccelerators) > 0 {
