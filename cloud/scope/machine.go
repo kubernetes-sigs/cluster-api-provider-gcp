@@ -27,6 +27,7 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/pkg/errors"
+
 	"golang.org/x/mod/semver"
 	"google.golang.org/api/compute/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -47,6 +48,7 @@ type MachineScopeParams struct {
 	ClusterGetter cloud.ClusterGetter
 	Machine       *clusterv1.Machine
 	GCPMachine    *infrav1.GCPMachine
+	IsFirst       bool
 }
 
 // NewMachineScope creates a new MachineScope from the supplied parameters.
@@ -73,6 +75,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 		GCPMachine:    params.GCPMachine,
 		ClusterGetter: params.ClusterGetter,
 		patchHelper:   helper,
+		IsFirst:       params.IsFirst,
 	}, nil
 }
 
@@ -83,6 +86,7 @@ type MachineScope struct {
 	ClusterGetter cloud.ClusterGetter
 	Machine       *clusterv1.Machine
 	GCPMachine    *infrav1.GCPMachine
+	IsFirst       bool
 }
 
 // ANCHOR: MachineGetter
@@ -134,6 +138,21 @@ func (m *MachineScope) ControlPlaneGroupName() string {
 // IsControlPlane returns true if the machine is a control plane.
 func (m *MachineScope) IsControlPlane() bool {
 	return IsControlPlaneMachine(m.Machine)
+}
+
+// IsFirstMachine returns true if the machine is the first machine in the cluster.
+func (m *MachineScope) IsFirstMachine() bool {
+	return m.IsFirst
+}
+
+// IsAPIServerHealthy returns true if the machine's API server pod is healthy.
+func (m *MachineScope) IsAPIServerHealthy() bool {
+	for _, condition := range m.Machine.GetConditions() {
+		if condition.Type == "APIServerPodHealthy" && condition.Status == "True" {
+			return true
+		}
+	}
+	return false
 }
 
 // Role returns the machine role from the labels.
