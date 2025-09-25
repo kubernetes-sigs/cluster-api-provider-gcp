@@ -178,6 +178,17 @@ spec:
                               backend (useful for changing apiserver port)
                             format: int32
                             type: integer
+                          minPortsPerVm:
+                            default: 64
+                            description: |-
+                              MinPortsPerVM: Minimum number of ports allocated to a VM from this NAT
+                              config. If not set, a default number of ports is allocated to a VM. This is
+                              rounded up to the nearest power of 2. For example, if the value of this
+                              field is 50, at least 64 ports are allocated to a VM.
+                            format: int64
+                            maximum: 65536
+                            minimum: 2
+                            type: integer
                           mtu:
                             default: 1460
                             description: |-

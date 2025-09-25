@@ -147,6 +147,16 @@ type NetworkSpec struct {
 	// +kubebuilder:default:=1460
 	// +optional
 	Mtu int64 `json:"mtu,omitempty"`
+
+	// MinPortsPerVM: Minimum number of ports allocated to a VM from this NAT
+	// config. If not set, a default number of ports is allocated to a VM. This is
+	// rounded up to the nearest power of 2. For example, if the value of this
+	// field is 50, at least 64 ports are allocated to a VM.
+	// +kubebuilder:validation:Minimum:=2
+	// +kubebuilder:validation:Maximum:=65536
+	// +kubebuilder:default:=64
+	// +optional
+	MinPortsPerVM int64 `json:"minPortsPerVm,omitempty"`
 }
 
 // LoadBalancerType defines the Load Balancer that should be created.
