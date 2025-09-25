@@ -33,11 +33,14 @@ import (
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -63,6 +66,33 @@ func (r *GCPMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		Watches(
 			&clusterv1.Machine{},
 			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPMachine"))),
+			builder.WithPredicates(predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					oldMachine := e.ObjectOld.(*clusterv1.Machine)
+					newMachine := e.ObjectNew.(*clusterv1.Machine)
+
+					// Reconcile if the spec changes.
+					if newMachine.GetGeneration() != oldMachine.GetGeneration() {
+						return true
+					}
+
+					// Reconcile if the machine just transitioned to the Provisioned phase.
+					if newMachine.Status.GetTypedPhase() == clusterv1.MachinePhaseProvisioned && oldMachine.Status.GetTypedPhase() != clusterv1.MachinePhaseProvisioned {
+						return true
+					}
+
+					for _, condition := range newMachine.Status.Conditions {
+						if condition.Type == clusterv1.MachineNodeHealthyCondition {
+							// TODO: Reconcile if the MachineNodeHealthyCondition condition changed.
+							if condition.Type == clusterv1.MachineNodeHealthyCondition && condition.Reason == clusterv1.WaitingForNodeRefReason {
+								return true
+							}
+						}
+					}
+
+					return false
+				},
+			}),
 		).
 		Watches(
 			&infrav1.GCPCluster{},
@@ -224,7 +254,8 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 		return ctrl.Result{}, err
 	}
 
-	if err := instances.New(machineScope).Reconcile(ctx); err != nil {
+	instancesSvc := instances.New(machineScope)
+	if err := instancesSvc.Reconcile(ctx); err != nil {
 		log.Error(err, "Error reconciling instance resources")
 		record.Warnf(machineScope.GCPMachine, "GCPMachineReconcile", "Reconcile error - %v", err)
 		return ctrl.Result{}, err
