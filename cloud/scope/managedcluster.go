@@ -129,6 +129,12 @@ func (s *ManagedClusterScope) NetworkProject() string {
 	return ptr.Deref(s.GCPManagedCluster.Spec.Network.HostProject, s.Project())
 }
 
+// SkipFirewallRuleCreation returns whether the spec indicates that firewall rules
+// should be created or not.
+func (s *ManagedClusterScope) SkipFirewallRuleCreation() bool {
+	return (s.GCPManagedCluster.Spec.Network.FirewallSpec.RulesManagement == infrav1.RulesManagementUnmanaged) || s.IsSharedVpc()
+}
+
 // IsSharedVpc returns true If sharedVPC used else , returns false.
 func (s *ManagedClusterScope) IsSharedVpc() bool {
 	return s.NetworkProject() != s.Project()
@@ -297,6 +303,40 @@ func (s *ManagedClusterScope) FirewallRulesSpec() []*compute.Firewall {
 				s.Name() + "-node",
 			},
 		},
+	}
+
+	// Add user defined firewall rules.
+	for _, rule := range s.GCPManagedCluster.Spec.Network.FirewallSpec.FirewallRules {
+		allowed := []*compute.FirewallAllowed{}
+		for _, a := range rule.Allowed {
+			allowed = append(allowed, &compute.FirewallAllowed{
+				IPProtocol: a.IPProtocol,
+				Ports:      a.Ports,
+			})
+		}
+
+		denied := []*compute.FirewallDenied{}
+		for _, d := range rule.Denied {
+			denied = append(denied, &compute.FirewallDenied{
+				IPProtocol: d.IPProtocol,
+				Ports:      d.Ports,
+			})
+		}
+
+		direction := string(ptr.Deref(rule.Direction, infrav1.FirewallRuleDirectionIngress))
+		firewallRules = append(firewallRules, &compute.Firewall{
+			Name:         ptr.Deref(rule.Name, fmt.Sprintf("%s-%s", s.Name(), direction)),
+			Description:  ptr.Deref(rule.Description, fmt.Sprintf("Firewall rule %s is created by Cluster API GCP Provider.", s.Name())),
+			Network:      s.NetworkLink(),
+			Allowed:      allowed,
+			Denied:       denied,
+			Direction:    direction,
+			Priority:     ptr.Deref(rule.Priority, int64(1000)),
+			Disabled:     ptr.Deref(rule.Disabled, false),
+			SourceRanges: rule.SourceRanges,
+			TargetTags:   rule.TargetTags,
+			SourceTags:   rule.SourceTags,
+		})
 	}
 
 	return firewallRules
