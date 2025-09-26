@@ -134,6 +134,7 @@ const (
 	RulesManagementUnmanaged RulesManagementPolicy = "Unmanaged"
 )
 
+
 // NetworkSpec encapsulates all things related to a GCP network.
 type NetworkSpec struct {
 	// Name is the name of the network to be used.
