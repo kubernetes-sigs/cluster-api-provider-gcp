@@ -61,15 +61,10 @@ func (*gcpMachinePoolWebhook) ValidateCreate(_ context.Context, obj runtime.Obje
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpMachinePoolWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	old, ok := oldObj.(*GCPMachinePool)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPMachinePool but got a %T", oldObj))
-	}
-
+func (*gcpMachinePoolWebhook) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*GCPMachinePool)
 	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPMachinePool but got a %T", newObj))
+		return nil, fmt.Errorf("expected a GCPMachinePool object but got %T", r)
 	}
 
 	gcpMachinePoolLog.Info("Validating GCPMachinePool update", "name", r.Name)
@@ -88,7 +83,7 @@ func (*gcpMachinePoolWebhook) ValidateDelete(_ context.Context, obj runtime.Obje
 
 	gcpMachinePoolLog.Info("Validating GCPMachinePool delete", "name", r.Name)
 
-	// TODO: Add custom validation logic upon deletion if needed.
+	// Add custom validation logic upon deletion if needed.
 
 	return nil, nil
 }

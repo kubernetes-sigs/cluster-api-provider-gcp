@@ -19,7 +19,9 @@ package instancegroupmanagers
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"google.golang.org/api/compute/v1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
@@ -27,17 +29,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// Reconcile reconcile machine instance.
-func (s *Service) Reconcile(ctx context.Context, instanceTemplateKey *meta.Key) error {
+// Reconcile reconciles GCP instanceGroupManager resources.
+func (s *Service) Reconcile(ctx context.Context, instanceTemplateKey *meta.Key) (*compute.InstanceGroupManager, error) {
 	log := log.FromContext(ctx)
 	log.Info("Reconciling instanceGroupManager resources")
 	igm, err := s.createOrGet(ctx, instanceTemplateKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	log.V(2).Info("Reconciled instanceGroupManager", "selfLink", igm.SelfLink)
 
-	return nil
+	return igm, nil
 }
 
 // Delete deletes the GCP instanceGroupManager resource.
@@ -150,4 +152,34 @@ func (s *Service) createOrGet(ctx context.Context, instanceTemplateKey *meta.Key
 	}
 
 	return actual, nil
+}
+
+// ListInstances lists instances in the the instanceGroup linked to the passed instanceGroupManager.
+func (s *Service) ListInstances(ctx context.Context, instanceGroupManager *compute.InstanceGroupManager) ([]*compute.InstanceWithNamedPorts, error) {
+	log := log.FromContext(ctx)
+
+	var igKey *meta.Key
+	{
+		instanceGroup := instanceGroupManager.InstanceGroup
+		instanceGroup = strings.TrimPrefix(instanceGroup, "https://www.googleapis.com/")
+		instanceGroup = strings.TrimPrefix(instanceGroup, "compute/v1/")
+		tokens := strings.Split(instanceGroup, "/")
+		if len(tokens) == 6 && tokens[0] == "projects" && tokens[2] == "zones" && tokens[4] == "instanceGroups" {
+			igKey = meta.ZonalKey(tokens[5], tokens[3])
+		} else {
+			return nil, fmt.Errorf("unexpected format for instanceGroup: %q", instanceGroup)
+		}
+	}
+
+	log.Info("Listing instances in instanceGroup", "instanceGroup", instanceGroupManager.InstanceGroup)
+	listInstancesRequest := &compute.InstanceGroupsListInstancesRequest{
+		InstanceState: "ALL",
+	}
+	instances, err := s.instanceGroups.ListInstances(ctx, igKey, listInstancesRequest, filter.None)
+	if err != nil {
+		log.Error(err, "Error listing instances in instanceGroup", "instanceGroup", instanceGroupManager.InstanceGroup)
+		return nil, fmt.Errorf("listing instances in instanceGroup %q: %w", instanceGroupManager.InstanceGroup, err)
+	}
+
+	return instances, nil
 }

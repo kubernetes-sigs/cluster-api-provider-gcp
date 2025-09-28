@@ -32,6 +32,11 @@ const (
 
 // GCPMachinePoolSpec defines the desired state of GCPMachinePool.
 type GCPMachinePoolSpec struct {
+	// ProviderIDList are the identification IDs of machine instances provided by the provider.
+	// This field must match the provider IDs as seen on the node objects corresponding to a machine pool's machine instances.
+	// +optional
+	ProviderIDList []string `json:"providerIDList,omitempty"`
+
 	// InstanceType is the type of instance to create. Example: n1.standard-2
 	InstanceType string `json:"instanceType"`
 

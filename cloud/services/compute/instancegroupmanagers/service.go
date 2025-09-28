@@ -50,6 +50,7 @@ type Scope interface {
 type Service struct {
 	scope                 Scope
 	instanceGroupManagers instanceGroupManagersClient
+	instanceGroups        k8scloud.InstanceGroups
 }
 
 // var _ cloud.Reconciler = &Service{}
@@ -61,5 +62,6 @@ func New(scope Scope) *Service {
 	return &Service{
 		scope:                 scope,
 		instanceGroupManagers: cloudScope.InstanceGroupManagers(),
+		instanceGroups:        cloudScope.InstanceGroups(),
 	}
 }

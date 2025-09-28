@@ -20,6 +20,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
@@ -223,7 +225,8 @@ func (r *GCPMachinePoolReconciler) reconcile(ctx context.Context, machinePoolSco
 		Status: metav1.ConditionTrue,
 	})
 
-	if err := instancegroupmanagers.New(machinePoolScope).Reconcile(ctx, instanceTemplateKey); err != nil {
+	igm, err := instancegroupmanagers.New(machinePoolScope).Reconcile(ctx, instanceTemplateKey)
+	if err != nil {
 		log.Error(err, "Error reconciling instanceGroupManager")
 		// record.Warnf(machineScope.GCPMachine, "GCPMachineReconcile", "Reconcile error - %v", err)
 		conditions.Set(machinePoolScope.GCPMachinePool, metav1.Condition{
@@ -241,7 +244,38 @@ func (r *GCPMachinePoolReconciler) reconcile(ctx context.Context, machinePoolSco
 		Status: metav1.ConditionTrue,
 	})
 
-	return ctrl.Result{}, nil
+	igmInstances, err := instancegroupmanagers.New(machinePoolScope).ListInstances(ctx, igm)
+	if err != nil {
+		log.Error(err, "Error listing instances in instanceGroupManager")
+		return ctrl.Result{}, err
+	}
+
+	providerIDList := make([]string, len(igmInstances))
+
+	for i, instance := range igmInstances {
+		var providerID string
+
+		// Convert instance URL to providerID format
+		u := instance.Instance
+		u = strings.TrimPrefix(u, "https://www.googleapis.com/compute/v1/")
+		tokens := strings.Split(u, "/")
+		if len(tokens) == 6 && tokens[0] == "projects" && tokens[2] == "zones" && tokens[4] == "instances" {
+			providerID = fmt.Sprintf("gce://%s/%s/%s", tokens[1], tokens[3], tokens[5])
+		} else {
+			return ctrl.Result{}, fmt.Errorf("unexpected instance URL format: %s", instance.Instance)
+		}
+
+		providerIDList[i] = providerID
+	}
+
+	machinePoolScope.GCPMachinePool.Spec.ProviderIDList = providerIDList
+	machinePoolScope.GCPMachinePool.Status.Replicas = int32(len(providerIDList))
+	machinePoolScope.GCPMachinePool.Status.Ready = true
+
+	// Requeue so that we can keep the spec.providerIDList and status in sync with the MIG.
+	// This is important for scaling up and down, as the CAPI MachinePool controller relies on
+	// the providerIDList to determine which machines belong to the MachinePool.
+	return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 }
 
 func (r *GCPMachinePoolReconciler) reconcileDelete(ctx context.Context, machinePoolScope *scope.MachinePoolScope) error {
