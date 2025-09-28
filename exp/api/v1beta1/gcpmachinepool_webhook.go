@@ -19,7 +19,6 @@ package v1beta1
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -60,22 +59,13 @@ func (*gcpMachinePoolWebhook) ValidateCreate(_ context.Context, obj runtime.Obje
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpMachinePoolWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	old, ok := oldObj.(*GCPMachinePool)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPMachinePool but got a %T", oldObj))
-	}
-
+func (*gcpMachinePoolWebhook) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*GCPMachinePool)
 	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPMachinePool but got a %T", newObj))
+		return nil, fmt.Errorf("expected a GCPMachinePool object but got %T", r)
 	}
 
 	gcpMachinePoolLog.Info("Validating GCPMachinePool update", "name", r.Name)
-
-	if !reflect.DeepEqual(r.Spec, old.Spec) {
-		return nil, apierrors.NewBadRequest("GCPMachinePool.Spec is immutable")
-	}
 
 	return nil, nil
 }
