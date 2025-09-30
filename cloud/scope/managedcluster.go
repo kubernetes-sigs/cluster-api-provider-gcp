@@ -129,6 +129,12 @@ func (s *ManagedClusterScope) NetworkProject() string {
 	return ptr.Deref(s.GCPManagedCluster.Spec.Network.HostProject, s.Project())
 }
 
+// SkipFirewallRuleCreation returns whether the spec indicates that firewall rules
+// should be created or not.
+func (s *ManagedClusterScope) SkipFirewallRuleCreation() bool {
+	return (s.GCPManagedCluster.Spec.Network.Firewall.RulesManagement == infrav1.RulesManagementUnmanaged) || s.IsSharedVpc()
+}
+
 // IsSharedVpc returns true If sharedVPC used else , returns false.
 func (s *ManagedClusterScope) IsSharedVpc() bool {
 	return s.NetworkProject() != s.Project()

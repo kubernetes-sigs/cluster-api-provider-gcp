@@ -107,6 +107,33 @@ type Network struct {
 	APIInternalForwardingRule *string `json:"apiInternalForwardingRule,omitempty"`
 }
 
+// FirewallSpec contains configuration for the firewall.
+type FirewallSpec struct {
+	// RulesManagement determines the management policy for firewall rules.
+	// "Managed": The controller will create and manage firewall rules.
+	// "Unmanaged": The controller will not touch any firewall rules. If this is
+	//              changed to "Off" after rules have been created, they will not be
+	//              deleted.
+	// Defaults to "Managed".
+	// +optional
+	// +kubebuilder:default:="Managed"
+	RulesManagement RulesManagementPolicy `json:"rulesManagement,omitempty"`
+}
+
+// RulesManagementPolicy is a string enum type for managing firewall rules.
+// +kubebuilder:validation:Enum=Managed;Unmanaged
+type RulesManagementPolicy string
+
+const (
+	// RulesManagementManaged indicates that the controller should create and manage
+	// firewall rules. This is the default behavior.
+	RulesManagementManaged RulesManagementPolicy = "Managed"
+
+	// RulesManagementUnmanaged indicates that the controller should not create or manage
+	// any firewall rules. If rules already exist, they will be left as-is.
+	RulesManagementUnmanaged RulesManagementPolicy = "Unmanaged"
+)
+
 // NetworkSpec encapsulates all things related to a GCP network.
 type NetworkSpec struct {
 	// Name is the name of the network to be used.
@@ -136,6 +163,10 @@ type NetworkSpec struct {
 	// HostProject is the name of the project hosting the shared VPC network resources.
 	// +optional
 	HostProject *string `json:"hostProject,omitempty"`
+
+	// Firewall configuration.
+	// +optional
+	Firewall FirewallSpec `json:"firewall,omitempty"`
 
 	// Mtu: Maximum Transmission Unit in bytes. The minimum value for this field is
 	// 1300 and the maximum value is 8896. The suggested value is 1500, which is
