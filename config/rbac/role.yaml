@@ -62,6 +62,8 @@ rules:
   resources:
   - clusters
   - clusters/status
+  - machinepools
+  - machinepools/status
   verbs:
   - get
   - list
@@ -70,8 +72,6 @@ rules:
 - apiGroups:
   - cluster.x-k8s.io
   resources:
-  - machinepools
-  - machinepools/status
   - machines
   - machines/status
   verbs:
@@ -98,6 +98,7 @@ rules:
   - infrastructure.cluster.x-k8s.io
   resources:
   - gcpclusters/status
+  - gcpmachinepools/status
   - gcpmachines/status
   - gcpmanagedclusters/status
   - gcpmanagedcontrolplanes/status
@@ -106,6 +107,17 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - gcpmachinepools
+  verbs:
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
