@@ -33,9 +33,14 @@ apidiffs=$(go run github.com/joelanford/go-apidiff@v0.8.3 ${APIDIFF_OLD_COMMIT} 
 filtered=$(echo "$apidiffs" | grep -E 'cluster-api-provider-gcp/(api/|exp/api/)' || true)
 
 if [[ -n "$filtered" ]]; then
-  echo "API differences found in api/ or exp/api/:"
+  echo "API differences found in api/ or exp/api/ packages."
+  echo ""
+  echo "Full set of differences found by go-apidiff:"
   echo "$apidiffs"
   exit 1
 else
-  echo "No differences found in api/ or exp/api/ packages"
+  echo "No differences found in api/ or exp/api/ packages."
+  echo ""
+  echo "Full set of differences found by go-apidiff:"
+  echo "$apidiffs"
 fi

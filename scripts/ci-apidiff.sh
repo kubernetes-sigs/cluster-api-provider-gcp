@@ -22,4 +22,4 @@ REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 cd "${REPO_ROOT}"
 
-APIDIFF_OLD_COMMIT="${PULL_BASE_SHA}" make apidiff
+APIDIFF_OLD_COMMIT="${PULL_BASE_SHA}" exec make apidiff
