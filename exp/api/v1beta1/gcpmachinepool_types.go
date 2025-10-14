@@ -45,9 +45,10 @@ type GCPMachinePoolSpec struct {
 	// +optional
 	Subnet *string `json:"subnet,omitempty"`
 
-	// // ProviderID is the unique identifier as specified by the cloud provider.
+	// Not meaningful by MachinePool (?)
+	// // AliasIPRanges let you assign ranges of internal IP addresses as aliases to a VM's network interfaces.
 	// // +optional
-	// ProviderID *string `json:"providerID,omitempty"`
+	// AliasIPRanges []infrav1.AliasIPRange `json:"aliasIPRanges,omitempty"`
 
 	// ImageFamily is the full reference to a valid image family to be used for this machine.
 	// +optional
