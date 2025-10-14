@@ -17,5 +17,3 @@ spec:
 ```
 
 https://cloud.google.com/compute/docs/instances/nested-virtualization/overview
-
-NOTE: Nested virtualization must be enabled at instance creation time and cannot be changed after the instance is created.
