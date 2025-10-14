@@ -326,7 +326,7 @@ func instanceAdditionalDiskSpec(ctx context.Context, spec []infrav1.AttachedDisk
 }
 
 // InstanceNetworkInterfaceSpec returns compute network interface spec.
-func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, subnet *string) *compute.NetworkInterface {
+func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, subnet *string, aliasIPRanges []infrav1.AliasIPRange) *compute.NetworkInterface {
 	networkInterface := &compute.NetworkInterface{
 		Network: path.Join("projects", cluster.NetworkProject(), "global", "networks", cluster.NetworkName()),
 	}
@@ -344,18 +344,18 @@ func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, s
 		networkInterface.Subnetwork = path.Join("projects", cluster.NetworkProject(), "regions", cluster.Region(), "subnetworks", *subnet)
 	}
 
-	networkInterface.AliasIpRanges = m.InstanceNetworkInterfaceAliasIPRangesSpec()
+	networkInterface.AliasIpRanges = InstanceNetworkInterfaceAliasIPRangesSpec(aliasIPRanges)
 
 	return networkInterface
 }
 
 // InstanceNetworkInterfaceAliasIPRangesSpec returns a slice of Alias IP Range specs.
-func (m *MachineScope) InstanceNetworkInterfaceAliasIPRangesSpec() []*compute.AliasIpRange {
-	if len(m.GCPMachine.Spec.AliasIPRanges) == 0 {
+func InstanceNetworkInterfaceAliasIPRangesSpec(spec []infrav1.AliasIPRange) []*compute.AliasIpRange {
+	if len(spec) == 0 {
 		return nil
 	}
-	aliasIPRanges := make([]*compute.AliasIpRange, 0, len(m.GCPMachine.Spec.AliasIPRanges))
-	for _, alias := range m.GCPMachine.Spec.AliasIPRanges {
+	aliasIPRanges := make([]*compute.AliasIpRange, 0, len(spec))
+	for _, alias := range spec {
 		aliasIPRange := &compute.AliasIpRange{
 			IpCidrRange:         alias.IPCidrRange,
 			SubnetworkRangeName: alias.SubnetworkRangeName,
@@ -505,7 +505,7 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 
 	instance.Metadata = InstanceAdditionalMetadataSpec(m.GCPMachine.Spec.AdditionalMetadata)
 	instance.ServiceAccounts = append(instance.ServiceAccounts, instanceServiceAccountsSpec(m.GCPMachine.Spec.ServiceAccount))
-	instance.NetworkInterfaces = append(instance.NetworkInterfaces, InstanceNetworkInterfaceSpec(m.ClusterGetter, m.GCPMachine.Spec.PublicIP, m.GCPMachine.Spec.Subnet))
+	instance.NetworkInterfaces = append(instance.NetworkInterfaces, InstanceNetworkInterfaceSpec(m.ClusterGetter, m.GCPMachine.Spec.PublicIP, m.GCPMachine.Spec.Subnet, m.GCPMachine.Spec.AliasIPRanges))
 	instance.GuestAccelerators = instanceGuestAcceleratorsSpec(m.GCPMachine.Spec.GuestAccelerators)
 	if len(instance.GuestAccelerators) > 0 {
 		instance.Scheduling.OnHostMaintenance = onHostMaintenanceTerminate

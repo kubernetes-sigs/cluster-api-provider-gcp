@@ -45,10 +45,6 @@ type GCPMachinePoolSpec struct {
 	// +optional
 	Subnet *string `json:"subnet,omitempty"`
 
-	// // ProviderID is the unique identifier as specified by the cloud provider.
-	// // +optional
-	// ProviderID *string `json:"providerID,omitempty"`
-
 	// ImageFamily is the full reference to a valid image family to be used for this machine.
 	// +optional
 	ImageFamily *string `json:"imageFamily,omitempty"`
