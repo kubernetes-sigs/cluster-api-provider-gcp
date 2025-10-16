@@ -173,6 +173,26 @@ spec:
 
                       Defaults to true.
                     type: boolean
+                  firewall:
+                    description: Firewall configuration.
+                    properties:
+                      defaultRulesManagement:
+                        default: Managed
+                        description: |-
+                          DefaultRulesManagement determines the management policy for the default firewall rules
+                          created by the controller. DefaultRulesManagement has no effect on user specified firewall
+                          rules. DefaultRulesManagement has no effect when a HostProject is specified.
+                          "Managed": The controller will create and manage firewall rules.
+                          "Unmanaged": The controller will not create or modify any firewall rules. If
+                          the RulesManagement is changed from Managed to Unmanaged after the firewall rules
+                          have been created, then the firewall rules will not be deleted.
+
+                          Defaults to "Managed".
+                        enum:
+                        - Managed
+                        - Unmanaged
+                        type: string
+                    type: object
                   hostProject:
                     description: HostProject is the name of the project hosting the
                       shared VPC network resources.
