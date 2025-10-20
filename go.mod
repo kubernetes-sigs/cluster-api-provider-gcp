@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.6
 
 require (
-	cloud.google.com/go/compute v1.48.0
+	cloud.google.com/go/compute v1.49.1
 	cloud.google.com/go/container v1.44.1
 	cloud.google.com/go/iam v1.5.3
 	cloud.google.com/go/resourcemanager v1.10.7
@@ -20,7 +20,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
 	golang.org/x/mod v0.29.0
-	golang.org/x/net v0.45.0
+	golang.org/x/net v0.46.0
 	google.golang.org/api v0.252.0
 	google.golang.org/grpc v1.76.0
 	k8s.io/api v0.33.3
