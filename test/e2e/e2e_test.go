@@ -243,6 +243,36 @@ var _ = Describe("Workload cluster creation", func() {
 		})
 	})
 
+	// Skipping the test case for now. The internal load balancer test case requires the management cluster
+	// to have access to network that the cluster being created is in.
+	// An option to reach that is to use a GKE cluster as the management cluster.
+	Context("Creating a control-plane cluster with three control plane nodes and an internal load balancer", func() {
+		It("Should create a cluster with 3 control-plane and 1 worker node with an internal load balancer", func() {
+			Skip("This test requires a bootstrap cluster that has access to the network where the cluster is being created.")
+
+			clusterName := fmt.Sprintf("%s-internal-lb", clusterNamePrefix)
+			By("Creating a cluster with internal load balancer from GKE bootstrap cluster")
+			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-with-internal-lb",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](3),
+					WorkerMachineCount:       ptr.To[int64](1),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+			}, result)
+		})
+	})
+
 	Context("Creating a cluster using a cluster class", func() {
 		It("Should create a cluster class and then a cluster based on it", func() {
 			clusterName := fmt.Sprintf("%s-topology", clusterNamePrefix)
