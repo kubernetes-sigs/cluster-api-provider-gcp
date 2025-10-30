@@ -34,6 +34,7 @@ export GO111MODULE=on
 
 # Go version
 GOLANG_VERSION := 1.24.6
+GOLANG_DIRECTIVE_VERSION ?= 1.24.0
 
 # Kubebuilder
 export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.33.0
@@ -580,7 +581,7 @@ format-tiltfile: ## Format the Tiltfile.
 	./hack/verify-starlark.sh fix
 
 .PHONY: verify
-verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile verify-conversions
+verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile verify-conversions verify-go-directive
 
 .PHONY: verify-boilerplate
 verify-boilerplate:
@@ -611,3 +612,9 @@ verify-gen: generate
 		git diff HEAD; \
 		exit 1; \
 	fi
+
+.PHONY: verify-go-directive
+verify-go-directive:
+	# use the core Cluster API script directly to verify the go directive matches the desired one.
+	# ref: https://github.com/kubernetes-sigs/cluster-api/blob/v1.10.7/hack/verify-go-directive.sh
+	curl --retry $(CURL_RETRIES) -fsL https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/refs/tags/v1.11.0/hack/verify-go-directive.sh | bash -s -- -g $(GOLANG_DIRECTIVE_VERSION)
