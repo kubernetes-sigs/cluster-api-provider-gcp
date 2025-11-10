@@ -24,19 +24,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	capiv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 )
 
 // IsControlPlaneMachine checks machine is a control plane node.
-func IsControlPlaneMachine(machine *capiv1beta1.Machine) bool {
-	_, ok := machine.Labels[capiv1beta1.MachineControlPlaneLabel]
+func IsControlPlaneMachine(machine *clusterv1beta1.Machine) bool {
+	_, ok := machine.Labels[clusterv1beta1.MachineControlPlaneLabel]
 	return ok
 }
 
 // GetOwnerCluster returns the Cluster object owning the current resource.
-func GetOwnerCluster(ctx context.Context, c client.Client, obj metav1.ObjectMeta) (*capiv1beta1.Cluster, error) {
+func GetOwnerCluster(ctx context.Context, c client.Client, obj metav1.ObjectMeta) (*clusterv1beta1.Cluster, error) {
 	for _, ref := range obj.GetOwnerReferences() {
 		if ref.Kind != "Cluster" {
 			continue
@@ -45,7 +45,7 @@ func GetOwnerCluster(ctx context.Context, c client.Client, obj metav1.ObjectMeta
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		if gv.Group == capiv1beta1.GroupVersion.Group {
+		if gv.Group == clusterv1beta1.GroupVersion.Group {
 			return GetClusterByName(ctx, c, obj.Namespace, ref.Name)
 		}
 	}
@@ -53,16 +53,16 @@ func GetOwnerCluster(ctx context.Context, c client.Client, obj metav1.ObjectMeta
 }
 
 // GetClusterFromMetadata returns the Cluster object (if present) using the object metadata.
-func GetClusterFromMetadata(ctx context.Context, c client.Client, obj metav1.ObjectMeta) (*capiv1beta1.Cluster, error) {
-	if obj.Labels[capiv1beta1.ClusterNameLabel] == "" {
+func GetClusterFromMetadata(ctx context.Context, c client.Client, obj metav1.ObjectMeta) (*clusterv1beta1.Cluster, error) {
+	if obj.Labels[clusterv1beta1.ClusterNameLabel] == "" {
 		return nil, errors.WithStack(util.ErrNoCluster)
 	}
-	return GetClusterByName(ctx, c, obj.Namespace, obj.Labels[capiv1beta1.ClusterNameLabel])
+	return GetClusterByName(ctx, c, obj.Namespace, obj.Labels[clusterv1beta1.ClusterNameLabel])
 }
 
 // GetClusterByName finds and return a Cluster object using the specified params.
-func GetClusterByName(ctx context.Context, c client.Client, namespace, name string) (*capiv1beta1.Cluster, error) {
-	cluster := &capiv1beta1.Cluster{}
+func GetClusterByName(ctx context.Context, c client.Client, namespace, name string) (*clusterv1beta1.Cluster, error) {
+	cluster := &clusterv1beta1.Cluster{}
 	key := client.ObjectKey{
 		Namespace: namespace,
 		Name:      name,
@@ -76,7 +76,7 @@ func GetClusterByName(ctx context.Context, c client.Client, namespace, name stri
 }
 
 // IsPaused returns true if the Cluster is paused or the object has the `paused` annotation.
-func IsPaused(cluster *capiv1beta1.Cluster, o metav1.Object) bool {
+func IsPaused(cluster *clusterv1beta1.Cluster, o metav1.Object) bool {
 	if cluster.Spec.Paused {
 		return true
 	}
@@ -84,13 +84,13 @@ func IsPaused(cluster *capiv1beta1.Cluster, o metav1.Object) bool {
 }
 
 // GetOwnerMachine returns the Machine object owning the current resource.
-func GetOwnerMachine(ctx context.Context, c client.Client, obj metav1.ObjectMeta) (*capiv1beta1.Machine, error) {
+func GetOwnerMachine(ctx context.Context, c client.Client, obj metav1.ObjectMeta) (*clusterv1beta1.Machine, error) {
 	for _, ref := range obj.GetOwnerReferences() {
 		gv, err := schema.ParseGroupVersion(ref.APIVersion)
 		if err != nil {
 			return nil, err
 		}
-		if ref.Kind == "Machine" && gv.Group == capiv1beta1.GroupVersion.Group {
+		if ref.Kind == "Machine" && gv.Group == clusterv1beta1.GroupVersion.Group {
 			return GetMachineByName(ctx, c, obj.Namespace, ref.Name)
 		}
 	}
@@ -98,8 +98,8 @@ func GetOwnerMachine(ctx context.Context, c client.Client, obj metav1.ObjectMeta
 }
 
 // GetMachineByName finds and return a Machine object using the specified params.
-func GetMachineByName(ctx context.Context, c client.Client, namespace, name string) (*capiv1beta1.Machine, error) {
-	m := &capiv1beta1.Machine{}
+func GetMachineByName(ctx context.Context, c client.Client, namespace, name string) (*clusterv1beta1.Machine, error) {
+	m := &clusterv1beta1.Machine{}
 	key := client.ObjectKey{Name: name, Namespace: namespace}
 	if err := c.Get(ctx, key, m); err != nil {
 		return nil, err

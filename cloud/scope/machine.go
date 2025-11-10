@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -45,7 +45,7 @@ import (
 type MachineScopeParams struct {
 	Client        client.Client
 	ClusterGetter cloud.ClusterGetter
-	Machine       *clusterv1.Machine
+	Machine       *clusterv1beta1.Machine
 	GCPMachine    *infrav1.GCPMachine
 }
 
@@ -81,7 +81,7 @@ type MachineScope struct {
 	client        client.Client
 	patchHelper   *patch.Helper
 	ClusterGetter cloud.ClusterGetter
-	Machine       *clusterv1.Machine
+	Machine       *clusterv1beta1.Machine
 	GCPMachine    *infrav1.GCPMachine
 }
 
@@ -150,8 +150,8 @@ func (m *MachineScope) Role() string {
 }
 
 // IsControlPlaneMachine checks machine is a control plane node.
-func IsControlPlaneMachine(machine *clusterv1.Machine) bool {
-	_, ok := machine.Labels[clusterv1.MachineControlPlaneLabel]
+func IsControlPlaneMachine(machine *clusterv1beta1.Machine) bool {
+	_, ok := machine.Labels[clusterv1beta1.MachineControlPlaneLabel]
 	return ok
 }
 

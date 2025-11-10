@@ -33,7 +33,7 @@ import (
 
 	"sigs.k8s.io/cluster-api/util/predicates"
 
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 // ClusterUpdateInfraReady returns a predicate that returns true for an update event when a cluster has Status.InfrastructureReady changed from false to true
@@ -46,13 +46,13 @@ func ClusterUpdateInfraReady(scheme *runtime.Scheme, logger logr.Logger) predica
 				log = log.WithValues(gvk.Kind, klog.KObj(e.ObjectOld))
 			}
 
-			oldCluster, ok := e.ObjectOld.(*clusterv1.Cluster)
+			oldCluster, ok := e.ObjectOld.(*clusterv1beta1.Cluster)
 			if !ok {
 				log.V(4).Info("Expected Cluster", "type", fmt.Sprintf("%T", e.ObjectOld))
 				return false
 			}
 
-			newCluster := e.ObjectNew.(*clusterv1.Cluster)
+			newCluster := e.ObjectNew.(*clusterv1beta1.Cluster)
 
 			if !oldCluster.Status.InfrastructureReady && newCluster.Status.InfrastructureReady {
 				log.V(6).Info("Cluster infrastructure became ready, allowing further processing")
@@ -77,13 +77,13 @@ func ClusterPausedTransitions(scheme *runtime.Scheme, logger logr.Logger) predic
 				log = log.WithValues(gvk.Kind, klog.KObj(e.ObjectOld))
 			}
 
-			oldCluster, ok := e.ObjectOld.(*clusterv1.Cluster)
+			oldCluster, ok := e.ObjectOld.(*clusterv1beta1.Cluster)
 			if !ok {
 				log.V(4).Info("Expected Cluster", "type", fmt.Sprintf("%T", e.ObjectOld))
 				return false
 			}
 
-			newCluster := e.ObjectNew.(*clusterv1.Cluster)
+			newCluster := e.ObjectNew.(*clusterv1beta1.Cluster)
 
 			if oldCluster.Spec.Paused && !newCluster.Spec.Paused {
 				log.V(6).Info("Cluster unpausing, allowing further processing")

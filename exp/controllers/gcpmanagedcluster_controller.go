@@ -34,7 +34,7 @@ import (
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/capiutils"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
@@ -156,7 +156,7 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 	}
 
 	if err = c.Watch(
-		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1beta1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrav1exp.GroupVersion.WithKind("GCPManagedCluster"), mgr.GetClient(), &infrav1exp.GCPManagedCluster{})),
 			predicates.ClusterUnpaused(mgr.GetScheme(), log),
 			predicates.ResourceNotPausedAndHasFilterLabel(mgr.GetScheme(), log, r.WatchFilterValue),
@@ -186,9 +186,9 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 		return err
 	}
 
-	failureDomains := make(clusterv1.FailureDomains, len(zones))
+	failureDomains := make(clusterv1beta1.FailureDomains, len(zones))
 	for _, zone := range zones {
-		failureDomains[zone.Name] = clusterv1.FailureDomainSpec{
+		failureDomains[zone.Name] = clusterv1beta1.FailureDomainSpec{
 			ControlPlane: false,
 		}
 	}
@@ -315,7 +315,7 @@ func (r *GCPManagedClusterReconciler) dependencyCount(ctx context.Context, clust
 
 	listOptions := []client.ListOption{
 		client.InNamespace(clusterNamespace),
-		client.MatchingLabels(map[string]string{clusterv1.ClusterNameLabel: clusterName}),
+		client.MatchingLabels(map[string]string{clusterv1beta1.ClusterNameLabel: clusterName}),
 	}
 
 	managedMachinePools := &infrav1exp.GCPManagedMachinePoolList{}

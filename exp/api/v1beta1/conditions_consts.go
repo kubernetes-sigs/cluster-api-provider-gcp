@@ -16,17 +16,17 @@ limitations under the License.
 
 package v1beta1
 
-import clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+import clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
 const (
 	// GKEControlPlaneReadyCondition condition reports on the successful reconciliation of GKE control plane.
-	GKEControlPlaneReadyCondition clusterv1.ConditionType = "GKEControlPlaneReady"
+	GKEControlPlaneReadyCondition clusterv1beta1.ConditionType = "GKEControlPlaneReady"
 	// GKEControlPlaneCreatingCondition condition reports on whether the GKE control plane is creating.
-	GKEControlPlaneCreatingCondition clusterv1.ConditionType = "GKEControlPlaneCreating"
+	GKEControlPlaneCreatingCondition clusterv1beta1.ConditionType = "GKEControlPlaneCreating"
 	// GKEControlPlaneUpdatingCondition condition reports on whether the GKE control plane is updating.
-	GKEControlPlaneUpdatingCondition clusterv1.ConditionType = "GKEControlPlaneUpdating"
+	GKEControlPlaneUpdatingCondition clusterv1beta1.ConditionType = "GKEControlPlaneUpdating"
 	// GKEControlPlaneDeletingCondition condition reports on whether the GKE control plane is deleting.
-	GKEControlPlaneDeletingCondition clusterv1.ConditionType = "GKEControlPlaneDeleting"
+	GKEControlPlaneDeletingCondition clusterv1beta1.ConditionType = "GKEControlPlaneDeleting"
 
 	// GKEControlPlaneCreatingReason used to report GKE control plane being created.
 	GKEControlPlaneCreatingReason = "GKEControlPlaneCreating"
@@ -46,13 +46,13 @@ const (
 	GKEControlPlaneRequiresAtLeastOneNodePoolReason = "GKEControlPlaneRequiresAtLeastOneNodePool"
 
 	// GKEMachinePoolReadyCondition condition reports on the successful reconciliation of GKE node pool.
-	GKEMachinePoolReadyCondition clusterv1.ConditionType = "GKEMachinePoolReady"
+	GKEMachinePoolReadyCondition clusterv1beta1.ConditionType = "GKEMachinePoolReady"
 	// GKEMachinePoolCreatingCondition condition reports on whether the GKE node pool is creating.
-	GKEMachinePoolCreatingCondition clusterv1.ConditionType = "GKEMachinePoolCreating"
+	GKEMachinePoolCreatingCondition clusterv1beta1.ConditionType = "GKEMachinePoolCreating"
 	// GKEMachinePoolUpdatingCondition condition reports on whether the GKE node pool is updating.
-	GKEMachinePoolUpdatingCondition clusterv1.ConditionType = "GKEMachinePoolUpdating"
+	GKEMachinePoolUpdatingCondition clusterv1beta1.ConditionType = "GKEMachinePoolUpdating"
 	// GKEMachinePoolDeletingCondition condition reports on whether the GKE node pool is deleting.
-	GKEMachinePoolDeletingCondition clusterv1.ConditionType = "GKEMachinePoolDeleting"
+	GKEMachinePoolDeletingCondition clusterv1beta1.ConditionType = "GKEMachinePoolDeleting"
 
 	// WaitingForGKEControlPlaneReason used when the machine pool is waiting for GKE control plane infrastructure to be ready before proceeding.
 	WaitingForGKEControlPlaneReason = "WaitingForGKEControlPlane"

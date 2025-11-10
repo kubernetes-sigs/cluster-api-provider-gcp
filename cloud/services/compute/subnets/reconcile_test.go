@@ -33,21 +33,21 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func init() {
-	_ = clusterv1.AddToScheme(scheme.Scheme)
+	_ = clusterv1beta1.AddToScheme(scheme.Scheme)
 	_ = infrav1.AddToScheme(scheme.Scheme)
 }
 
-var fakeCluster = &clusterv1.Cluster{
+var fakeCluster = &clusterv1beta1.Cluster{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "my-cluster",
 		Namespace: "default",
 	},
-	Spec: clusterv1.ClusterSpec{},
+	Spec: clusterv1beta1.ClusterSpec{},
 }
 
 var fakeGCPCluster = &infrav1.GCPCluster{

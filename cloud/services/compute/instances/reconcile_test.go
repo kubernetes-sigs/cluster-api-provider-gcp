@@ -35,12 +35,12 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func init() {
-	_ = clusterv1.AddToScheme(scheme.Scheme)
+	_ = clusterv1beta1.AddToScheme(scheme.Scheme)
 	_ = infrav1.AddToScheme(scheme.Scheme)
 }
 
@@ -54,21 +54,21 @@ var fakeBootstrapSecret = &corev1.Secret{
 	},
 }
 
-var fakeCluster = &clusterv1.Cluster{
+var fakeCluster = &clusterv1beta1.Cluster{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "my-cluster",
 		Namespace: "default",
 	},
-	Spec: clusterv1.ClusterSpec{},
+	Spec: clusterv1beta1.ClusterSpec{},
 }
 
-var fakeMachine = &clusterv1.Machine{
+var fakeMachine = &clusterv1beta1.Machine{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "my-machine",
 		Namespace: "default",
 	},
-	Spec: clusterv1.MachineSpec{
-		Bootstrap: clusterv1.Bootstrap{
+	Spec: clusterv1beta1.MachineSpec{
+		Bootstrap: clusterv1beta1.Bootstrap{
 			DataSecretName: ptr.To[string]("my-cluster-bootstrap"),
 		},
 		FailureDomain: ptr.To[string]("us-central1-c"),
@@ -76,13 +76,13 @@ var fakeMachine = &clusterv1.Machine{
 	},
 }
 
-var fakeMachineWithOutFailureDomain = &clusterv1.Machine{
+var fakeMachineWithOutFailureDomain = &clusterv1beta1.Machine{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "my-machine",
 		Namespace: "default",
 	},
-	Spec: clusterv1.MachineSpec{
-		Bootstrap: clusterv1.Bootstrap{
+	Spec: clusterv1beta1.MachineSpec{
+		Bootstrap: clusterv1beta1.Bootstrap{
 			DataSecretName: ptr.To[string]("my-cluster-bootstrap"),
 		},
 		Version: ptr.To[string]("v1.19.11"),
@@ -99,10 +99,10 @@ var fakeGCPClusterWithOutFailureDomain = &infrav1.GCPCluster{
 		Region:  "us-central1",
 	},
 	Status: infrav1.GCPClusterStatus{
-		FailureDomains: clusterv1.FailureDomains{
-			"us-central1-a": clusterv1.FailureDomainSpec{ControlPlane: true},
-			"us-central1-b": clusterv1.FailureDomainSpec{ControlPlane: true},
-			"us-central1-c": clusterv1.FailureDomainSpec{ControlPlane: true},
+		FailureDomains: clusterv1beta1.FailureDomains{
+			"us-central1-a": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
+			"us-central1-b": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
+			"us-central1-c": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
 		},
 	},
 }

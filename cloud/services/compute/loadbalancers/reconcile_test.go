@@ -31,14 +31,14 @@ import (
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var lbTypeInternal = infrav1.Internal
 
 func init() {
-	_ = clusterv1.AddToScheme(scheme.Scheme)
+	_ = clusterv1beta1.AddToScheme(scheme.Scheme)
 	_ = infrav1.AddToScheme(scheme.Scheme)
 }
 
@@ -47,12 +47,12 @@ func getBaseClusterScope() (*scope.ClusterScope, error) {
 		WithScheme(scheme.Scheme).
 		Build()
 
-	fakeCluster := &clusterv1.Cluster{
+	fakeCluster := &clusterv1beta1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-cluster",
 			Namespace: "default",
 		},
-		Spec: clusterv1.ClusterSpec{},
+		Spec: clusterv1beta1.ClusterSpec{},
 	}
 
 	fakeGCPCluster := &infrav1.GCPCluster{
@@ -75,8 +75,8 @@ func getBaseClusterScope() (*scope.ClusterScope, error) {
 			},
 		},
 		Status: infrav1.GCPClusterStatus{
-			FailureDomains: clusterv1.FailureDomains{
-				"us-central1-a": clusterv1.FailureDomainSpec{ControlPlane: true},
+			FailureDomains: clusterv1beta1.FailureDomains{
+				"us-central1-a": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
 			},
 		},
 	}
@@ -124,7 +124,7 @@ func getBaseClusterScopeWithPortSet() (*scope.ClusterScope, error) {
 	}
 
 	port := int32(6443)
-	clusterScope.Cluster.Spec.ClusterNetwork = &clusterv1.ClusterNetwork{
+	clusterScope.Cluster.Spec.ClusterNetwork = &clusterv1beta1.ClusterNetwork{
 		APIServerPort: &port,
 	}
 	return clusterScope, nil

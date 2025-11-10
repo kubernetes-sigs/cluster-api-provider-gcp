@@ -27,7 +27,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -36,7 +36,7 @@ import (
 type ManagedClusterScopeParams struct {
 	GCPServices
 	Client                 client.Client
-	Cluster                *clusterv1.Cluster
+	Cluster                *clusterv1beta1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 }
@@ -80,7 +80,7 @@ type ManagedClusterScope struct {
 	client      client.Client
 	patchHelper *patch.Helper
 
-	Cluster                *clusterv1.Cluster
+	Cluster                *clusterv1beta1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	GCPServices
@@ -172,14 +172,14 @@ func (s *ManagedClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags 
 }
 
 // ControlPlaneEndpoint returns the cluster control-plane endpoint.
-func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
+func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1beta1.APIEndpoint {
 	endpoint := s.GCPManagedCluster.Spec.ControlPlaneEndpoint
 	endpoint.Port = ptr.Deref(s.Cluster.Spec.ClusterNetwork.APIServerPort, 443)
 	return endpoint
 }
 
 // FailureDomains returns the cluster failure domains.
-func (s *ManagedClusterScope) FailureDomains() clusterv1.FailureDomains {
+func (s *ManagedClusterScope) FailureDomains() clusterv1beta1.FailureDomains {
 	return s.GCPManagedCluster.Status.FailureDomains
 }
 
@@ -193,12 +193,12 @@ func (s *ManagedClusterScope) SetReady() {
 }
 
 // SetFailureDomains sets cluster failure domains.
-func (s *ManagedClusterScope) SetFailureDomains(fd clusterv1.FailureDomains) {
+func (s *ManagedClusterScope) SetFailureDomains(fd clusterv1beta1.FailureDomains) {
 	s.GCPManagedCluster.Status.FailureDomains = fd
 }
 
 // SetControlPlaneEndpoint sets cluster control-plane endpoint.
-func (s *ManagedClusterScope) SetControlPlaneEndpoint(endpoint clusterv1.APIEndpoint) {
+func (s *ManagedClusterScope) SetControlPlaneEndpoint(endpoint clusterv1beta1.APIEndpoint) {
 	s.GCPManagedCluster.Spec.ControlPlaneEndpoint = endpoint
 }
 
