@@ -187,7 +187,7 @@ func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 // FailureDomains returns the cluster failure domains.
 func (s *ManagedClusterScope) FailureDomains() []string {
 	failureDomains := []string{}
-	for failureDomainName, _ := range s.GCPManagedCluster.Status.FailureDomains {
+	for failureDomainName := range s.GCPManagedCluster.Status.FailureDomains {
 		failureDomains = append(failureDomains, failureDomainName)
 	}
 	return failureDomains

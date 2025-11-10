@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/loadbalancers"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/networks"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/subnets"
-	"sigs.k8s.io/cluster-api-provider-gcp/pkg/capiutils"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -131,7 +130,7 @@ func (r *GCPClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	if capiutils.IsPaused(cluster, gcpCluster) {
+	if annotations.IsPaused(cluster, gcpCluster) {
 		log.Info("GCPCluster of linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
