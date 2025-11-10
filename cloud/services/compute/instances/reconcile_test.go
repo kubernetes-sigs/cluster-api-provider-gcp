@@ -36,11 +36,12 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func init() {
-	_ = clusterv1beta1.AddToScheme(scheme.Scheme)
+	_ = clusterv1.AddToScheme(scheme.Scheme)
 	_ = infrav1.AddToScheme(scheme.Scheme)
 }
 
@@ -54,38 +55,38 @@ var fakeBootstrapSecret = &corev1.Secret{
 	},
 }
 
-var fakeCluster = &clusterv1beta1.Cluster{
+var fakeCluster = &clusterv1.Cluster{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "my-cluster",
 		Namespace: "default",
 	},
-	Spec: clusterv1beta1.ClusterSpec{},
+	Spec: clusterv1.ClusterSpec{},
 }
 
-var fakeMachine = &clusterv1beta1.Machine{
+var fakeMachine = &clusterv1.Machine{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "my-machine",
 		Namespace: "default",
 	},
-	Spec: clusterv1beta1.MachineSpec{
-		Bootstrap: clusterv1beta1.Bootstrap{
+	Spec: clusterv1.MachineSpec{
+		Bootstrap: clusterv1.Bootstrap{
 			DataSecretName: ptr.To[string]("my-cluster-bootstrap"),
 		},
-		FailureDomain: ptr.To[string]("us-central1-c"),
-		Version:       ptr.To[string]("v1.19.11"),
+		FailureDomain: "us-central1-c",
+		Version:       "v1.19.11",
 	},
 }
 
-var fakeMachineWithOutFailureDomain = &clusterv1beta1.Machine{
+var fakeMachineWithOutFailureDomain = &clusterv1.Machine{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "my-machine",
 		Namespace: "default",
 	},
-	Spec: clusterv1beta1.MachineSpec{
-		Bootstrap: clusterv1beta1.Bootstrap{
+	Spec: clusterv1.MachineSpec{
+		Bootstrap: clusterv1.Bootstrap{
 			DataSecretName: ptr.To[string]("my-cluster-bootstrap"),
 		},
-		Version: ptr.To[string]("v1.19.11"),
+		Version: "v1.19.11",
 	},
 }
 

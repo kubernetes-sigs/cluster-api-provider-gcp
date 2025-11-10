@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -45,7 +45,7 @@ import (
 type MachineScopeParams struct {
 	Client        client.Client
 	ClusterGetter cloud.ClusterGetter
-	Machine       *clusterv1beta1.Machine
+	Machine       *clusterv1.Machine
 	GCPMachine    *infrav1.GCPMachine
 }
 
@@ -81,7 +81,7 @@ type MachineScope struct {
 	client        client.Client
 	patchHelper   *patch.Helper
 	ClusterGetter cloud.ClusterGetter
-	Machine       *clusterv1beta1.Machine
+	Machine       *clusterv1.Machine
 	GCPMachine    *infrav1.GCPMachine
 }
 
@@ -99,19 +99,15 @@ func (m *MachineScope) NetworkCloud() cloud.Cloud {
 
 // Zone returns the FailureDomain for the GCPMachine.
 func (m *MachineScope) Zone() string {
-	if m.Machine.Spec.FailureDomain == nil {
+	if m.Machine.Spec.FailureDomain == "" {
 		fd := m.ClusterGetter.FailureDomains()
 		if len(fd) == 0 {
 			return ""
 		}
-		zones := make([]string, 0, len(fd))
-		for zone := range fd {
-			zones = append(zones, zone)
-		}
-		sort.Strings(zones)
-		return zones[0]
+		sort.Strings(fd)
+		return fd[0]
 	}
-	return *m.Machine.Spec.FailureDomain
+	return m.Machine.Spec.FailureDomain
 }
 
 // Project return the project for the GCPMachine's cluster.
@@ -150,8 +146,8 @@ func (m *MachineScope) Role() string {
 }
 
 // IsControlPlaneMachine checks machine is a control plane node.
-func IsControlPlaneMachine(machine *clusterv1beta1.Machine) bool {
-	_, ok := machine.Labels[clusterv1beta1.MachineControlPlaneLabel]
+func IsControlPlaneMachine(machine *clusterv1.Machine) bool {
+	_, ok := machine.Labels[clusterv1.MachineControlPlaneLabel]
 	return ok
 }
 
@@ -228,10 +224,7 @@ func (m *MachineScope) SetAddresses(addressList []corev1.NodeAddress) {
 
 // InstanceImageSpec returns compute instance image attched-disk spec.
 func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
-	version := ""
-	if m.Machine.Spec.Version != nil {
-		version = *m.Machine.Spec.Version
-	}
+	version := m.Machine.Spec.Version
 	image := "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
 	sourceImage := path.Join("projects", m.ClusterGetter.Project(), "global", "images", "family", image)
 	if m.GCPMachine.Spec.Image != nil {

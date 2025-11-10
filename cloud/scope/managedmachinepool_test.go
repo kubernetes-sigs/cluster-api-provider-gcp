@@ -8,12 +8,12 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 var (
 	TestGCPMMP      *v1beta1.GCPManagedMachinePool
-	TestMP          *clusterv1beta1.MachinePool
+	TestMP          *clusterv1.MachinePool
 	TestClusterName string
 )
 
@@ -36,8 +36,8 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 				},
 			},
 		}
-		TestMP = &clusterv1beta1.MachinePool{
-			Spec: clusterv1beta1.MachinePoolSpec{
+		TestMP = &clusterv1.MachinePool{
+			Spec: clusterv1.MachinePoolSpec{
 				Replicas: &replicas,
 			},
 		}

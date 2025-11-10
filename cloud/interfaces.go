@@ -19,12 +19,12 @@ package cloud
 import (
 	"context"
 
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	corev1 "k8s.io/api/core/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 // Cloud alias for cloud.Cloud interface.
@@ -61,15 +61,15 @@ type ClusterGetter interface {
 	SkipFirewallRuleCreation() bool
 	Network() *infrav1.Network
 	AdditionalLabels() infrav1.Labels
-	FailureDomains() clusterv1beta1.FailureDomains
-	ControlPlaneEndpoint() clusterv1beta1.APIEndpoint
+	FailureDomains() []string
+	ControlPlaneEndpoint() clusterv1.APIEndpoint
 	ResourceManagerTags() infrav1.ResourceManagerTags
 	LoadBalancer() infrav1.LoadBalancerSpec
 }
 
 // ClusterSetter is an interface which can set cluster information.
 type ClusterSetter interface {
-	SetControlPlaneEndpoint(endpoint clusterv1beta1.APIEndpoint)
+	SetControlPlaneEndpoint(endpoint clusterv1.APIEndpoint)
 }
 
 // Cluster is an interface which can get and set cluster information.

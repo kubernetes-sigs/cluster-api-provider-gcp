@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/capiutils"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/predicates"
@@ -75,7 +76,7 @@ func (r *GCPClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 
 	clusterToInfraFn := util.ClusterToInfrastructureMapFunc(ctx, infrav1.GroupVersion.WithKind("GCPCluster"), mgr.GetClient(), &infrav1.GCPCluster{})
 	if err = c.Watch(
-		source.Kind[client.Object](mgr.GetCache(), &clusterv1beta1.Cluster{},
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(func(mapCtx context.Context, o client.Object) []reconcile.Request {
 				requests := clusterToInfraFn(mapCtx, o)
 				if requests == nil {
@@ -120,7 +121,7 @@ func (r *GCPClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Fetch the Cluster.
-	cluster, err := capiutils.GetOwnerCluster(ctx, r.Client, gcpCluster.ObjectMeta)
+	cluster, err := util.GetOwnerCluster(ctx, r.Client, gcpCluster.ObjectMeta)
 	if err != nil {
 		log.Error(err, "Failed to get owner cluster")
 		return ctrl.Result{}, err

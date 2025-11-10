@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/capiutils"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
@@ -101,7 +102,7 @@ func (r *GCPManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	controlPlane := &infrav1exp.GCPManagedControlPlane{}
 	controlPlaneRef := types.NamespacedName{
 		Name:      cluster.Spec.ControlPlaneRef.Name,
-		Namespace: cluster.Spec.ControlPlaneRef.Namespace,
+		Namespace: cluster.Namespace,
 	}
 
 	log.V(4).Info("getting control plane ", "ref", controlPlaneRef)
@@ -156,7 +157,7 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 	}
 
 	if err = c.Watch(
-		source.Kind[client.Object](mgr.GetCache(), &clusterv1beta1.Cluster{},
+		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrav1exp.GroupVersion.WithKind("GCPManagedCluster"), mgr.GetClient(), &infrav1exp.GCPManagedCluster{})),
 			predicates.ClusterUnpaused(mgr.GetScheme(), log),
 			predicates.ResourceNotPausedAndHasFilterLabel(mgr.GetScheme(), log, r.WatchFilterValue),
@@ -212,7 +213,10 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 	record.Event(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Ready")
 
 	controlPlaneEndpoint := clusterScope.GCPManagedControlPlane.Spec.Endpoint
-	clusterScope.SetControlPlaneEndpoint(controlPlaneEndpoint)
+	clusterScope.SetControlPlaneEndpoint(clusterv1.APIEndpoint{
+		Host: controlPlaneEndpoint.Host,
+		Port: controlPlaneEndpoint.Port,
+	})
 
 	if controlPlaneEndpoint.IsZero() {
 		log.Info("GCPManagedControlplane does not have endpoint yet. Reconciling")
@@ -291,7 +295,7 @@ func (r *GCPManagedClusterReconciler) managedControlPlaneMapper() handler.MapFun
 		}
 
 		managedClusterRef := cluster.Spec.InfrastructureRef
-		if managedClusterRef == nil || managedClusterRef.Kind != "GCPManagedCluster" {
+		if !managedClusterRef.IsDefined() || managedClusterRef.Kind != "GCPManagedCluster" {
 			log.Info("InfrastructureRef is nil or not GCPManagedCluster, skipping mapping")
 			return nil
 		}
@@ -300,7 +304,7 @@ func (r *GCPManagedClusterReconciler) managedControlPlaneMapper() handler.MapFun
 			{
 				NamespacedName: types.NamespacedName{
 					Name:      managedClusterRef.Name,
-					Namespace: managedClusterRef.Namespace,
+					Namespace: cluster.Namespace,
 				},
 			},
 		}
@@ -315,7 +319,7 @@ func (r *GCPManagedClusterReconciler) dependencyCount(ctx context.Context, clust
 
 	listOptions := []client.ListOption{
 		client.InNamespace(clusterNamespace),
-		client.MatchingLabels(map[string]string{clusterv1beta1.ClusterNameLabel: clusterName}),
+		client.MatchingLabels(map[string]string{clusterv1.ClusterNameLabel: clusterName}),
 	}
 
 	managedMachinePools := &infrav1exp.GCPManagedMachinePoolList{}

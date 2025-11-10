@@ -27,13 +27,14 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"sigs.k8s.io/cluster-api/util/predicates"
 
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 // ClusterUpdateInfraReady returns a predicate that returns true for an update event when a cluster has Status.InfrastructureReady changed from false to true
@@ -46,15 +47,15 @@ func ClusterUpdateInfraReady(scheme *runtime.Scheme, logger logr.Logger) predica
 				log = log.WithValues(gvk.Kind, klog.KObj(e.ObjectOld))
 			}
 
-			oldCluster, ok := e.ObjectOld.(*clusterv1beta1.Cluster)
+			oldCluster, ok := e.ObjectOld.(*clusterv1.Cluster)
 			if !ok {
 				log.V(4).Info("Expected Cluster", "type", fmt.Sprintf("%T", e.ObjectOld))
 				return false
 			}
 
-			newCluster := e.ObjectNew.(*clusterv1beta1.Cluster)
+			newCluster := e.ObjectNew.(*clusterv1.Cluster)
 
-			if !oldCluster.Status.InfrastructureReady && newCluster.Status.InfrastructureReady {
+			if !ptr.Deref(oldCluster.Status.Initialization.InfrastructureProvisioned, false) && ptr.Deref(newCluster.Status.Initialization.InfrastructureProvisioned, false) {
 				log.V(6).Info("Cluster infrastructure became ready, allowing further processing")
 				return true
 			}
@@ -69,6 +70,7 @@ func ClusterUpdateInfraReady(scheme *runtime.Scheme, logger logr.Logger) predica
 }
 
 // ClusterPausedTransitions returns a predicate that returns true for an update event when a cluster has Spec.Paused changed.
+// FIXME(chrischdi): use new predicates from CAPI
 func ClusterPausedTransitions(scheme *runtime.Scheme, logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -77,20 +79,20 @@ func ClusterPausedTransitions(scheme *runtime.Scheme, logger logr.Logger) predic
 				log = log.WithValues(gvk.Kind, klog.KObj(e.ObjectOld))
 			}
 
-			oldCluster, ok := e.ObjectOld.(*clusterv1beta1.Cluster)
+			oldCluster, ok := e.ObjectOld.(*clusterv1.Cluster)
 			if !ok {
 				log.V(4).Info("Expected Cluster", "type", fmt.Sprintf("%T", e.ObjectOld))
 				return false
 			}
 
-			newCluster := e.ObjectNew.(*clusterv1beta1.Cluster)
+			newCluster := e.ObjectNew.(*clusterv1.Cluster)
 
-			if oldCluster.Spec.Paused && !newCluster.Spec.Paused {
+			if ptr.Deref(oldCluster.Spec.Paused, false) && !ptr.Deref(newCluster.Spec.Paused, false) {
 				log.V(6).Info("Cluster unpausing, allowing further processing")
 				return true
 			}
 
-			if !oldCluster.Spec.Paused && newCluster.Spec.Paused {
+			if !ptr.Deref(oldCluster.Spec.Paused, false) && ptr.Deref(newCluster.Spec.Paused, false) {
 				log.V(6).Info("Cluster pausing, allowing further processing")
 				return true
 			}

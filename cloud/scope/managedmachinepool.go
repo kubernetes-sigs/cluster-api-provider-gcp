@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -43,8 +44,8 @@ type ManagedMachinePoolScopeParams struct {
 	ManagedClusterClient        *container.ClusterManagerClient
 	InstanceGroupManagersClient *compute.InstanceGroupManagersClient
 	Client                      client.Client
-	Cluster                     *clusterv1beta1.Cluster
-	MachinePool                 *clusterv1beta1.MachinePool
+	Cluster                     *clusterv1.Cluster
+	MachinePool                 *clusterv1.MachinePool
 	GCPManagedCluster           *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane      *infrav1exp.GCPManagedControlPlane
 	GCPManagedMachinePool       *infrav1exp.GCPManagedMachinePool
@@ -106,8 +107,8 @@ type ManagedMachinePoolScope struct {
 	client      client.Client
 	patchHelper *v1beta1patch.Helper
 
-	Cluster                *clusterv1beta1.Cluster
-	MachinePool            *clusterv1beta1.MachinePool
+	Cluster                *clusterv1.Cluster
+	MachinePool            *clusterv1.MachinePool
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	GCPManagedMachinePool  *infrav1exp.GCPManagedMachinePool
@@ -151,7 +152,7 @@ func (s *ManagedMachinePoolScope) InstanceGroupManagersClient() *compute.Instanc
 }
 
 // NodePoolVersion returns the k8s version of the node pool.
-func (s *ManagedMachinePoolScope) NodePoolVersion() *string {
+func (s *ManagedMachinePoolScope) NodePoolVersion() string {
 	return s.MachinePool.Spec.Template.Spec.Version
 }
 
@@ -166,7 +167,7 @@ func NodePoolResourceLabels(additionalLabels infrav1.Labels, clusterName string)
 }
 
 // ConvertToSdkNodePool converts a node pool to format that is used by GCP SDK.
-func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool clusterv1beta1.MachinePool, regional bool, clusterName string) *containerpb.NodePool {
+func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool clusterv1.MachinePool, regional bool, clusterName string) *containerpb.NodePool {
 	replicas := *machinePool.Spec.Replicas
 	if regional {
 		if len(nodePool.Spec.NodeLocations) != 0 {
@@ -268,14 +269,14 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 			Type: containerpb.SandboxConfig_GVISOR,
 		}
 	}
-	if machinePool.Spec.Template.Spec.Version != nil {
-		sdkNodePool.Version = strings.Replace(*machinePool.Spec.Template.Spec.Version, "v", "", 1)
+	if machinePool.Spec.Template.Spec.Version != "" {
+		sdkNodePool.Version = strings.Replace(machinePool.Spec.Template.Spec.Version, "v", "", 1)
 	}
 	return &sdkNodePool
 }
 
 // ConvertToSdkNodePools converts node pools to format that is used by GCP SDK.
-func ConvertToSdkNodePools(nodePools []infrav1exp.GCPManagedMachinePool, machinePools []clusterv1beta1.MachinePool, regional bool, clusterName string) []*containerpb.NodePool {
+func ConvertToSdkNodePools(nodePools []infrav1exp.GCPManagedMachinePool, machinePools []clusterv1.MachinePool, regional bool, clusterName string) []*containerpb.NodePool {
 	res := []*containerpb.NodePool{}
 	for i := range nodePools {
 		res = append(res, ConvertToSdkNodePool(nodePools[i], machinePools[i], regional, clusterName))

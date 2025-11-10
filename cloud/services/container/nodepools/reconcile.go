@@ -355,8 +355,8 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 	desiredNodePool := scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, isRegional, s.scope.GCPManagedControlPlane.Spec.ClusterName)
 
 	// Node version
-	if s.scope.NodePoolVersion() != nil {
-		desiredNodePoolVersion := infrav1exp.ConvertFromSdkNodeVersion(*s.scope.NodePoolVersion())
+	if s.scope.NodePoolVersion() != "" {
+		desiredNodePoolVersion := infrav1exp.ConvertFromSdkNodeVersion(s.scope.NodePoolVersion())
 		if desiredNodePoolVersion != infrav1exp.ConvertFromSdkNodeVersion(existingNodePool.GetVersion()) {
 			needUpdate = true
 			updateNodePoolRequest.NodeVersion = desiredNodePoolVersion

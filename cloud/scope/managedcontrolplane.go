@@ -30,6 +30,7 @@ import (
 	"github.com/pkg/errors"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -45,7 +46,7 @@ type ManagedControlPlaneScopeParams struct {
 	ManagedClusterClient   *container.ClusterManagerClient
 	TagBindingsClient      *resourcemanager.TagBindingsClient
 	Client                 client.Client
-	Cluster                *clusterv1beta1.Cluster
+	Cluster                *clusterv1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 }
@@ -114,7 +115,7 @@ type ManagedControlPlaneScope struct {
 	client      client.Client
 	patchHelper *v1beta1patch.Helper
 
-	Cluster                *clusterv1beta1.Cluster
+	Cluster                *clusterv1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	mcClient               *container.ClusterManagerClient
@@ -122,7 +123,7 @@ type ManagedControlPlaneScope struct {
 	credentialsClient      *credentials.IamCredentialsClient
 	credential             *Credential
 
-	AllMachinePools        []clusterv1beta1.MachinePool
+	AllMachinePools        []clusterv1.MachinePool
 	AllManagedMachinePools []infrav1exp.GCPManagedMachinePool
 }
 
@@ -178,14 +179,14 @@ func (s *ManagedControlPlaneScope) GetCredential() *Credential {
 }
 
 // GetAllNodePools gets all node pools for the control plane.
-func (s *ManagedControlPlaneScope) GetAllNodePools(ctx context.Context) ([]infrav1exp.GCPManagedMachinePool, []clusterv1beta1.MachinePool, error) {
+func (s *ManagedControlPlaneScope) GetAllNodePools(ctx context.Context) ([]infrav1exp.GCPManagedMachinePool, []clusterv1.MachinePool, error) {
 	if len(s.AllManagedMachinePools) == 0 {
 		listOptions := []client.ListOption{
 			client.InNamespace(s.GCPManagedControlPlane.Namespace),
-			client.MatchingLabels(map[string]string{clusterv1beta1.ClusterNameLabel: s.Cluster.Name}),
+			client.MatchingLabels(map[string]string{clusterv1.ClusterNameLabel: s.Cluster.Name}),
 		}
 
-		machinePoolList := &clusterv1beta1.MachinePoolList{}
+		machinePoolList := &clusterv1.MachinePoolList{}
 		if err := s.client.List(ctx, machinePoolList, listOptions...); err != nil {
 			return nil, nil, err
 		}
