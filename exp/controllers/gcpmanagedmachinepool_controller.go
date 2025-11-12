@@ -30,8 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/nodepools"
-	"sigs.k8s.io/cluster-api-provider-gcp/pkg/capiutils"
-	"sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	"sigs.k8s.io/cluster-api/util/annotations"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	"sigs.k8s.io/cluster-api/util/record"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -40,7 +40,8 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -88,7 +89,7 @@ func machinePoolToInfrastructureMapFunc(gvk schema.GroupVersionKind) handler.Map
 
 		gk := gvk.GroupKind()
 		// Return early if the GroupKind doesn't match what we expect
-		infraGK := m.Spec.Template.Spec.InfrastructureRef.GroupVersionKind().GroupKind()
+		infraGK := m.Spec.Template.Spec.InfrastructureRef.GroupKind()
 		if gk != infraGK {
 			log.FromContext(ctx).Info("gk does not match", "gk", gk, "infraGK", infraGK)
 			return nil
@@ -180,7 +181,7 @@ func (r *GCPManagedMachinePoolReconciler) SetupWithManager(ctx context.Context, 
 	if err := c.Watch(
 		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(clusterToObjectFunc),
-			capiutils.ClusterPausedTransitionsOrInfrastructureReady(mgr.GetScheme(), log),
+			predicates.ClusterPausedTransitionsOrInfrastructureProvisioned(mgr.GetScheme(), log),
 		)); err != nil {
 		return errors.Wrap(err, "failed adding a watch for ready clusters")
 	}
@@ -251,12 +252,12 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	// Get the cluster
-	cluster, err := capiutils.GetClusterFromMetadata(ctx, r.Client, machinePool.ObjectMeta)
+	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, machinePool.ObjectMeta)
 	if err != nil {
 		log.Info("Failed to retrieve Cluster from MachinePool")
 		return ctrl.Result{}, err
 	}
-	if capiutils.IsPaused(cluster, gcpManagedMachinePool) {
+	if annotations.IsPaused(cluster, gcpManagedMachinePool) {
 		log.Info("Reconciliation is paused for this object")
 		return ctrl.Result{}, nil
 	}
@@ -286,7 +287,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 
 	if !gcpManagedControlPlane.Status.Ready {
 		log.Info("Control plane is not ready yet")
-		conditions.MarkFalse(gcpManagedMachinePool, infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.WaitingForGKEControlPlaneReason, clusterv1.ConditionSeverityInfo, "")
+		v1beta1conditions.MarkFalse(gcpManagedMachinePool, infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.WaitingForGKEControlPlaneReason, clusterv1beta1.ConditionSeverityInfo, "")
 		return ctrl.Result{}, nil
 	}
 
@@ -387,7 +388,7 @@ func (r *GCPManagedMachinePoolReconciler) reconcileDelete(ctx context.Context, m
 		}
 	}
 
-	if conditions.Get(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.GKEMachinePoolDeletingCondition).Reason == infrav1exp.GKEMachinePoolDeletedReason {
+	if v1beta1conditions.Get(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.GKEMachinePoolDeletingCondition).Reason == infrav1exp.GKEMachinePoolDeletedReason {
 		controllerutil.RemoveFinalizer(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.ManagedMachinePoolFinalizer)
 	}
 

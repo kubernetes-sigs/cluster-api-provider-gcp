@@ -31,7 +31,8 @@ import (
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -75,8 +76,8 @@ func getBaseClusterScope() (*scope.ClusterScope, error) {
 			},
 		},
 		Status: infrav1.GCPClusterStatus{
-			FailureDomains: clusterv1.FailureDomains{
-				"us-central1-a": clusterv1.FailureDomainSpec{ControlPlane: true},
+			FailureDomains: clusterv1beta1.FailureDomains{
+				"us-central1-a": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
 			},
 		},
 	}
@@ -123,9 +124,8 @@ func getBaseClusterScopeWithPortSet() (*scope.ClusterScope, error) {
 		return nil, err
 	}
 
-	port := int32(6443)
-	clusterScope.Cluster.Spec.ClusterNetwork = &clusterv1.ClusterNetwork{
-		APIServerPort: &port,
+	clusterScope.Cluster.Spec.ClusterNetwork = clusterv1.ClusterNetwork{
+		APIServerPort: 6443,
 	}
 	return clusterScope, nil
 }

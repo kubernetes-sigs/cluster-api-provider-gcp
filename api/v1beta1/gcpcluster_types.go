@@ -18,7 +18,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 const (
@@ -37,7 +37,7 @@ type GCPClusterSpec struct {
 
 	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
 	// +optional
-	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+	ControlPlaneEndpoint clusterv1beta1.APIEndpoint `json:"controlPlaneEndpoint"`
 
 	// NetworkSpec encapsulates all things related to GCP network.
 	// +optional
@@ -77,8 +77,8 @@ type GCPClusterSpec struct {
 
 // GCPClusterStatus defines the observed state of GCPCluster.
 type GCPClusterStatus struct {
-	FailureDomains clusterv1.FailureDomains `json:"failureDomains,omitempty"`
-	Network        Network                  `json:"network,omitempty"`
+	FailureDomains clusterv1beta1.FailureDomains `json:"failureDomains,omitempty"`
+	Network        Network                       `json:"network,omitempty"`
 
 	// Bastion Instance `json:"bastion,omitempty"`
 	Ready bool `json:"ready"`

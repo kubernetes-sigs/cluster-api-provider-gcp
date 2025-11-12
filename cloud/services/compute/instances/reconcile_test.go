@@ -35,7 +35,8 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -71,8 +72,8 @@ var fakeMachine = &clusterv1.Machine{
 		Bootstrap: clusterv1.Bootstrap{
 			DataSecretName: ptr.To[string]("my-cluster-bootstrap"),
 		},
-		FailureDomain: ptr.To[string]("us-central1-c"),
-		Version:       ptr.To[string]("v1.19.11"),
+		FailureDomain: "us-central1-c",
+		Version:       "v1.19.11",
 	},
 }
 
@@ -85,7 +86,7 @@ var fakeMachineWithOutFailureDomain = &clusterv1.Machine{
 		Bootstrap: clusterv1.Bootstrap{
 			DataSecretName: ptr.To[string]("my-cluster-bootstrap"),
 		},
-		Version: ptr.To[string]("v1.19.11"),
+		Version: "v1.19.11",
 	},
 }
 
@@ -99,10 +100,10 @@ var fakeGCPClusterWithOutFailureDomain = &infrav1.GCPCluster{
 		Region:  "us-central1",
 	},
 	Status: infrav1.GCPClusterStatus{
-		FailureDomains: clusterv1.FailureDomains{
-			"us-central1-a": clusterv1.FailureDomainSpec{ControlPlane: true},
-			"us-central1-b": clusterv1.FailureDomainSpec{ControlPlane: true},
-			"us-central1-c": clusterv1.FailureDomainSpec{ControlPlane: true},
+		FailureDomains: clusterv1beta1.FailureDomains{
+			"us-central1-a": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
+			"us-central1-b": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
+			"us-central1-c": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
 		},
 	},
 }

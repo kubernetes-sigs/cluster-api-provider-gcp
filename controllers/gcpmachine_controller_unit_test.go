@@ -21,11 +21,10 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -44,11 +43,10 @@ func newMachine(clusterName, machineName string) *clusterv1.Machine {
 
 func newMachineWithInfrastructureRef(clusterName, machineName string) *clusterv1.Machine {
 	m := newMachine(clusterName, machineName)
-	m.Spec.InfrastructureRef = corev1.ObjectReference{
-		Kind:       "GCPMachine",
-		Namespace:  "",
-		Name:       "gcp" + machineName,
-		APIVersion: infrav1.GroupVersion.String(),
+	m.Spec.InfrastructureRef = clusterv1.ContractVersionedObjectReference{
+		Kind:     "GCPMachine",
+		Name:     "gcp" + machineName,
+		APIGroup: infrav1.GroupVersion.Group,
 	}
 
 	return m

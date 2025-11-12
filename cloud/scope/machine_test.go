@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -30,7 +30,7 @@ func TestMachineLocalSSDDiskType(t *testing.T) {
 	failureDomain := "example.com"
 	testMachine := clusterv1.Machine{
 		Spec: clusterv1.MachineSpec{
-			FailureDomain: &failureDomain,
+			FailureDomain: failureDomain,
 		},
 	}
 
@@ -89,7 +89,7 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 	failureDomain := "us-central1-a"
 	testMachine := clusterv1.Machine{
 		Spec: clusterv1.MachineSpec{
-			FailureDomain: &failureDomain,
+			FailureDomain: failureDomain,
 		},
 	}
 

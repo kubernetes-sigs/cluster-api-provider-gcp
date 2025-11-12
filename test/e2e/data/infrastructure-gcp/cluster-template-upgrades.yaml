@@ -154,3 +154,22 @@ spec:
     spec:
       instanceType: "${GCP_NODE_MACHINE_TYPE}"
       image: "${KUBERNETES_IMAGE_UPGRADE_TO}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "${CLUSTER_NAME}-crs-ccm"
+data: ${CCM_RESOURCES}
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: "${CLUSTER_NAME}-crs-ccm"
+spec:
+  strategy: ApplyOnce
+  clusterSelector:
+    matchLabels:
+      ccm: "${CLUSTER_NAME}-crs-ccm"
+  resources:
+    - name: "${CLUSTER_NAME}-crs-ccm"
+      kind: ConfigMap
