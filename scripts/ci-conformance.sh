@@ -284,7 +284,7 @@ EOF
     init_networks
   fi
 
-  make test-conformance
+  GCP_PROJECT="${GCP_PROJECT}" GOOGLE_APPLICATION_CREDENTIALS="${GOOGLE_APPLICATION_CREDENTIALS}" make test-conformance
   test_status="${?}"
   echo TESTSTATUS
   echo "${test_status}"

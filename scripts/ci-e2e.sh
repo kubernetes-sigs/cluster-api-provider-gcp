@@ -275,7 +275,7 @@ EOF
     init_networks
   fi
 
-  make test-e2e
+  GCP_PROJECT="${GCP_PROJECT}" GOOGLE_APPLICATION_CREDENTIALS="${GOOGLE_APPLICATION_CREDENTIALS}" make test-e2e
   test_status="${?}"
   echo TESTSTATUS
   echo "${test_status}"
