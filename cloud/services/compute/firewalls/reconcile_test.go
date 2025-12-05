@@ -176,7 +176,7 @@ var fakeGCPClusterWithFirewallRules = &infrav1.GCPCluster{
 	Status: infrav1.GCPClusterStatus{
 		Network: infrav1.Network{
 			FirewallRules: map[string]string{
-				"custom-fw-rule": "test",
+				"my-cluster-custom-fw-rule": "test",
 			},
 		},
 	},
@@ -384,7 +384,7 @@ func TestService_Reconcile(t *testing.T) {
 				Objects:       map[meta.Key]*cloud.MockFirewallsObj{},
 			},
 			assert: func(ctx context.Context, t testCase) error {
-				key := meta.GlobalKey("custom-fw-rule")
+				key := meta.GlobalKey("my-cluster-custom-fw-rule")
 				fwRule, err := t.mockFirewalls.Get(ctx, key)
 				if err != nil {
 					return err

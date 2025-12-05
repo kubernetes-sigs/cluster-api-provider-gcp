@@ -328,8 +328,18 @@ func (s *ManagedClusterScope) FirewallRulesSpec() []*compute.Firewall {
 		}
 
 		direction := string(ptr.Deref(rule.Direction, infrav1.FirewallRuleDirectionIngress))
+		name := fmt.Sprintf("%s-%s", s.Name(), strings.ToLower(direction))
+		if rule.Name != nil {
+			name = *rule.Name
+			if !strings.HasPrefix(name, s.Name()) {
+				name = fmt.Sprintf("%s-%s", s.Name(), name)
+			}
+		}
+		name = name[:min(len(name), 63)]
+		name = strings.TrimSuffix(name, "-")
+
 		firewallRules = append(firewallRules, &compute.Firewall{
-			Name:         ptr.Deref(rule.Name, fmt.Sprintf("%s-%s", s.Name(), strings.ToLower(direction))),
+			Name:         name,
 			Description:  ptr.Deref(rule.Description, fmt.Sprintf("Firewall rule %s is created by Cluster API GCP Provider.", s.Name())),
 			Network:      s.NetworkLink(),
 			Allowed:      allowed,
