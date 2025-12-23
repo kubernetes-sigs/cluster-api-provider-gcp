@@ -504,6 +504,12 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 		instance.Scheduling.OnHostMaintenance = "TERMINATE"
 	}
 
+	if m.GCPMachine.Spec.EnableNestedVirtualization != nil && *m.GCPMachine.Spec.EnableNestedVirtualization {
+		instance.AdvancedMachineFeatures = &compute.AdvancedMachineFeatures{
+			EnableNestedVirtualization: true,
+		}
+	}
+
 	return instance
 }
 
