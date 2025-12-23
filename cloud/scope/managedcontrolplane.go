@@ -128,9 +128,9 @@ type ManagedControlPlaneScope struct {
 }
 
 // PatchObject persists the managed control plane configuration and status.
-func (s *ManagedControlPlaneScope) PatchObject() error {
+func (s *ManagedControlPlaneScope) PatchObject(ctx context.Context) error {
 	return s.patchHelper.Patch(
-		context.TODO(),
+		ctx,
 		s.GCPManagedControlPlane,
 		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
 			infrav1exp.GKEControlPlaneReadyCondition,
@@ -141,11 +141,11 @@ func (s *ManagedControlPlaneScope) PatchObject() error {
 }
 
 // Close closes the current scope persisting the managed control plane configuration and status.
-func (s *ManagedControlPlaneScope) Close() error {
+func (s *ManagedControlPlaneScope) Close(ctx context.Context) error {
 	s.mcClient.Close()
 	s.tagBindingsClient.Close()
 	s.credentialsClient.Close()
-	return s.PatchObject()
+	return s.PatchObject(ctx)
 }
 
 // ConditionSetter return a condition setter (which is GCPManagedControlPlane itself).

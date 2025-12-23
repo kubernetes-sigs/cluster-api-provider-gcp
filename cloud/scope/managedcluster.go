@@ -327,11 +327,11 @@ func (s *ManagedClusterScope) FirewallRulesSpec() []*compute.Firewall {
 // ANCHOR_END: ClusterFirewallSpec
 
 // PatchObject persists the cluster configuration and status.
-func (s *ManagedClusterScope) PatchObject() error {
-	return s.patchHelper.Patch(context.TODO(), s.GCPManagedCluster)
+func (s *ManagedClusterScope) PatchObject(ctx context.Context) error {
+	return s.patchHelper.Patch(ctx, s.GCPManagedCluster)
 }
 
 // Close closes the current scope persisting the cluster configuration and status.
-func (s *ManagedClusterScope) Close() error {
-	return s.PatchObject()
+func (s *ManagedClusterScope) Close(ctx context.Context) error {
+	return s.PatchObject(ctx)
 }
