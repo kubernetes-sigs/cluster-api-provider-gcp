@@ -421,11 +421,11 @@ func (s *ClusterScope) TargetTCPProxySpec() *compute.TargetTcpProxy {
 // ANCHOR_END: ClusterControlPlaneSpec
 
 // PatchObject persists the cluster configuration and status.
-func (s *ClusterScope) PatchObject() error {
-	return s.patchHelper.Patch(context.TODO(), s.GCPCluster)
+func (s *ClusterScope) PatchObject(ctx context.Context) error {
+	return s.patchHelper.Patch(ctx, s.GCPCluster)
 }
 
 // Close closes the current scope persisting the cluster configuration and status.
-func (s *ClusterScope) Close() error {
-	return s.PatchObject()
+func (s *ClusterScope) Close(ctx context.Context) error {
+	return s.PatchObject(ctx)
 }

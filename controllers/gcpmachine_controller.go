@@ -201,7 +201,7 @@ func (r *GCPMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Always close the scope when exiting this function so we can persist any GCPMachine changes.
 	defer func() {
-		if err := machineScope.Close(); err != nil && reterr == nil {
+		if err := machineScope.Close(ctx); err != nil && reterr == nil {
 			reterr = err
 		}
 	}()
@@ -220,7 +220,7 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	log.Info("Reconciling GCPMachine")
 
 	controllerutil.AddFinalizer(machineScope.GCPMachine, infrav1.MachineFinalizer)
-	if err := machineScope.PatchObject(); err != nil {
+	if err := machineScope.PatchObject(ctx); err != nil {
 		return ctrl.Result{}, err
 	}
 
