@@ -116,10 +116,10 @@ type ManagedMachinePoolScope struct {
 	migClient              *compute.InstanceGroupManagersClient
 }
 
-// PatchObject persists the managed machine pool configuration and status.
-func (s *ManagedMachinePoolScope) PatchObject() error {
+// PatchObject persists the managed control plane configuration and status.
+func (s *ManagedMachinePoolScope) PatchObject(ctx context.Context) error {
 	return s.patchHelper.Patch(
-		context.TODO(),
+		ctx,
 		s.GCPManagedMachinePool,
 		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
 			infrav1exp.GKEMachinePoolReadyCondition,
@@ -135,11 +135,11 @@ func (s *ManagedMachinePoolScope) PatchObject() error {
 		}})
 }
 
-// Close closes the current scope persisting the managed machine pool configuration and status.
-func (s *ManagedMachinePoolScope) Close() error {
+// Close closes the current scope persisting the managed control plane configuration and status.
+func (s *ManagedMachinePoolScope) Close(ctx context.Context) error {
 	s.mcClient.Close()
 	s.migClient.Close()
-	return s.PatchObject()
+	return s.PatchObject(ctx)
 }
 
 // ConditionSetter returns a v1beta1 condition setter for this scope.
