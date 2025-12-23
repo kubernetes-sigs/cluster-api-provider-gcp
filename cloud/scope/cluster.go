@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -112,7 +113,7 @@ func (s *ClusterScope) NetworkProject() string {
 // set to unmanaged or when the cluster will include a shared VPC, the default firewall
 // rule creation will be skipped.
 func (s *ClusterScope) SkipFirewallRuleCreation() bool {
-	return (s.GCPCluster.Spec.Network.Firewall.DefaultRulesManagement == infrav1.RulesManagementUnmanaged) || s.IsSharedVpc()
+	return (s.GCPCluster.Spec.Network.FirewallSpec.DefaultRulesManagement == infrav1.RulesManagementUnmanaged) || s.IsSharedVpc()
 }
 
 // IsSharedVpc returns true If sharedVPC used else , returns false.
@@ -333,6 +334,50 @@ func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 				s.Name() + "-node",
 			},
 		},
+	}
+
+	// Add user defined firewall rules.
+	for _, rule := range s.GCPCluster.Spec.Network.FirewallSpec.FirewallRules {
+		allowed := []*compute.FirewallAllowed{}
+		for _, a := range rule.Allowed {
+			allowed = append(allowed, &compute.FirewallAllowed{
+				IPProtocol: a.IPProtocol,
+				Ports:      a.Ports,
+			})
+		}
+
+		denied := []*compute.FirewallDenied{}
+		for _, d := range rule.Denied {
+			denied = append(denied, &compute.FirewallDenied{
+				IPProtocol: d.IPProtocol,
+				Ports:      d.Ports,
+			})
+		}
+
+		direction := string(ptr.Deref(rule.Direction, infrav1.FirewallRuleDirectionIngress))
+		name := fmt.Sprintf("%s-%s", s.Name(), strings.ToLower(direction))
+		if rule.Name != nil {
+			name = *rule.Name
+			if !strings.HasPrefix(name, s.Name()) {
+				name = fmt.Sprintf("%s-%s", s.Name(), name)
+			}
+		}
+		name = name[:min(len(name), 63)]
+		name = strings.TrimSuffix(name, "-")
+
+		firewallRules = append(firewallRules, &compute.Firewall{
+			Name:         name,
+			Description:  ptr.Deref(rule.Description, fmt.Sprintf("Firewall rule %s is created by Cluster API GCP Provider.", s.Name())),
+			Network:      s.NetworkLink(),
+			Allowed:      allowed,
+			Denied:       denied,
+			Direction:    direction,
+			Priority:     ptr.Deref(rule.Priority, int64(1000)),
+			Disabled:     ptr.Deref(rule.Disabled, false),
+			SourceRanges: rule.SourceRanges,
+			TargetTags:   rule.TargetTags,
+			SourceTags:   rule.SourceTags,
+		})
 	}
 
 	return firewallRules
