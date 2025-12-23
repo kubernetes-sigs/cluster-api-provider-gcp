@@ -22,6 +22,9 @@ import (
 )
 
 const (
+	// MachinePoolFinalizer is the finalizer for the machine pool.
+	MachinePoolFinalizer = "gcpmachinepool.infrastructure.cluster.x-k8s.io"
+
 	// ManagedMachinePoolFinalizer allows Reconcile to clean up GCP resources associated with the GCPManagedMachinePool before
 	// removing it from the apiserver.
 	ManagedMachinePoolFinalizer = "gcpmanagedmachinepool.infrastructure.cluster.x-k8s.io"
