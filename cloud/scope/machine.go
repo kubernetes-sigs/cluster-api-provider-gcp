@@ -521,6 +521,18 @@ func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compu
 		instance.Scheduling.OnHostMaintenance = onHostMaintenanceTerminate
 	}
 
+	if m.GCPMachine.Spec.ReservationAffinity != nil {
+		instance.ReservationAffinity = &compute.ReservationAffinity{
+			ConsumeReservationType: string(m.GCPMachine.Spec.ReservationAffinity.GetConsumeReservationType()),
+		}
+		if m.GCPMachine.Spec.ReservationAffinity.Key != nil {
+			instance.ReservationAffinity.Key = m.GCPMachine.Spec.ReservationAffinity.GetKey()
+		}
+		if len(m.GCPMachine.Spec.ReservationAffinity.Values) > 0 {
+			instance.ReservationAffinity.Values = m.GCPMachine.Spec.ReservationAffinity.GetValues()
+		}
+	}
+
 	return instance
 }
 
