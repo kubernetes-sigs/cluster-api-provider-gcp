@@ -59,6 +59,8 @@ type ClusterGetter interface {
 	NetworkProject() string
 	IsSharedVpc() bool
 	SkipFirewallRulesManagement() bool
+	StackType() infrav1.StackType
+	Ipv6Address() string
 	Network() *infrav1.Network
 	AdditionalLabels() infrav1.Labels
 	FailureDomains() []string
