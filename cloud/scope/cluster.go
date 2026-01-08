@@ -120,6 +120,20 @@ func (s *ClusterScope) IsSharedVpc() bool {
 	return s.NetworkProject() != s.Project()
 }
 
+// StackType returns the network stack type for the cluster.
+func (s *ClusterScope) StackType() infrav1.StackType {
+	return s.GCPCluster.Spec.Network.StackType
+}
+
+// Ipv6Address returns the IPv6 address when one is provided in the spec and the cluster network is not IPv4 Only.
+func (s *ClusterScope) Ipv6Address() string {
+	address := ""
+	if s.StackType() != infrav1.IPv4OnlyStackType {
+		address = s.GCPCluster.Spec.Network.Ipv6Address
+	}
+	return address
+}
+
 // Region returns the cluster region.
 func (s *ClusterScope) Region() string {
 	return s.GCPCluster.Spec.Region
@@ -283,7 +297,7 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 			Network:               s.NetworkLink(),
 			Purpose:               ptr.Deref(subnetwork.Purpose, "PRIVATE_RFC_1918"),
 			Role:                  "ACTIVE",
-			StackType:             subnetwork.StackType,
+			StackType:             string(subnetwork.StackType),
 		})
 	}
 
