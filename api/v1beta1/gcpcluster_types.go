@@ -62,6 +62,8 @@ type GCPClusterSpec struct {
 
 	// CredentialsRef is a reference to a Secret that contains the credentials to use for provisioning this cluster. If not
 	// supplied then the credentials of the controller will be used.
+	// When creating a new GCP client, the controller will try to extract the type
+	// of credential from the JSON data, and it will request a client for the specific credential type.
 	// +optional
 	CredentialsRef *ObjectReference `json:"credentialsRef,omitempty"`
 
