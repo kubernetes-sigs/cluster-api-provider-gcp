@@ -409,10 +409,16 @@ func instanceGuestAcceleratorsSpec(guestAccelerators []infrav1.Accelerator) []*c
 func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 	ctx := context.TODO()
 
+	machineType := path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType)
+	if m.GCPMachine.Spec.CPUs > 0 && m.GCPMachine.Spec.MemoryGB > 1 {
+		memoryMb := m.GCPMachine.Spec.MemoryGB * 1024
+		machineType = fmt.Sprintf("%s-%d-%d", machineType, m.GCPMachine.Spec.CPUs, memoryMb)
+	}
+
 	instance := &compute.Instance{
 		Name:        m.Name(),
 		Zone:        m.Zone(),
-		MachineType: path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
+		MachineType: machineType,
 		Tags: &compute.Tags{
 			Items: append(
 				m.GCPMachine.Spec.AdditionalNetworkTags,

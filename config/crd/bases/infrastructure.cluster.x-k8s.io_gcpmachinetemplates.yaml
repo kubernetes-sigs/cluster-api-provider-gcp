@@ -249,6 +249,15 @@ spec:
                         - AMDEncryptedVirtualizationNestedPaging
                         - IntelTrustedDomainExtensions
                         type: string
+                      cpus:
+                        description: CPUs is the number of CPUs for the custom machine
+                          type.
+                        maximum: 64
+                        minimum: 1
+                        type: integer
+                        x-kubernetes-validations:
+                        - message: CPUs must be 1 or an even number 64 or less
+                          rule: self % 2 == 0 || self == 1
                       guestAccelerators:
                         description: |-
                           GuestAccelerators is a list of the type and count of accelerator cards
@@ -296,6 +305,12 @@ spec:
                         - Enabled
                         - Disabled
                         type: string
+                      memoryGB:
+                        description: MemoryMb is the amount memory in GB for the custom
+                          machine type.
+                        maximum: 512
+                        minimum: 2
+                        type: integer
                       onHostMaintenance:
                         description: |-
                           OnHostMaintenance determines the behavior when a maintenance event occurs that might cause the instance to reboot.

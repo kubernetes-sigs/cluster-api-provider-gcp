@@ -258,6 +258,19 @@ type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
 	InstanceType string `json:"instanceType"`
 
+	// CPUs is the number of CPUs for the custom machine type.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=64
+	// +kubebuilder:validation:XValidation:rule="self % 2 == 0 || self == 1",message="CPUs must be 1 or an even number 64 or less"
+	// +optional
+	CPUs int `json:"cpus,omitempty"`
+
+	// MemoryMb is the amount memory in GB for the custom machine type.
+	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Maximum=512
+	// +optional
+	MemoryGB int `json:"memoryGB,omitempty"`
+
 	// Subnet is a reference to the subnetwork to use for this instance. If not specified,
 	// the first subnetwork retrieved from the Cluster Region and Network is picked.
 	// +optional
