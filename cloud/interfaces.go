@@ -90,7 +90,7 @@ type MachineGetter interface {
 	ControlPlaneGroupName() string
 	GetInstanceID() *string
 	GetProviderID() string
-	GetBootstrapData() (string, error)
+	GetBootstrapData(ctx context.Context) (string, error)
 	GetInstanceStatus() *infrav1.InstanceStatus
 }
 

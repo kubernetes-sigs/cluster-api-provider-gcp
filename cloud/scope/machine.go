@@ -223,7 +223,7 @@ func (m *MachineScope) SetAddresses(addressList []corev1.NodeAddress) {
 // ANCHOR: MachineInstanceSpec
 
 // InstanceImageSpec returns compute instance image attched-disk spec.
-func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
+func (m *MachineScope) InstanceImageSpec(ctx context.Context) *compute.AttachedDisk {
 	version := m.Machine.Spec.Version
 	image := "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
 	sourceImage := path.Join("projects", m.ClusterGetter.Project(), "global", "images", "family", image)
@@ -244,7 +244,7 @@ func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 		InitializeParams: &compute.AttachedDiskInitializeParams{
 			DiskSizeGb:          m.GCPMachine.Spec.RootDeviceSize,
 			DiskType:            path.Join("zones", m.Zone(), "diskTypes", string(diskType)),
-			ResourceManagerTags: shared.ResourceTagConvert(context.TODO(), m.GCPMachine.Spec.ResourceManagerTags),
+			ResourceManagerTags: shared.ResourceTagConvert(ctx, m.GCPMachine.Spec.ResourceManagerTags),
 			SourceImage:         sourceImage,
 			Labels:              m.ClusterGetter.AdditionalLabels().AddLabels(m.GCPMachine.Spec.AdditionalLabels),
 		},
@@ -406,9 +406,7 @@ func instanceGuestAcceleratorsSpec(guestAccelerators []infrav1.Accelerator) []*c
 }
 
 // InstanceSpec returns instance spec.
-func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
-	ctx := context.TODO()
-
+func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compute.Instance {
 	instance := &compute.Instance{
 		Name:        m.Name(),
 		Zone:        m.Zone(),
@@ -421,7 +419,7 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 			),
 		},
 		Params: &compute.InstanceParams{
-			ResourceManagerTags: shared.ResourceTagConvert(context.TODO(), m.ResourceManagerTags()),
+			ResourceManagerTags: shared.ResourceTagConvert(ctx, m.ResourceManagerTags()),
 		},
 		Labels: infrav1.Build(infrav1.BuildParams{
 			ClusterName: m.ClusterGetter.Name(),
@@ -494,7 +492,7 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 		}
 	}
 
-	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
+	instance.Disks = append(instance.Disks, m.InstanceImageSpec(ctx))
 	instance.Disks = append(instance.Disks, instanceAdditionalDiskSpec(ctx, m.GCPMachine.Spec.AdditionalDisks, m.GCPMachine.Spec.RootDiskEncryptionKey, m.Zone(), m.ResourceManagerTags())...)
 	instance.Metadata = m.InstanceAdditionalMetadataSpec()
 	instance.ServiceAccounts = append(instance.ServiceAccounts, instanceServiceAccountsSpec(m.GCPMachine.Spec.ServiceAccount))
@@ -510,14 +508,14 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 // ANCHOR_END: MachineInstanceSpec
 
 // GetBootstrapData returns the bootstrap data from the secret in the Machine's bootstrap.dataSecretName.
-func (m *MachineScope) GetBootstrapData() (string, error) {
+func (m *MachineScope) GetBootstrapData(ctx context.Context) (string, error) {
 	if m.Machine.Spec.Bootstrap.DataSecretName == nil {
 		return "", errors.New("error retrieving bootstrap data: linked Machine's bootstrap.dataSecretName is nil")
 	}
 
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{Namespace: m.Namespace(), Name: *m.Machine.Spec.Bootstrap.DataSecretName}
-	if err := m.client.Get(context.TODO(), key, secret); err != nil {
+	if err := m.client.Get(ctx, key, secret); err != nil {
 		return "", errors.Wrapf(err, "failed to retrieve bootstrap data secret for GCPMachine %s/%s", m.Namespace(), m.Name())
 	}
 
@@ -530,13 +528,13 @@ func (m *MachineScope) GetBootstrapData() (string, error) {
 }
 
 // PatchObject persists the cluster configuration and status.
-func (m *MachineScope) PatchObject() error {
-	return m.patchHelper.Patch(context.TODO(), m.GCPMachine)
+func (m *MachineScope) PatchObject(ctx context.Context) error {
+	return m.patchHelper.Patch(ctx, m.GCPMachine)
 }
 
 // Close closes the current scope persisting the cluster configuration and status.
-func (m *MachineScope) Close() error {
-	return m.PatchObject()
+func (m *MachineScope) Close(ctx context.Context) error {
+	return m.PatchObject(ctx)
 }
 
 // ResourceManagerTags merges ResourceManagerTags from the scope's GCPCluster and GCPMachine. If the same key is present in both,
