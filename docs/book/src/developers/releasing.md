@@ -7,17 +7,23 @@
       - Open a PR in https://github.com/kubernetes/test-infra to change this [line](https://github.com/kubernetes/test-infra/blob/25db54eb9d52e08c16b3601726d8f154f8741025/config/prow/plugins.yaml#L344)
         - Example PR: https://github.com/kubernetes/test-infra/pull/16827
 
-## Prepare branch
+## Prepare main branch for development
 
-TODO
+ 1. Update the file `metadata.yaml` by adding the next release.
 
-## Prepare branch, tag and release notes
+ 1. Submit a PR for the `metadata.yaml` update.
 
- 1. Update the file `metadata.yaml` if is a major or minor release
+## Create the tag and release notes
 
- 2. Submit a PR for the `metadata.yaml` update if needed, wait for it to be merged before continuing, and pull any changes prior to continuing.
- 
- 3. Create and push the release tags to the GitHub repository:
+ 1. Ensure that CI is stable: [Prow CAPG dashboard](https://prow.k8s.io/?repo=kubernetes-sigs%2Fcluster-api-provider-gcp)
+
+ 1. Fetch the latest changes and tags, and double check that your branch is at the desired commit:
+    ```bash
+    git fetch upstream main
+    git fetch upstream --tags
+    ```
+
+ 1. Create and push the release tags to the GitHub repository:
 
   ```bash
     # Export the tag of the release to be cut, e.g.:
@@ -30,32 +36,38 @@ TODO
     git push upstream ${RELEASE_TAG}
   ```
 
-  Notes:
+<aside class="note">
 
-  * `-s` creates a signed tag, you must have a GPG key [added to your GitHub account](https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key)
+<h1>Notes</h1>
+
+  * The flag `-s` creates a signed tag. You must have a GPG key [added to your GitHub account](https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key).
   * This will automatically trigger a [ProwJob](https://prow.k8s.io/?repo=kubernetes-sigs%2Fcluster-api-provider-gcp&job=post-cluster-api-provider-gcp-push-images) to publish images to the staging image repository.
 
-4. Configure gcloud authentication:
+</aside>
 
-* `glcoud auth login <your-community-email-address>
+1. Configure gcloud authentication:
 
-5. `make release` from repo, this will create the release artifacts in the `out/` folder
+    ```bash
+    gcloud auth login <your-community-email-address>
+    ```
+
+1. `make release` from repo, this will create the release artifacts in the `out/` folder. It is recommended to verify that the artifact file `infrastructure-components.yaml` points to the new image.
 
 
-6. Install the `release-notes` tool according to [instructions](https://github.com/kubernetes/release/blob/master/cmd/release-notes/README.md)
+1. Install the `release-notes` tool according to [instructions](https://github.com/kubernetes/release/blob/master/cmd/release-notes/README.md)
 
-7. Generate release-notes (require's exported `GITHUB_TOKEN` variable):
+1. Generate release-notes (requires exported `GITHUB_TOKEN` variable):
 
-  Run the release-notes tool with the appropriate commits. Commits range from the first commit after the previous release to the new release commit.
+    Run the release-notes tool with the appropriate commits. Commits range from the first commit after the previous release to the new release commit.
 
-  ```bash
-  release-notes --org kubernetes-sigs --repo cluster-api-provider-gcp \
-  --start-sha 1cf1ec4a1effd9340fe7370ab45b173a4979dc8f  \
-  --end-sha e843409f896981185ca31d6b4a4c939f27d975de
-  --branch <RELEASE_BRANCH_OR_MAIN_BRANCH>
-  ```
+    ```bash
+    release-notes --org kubernetes-sigs --repo cluster-api-provider-gcp \
+    --start-sha 1cf1ec4a1effd9340fe7370ab45b173a4979dc8f  \
+    --end-sha e843409f896981185ca31d6b4a4c939f27d975de
+    --branch <RELEASE_BRANCH_OR_MAIN_BRANCH>
+    ```
 
-8. Manually format and categorize the release notes
+1. Manually format and categorize the release notes
 
 ## Prepare release in GitHub
 
@@ -74,9 +86,9 @@ To promote images from the staging repository to the production registry (`regis
   1. Wait until images for the tag have been built and pushed to the [staging repository](https://console.cloud.google.com/gcr/images/k8s-staging-cluster-api-gcp/global/cluster-api-gcp-controller) by
       the [push images job](https://prow.k8s.io/?repo=kubernetes-sigs%2Fcluster-api-provider-gcp&job=post-cluster-api-provider-gcp-push-images).
 
-   2. If you don't have a GitHub token, create one by going to your GitHub settings in [Personal access tokens](https://github.com/settings/tokens). Make sure you give the token the `repo` scope.
+  1. If you don't have a GitHub token, create one by going to your GitHub settings in [Personal access tokens](https://github.com/settings/tokens). Make sure you give the token the `repo` scope.
 
-   3. Create a PR to promote the images to the production registry:
+  1. Create a PR to promote the images to the production registry:
 
       ```bash
       # Export the tag of the release to be cut, e.g.:
@@ -93,14 +105,20 @@ To promote images from the staging repository to the production registry (`regis
        - `kpromo` uses `git@github.com:...` as remote to push the branch for the PR. If you don't have `ssh` set up you can configure
          git to use `https` instead via `git config --global url."https://github.com/".insteadOf git@github.com:`.
        - This will automatically create a PR in [k8s.io](https://github.com/kubernetes/k8s.io) and assign the CAPV maintainers.
-4. Merge the PR (/lgtm + /hold cancel) and verify the images are available in the production registry:
+  1. Merge the PR (/lgtm + /hold cancel) and verify the images are available in the production registry:
     - Wait for the [promotion prow job](https://prow.k8s.io/?repo=kubernetes%2Fk8s.io&job=post-k8sio-image-promo) to complete successfully. Then verify that the production images are accessible:
 
      ```bash
      docker pull registry.k8s.io/cluster-api-provider-gcp/cluster-api-gcp-controller:${RELEASE_TAG}
      ```
 
-Example PR: https://github.com/kubernetes/k8s.io/pull/1462
+<aside class="note">
+
+<h1>Tip</h1>
+
+You can use the following [sample PR](https://github.com/kubernetes/k8s.io/pull/1462)
+
+</aside>
 
 Location of image: https://console.cloud.google.com/gcr/images/k8s-staging-cluster-api-gcp/GLOBAL/cluster-api-gcp-controller?rImageListsize=30
 
@@ -127,9 +145,9 @@ Example versions:
 ## Expected artifacts
 
 1. A release yaml file `infrastructure-components.yaml` containing the resources needed to deploy to Kubernetes
-2. A `cluster-templates.yaml` for each supported flavor
-3. A `metadata.yaml` which maps release series to cluster-api contract version
-4. Release notes
+1. A `cluster-templates.yaml` for each supported flavor
+1. A `metadata.yaml` which maps release series to cluster-api contract version
+1. Release notes
 
 ## Communication
 
@@ -140,7 +158,7 @@ Example versions:
 ### Minor/Major Releases
 
 1. Follow the communications process for [pre-releases](#pre-releases)
-2. An announcement email is sent to `kubernetes-sig-cluster-lifecycle@googlegroups.com` with the subject `[ANNOUNCE] cluster-api-provider-gcp <version> has been released`
+1. An announcement email is sent to `kubernetes-sig-cluster-lifecycle@googlegroups.com` with the subject `[ANNOUNCE] cluster-api-provider-gcp <version> has been released`
 
 [release-announcement]: #communication
 [semver]: https://semver.org/#semantic-versioning-200
