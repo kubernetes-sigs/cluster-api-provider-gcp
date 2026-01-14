@@ -143,6 +143,20 @@ func (s *ManagedClusterScope) IsSharedVpc() bool {
 	return s.NetworkProject() != s.Project()
 }
 
+// StackType returns the network stack type for the cluster.
+func (s *ManagedClusterScope) StackType() infrav1.StackType {
+	return s.GCPManagedCluster.Spec.Network.StackType
+}
+
+// Ipv6Address returns the IPv6 address when one is provided in the spec and the cluster network is not IPv4 Only.
+func (s *ManagedClusterScope) Ipv6Address() string {
+	address := ""
+	if s.StackType() != infrav1.IPv4OnlyStackType {
+		address = s.GCPManagedCluster.Spec.Network.Ipv6Address
+	}
+	return address
+}
+
 // NetworkLink returns the partial URL for the network.
 func (s *ManagedClusterScope) NetworkLink() string {
 	return fmt.Sprintf("projects/%s/global/networks/%s", s.NetworkProject(), s.NetworkName())
@@ -269,7 +283,7 @@ func (s *ManagedClusterScope) SubnetSpecs() []*compute.Subnetwork {
 			Network:               s.NetworkLink(),
 			Purpose:               ptr.Deref(subnetwork.Purpose, "PRIVATE_RFC_1918"),
 			Role:                  "ACTIVE",
-			StackType:             subnetwork.StackType,
+			StackType:             string(subnetwork.StackType),
 		})
 	}
 
