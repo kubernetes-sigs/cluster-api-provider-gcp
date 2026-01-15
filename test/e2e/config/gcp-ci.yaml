@@ -76,6 +76,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-external-and-internal-lb.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-machinepool.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-autopilot-topology.yaml"
 
 variables:
@@ -121,6 +122,7 @@ intervals:
   default/wait-gpu-nodes: ["30m", "10s"]
   default/wait-delete-cluster: ["30m", "10s"]
   default/wait-machine-upgrade: ["60m", "10s"]
+  default/wait-machine-pool-nodes: ["40m", "10s"]
   default/wait-machine-pool-upgrade: ["60m", "10s"]
   default/wait-machine-remediation: ["30m", "10s"]
   default/wait-deployment: ["15m", "10s"]
