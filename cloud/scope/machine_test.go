@@ -78,21 +78,6 @@ func TestMachineLocalSSDDiskType(t *testing.T) {
 
 // TestInstanceNetworkInterfaceAliasIPRangesSpec tests the InstanceNetworkInterfaceAliasIPRangesSpec function
 func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
-	// Register the GCPMachine and GCPMachineList in a schema.
-	schema, err := infrav1.SchemeBuilder.Register(&infrav1.GCPMachine{}, &infrav1.GCPMachineList{}).Build()
-	assert.Nil(t, err)
-
-	// Create a controller fake client.
-	testClient := fake.NewClientBuilder().WithScheme(schema).Build()
-
-	// Test machine parameter
-	failureDomain := "us-central1-a"
-	testMachine := clusterv1.Machine{
-		Spec: clusterv1.MachineSpec{
-			FailureDomain: failureDomain,
-		},
-	}
-
 	t.Run("should return nil for empty alias IP ranges", func(t *testing.T) {
 		testGCPMachine := infrav1.GCPMachine{
 			Spec: infrav1.GCPMachineSpec{
@@ -100,17 +85,7 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 			},
 		}
 
-		testScopeParams := MachineScopeParams{
-			Client:     testClient,
-			Machine:    &testMachine,
-			GCPMachine: &testGCPMachine,
-		}
-
-		testMachineScope, err := NewMachineScope(testScopeParams)
-		assert.Nil(t, err)
-		assert.NotNil(t, testMachineScope)
-
-		result := testMachineScope.InstanceNetworkInterfaceAliasIPRangesSpec()
+		result := InstanceNetworkInterfaceAliasIPRangesSpec(testGCPMachine.Spec.AliasIPRanges)
 		assert.Nil(t, result)
 	})
 
@@ -126,17 +101,7 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 			},
 		}
 
-		testScopeParams := MachineScopeParams{
-			Client:     testClient,
-			Machine:    &testMachine,
-			GCPMachine: &testGCPMachine,
-		}
-
-		testMachineScope, err := NewMachineScope(testScopeParams)
-		assert.Nil(t, err)
-		assert.NotNil(t, testMachineScope)
-
-		result := testMachineScope.InstanceNetworkInterfaceAliasIPRangesSpec()
+		result := InstanceNetworkInterfaceAliasIPRangesSpec(testGCPMachine.Spec.AliasIPRanges)
 		assert.NotNil(t, result)
 		assert.Len(t, result, 1)
 		assert.Equal(t, "10.0.0.0/24", result[0].IpCidrRange)
@@ -159,17 +124,7 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 			},
 		}
 
-		testScopeParams := MachineScopeParams{
-			Client:     testClient,
-			Machine:    &testMachine,
-			GCPMachine: &testGCPMachine,
-		}
-
-		testMachineScope, err := NewMachineScope(testScopeParams)
-		assert.Nil(t, err)
-		assert.NotNil(t, testMachineScope)
-
-		result := testMachineScope.InstanceNetworkInterfaceAliasIPRangesSpec()
+		result := InstanceNetworkInterfaceAliasIPRangesSpec(testGCPMachine.Spec.AliasIPRanges)
 		assert.NotNil(t, result)
 		assert.Len(t, result, 2)
 		assert.Equal(t, "10.0.0.0/24", result[0].IpCidrRange)
@@ -190,17 +145,7 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 			},
 		}
 
-		testScopeParams := MachineScopeParams{
-			Client:     testClient,
-			Machine:    &testMachine,
-			GCPMachine: &testGCPMachine,
-		}
-
-		testMachineScope, err := NewMachineScope(testScopeParams)
-		assert.Nil(t, err)
-		assert.NotNil(t, testMachineScope)
-
-		result := testMachineScope.InstanceNetworkInterfaceAliasIPRangesSpec()
+		result := InstanceNetworkInterfaceAliasIPRangesSpec(testGCPMachine.Spec.AliasIPRanges)
 		assert.NotNil(t, result)
 		assert.Len(t, result, 1)
 		assert.Equal(t, "10.100.0.0/24", result[0].IpCidrRange)
