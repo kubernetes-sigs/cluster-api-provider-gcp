@@ -16,9 +16,15 @@ limitations under the License.
 
 package v1beta1
 
-import clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+import (
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+)
 
 const (
+	// ReadyCondition is our overall Ready condition.
+	ReadyCondition string = "Ready"
+
 	// GKEControlPlaneReadyCondition condition reports on the successful reconciliation of GKE control plane.
 	GKEControlPlaneReadyCondition clusterv1beta1.ConditionType = "GKEControlPlaneReady"
 	// GKEControlPlaneCreatingCondition condition reports on whether the GKE control plane is creating.
@@ -70,4 +76,22 @@ const (
 	GKEMachinePoolErrorReason = "GKEMachinePoolError"
 	// GKEMachinePoolReconciliationFailedReason used to report failures while reconciling GKE node pool.
 	GKEMachinePoolReconciliationFailedReason = "GKEMachinePoolReconciliationFailed"
+
+	// MIGReadyCondition reports on current status of the managed instance group. Ready indicates the group is provisioned.
+	MIGReadyCondition clusterv1.ConditionType = "ManagedInstanceGroupReady"
+	// MIGNotFoundReason used when the managed instance group couldn't be retrieved.
+	MIGNotFoundReason = "ManagedInstanceGroupNotFound"
+	// MIGProvisionFailedReason used for failures during managed instance group provisioning.
+	MIGProvisionFailedReason = "ManagedInstanceGroupProvisionFailed"
+	// MIGDeletionInProgress MIG is in a deletion in progress state.
+	MIGDeletionInProgress = "ManagedInstanceGroupDeletionInProgress"
+
+	// InstanceTemplateReadyCondition represents the status of an AWSMachinePool's associated Launch Template.
+	InstanceTemplateReadyCondition clusterv1.ConditionType = "InstanceTemplateReady"
+	// InstanceTemplateNotFoundReason is used when an associated Launch Template can't be found.
+	InstanceTemplateNotFoundReason = "InstanceTemplateNotFound"
+	// InstanceTemplateCreateFailedReason used for failures during Launch Template creation.
+	InstanceTemplateCreateFailedReason = "InstanceTemplateCreateFailed"
+	// InstanceTemplateReconcileFailedReason used for failures during Launch Template reconciliation.
+	InstanceTemplateReconcileFailedReason = "InstanceTemplateReconcileFailed"
 )
