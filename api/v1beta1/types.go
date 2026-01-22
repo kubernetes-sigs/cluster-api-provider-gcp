@@ -149,6 +149,12 @@ const (
 	DualStackType StackType = "DualStack"
 )
 
+const (
+	// DualStackAdditionalResourceSuffix is an identifier appended to the resource name to indicate
+	// that it is not for the ipv4 [default] stack type.
+	DualStackAdditionalResourceSuffix string = "ipv6"
+)
+
 // NetworkSpec encapsulates all things related to a GCP network.
 type NetworkSpec struct {
 	// Name is the name of the network to be used.
@@ -321,15 +327,6 @@ type SubnetSpec struct {
 	// +kubebuilder:default=PRIVATE_RFC_1918
 	// +optional
 	Purpose *string `json:"purpose,omitempty"`
-
-	// StackType: The stack type for the subnet. If set to IPv4Only, new VMs in
-	// the subnet are assigned IPv4 addresses only. If set to DualStack, new VMs in
-	// the subnet can be assigned both IPv4 and IPv6 addresses. If not specified,
-	// IPv4Only is used. This field can be both set at resource creation time and
-	// updated using patch.
-	// +kubebuilder:default=IPv4Only
-	// +optional
-	StackType StackType `json:"stackType,omitempty"`
 }
 
 // String returns a string representation of the subnet.
