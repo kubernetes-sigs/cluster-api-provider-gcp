@@ -49,7 +49,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/instancegroupmanagers"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/instancetemplates"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
-	exputil "sigs.k8s.io/cluster-api/exp/util"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -81,7 +80,7 @@ func (r *GCPMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Fetch the CAPI MachinePool
-	machinePool, err := exputil.GetOwnerMachinePool(ctx, r.Client, gcpMachinePool.ObjectMeta)
+	machinePool, err := util.GetOwnerMachinePool(ctx, r.Client, gcpMachinePool.ObjectMeta)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
