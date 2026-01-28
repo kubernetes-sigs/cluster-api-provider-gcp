@@ -72,10 +72,13 @@
 ## Prepare release in GitHub
 
 Create the GitHub release in the UI
-
+ - Go to: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/releases  
  - Create a draft release with the output from above in GitHub and associate it with the tag that was created
  - Copy paste the release notes
  - Upload [artifacts](#expected-artifacts) from the `out/` folder
+ - Check the "Set as the latest release" checkbox
+ - Check the "Create a Discussion for this release" in Announcements
+ - ONLY CHECK the "Set as a pre-release" IF it is a `vXX.XX.XX-beta.X` release
 
 ## Promote image to prod repo
 
