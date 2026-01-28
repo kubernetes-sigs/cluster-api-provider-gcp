@@ -137,7 +137,7 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 
 	// Always close the scope when exiting this function so we can persist any GCPMachine changes.
 	defer func() {
-		if err := managedControlPlaneScope.Close(); err != nil && reterr == nil {
+		if err := managedControlPlaneScope.Close(ctx); err != nil && reterr == nil {
 			reterr = err
 		}
 	}()
@@ -156,7 +156,7 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 	log.Info("Reconciling GCPManagedControlPlane")
 
 	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
-	if err := managedControlPlaneScope.PatchObject(); err != nil {
+	if err := managedControlPlaneScope.PatchObject(ctx); err != nil {
 		return ctrl.Result{}, err
 	}
 

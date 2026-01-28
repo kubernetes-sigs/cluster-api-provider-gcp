@@ -44,7 +44,7 @@ type instancegroupsInterface interface {
 // Scope is an interfaces that hold used methods.
 type Scope interface {
 	cloud.Machine
-	InstanceSpec(log logr.Logger) *compute.Instance
+	InstanceSpec(ctx context.Context, log logr.Logger) *compute.Instance
 }
 
 // Service implements instances reconciler.
