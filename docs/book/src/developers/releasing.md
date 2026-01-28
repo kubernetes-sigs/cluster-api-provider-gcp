@@ -7,6 +7,10 @@
       - Open a PR in https://github.com/kubernetes/test-infra to change this [line](https://github.com/kubernetes/test-infra/blob/25db54eb9d52e08c16b3601726d8f154f8741025/config/prow/plugins.yaml#L344)
         - Example PR: https://github.com/kubernetes/test-infra/pull/16827
 
+## Ensure you have a GITHUB_TOKEN
+
+ 1. If you don't have a GitHub token, create one by going to your GitHub settings in [Personal access tokens](https://github.com/settings/tokens). Make sure you give the token the `repo` scope. If you have one, make sure it has the right scope and it is not expired.
+
 ## Prepare main branch for development
 
  1. Update the file `metadata.yaml` by adding the next release.
@@ -76,9 +80,7 @@ Create the GitHub release in the UI
  - Create a draft release with the output from above in GitHub and associate it with the tag that was created
  - Copy paste the release notes
  - Upload [artifacts](#expected-artifacts) from the `out/` folder
- - Check the "Set as the latest release" checkbox
- - Check the "Create a Discussion for this release" in Announcements
- - ONLY CHECK the "Set as a pre-release" IF it is a `vXX.XX.XX-beta.X` release
+ - Leave everything unchecked and click "Save Draft"
 
 ## Promote image to prod repo
 
@@ -127,12 +129,13 @@ Location of image: https://console.cloud.google.com/gcr/images/k8s-staging-clust
 
 ## Release in GitHub
 
-Create the GitHub release in the UI
+Go back to the GitHub release in the UI
 
- - Create a draft release in GitHub and associate it with the tag that was created
- - Copy paste the release notes
- - Upload [artifacts](#expected-artifacts) from the `out/` folder
- - Publish release
+ - Edit the draft release previously created in GitHub Releases
+ - Check the "Set as the latest release" checkbox
+ - Check the "Create a Discussion for this release" in Announcements checkbox
+ - ONLY CHECK the "Set as a pre-release" checkbox IF it is a `vXX.XX.XX-beta.X` release
+ - Now, hit "Publish release"
  - [Announce][release-announcement] the release
 
 ## Versioning
