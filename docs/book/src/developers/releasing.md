@@ -15,11 +15,7 @@
 
  1. If you don't have a GitHub token, create one by going to your GitHub settings in [Personal access tokens](https://github.com/settings/tokens). Make sure you give the token the `repo` scope. If you have one, make sure it has the right scope and it is not expired.
  
- 1. Configure gcloud authentication:
-
-    ```bash
-    gcloud auth login <your-community-email-address>
-    ```
+ 1. Configure gcloud authentication: `gcloud auth login <your-community-email-address>`
 
 ## Create the branch, new version tag, staging image
 
