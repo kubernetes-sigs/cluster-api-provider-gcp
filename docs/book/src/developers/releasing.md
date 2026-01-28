@@ -58,13 +58,13 @@
 
 1. Generate release-notes (requires exported `GITHUB_TOKEN` variable):
 
-    Run the release-notes tool with the appropriate commits. Commits range from the first commit after the previous release to the new release commit.
+    Run the release-notes tool with the appropriate commits. Commits range from the first commit after the previous non-beta release to the newest commit of the release branch. Set branch to the release branch you are cutting this release from. For example if this is release `v1.11.z`, branch is going to be `release-1.11`.
 
     ```bash
     release-notes --org kubernetes-sigs --repo cluster-api-provider-gcp \
     --start-sha 1cf1ec4a1effd9340fe7370ab45b173a4979dc8f  \
     --end-sha e843409f896981185ca31d6b4a4c939f27d975de
-    --branch <RELEASE_BRANCH_OR_MAIN_BRANCH>
+    --branch <NEW_RELEASE_BRANCH_OR_MAIN_BRANCH>
     ```
 
 1. Manually format and categorize the release notes
