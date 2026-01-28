@@ -56,7 +56,7 @@
 
 1. Install the `release-notes` tool according to [instructions](https://github.com/kubernetes/release/blob/master/cmd/release-notes/README.md)
 
-1. Generate release-notes (requires exported `GITHUB_TOKEN` variable):
+1. Generate release-notes (requires exported `GITHUB_TOKEN` variable, ensure the TOKEN is not expired!):
 
     Run the release-notes tool with the appropriate commits. Commits range from the first commit after the previous non-beta release to the newest commit of the release branch. Set branch to the release branch you are cutting this release from. For example if this is release `v1.11.z`, branch is going to be `release-1.11`.
 
