@@ -141,7 +141,7 @@ linters:
       - path: (.+)\.go$
         text: (G104|G307)
 
-      # Temporary exclusion during upgrade from CAPI 1.10 to CAPI 1.11
+      # Temporary exclusion during upgrade from CAPI v1beta1 to v1beta2
       - linters:
           - staticcheck
         text: 'SA1019: .* This package is deprecated and is going to be removed when support for v1beta1 will be dropped'
