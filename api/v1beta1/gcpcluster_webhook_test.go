@@ -85,6 +85,86 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "GCPCluster with FirewallSpec with Allowed field wrong protocol for ports",
+			newCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						FirewallSpec: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Allowed: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolESP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			oldCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						FirewallSpec: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Allowed: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolESP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with FirewallSpec with Denied field wrong protocol for ports",
+			newCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						FirewallSpec: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Denied: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolESP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			oldCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						FirewallSpec: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Denied: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolESP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
