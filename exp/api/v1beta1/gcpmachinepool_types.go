@@ -22,6 +22,7 @@ import (
 
 	capg "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 // Constants block.
@@ -44,6 +45,10 @@ type GCPMachinePoolSpec struct {
 	// the first subnetwork retrieved from the Cluster Region and Network is picked.
 	// +optional
 	Subnet *string `json:"subnet,omitempty"`
+
+	// AliasIPRanges let you assign ranges of internal IP addresses as aliases to a VM's network interfaces.
+	// +optional
+	AliasIPRanges []infrav1.AliasIPRange `json:"aliasIPRanges,omitempty"`
 
 	// ImageFamily is the full reference to a valid image family to be used for this machine.
 	// +optional
