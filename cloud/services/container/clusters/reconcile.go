@@ -291,27 +291,29 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		}
 
 		if cn.PrivateCluster != nil {
-			cluster.PrivateClusterConfig = &containerpb.PrivateClusterConfig{}
-
 			enablePublicEndpoint := !cn.PrivateCluster.EnablePrivateEndpoint
 			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.EnablePublicEndpoint = &enablePublicEndpoint
-
 			if cn.PrivateCluster.EnablePrivateEndpoint {
 				cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = &containerpb.MasterAuthorizedNetworksConfig{
 					Enabled: true,
 				}
 			}
 
-			cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
-
-			cluster.PrivateClusterConfig.MasterIpv4CidrBlock = cn.PrivateCluster.ControlPlaneCidrBlock
-			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
-
+			// Initialize NetworkConfig before accessing DefaultEnablePrivateNodes
 			cluster.NetworkConfig = &containerpb.NetworkConfig{
 				DefaultSnatStatus: &containerpb.DefaultSnatStatus{
 					Disabled: cn.PrivateCluster.DisableDefaultSNAT,
 				},
 			}
+			cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
+
+			cluster.PrivateClusterConfig = &containerpb.PrivateClusterConfig{
+				MasterIpv4CidrBlock: cn.PrivateCluster.ControlPlaneCidrBlock,
+				// EnablePrivateNodes is deprecated but GCP SDK raises an error if the value
+				// of this field is different from the value of NetworkConfig.DefaultEnablePrivateNodes
+				EnablePrivateNodes: cn.PrivateCluster.EnablePrivateNodes,
+			}
+			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
 		}
 	}
 
@@ -514,12 +516,24 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 	// DesiredMasterAuthorizedNetworksConfig
 	// When desiredMasterAuthorizedNetworksConfig is nil, it means that the user wants to disable the feature.
 	desiredMasterAuthorizedNetworksConfig := convertToSdkMasterAuthorizedNetworksConfig(s.scope.GCPManagedControlPlane.Spec.MasterAuthorizedNetworksConfig)
-	if !compareMasterAuthorizedNetworksConfig(desiredMasterAuthorizedNetworksConfig, existingCluster.GetControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetAuthorizedNetworksConfig()) {
-		needUpdate = true
-		clusterUpdate.DesiredControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
-		log.V(2).Info("Master authorized networks config update required", "current", existingCluster.GetControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetAuthorizedNetworksConfig(), "desired", desiredMasterAuthorizedNetworksConfig)
+	var existingAuthorizedNetworksConfig *containerpb.MasterAuthorizedNetworksConfig
+	if cpEndpointsConfig := existingCluster.GetControlPlaneEndpointsConfig(); cpEndpointsConfig != nil {
+		if ipEndpointsConfig := cpEndpointsConfig.GetIpEndpointsConfig(); ipEndpointsConfig != nil {
+			existingAuthorizedNetworksConfig = ipEndpointsConfig.GetAuthorizedNetworksConfig()
+		}
 	}
-	log.V(4).Info("Master authorized networks config update check", "current", existingCluster.GetControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetAuthorizedNetworksConfig())
+	if !compareMasterAuthorizedNetworksConfig(desiredMasterAuthorizedNetworksConfig, existingAuthorizedNetworksConfig) {
+		needUpdate = true
+		if clusterUpdate.GetDesiredControlPlaneEndpointsConfig() == nil {
+			clusterUpdate.DesiredControlPlaneEndpointsConfig = &containerpb.ControlPlaneEndpointsConfig{}
+		}
+		if clusterUpdate.GetDesiredControlPlaneEndpointsConfig().GetIpEndpointsConfig() == nil {
+			clusterUpdate.DesiredControlPlaneEndpointsConfig.IpEndpointsConfig = &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{}
+		}
+		clusterUpdate.DesiredControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
+		log.V(2).Info("Master authorized networks config update required", "current", existingAuthorizedNetworksConfig, "desired", desiredMasterAuthorizedNetworksConfig)
+	}
+	log.V(4).Info("Master authorized networks config update check", "current", existingAuthorizedNetworksConfig)
 	if desiredMasterAuthorizedNetworksConfig != nil {
 		log.V(4).Info("Master authorized networks config update check", "desired", desiredMasterAuthorizedNetworksConfig)
 	}
