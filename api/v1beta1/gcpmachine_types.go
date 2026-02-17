@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"cloud.google.com/go/compute/apiv1/computepb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -386,6 +387,10 @@ type GCPMachineSpec struct {
 	// attached to the instance.
 	// +optional
 	GuestAccelerators []Accelerator `json:"guestAccelerators,omitempty"`
+
+	// ReservationAffinity indicates the reservation that this instance has affinity for.
+	// +optional
+	ReservationAffinity *computepb.ReservationAffinity `json:"reservationAffinity,omitempty"`
 }
 
 // Accelerator is a specification of the type and number of accelerator
