@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
@@ -319,6 +320,55 @@ func (s *ManagedClusterScope) FirewallRulesSpec() []*compute.Firewall {
 				s.Name() + "-node",
 			},
 		},
+	}
+
+	// Add user defined firewall rules.
+	for _, rule := range s.GCPManagedCluster.Spec.Network.Firewall.FirewallRules {
+		allowed := []*compute.FirewallAllowed{}
+		for _, a := range rule.Allowed {
+			allowed = append(allowed, &compute.FirewallAllowed{
+				IPProtocol: strings.ToLower(string(a.IPProtocol)),
+				Ports:      a.Ports,
+			})
+		}
+
+		denied := []*compute.FirewallDenied{}
+		for _, d := range rule.Denied {
+			denied = append(denied, &compute.FirewallDenied{
+				IPProtocol: strings.ToLower(string(d.IPProtocol)),
+				Ports:      d.Ports,
+			})
+		}
+
+		direction := strings.ToUpper(string(rule.Direction))
+		name := fmt.Sprintf("%s-%s", s.Name(), strings.ToLower(direction))
+		if rule.Name != "" {
+			name = rule.Name
+			if !strings.HasPrefix(name, s.Name()) {
+				name = fmt.Sprintf("%s-%s", s.Name(), name)
+			}
+		}
+		name = name[:min(len(name), 63)]
+		name = strings.TrimSuffix(name, "-")
+
+		description := rule.Description
+		if description == "" {
+			description = fmt.Sprintf("Firewall rule %s is created by Cluster API GCP Provider.", s.Name())
+		}
+
+		firewallRules = append(firewallRules, &compute.Firewall{
+			Name:         name,
+			Description:  description,
+			Network:      s.NetworkLink(),
+			Allowed:      allowed,
+			Denied:       denied,
+			Direction:    direction,
+			Priority:     int64(rule.Priority),
+			Disabled:     false,
+			SourceRanges: rule.SourceRanges,
+			TargetTags:   rule.TargetTags,
+			SourceTags:   rule.SourceTags,
+		})
 	}
 
 	return firewallRules
