@@ -119,6 +119,20 @@ var fakeGCPCluster = &infrav1.GCPCluster{
 	},
 }
 
+var fakeGCPClusterIpv6 = &infrav1.GCPCluster{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPClusterSpec{
+		Project: "my-proj",
+		Region:  "us-central1",
+		Network: infrav1.NetworkSpec{
+			StackType: infrav1.DualStackType,
+		},
+	},
+}
+
 func getFakeGCPMachine() *infrav1.GCPMachine {
 	return &infrav1.GCPMachine{
 		ObjectMeta: metav1.ObjectMeta{
@@ -154,11 +168,33 @@ func TestService_createOrGetInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	clusterScopeIpv6, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client:     fakec,
+		Cluster:    fakeCluster,
+		GCPCluster: fakeGCPClusterIpv6,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	machineScope, err := scope.NewMachineScope(scope.MachineScopeParams{
 		Client:        fakec,
 		Machine:       fakeMachine,
 		GCPMachine:    fakeGCPMachine,
 		ClusterGetter: clusterScope,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	machineScopeIpv6, err := scope.NewMachineScope(scope.MachineScopeParams{
+		Client:        fakec,
+		Machine:       fakeMachine,
+		GCPMachine:    fakeGCPMachine,
+		ClusterGetter: clusterScopeIpv6,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1071,6 +1107,72 @@ func TestService_createOrGetInstance(t *testing.T) {
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
+				ServiceAccounts: []*compute.ServiceAccount{
+					{
+						Email:  "default",
+						Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"},
+					},
+				},
+				Tags: &compute.Tags{
+					Items: []string{
+						"my-cluster-node",
+						"my-cluster",
+					},
+				},
+				Zone: "us-central1-c",
+			},
+		},
+		{
+			name:  "ipv6 instance does not exist (should create instance)",
+			scope: func() Scope { return machineScopeIpv6 },
+			mockInstance: &cloud.MockInstances{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstancesObj{},
+			},
+			want: &compute.Instance{
+				Name:         "my-machine",
+				CanIpForward: true,
+				Disks: []*compute.AttachedDisk{
+					{
+						AutoDelete: true,
+						Boot:       true,
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
+							ResourceManagerTags: map[string]string{},
+							Labels: map[string]string{
+								"foo": "bar",
+							},
+						},
+					},
+				},
+				Labels: map[string]string{
+					"capg-role":               "node",
+					"capg-cluster-my-cluster": "owned",
+					"foo":                     "bar",
+				},
+				MachineType: "zones/us-central1-c/machineTypes",
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{
+							Key:   "user-data",
+							Value: ptr.To[string]("Zm9vCg=="),
+						},
+					},
+				},
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network:        "projects/my-proj/global/networks/default",
+						Ipv6AccessType: "INTERNAL", // default, this was not overridden with a public ip address set.
+						Ipv6Address:    "",
+					},
+				},
+				Params: &compute.InstanceParams{
+					ResourceManagerTags: map[string]string{},
+				},
+				PrivateIpv6GoogleAccess: "INHERIT_FROM_SUBNETWORK",
+				SelfLink:                "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
+				Scheduling:              &compute.Scheduling{},
 				ServiceAccounts: []*compute.ServiceAccount{
 					{
 						Email:  "default",
