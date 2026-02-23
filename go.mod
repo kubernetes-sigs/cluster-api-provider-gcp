@@ -1,8 +1,6 @@
 module sigs.k8s.io/cluster-api-provider-gcp
 
-go 1.24.0
-
-toolchain go1.24.6
+go 1.25.0
 
 require (
 	cloud.google.com/go/compute v1.54.0
@@ -20,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.48.0
 	golang.org/x/mod v0.33.0
-	google.golang.org/api v0.266.0
+	google.golang.org/api v0.268.0
 	google.golang.org/grpc v1.79.1
 	k8s.io/api v0.34.2
 	k8s.io/apimachinery v0.34.2
@@ -28,7 +26,7 @@ require (
 	k8s.io/component-base v0.34.2
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
-	sigs.k8s.io/cluster-api v1.11.5
+	sigs.k8s.io/cluster-api v1.11.6
 	sigs.k8s.io/cluster-api/test v1.11.2
 	sigs.k8s.io/controller-runtime v0.22.4
 )
