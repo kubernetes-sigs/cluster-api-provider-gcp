@@ -46,10 +46,14 @@ const (
 	KubernetesVersion           = "KUBERNETES_VERSION"
 	KubernetesVersionManagement = "KUBERNETES_VERSION_MANAGEMENT"
 
-	CNIPath      = "CNI"
-	CNIResources = "CNI_RESOURCES"
-	CCMPath      = "CCM"
-	CCMResources = "CCM_RESOURCES"
+	CNIPath               = "CNI"
+	CNIResources          = "CNI_RESOURCES"
+	CCMPath               = "CCM"
+	CCMResources          = "CCM_RESOURCES"
+	CNIVpcNativePath      = "CNI_VPC_NATIVE"
+	CNIVpcNativeResources = "CNI_VPC_NATIVE_RESOURCES"
+	CCMVpcNativePath      = "CCM_VPC_NATIVE"
+	CCMVpcNativeResources = "CCM_VPC_NATIVE_RESOURCES"
 )
 
 // Test suite flags.
@@ -219,12 +223,25 @@ func createClusterctlLocalRepository(config *clusterctl.E2EConfig, repositoryFol
 	Expect(cniPath).To(BeAnExistingFile(), "The %s variable should resolve to an existing file", capi_e2e.CNIPath)
 	createRepositoryInput.RegisterClusterResourceSetConfigMapTransformation(cniPath, capi_e2e.CNIResources)
 
+	// Ensuring a VPC Native CNI file is defined in the config and register a FileTransformation to inject the referenced file as in place of the CNI_VPC_NATIVE_RESOURCES envSubst variable.
+	Expect(config.Variables).To(HaveKey(CNIVpcNativePath), "Missing %s variable in the config", CNIVpcNativePath)
+	cniVpcNativePath := config.MustGetVariable(CNIVpcNativePath)
+	Expect(cniVpcNativePath).To(BeAnExistingFile(), "The %s variable should resolve to an existing file", CNIVpcNativePath)
+	createRepositoryInput.RegisterClusterResourceSetConfigMapTransformation(cniVpcNativePath, CNIVpcNativeResources)
+
 	Expect(e2eConfig.Variables).To(HaveKey(CCMPath))
 	// Ensuring a CCM file is defined in the config and register a FileTransformation to inject the referenced file as in place of the CCM_RESOURCES envSubst variable.
 	Expect(config.Variables).To(HaveKey(CCMPath), "Missing %s variable in the config", CCMPath)
 	ccmPath := config.MustGetVariable(CCMPath)
 	Expect(ccmPath).To(BeAnExistingFile(), "The %s variable should resolve to an existing file", CCMPath)
 	createRepositoryInput.RegisterClusterResourceSetConfigMapTransformation(ccmPath, CCMResources)
+
+	// Ensuring a VPC Native CCM file is defined in the config and register a FileTransformation to inject the referenced file as in place of the CCM_VPC_NATIVE_RESOURCES envSubst variable.
+	Expect(e2eConfig.Variables).To(HaveKey(CCMVpcNativePath))
+	Expect(config.Variables).To(HaveKey(CCMVpcNativePath), "Missing %s variable in the config", CCMVpcNativePath)
+	ccmVpcNativePath := config.MustGetVariable(CCMVpcNativePath)
+	Expect(ccmVpcNativePath).To(BeAnExistingFile(), "The %s variable should resolve to an existing file", CCMVpcNativePath)
+	createRepositoryInput.RegisterClusterResourceSetConfigMapTransformation(ccmVpcNativePath, CCMVpcNativeResources)
 
 	clusterctlConfig := clusterctl.CreateRepository(context.TODO(), createRepositoryInput)
 	Expect(clusterctlConfig).To(BeAnExistingFile(), "The clusterctl config file does not exists in the local repository %s", repositoryFolder)
