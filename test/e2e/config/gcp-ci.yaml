@@ -74,6 +74,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-autopilot.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-machinepool-ip-alias.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-external-and-internal-lb.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-autopilot-topology.yaml"
@@ -94,6 +95,8 @@ variables:
   # Cluster Addons
   CNI: "${PWD}/test/e2e/data/cni/calico/calico.yaml"
   CCM: "${PWD}/test/e2e/data/ccm/gce-cloud-controller-manager.yaml"
+  CNI_VPC_NATIVE: "${PWD}/test/e2e/data/cni/calico/calico-vpc-native.yaml"
+  CCM_VPC_NATIVE: "${PWD}/test/e2e/data/ccm/gce-cloud-controller-manager-vpc-native.yaml"
 
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
@@ -121,6 +124,7 @@ intervals:
   default/wait-gpu-nodes: ["30m", "10s"]
   default/wait-delete-cluster: ["30m", "10s"]
   default/wait-machine-upgrade: ["60m", "10s"]
+  default/wait-machine-pool-nodes: ["40m", "10s"]
   default/wait-machine-pool-upgrade: ["60m", "10s"]
   default/wait-machine-remediation: ["30m", "10s"]
   default/wait-deployment: ["15m", "10s"]
