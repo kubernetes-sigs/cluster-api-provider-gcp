@@ -125,6 +125,9 @@ init_networks() {
   gcloud compute routers nats create "${TEST_NAME}-mynat" --project="${GCP_PROJECT}" \
     --router-region="${GCP_REGION}" --router="${TEST_NAME}-myrouter" \
     --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
+
+  gcloud compute networks subnets update default --region="${GCP_REGION}" --project="${GCP_PROJECT}" \
+    --add-secondary-ranges control-plane=10.4.0.0/14,worker-nodes=10.8.0.0/14
 }
 
 
@@ -165,6 +168,9 @@ cleanup() {
     gcloud compute networks delete --project="${GCP_PROJECT}" \
       --quiet "${GCP_NETWORK_NAME}" || true
   fi
+
+  gcloud compute networks subnets update default --region="${GCP_REGION}" --project="${GCP_PROJECT}" \
+    --remove-secondary-ranges control-plane,worker-nodes
 
   if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
     echo "Skipping GCP image deletion..."
