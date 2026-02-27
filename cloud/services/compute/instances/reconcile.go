@@ -89,8 +89,17 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	s.scope.SetInstanceStatus(infrav1.InstanceStatus(instance.Status))
 
 	if s.scope.IsControlPlane() {
-		if err := s.registerControlPlaneInstance(ctx, instance); err != nil {
-			return err
+		// If the instance is part of the control plane, we need to ensure it's
+		// registered with the instance group. We only do this if the API server is healthy or if this is the first
+		// control plane machine. This prevents a hairpinning issue where a new control plane machine attempts to reach
+		// the API server via a load balancer that is not yet ready. The first control plane machine is handled specially
+		// by the kubeadm controller, so it can be added to the instance group immediately.
+		if s.scope.IsAPIServerHealthy() || s.scope.IsFirstMachine() {
+			if err := s.registerControlPlaneInstance(ctx, instance); err != nil {
+				return err
+			}
+		} else {
+			log.Info("Waiting for API server to be healthy before registering control plane instance in instance group")
 		}
 	}
 

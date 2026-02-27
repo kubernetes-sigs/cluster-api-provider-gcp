@@ -178,6 +178,13 @@ func (r *GCPMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
+	// List all machines in the cluster to check if this is the first one.
+	machineList := &clusterv1.MachineList{}
+	if err := r.List(ctx, machineList, client.InNamespace(cluster.Namespace), client.MatchingLabels{clusterv1.ClusterNameLabel: cluster.Name}); err != nil {
+		log.Error(err, "failed to list machines for cluster")
+		return ctrl.Result{}, err
+	}
+
 	// Create the cluster scope
 	clusterScope, err := scope.NewClusterScope(ctx, scope.ClusterScopeParams{
 		Client:     r.Client,
@@ -194,6 +201,7 @@ func (r *GCPMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		Machine:       machine,
 		GCPMachine:    gcpMachine,
 		ClusterGetter: clusterScope,
+		IsFirst:       len(machineList.Items) == 1,
 	})
 	if err != nil {
 		return ctrl.Result{}, errors.Errorf("failed to create scope: %+v", err)
