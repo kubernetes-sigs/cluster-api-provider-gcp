@@ -386,6 +386,13 @@ type GCPMachineSpec struct {
 	// attached to the instance.
 	// +optional
 	GuestAccelerators []Accelerator `json:"guestAccelerators,omitempty"`
+
+	// EnableNestedVirtualization specifies whether to enable nested virtualization or not
+	// (default is false). Nested virtualization allows VMs to run inside other VMs.
+	// Note: Requires at minimum "Intel Haswell" CPU platform.
+	// This field cannot be changed after instance creation.
+	// +optional
+	EnableNestedVirtualization *bool `json:"enableNestedVirtualization,omitempty"`
 }
 
 // Accelerator is a specification of the type and number of accelerator
