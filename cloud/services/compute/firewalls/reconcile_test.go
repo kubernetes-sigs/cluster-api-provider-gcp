@@ -137,6 +137,97 @@ var fakeGCPClusterUnmanagedFirewalls = &infrav1.GCPCluster{
 	},
 }
 
+var fakeGCPClusterWithFirewallRules = &infrav1.GCPCluster{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPClusterSpec{
+		Project: "my-proj",
+		Region:  "us-central1",
+		Network: infrav1.NetworkSpec{
+			Name: ptr.To("my-network"),
+			Subnets: infrav1.Subnets{
+				infrav1.SubnetSpec{
+					Name:      "workers",
+					CidrBlock: "10.0.0.1/28",
+					Region:    "us-central1",
+					Purpose:   ptr.To[string]("INTERNAL_HTTPS_LOAD_BALANCER"),
+				},
+			},
+			Firewall: infrav1.FirewallSpec{
+				FirewallRules: []infrav1.FirewallRule{
+					{
+						Name:        "custom-fw-rule",
+						Description: "Custom Firewall Rule Description",
+						Allowed: []infrav1.FirewallDescriptor{
+							{
+								IPProtocol: "tcp",
+								Ports:      []string{"443"},
+							},
+						},
+						Direction: infrav1.FirewallRuleDirectionIngress,
+						Priority:  1000,
+					},
+				},
+			},
+		},
+	},
+	Status: infrav1.GCPClusterStatus{
+		Network: infrav1.Network{
+			FirewallRules: map[string]string{
+				"my-cluster-custom-fw-rule": "test",
+			},
+		},
+	},
+}
+
+var fakeGCPClusterWithFirewallRulesUnmanaged = &infrav1.GCPCluster{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPClusterSpec{
+		Project: "my-proj",
+		Region:  "us-central1",
+		Network: infrav1.NetworkSpec{
+			Name: ptr.To("my-network"),
+			Subnets: infrav1.Subnets{
+				infrav1.SubnetSpec{
+					Name:      "workers",
+					CidrBlock: "10.0.0.1/28",
+					Region:    "us-central1",
+					Purpose:   ptr.To[string]("INTERNAL_HTTPS_LOAD_BALANCER"),
+				},
+			},
+			Firewall: infrav1.FirewallSpec{
+				FirewallRules: []infrav1.FirewallRule{
+					{
+						Name:        "custom-fw-rule",
+						Description: "Custom Firewall Rule Description",
+						Allowed: []infrav1.FirewallDescriptor{
+							{
+								IPProtocol: "tcp",
+								Ports:      []string{"443"},
+							},
+						},
+						Direction: infrav1.FirewallRuleDirectionIngress,
+						Priority:  1000,
+					},
+				},
+				DefaultRulesManagement: infrav1.RulesManagementUnmanaged,
+			},
+		},
+	},
+	Status: infrav1.GCPClusterStatus{
+		Network: infrav1.Network{
+			FirewallRules: map[string]string{
+				"custom-fw-rule": "test",
+			},
+		},
+	},
+}
+
 type testCase struct {
 	name          string
 	scope         func() Scope
@@ -178,6 +269,30 @@ func TestService_Reconcile(t *testing.T) {
 		Client:     fakec,
 		Cluster:    fakeCluster,
 		GCPCluster: fakeGCPClusterUnmanagedFirewalls,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clusterScopeCustomFirewalls, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client:     fakec,
+		Cluster:    fakeCluster,
+		GCPCluster: fakeGCPClusterWithFirewallRules,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clusterScopeCustomFirewallsUnmanaged, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client:     fakec,
+		Cluster:    fakeCluster,
+		GCPCluster: fakeGCPClusterWithFirewallRulesUnmanaged,
 		GCPServices: scope.GCPServices{
 			Compute: &compute.Service{},
 		},
@@ -258,6 +373,36 @@ func TestService_Reconcile(t *testing.T) {
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				Objects: map[meta.Key]*cloud.MockFirewallsObj{
 					*meta.GlobalKey(fmt.Sprintf("allow-%s-healthchecks", fakeGCPCluster.Name)): {},
+				},
+			},
+		},
+		{
+			name:  "firewall rule does not exist successful creating custom user specified rule",
+			scope: func() Scope { return clusterScopeCustomFirewalls },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects:       map[meta.Key]*cloud.MockFirewallsObj{},
+			},
+			assert: func(ctx context.Context, t testCase) error {
+				key := meta.GlobalKey("my-cluster-custom-fw-rule")
+				fwRule, err := t.mockFirewalls.Get(ctx, key)
+				if err != nil {
+					return err
+				}
+
+				if _, ok := fakeGCPClusterWithFirewallRules.Status.Network.FirewallRules[fwRule.Name]; !ok {
+					return errors.New("firewall rule was created but with wrong values")
+				}
+				return nil
+			},
+		},
+		{
+			name:  "firewall return no error using unmanaged firewall settings with custom user specified rules",
+			scope: func() Scope { return clusterScopeCustomFirewallsUnmanaged },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					*meta.GlobalKey("custom-fw-rule"): {},
 				},
 			},
 		},

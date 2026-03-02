@@ -19,7 +19,6 @@ package scope
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
@@ -280,48 +279,7 @@ func (s *ManagedClusterScope) SubnetSpecs() []*compute.Subnetwork {
 
 // FirewallRulesSpec returns google compute firewall spec.
 func (s *ManagedClusterScope) FirewallRulesSpec() []*compute.Firewall {
-	firewallRules := []*compute.Firewall{
-		{
-			Name:    fmt.Sprintf("allow-%s-healthchecks", s.Name()),
-			Network: s.NetworkLink(),
-			Allowed: []*compute.FirewallAllowed{
-				{
-					IPProtocol: "TCP",
-					Ports: []string{
-						strconv.FormatInt(6443, 10),
-					},
-				},
-			},
-			Direction: "INGRESS",
-			SourceRanges: []string{
-				"35.191.0.0/16",
-				"130.211.0.0/22",
-			},
-			TargetTags: []string{
-				s.Name() + "-control-plane",
-			},
-		},
-		{
-			Name:    fmt.Sprintf("allow-%s-cluster", s.Name()),
-			Network: s.NetworkLink(),
-			Allowed: []*compute.FirewallAllowed{
-				{
-					IPProtocol: "all",
-				},
-			},
-			Direction: "INGRESS",
-			SourceTags: []string{
-				s.Name() + "-control-plane",
-				s.Name() + "-node",
-			},
-			TargetTags: []string{
-				s.Name() + "-control-plane",
-				s.Name() + "-node",
-			},
-		},
-	}
-
-	return firewallRules
+	return createFirewallRules(s.Name(), s.NetworkLink(), s.GCPManagedCluster.Spec.Network.Firewall.FirewallRules)
 }
 
 // ANCHOR_END: ClusterFirewallSpec

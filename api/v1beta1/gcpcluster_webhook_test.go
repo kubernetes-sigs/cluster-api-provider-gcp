@@ -85,6 +85,132 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "GCPCluster with Firewall with Allowed field wrong protocol for ports",
+			newCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						Mtu: int64(1500),
+						Firewall: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Allowed: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolESP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			oldCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						Mtu: int64(1500),
+						Firewall: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Allowed: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolESP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with Firewall with Denied field wrong protocol for ports",
+			newCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						Mtu: int64(1500),
+						Firewall: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Denied: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolESP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			oldCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						Mtu: int64(1500),
+						Firewall: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Denied: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolESP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with Firewall with Allowed field correct protocol for ports",
+			newCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						Mtu: int64(1500),
+						Firewall: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Allowed: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolTCP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			oldCluster: &GCPCluster{
+				Spec: GCPClusterSpec{
+					Network: NetworkSpec{
+						Mtu: int64(1500),
+						Firewall: FirewallSpec{
+							FirewallRules: []FirewallRule{
+								{
+									Allowed: []FirewallDescriptor{
+										{
+											IPProtocol: FirewallProtocolTCP,
+											Ports:      []string{"1234"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
