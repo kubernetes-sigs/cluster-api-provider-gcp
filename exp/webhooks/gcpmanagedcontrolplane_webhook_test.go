@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"strings"
@@ -22,11 +22,12 @@ import (
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
 var (
 	vV1_32_5       = "v1.32.5"
-	releaseChannel = Rapid
+	releaseChannel = expinfrav1.Rapid
 )
 
 func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
@@ -34,8 +35,8 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 		name         string
 		resourceName string
 		resourceNS   string
-		spec         GCPManagedControlPlaneSpec
-		expectSpec   GCPManagedControlPlaneSpec
+		spec         expinfrav1.GCPManagedControlPlaneSpec
+		expectSpec   expinfrav1.GCPManagedControlPlaneSpec
 		expetError   bool
 		expectHash   bool
 	}{
@@ -43,55 +44,55 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 			name:         "valid cluster name",
 			resourceName: "cluster1",
 			resourceNS:   "default",
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster1",
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "default_cluster1"},
+			expectSpec: expinfrav1.GCPManagedControlPlaneSpec{ClusterName: "default_cluster1"},
 		},
 		{
 			name:         "no cluster name should generate a valid one",
 			resourceName: "cluster1",
 			resourceNS:   "default",
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "",
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "default-cluster1"},
+			expectSpec: expinfrav1.GCPManagedControlPlaneSpec{ClusterName: "default-cluster1"},
 		},
 		{
 			name:         "invalid cluster name (too long)",
 			resourceName: strings.Repeat("A", maxClusterNameLength+1),
 			resourceNS:   "default",
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "",
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "capg-"},
+			expectSpec: expinfrav1.GCPManagedControlPlaneSpec{ClusterName: "capg-"},
 			expectHash: true,
 		},
 		{
 			name:         "with kubernetes version",
 			resourceName: "cluster1",
 			resourceNS:   "default",
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "cluster1_27_1",
 				Version:     &vV1_32_5,
 			},
-			expectSpec: GCPManagedControlPlaneSpec{ClusterName: "cluster1_27_1", Version: &vV1_32_5},
+			expectSpec: expinfrav1.GCPManagedControlPlaneSpec{ClusterName: "cluster1_27_1", Version: &vV1_32_5},
 		},
 		{
 			name:         "with autopilot enabled",
 			resourceName: "cluster1",
 			resourceNS:   "default",
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "cluster1_autopilot",
 				Version:     &vV1_32_5,
-				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					EnableAutopilot: true,
 				},
 			},
-			expectSpec: GCPManagedControlPlaneSpec{
+			expectSpec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "cluster1_autopilot",
 				Version:     &vV1_32_5,
-				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					EnableAutopilot: true,
 				},
 			},
@@ -102,14 +103,14 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			mcp := &GCPManagedControlPlane{
+			mcp := &expinfrav1.GCPManagedControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      tc.resourceName,
 					Namespace: tc.resourceNS,
 				},
 				Spec: tc.spec,
 			}
-			err := (&gcpManagedControlPlaneWebhook{}).Default(t.Context(), mcp)
+			err := (&GCPManagedControlPlane{}).Default(t.Context(), mcp)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(mcp.Spec).ToNot(BeNil())
@@ -130,13 +131,13 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 		name        string
 		expectError bool
 		expectWarn  bool
-		spec        GCPManagedControlPlaneSpec
+		spec        expinfrav1.GCPManagedControlPlaneSpec
 	}{
 		{
 			name:        "cluster name too long should cause an error",
 			expectError: true,
 			expectWarn:  false,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: strings.Repeat("A", maxClusterNameLength+1),
 			},
 		},
@@ -144,9 +145,9 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			name:        "autopilot enabled without release channel should cause an error",
 			expectError: true,
 			expectWarn:  false,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "",
-				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					EnableAutopilot: true,
 					ReleaseChannel:  nil,
 				},
@@ -156,9 +157,9 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			name:        "autopilot enabled with release channel",
 			expectError: false,
 			expectWarn:  false,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "",
-				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					EnableAutopilot: true,
 					ReleaseChannel:  &releaseChannel,
 				},
@@ -168,7 +169,7 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			name:        "using deprecated ControlPlaneVersion should cause a warning",
 			expectError: false,
 			expectWarn:  true,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName:         "",
 				ControlPlaneVersion: &vV1_32_5,
 			},
@@ -177,7 +178,7 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			name:        "using both ControlPlaneVersion and Version should cause a warning and an error",
 			expectError: true,
 			expectWarn:  false,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName:         "",
 				ControlPlaneVersion: &vV1_32_5,
 				Version:             &vV1_32_5,
@@ -189,10 +190,10 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			mcp := &GCPManagedControlPlane{
+			mcp := &expinfrav1.GCPManagedControlPlane{
 				Spec: tc.spec,
 			}
-			warn, err := (&gcpManagedControlPlaneWebhook{}).ValidateCreate(t.Context(), mcp)
+			warn, err := (&GCPManagedControlPlane{}).ValidateCreate(t.Context(), mcp)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())
@@ -212,21 +213,21 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 	tests := []struct {
 		name        string
 		expectError bool
-		spec        GCPManagedControlPlaneSpec
+		spec        expinfrav1.GCPManagedControlPlaneSpec
 	}{
 		{
 			name:        "request to change cluster name should cause an error",
 			expectError: true,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster2",
 			},
 		},
 		{
 			name:        "request to change project should cause an error",
 			expectError: true,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster1",
-				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					Project: "new-project",
 				},
 			},
@@ -234,9 +235,9 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 		{
 			name:        "request to change location should cause an error",
 			expectError: true,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster1",
-				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					Location: "us-west4",
 				},
 			},
@@ -244,9 +245,9 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 		{
 			name:        "request to enable/disable autopilot should cause an error",
 			expectError: true,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster1",
-				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					EnableAutopilot: true,
 				},
 			},
@@ -254,11 +255,11 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 		{
 			name:        "request to change network should not cause an error",
 			expectError: false,
-			spec: GCPManagedControlPlaneSpec{
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
 				ClusterName: "default_cluster1",
-				GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
-					ClusterNetwork: &ClusterNetwork{
-						PrivateCluster: &PrivateCluster{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						PrivateCluster: &expinfrav1.PrivateCluster{
 							EnablePrivateEndpoint: false,
 						},
 					},
@@ -271,15 +272,15 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			newMCP := &GCPManagedControlPlane{
+			newMCP := &expinfrav1.GCPManagedControlPlane{
 				Spec: tc.spec,
 			}
-			oldMCP := &GCPManagedControlPlane{
-				Spec: GCPManagedControlPlaneSpec{
+			oldMCP := &expinfrav1.GCPManagedControlPlane{
+				Spec: expinfrav1.GCPManagedControlPlaneSpec{
 					ClusterName: "default_cluster1",
-					GCPManagedControlPlaneClassSpec: GCPManagedControlPlaneClassSpec{
-						ClusterNetwork: &ClusterNetwork{
-							PrivateCluster: &PrivateCluster{
+					GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+						ClusterNetwork: &expinfrav1.ClusterNetwork{
+							PrivateCluster: &expinfrav1.PrivateCluster{
 								EnablePrivateEndpoint: true,
 							},
 						},
@@ -287,7 +288,7 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 				},
 			}
 
-			warn, err := (&gcpManagedControlPlaneWebhook{}).ValidateUpdate(t.Context(), oldMCP, newMCP)
+			warn, err := (&GCPManagedControlPlane{}).ValidateUpdate(t.Context(), oldMCP, newMCP)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())

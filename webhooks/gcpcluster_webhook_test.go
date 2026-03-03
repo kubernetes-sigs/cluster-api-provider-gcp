@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 func TestGCPCluster_ValidateUpdate(t *testing.T) {
@@ -27,22 +28,22 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		newCluster *GCPCluster
-		oldCluster *GCPCluster
+		newCluster *infrav1.GCPCluster
+		oldCluster *infrav1.GCPCluster
 		wantErr    bool
 	}{
 		{
 			name: "GCPCluster with MTU field is within the limits of more than 1300 and less than 8896",
-			newCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
 					},
 				},
 			},
-			oldCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1400),
 					},
 				},
@@ -51,16 +52,16 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 		},
 		{
 			name: "GCPCluster with MTU field more than 8896",
-			newCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(10000),
 					},
 				},
 			},
-			oldCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
 					},
 				},
@@ -69,16 +70,16 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 		},
 		{
 			name: "GCPCluster with MTU field less than 8896",
-			newCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1250),
 					},
 				},
 			},
-			oldCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
 					},
 				},
@@ -87,16 +88,16 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 		},
 		{
 			name: "GCPCluster with Firewall with Allowed field wrong protocol for ports",
-			newCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
-						Firewall: FirewallSpec{
-							FirewallRules: []FirewallRule{
+						Firewall: infrav1.FirewallSpec{
+							FirewallRules: []infrav1.FirewallRule{
 								{
-									Allowed: []FirewallDescriptor{
+									Allowed: []infrav1.FirewallDescriptor{
 										{
-											IPProtocol: FirewallProtocolESP,
+											IPProtocol: infrav1.FirewallProtocolESP,
 											Ports:      []string{"1234"},
 										},
 									},
@@ -106,16 +107,16 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 					},
 				},
 			},
-			oldCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
-						Firewall: FirewallSpec{
-							FirewallRules: []FirewallRule{
+						Firewall: infrav1.FirewallSpec{
+							FirewallRules: []infrav1.FirewallRule{
 								{
-									Allowed: []FirewallDescriptor{
+									Allowed: []infrav1.FirewallDescriptor{
 										{
-											IPProtocol: FirewallProtocolESP,
+											IPProtocol: infrav1.FirewallProtocolESP,
 											Ports:      []string{"1234"},
 										},
 									},
@@ -129,16 +130,16 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 		},
 		{
 			name: "GCPCluster with Firewall with Denied field wrong protocol for ports",
-			newCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
-						Firewall: FirewallSpec{
-							FirewallRules: []FirewallRule{
+						Firewall: infrav1.FirewallSpec{
+							FirewallRules: []infrav1.FirewallRule{
 								{
-									Denied: []FirewallDescriptor{
+									Denied: []infrav1.FirewallDescriptor{
 										{
-											IPProtocol: FirewallProtocolESP,
+											IPProtocol: infrav1.FirewallProtocolESP,
 											Ports:      []string{"1234"},
 										},
 									},
@@ -148,16 +149,16 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 					},
 				},
 			},
-			oldCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
-						Firewall: FirewallSpec{
-							FirewallRules: []FirewallRule{
+						Firewall: infrav1.FirewallSpec{
+							FirewallRules: []infrav1.FirewallRule{
 								{
-									Denied: []FirewallDescriptor{
+									Denied: []infrav1.FirewallDescriptor{
 										{
-											IPProtocol: FirewallProtocolESP,
+											IPProtocol: infrav1.FirewallProtocolESP,
 											Ports:      []string{"1234"},
 										},
 									},
@@ -171,16 +172,16 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 		},
 		{
 			name: "GCPCluster with Firewall with Allowed field correct protocol for ports",
-			newCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
-						Firewall: FirewallSpec{
-							FirewallRules: []FirewallRule{
+						Firewall: infrav1.FirewallSpec{
+							FirewallRules: []infrav1.FirewallRule{
 								{
-									Allowed: []FirewallDescriptor{
+									Allowed: []infrav1.FirewallDescriptor{
 										{
-											IPProtocol: FirewallProtocolTCP,
+											IPProtocol: infrav1.FirewallProtocolTCP,
 											Ports:      []string{"1234"},
 										},
 									},
@@ -190,16 +191,16 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 					},
 				},
 			},
-			oldCluster: &GCPCluster{
-				Spec: GCPClusterSpec{
-					Network: NetworkSpec{
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
 						Mtu: int64(1500),
-						Firewall: FirewallSpec{
-							FirewallRules: []FirewallRule{
+						Firewall: infrav1.FirewallSpec{
+							FirewallRules: []infrav1.FirewallRule{
 								{
-									Allowed: []FirewallDescriptor{
+									Allowed: []infrav1.FirewallDescriptor{
 										{
-											IPProtocol: FirewallProtocolTCP,
+											IPProtocol: infrav1.FirewallProtocolTCP,
 											Ports:      []string{"1234"},
 										},
 									},
@@ -215,7 +216,7 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			warn, err := (&gcpClusterWebhook{}).ValidateUpdate(t.Context(), test.oldCluster, test.newCluster)
+			warn, err := (&GCPCluster{}).ValidateUpdate(t.Context(), test.oldCluster, test.newCluster)
 			if test.wantErr {
 				g.Expect(err).To(HaveOccurred())
 			} else {

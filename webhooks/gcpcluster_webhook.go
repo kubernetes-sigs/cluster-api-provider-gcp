@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -35,44 +36,44 @@ var clusterlog = logf.Log.WithName("gcpcluster-resource")
 
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (c *GCPCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	w := new(gcpClusterWebhook)
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(c).
-		WithValidator(w).
-		WithDefaulter(w).
+		For(&infrav1.GCPCluster{}).
+		WithValidator(c).
+		WithDefaulter(c).
 		Complete()
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpcluster,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpclusters,versions=v1beta1,name=validation.gcpcluster.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1beta1
 // +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpcluster,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpclusters,versions=v1beta1,name=default.gcpcluster.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1beta1
 
-type gcpClusterWebhook struct{}
+// GCPCluster implements a validating and defaulting webhook for GCPCluster.
+type GCPCluster struct{}
 
 var (
-	_ webhook.CustomValidator = &gcpClusterWebhook{}
-	_ webhook.CustomDefaulter = &gcpClusterWebhook{}
+	_ webhook.CustomValidator = &GCPCluster{}
+	_ webhook.CustomDefaulter = &GCPCluster{}
 )
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the type.
-func (*gcpClusterWebhook) Default(_ context.Context, _ runtime.Object) error {
+func (*GCPCluster) Default(_ context.Context, _ runtime.Object) error {
 	return nil
 }
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (*gcpClusterWebhook) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPCluster) ValidateCreate(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (*gcpClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	c, ok := newObj.(*GCPCluster)
+func (*GCPCluster) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	c, ok := newObj.(*infrav1.GCPCluster)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPCluster object but got %T", c)
 	}
 
 	clusterlog.Info("validate update", "name", c.Name)
 	var allErrs field.ErrorList
-	old := oldObj.(*GCPCluster)
+	old := oldObj.(*infrav1.GCPCluster)
 
 	if !reflect.DeepEqual(c.Spec.Project, old.Spec.Project) {
 		allErrs = append(allErrs,
@@ -118,7 +119,7 @@ func (*gcpClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runti
 
 	for i, firewallRule := range c.Spec.Network.Firewall.FirewallRules {
 		for j, allowRule := range firewallRule.Allowed {
-			if allowRule.IPProtocol != FirewallProtocolTCP && allowRule.IPProtocol != FirewallProtocolUDP &&
+			if allowRule.IPProtocol != infrav1.FirewallProtocolTCP && allowRule.IPProtocol != infrav1.FirewallProtocolUDP &&
 				len(allowRule.Ports) > 0 {
 				allErrs = append(allErrs,
 					field.Invalid(field.NewPath("spec", "Network", "Firewall",
@@ -130,7 +131,7 @@ func (*gcpClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runti
 			}
 		}
 		for j, denyRule := range firewallRule.Denied {
-			if denyRule.IPProtocol != FirewallProtocolTCP && denyRule.IPProtocol != FirewallProtocolUDP &&
+			if denyRule.IPProtocol != infrav1.FirewallProtocolTCP && denyRule.IPProtocol != infrav1.FirewallProtocolUDP &&
 				len(denyRule.Ports) > 0 {
 				allErrs = append(allErrs,
 					field.Invalid(field.NewPath("spec", "Network", "Firewall",
@@ -147,10 +148,10 @@ func (*gcpClusterWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runti
 		return nil, nil
 	}
 
-	return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
+	return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type.
-func (*gcpClusterWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPCluster) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"strings"
@@ -22,6 +22,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
 var (
@@ -40,13 +41,13 @@ var (
 func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 	tests := []struct {
 		name        string
-		spec        GCPManagedMachinePoolSpec
+		spec        expinfrav1.GCPManagedMachinePoolSpec
 		expectError bool
 	}{
 		{
 			name: "valid node pool name",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
 				},
 			},
@@ -54,8 +55,8 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 		},
 		{
 			name: "node pool name is too long",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: strings.Repeat("A", maxNodePoolNameLength+1),
 				},
 			},
@@ -63,10 +64,10 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 		},
 		{
 			name: "scaling with valid min/max count",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
-					Scaling: &NodePoolAutoScaling{
+					Scaling: &expinfrav1.NodePoolAutoScaling{
 						MinCount: &minCount,
 						MaxCount: &maxCount,
 					},
@@ -76,10 +77,10 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 		},
 		{
 			name: "scaling with invalid min/max count",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
-					Scaling: &NodePoolAutoScaling{
+					Scaling: &expinfrav1.NodePoolAutoScaling{
 						MinCount: &invalidMinCount,
 						MaxCount: &maxCount,
 					},
@@ -89,10 +90,10 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 		},
 		{
 			name: "scaling with max < min count",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
-					Scaling: &NodePoolAutoScaling{
+					Scaling: &expinfrav1.NodePoolAutoScaling{
 						MinCount: &maxCount,
 						MaxCount: &minCount,
 					},
@@ -102,10 +103,10 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 		},
 		{
 			name: "autoscaling disabled and min/max provided",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
-					Scaling: &NodePoolAutoScaling{
+					Scaling: &expinfrav1.NodePoolAutoScaling{
 						EnableAutoscaling: &enableAutoscaling,
 						MinCount:          &minCount,
 						MaxCount:          &maxCount,
@@ -116,8 +117,8 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 		},
 		{
 			name: "valid non-negative values",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName:   "nodepool1",
 					DiskSizeGb:     &diskSizeGb,
 					MaxPodsPerNode: &maxPods,
@@ -128,8 +129,8 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 		},
 		{
 			name: "invalid negative values",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName:   "nodepool1",
 					DiskSizeGb:     &invalidDiskSizeGb,
 					MaxPodsPerNode: &invalidMaxPods,
@@ -144,10 +145,10 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			mmp := &GCPManagedMachinePool{
+			mmp := &expinfrav1.GCPManagedMachinePool{
 				Spec: tc.spec,
 			}
-			warn, err := (&gcpManagedMachinePoolWebhook{}).ValidateCreate(t.Context(), mmp)
+			warn, err := (&GCPManagedMachinePool{}).ValidateCreate(t.Context(), mmp)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())
@@ -163,13 +164,13 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 	tests := []struct {
 		name        string
-		spec        GCPManagedMachinePoolSpec
+		spec        expinfrav1.GCPManagedMachinePoolSpec
 		expectError bool
 	}{
 		{
 			name: "node pool is not mutated",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
 				},
 			},
@@ -177,8 +178,8 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 		},
 		{
 			name: "mutable fields are mutated",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
 					AdditionalLabels: infrav1.Labels{
 						"testKey": "testVal",
@@ -189,8 +190,8 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 		},
 		{
 			name: "immutable field disk size is mutated",
-			spec: GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
 					DiskSizeGb:   &diskSizeGb,
 				},
@@ -203,18 +204,18 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			newMMP := &GCPManagedMachinePool{
+			newMMP := &expinfrav1.GCPManagedMachinePool{
 				Spec: tc.spec,
 			}
-			oldMMP := &GCPManagedMachinePool{
-				Spec: GCPManagedMachinePoolSpec{
-					GCPManagedMachinePoolClassSpec: GCPManagedMachinePoolClassSpec{
+			oldMMP := &expinfrav1.GCPManagedMachinePool{
+				Spec: expinfrav1.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 						NodePoolName: "nodepool1",
 					},
 				},
 			}
 
-			warn, err := (&gcpManagedMachinePoolWebhook{}).ValidateUpdate(t.Context(), oldMMP, newMMP)
+			warn, err := (&GCPManagedMachinePool{}).ValidateUpdate(t.Context(), oldMMP, newMMP)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -33,22 +34,22 @@ var gcpMachinePoolLog = logf.Log.WithName("gcpmachinepool-resource")
 
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (r *GCPMachinePool) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	validator := new(gcpMachinePoolWebhook)
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
-		WithValidator(validator).
+		For(&expinfrav1.GCPMachinePool{}).
+		WithValidator(r).
 		Complete()
 }
 
-type gcpMachinePoolWebhook struct{}
+// GCPMachinePool implements a validating webhook for GCPMachinePool.
+type GCPMachinePool struct{}
 
 //+kubebuilder:webhook:verbs=update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinepool,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepools,versions=v1beta1,name=validation.gcpmachinepool.infrastructure.cluster.x-k8s.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &gcpMachinePoolWebhook{}
+var _ webhook.CustomValidator = &GCPMachinePool{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpMachinePoolWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*GCPMachinePool)
+func (*GCPMachinePool) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*expinfrav1.GCPMachinePool)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPMachinePool but got a %T", obj))
 	}
@@ -61,8 +62,8 @@ func (*gcpMachinePoolWebhook) ValidateCreate(_ context.Context, obj runtime.Obje
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpMachinePoolWebhook) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*GCPMachinePool)
+func (*GCPMachinePool) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*expinfrav1.GCPMachinePool)
 	if !ok {
 		return nil, fmt.Errorf("expected a GCPMachinePool object but got %T", r)
 	}
@@ -75,8 +76,8 @@ func (*gcpMachinePoolWebhook) ValidateUpdate(_ context.Context, _, newObj runtim
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpMachinePoolWebhook) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*GCPMachinePool)
+func (*GCPMachinePool) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*expinfrav1.GCPMachinePool)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPMachinePool but got a %T", obj))
 	}

@@ -14,33 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 	g := NewWithT(t)
-	confidentialComputeEnabled := ConfidentialComputePolicyEnabled
-	confidentialComputeSEV := ConfidentialComputePolicySEV
-	confidentialComputeSEVSNP := ConfidentialComputePolicySEVSNP
-	confidentialComputeTDX := ConfidentialComputePolicyTDX
-	onHostMaintenanceTerminate := HostMaintenancePolicyTerminate
-	onHostMaintenanceMigrate := HostMaintenancePolicyMigrate
+	confidentialComputeEnabled := infrav1.ConfidentialComputePolicyEnabled
+	confidentialComputeSEV := infrav1.ConfidentialComputePolicySEV
+	confidentialComputeSEVSNP := infrav1.ConfidentialComputePolicySEVSNP
+	confidentialComputeTDX := infrav1.ConfidentialComputePolicyTDX
+	onHostMaintenanceTerminate := infrav1.HostMaintenancePolicyTerminate
+	onHostMaintenanceMigrate := infrav1.HostMaintenancePolicyMigrate
 	tests := []struct {
 		name     string
-		template *GCPMachineTemplate
+		template *infrav1.GCPMachineTemplate
 		wantErr  bool
 	}{
 		{
 			name: "GCPMachineTemplate with OnHostMaintenance set to Terminate - valid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:      "n2d-standard-4",
 							OnHostMaintenance: &onHostMaintenanceTerminate,
 						},
@@ -51,10 +52,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute enabled and OnHostMaintenance set to Terminate - valid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "n2d-standard-4",
 							ConfidentialCompute: &confidentialComputeEnabled,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
@@ -66,10 +67,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute enabled and OnHostMaintenance set to Migrate - invalid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "n2d-standard-4",
 							ConfidentialCompute: &confidentialComputeEnabled,
 							OnHostMaintenance:   &onHostMaintenanceMigrate,
@@ -81,10 +82,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute enabled and default OnHostMaintenance (Migrate) - invalid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "n2d-standard-4",
 							ConfidentialCompute: &confidentialComputeEnabled,
 						},
@@ -95,10 +96,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute enabled and unsupported instance type - invalid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "e2-standard-4",
 							ConfidentialCompute: &confidentialComputeEnabled,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
@@ -110,10 +111,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualization and unsupported instance type - invalid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "e2-standard-4",
 							ConfidentialCompute: &confidentialComputeSEV,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
@@ -125,10 +126,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualization and supported instance type - valid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "c2d-standard-4",
 							ConfidentialCompute: &confidentialComputeSEV,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
@@ -140,10 +141,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualization and OnHostMaintenance Migrate - invalid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "c2d-standard-4",
 							ConfidentialCompute: &confidentialComputeSEV,
 							OnHostMaintenance:   &onHostMaintenanceMigrate,
@@ -155,10 +156,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualizationNestedPaging and unsupported instance type - invalid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "c2d-standard-4",
 							ConfidentialCompute: &confidentialComputeSEVSNP,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
@@ -170,10 +171,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualizationNestedPaging and supported instance type - valid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "n2d-standard-4",
 							ConfidentialCompute: &confidentialComputeSEVSNP,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
@@ -185,10 +186,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachineTemplate with ConfidentialCompute AMDEncryptedVirtualizationNestedPaging and OnHostMaintenance Migrate - invalid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "c2d-standard-4",
 							ConfidentialCompute: &confidentialComputeSEVSNP,
 							OnHostMaintenance:   &onHostMaintenanceMigrate,
@@ -200,10 +201,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachine with explicit TDX ConfidentialInstanceType and supported machine type - valid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "c3-standard-4",
 							ConfidentialCompute: &confidentialComputeTDX,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
@@ -215,10 +216,10 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		},
 		{
 			name: "GCPMachine with explicit TDX ConfidentialInstanceType and unsupported machine type - invalid",
-			template: &GCPMachineTemplate{
-				Spec: GCPMachineTemplateSpec{
-					Template: GCPMachineTemplateResource{
-						Spec: GCPMachineSpec{
+			template: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
 							InstanceType:        "c3d-standard-4",
 							ConfidentialCompute: &confidentialComputeTDX,
 							OnHostMaintenance:   &onHostMaintenanceTerminate,
@@ -232,7 +233,7 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			warn, err := (&gcpMachineTemplateWebhook{}).ValidateCreate(t.Context(), test.template)
+			warn, err := (&GCPMachineTemplate{}).ValidateCreate(t.Context(), test.template)
 			if test.wantErr {
 				g.Expect(err).To(HaveOccurred())
 			} else {

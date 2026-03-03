@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"context"
@@ -27,6 +27,7 @@ import (
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/hash"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,10 +43,9 @@ const (
 // log is for logging in this package.
 var gcpmanagedcontrolplanelog = logf.Log.WithName("gcpmanagedcontrolplane-resource")
 
-func (r *GCPManagedControlPlane) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	w := new(gcpManagedControlPlaneWebhook)
+func (w *GCPManagedControlPlane) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&expinfrav1.GCPManagedControlPlane{}).
 		WithValidator(w).
 		WithDefaulter(w).
 		Complete()
@@ -53,13 +53,14 @@ func (r *GCPManagedControlPlane) SetupWebhookWithManager(mgr ctrl.Manager) error
 
 //+kubebuilder:webhook:path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcontrolplane,mutating=true,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=create;update,versions=v1beta1,name=mgcpmanagedcontrolplane.kb.io,admissionReviewVersions=v1
 
-type gcpManagedControlPlaneWebhook struct{}
+// GCPManagedControlPlane implements a validating and defaulting webhook for GCPManagedControlPlane.
+type GCPManagedControlPlane struct{}
 
-var _ webhook.CustomDefaulter = &gcpManagedControlPlaneWebhook{}
+var _ webhook.CustomDefaulter = &GCPManagedControlPlane{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (*gcpManagedControlPlaneWebhook) Default(_ context.Context, obj runtime.Object) error {
-	r, ok := obj.(*GCPManagedControlPlane)
+func (*GCPManagedControlPlane) Default(_ context.Context, obj runtime.Object) error {
+	r, ok := obj.(*expinfrav1.GCPManagedControlPlane)
 	if !ok {
 		return fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
 	}
@@ -82,11 +83,11 @@ func (*gcpManagedControlPlaneWebhook) Default(_ context.Context, obj runtime.Obj
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcontrolplane,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=create;update,versions=v1beta1,name=vgcpmanagedcontrolplane.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &gcpManagedControlPlaneWebhook{}
+var _ webhook.CustomValidator = &GCPManagedControlPlane{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedControlPlaneWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*GCPManagedControlPlane)
+func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*expinfrav1.GCPManagedControlPlane)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
 	}
@@ -116,7 +117,7 @@ func (*gcpManagedControlPlaneWebhook) ValidateCreate(_ context.Context, obj runt
 			r.Spec.LoggingService, "can't be set when autopilot is enabled"))
 	}
 
-	if r.Spec.ControlPlaneVersion != nil {
+	if r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck
 		if r.Spec.Version != nil {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
 				r.Spec.LoggingService, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version"))
@@ -129,19 +130,19 @@ func (*gcpManagedControlPlaneWebhook) ValidateCreate(_ context.Context, obj runt
 		return allWarns, nil
 	}
 
-	return allWarns, apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
+	return allWarns, apierrors.NewInvalid(expinfrav1.GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedControlPlaneWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*GCPManagedControlPlane)
+func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	r, ok := newObj.(*expinfrav1.GCPManagedControlPlane)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
 	}
 
 	gcpmanagedcontrolplanelog.Info("validate update", "name", r.Name)
 	var allErrs field.ErrorList
-	old := oldObj.(*GCPManagedControlPlane)
+	old := oldObj.(*expinfrav1.GCPManagedControlPlane)
 
 	if !cmp.Equal(r.Spec.ClusterName, old.Spec.ClusterName) {
 		allErrs = append(allErrs,
@@ -181,7 +182,7 @@ func (*gcpManagedControlPlaneWebhook) ValidateUpdate(_ context.Context, oldObj, 
 			r.Spec.LoggingService, "can't be set when autopilot is enabled"))
 	}
 
-	if old.Spec.Version != nil && r.Spec.ControlPlaneVersion != nil {
+	if old.Spec.Version != nil && r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
 			r.Spec.LoggingService, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version"))
 	}
@@ -206,11 +207,11 @@ func (*gcpManagedControlPlaneWebhook) ValidateUpdate(_ context.Context, oldObj, 
 		return nil, nil
 	}
 
-	return nil, apierrors.NewInvalid(GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
+	return nil, apierrors.NewInvalid(expinfrav1.GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedControlPlaneWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPManagedControlPlane) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
