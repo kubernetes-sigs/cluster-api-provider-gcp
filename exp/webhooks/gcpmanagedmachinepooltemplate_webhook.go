@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,24 +35,26 @@ import (
 // log is for logging in this package.
 var gmmplog = logf.Log.WithName("gcpmanagedmachinepool-resource")
 
-func (r *GCPManagedMachinePoolTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	mmptw := &gcpManagedMachinePoolTemplateWebhook{Client: mgr.GetClient()}
+// SetupGCPManagedMachinePoolTemplateWebhookWithManager sets up and registers the webhook with the manager.
+func SetupGCPManagedMachinePoolTemplateWebhookWithManager(mgr ctrl.Manager) error {
+	mmptw := &GCPManagedMachinePoolTemplate{Client: mgr.GetClient()}
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&expinfrav1.GCPManagedMachinePoolTemplate{}).
 		WithDefaulter(mmptw).
 		WithValidator(mmptw).
 		Complete()
 }
 
-type gcpManagedMachinePoolTemplateWebhook struct {
+// GCPManagedMachinePoolTemplate implements a validating and defaulting webhook for GCPManagedMachinePoolTemplate.
+type GCPManagedMachinePoolTemplate struct {
 	Client client.Client
 }
 
 //+kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedmachinepooltemplate,mutating=true,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepooltemplates,versions=v1beta1,name=mgcpmanagedmachinepooltemplate.kb.io,admissionReviewVersions=v1
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (*gcpManagedMachinePoolTemplateWebhook) Default(_ context.Context, obj runtime.Object) error {
-	r, ok := obj.(*GCPManagedMachinePoolTemplate)
+func (*GCPManagedMachinePoolTemplate) Default(_ context.Context, obj runtime.Object) error {
+	r, ok := obj.(*expinfrav1.GCPManagedMachinePoolTemplate)
 	if !ok {
 		return fmt.Errorf("expected a GCPManagedMachinePoolTemplate object but got %T", r)
 	}
@@ -62,8 +65,8 @@ func (*gcpManagedMachinePoolTemplateWebhook) Default(_ context.Context, obj runt
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedMachinePoolTemplateWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*GCPManagedMachinePoolTemplate)
+func (*GCPManagedMachinePoolTemplate) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*expinfrav1.GCPManagedMachinePoolTemplate)
 	if !ok {
 		return nil, fmt.Errorf("expected an GCPManagedMachinePoolTemplate object but got %T", r)
 	}
@@ -122,13 +125,13 @@ func (*gcpManagedMachinePoolTemplateWebhook) ValidateCreate(_ context.Context, o
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedMachinePoolTemplateWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	old, ok := oldObj.(*GCPManagedMachinePoolTemplate)
+func (*GCPManagedMachinePoolTemplate) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	old, ok := oldObj.(*expinfrav1.GCPManagedMachinePoolTemplate)
 	if !ok {
 		return nil, fmt.Errorf("expected a GCPManagedMachinePoolTemplate object but got %T", old)
 	}
 
-	r, ok := newObj.(*GCPManagedMachinePoolTemplate)
+	r, ok := newObj.(*expinfrav1.GCPManagedMachinePoolTemplate)
 	if !ok {
 		return nil, fmt.Errorf("expected a GCPManagedMachinePoolTemplate object but got %T", r)
 	}
@@ -243,6 +246,6 @@ func (*gcpManagedMachinePoolTemplateWebhook) ValidateUpdate(_ context.Context, o
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedMachinePoolTemplateWebhook) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPManagedMachinePoolTemplate) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }

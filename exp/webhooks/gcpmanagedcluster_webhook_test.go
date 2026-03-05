@@ -14,25 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"testing"
 
 	. "github.com/onsi/gomega"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
 func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 	tests := []struct {
 		name        string
 		expectError bool
-		spec        GCPManagedClusterSpec
+		spec        expinfrav1.GCPManagedClusterSpec
 	}{
 		{
 			name:        "request to change mutable field additional labels",
 			expectError: false,
-			spec: GCPManagedClusterSpec{
+			spec: expinfrav1.GCPManagedClusterSpec{
 				Project: "old-project",
 				Region:  "us-west1",
 				CredentialsRef: &infrav1.ObjectReference{
@@ -47,7 +48,7 @@ func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 		{
 			name:        "request to change immutable field project",
 			expectError: true,
-			spec: GCPManagedClusterSpec{
+			spec: expinfrav1.GCPManagedClusterSpec{
 				Project: "new-project",
 				Region:  "us-west1",
 				CredentialsRef: &infrav1.ObjectReference{
@@ -59,7 +60,7 @@ func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 		{
 			name:        "request to change immutable field region",
 			expectError: true,
-			spec: GCPManagedClusterSpec{
+			spec: expinfrav1.GCPManagedClusterSpec{
 				Project: "old-project",
 				Region:  "us-central1",
 				CredentialsRef: &infrav1.ObjectReference{
@@ -71,7 +72,7 @@ func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 		{
 			name:        "request to change immutable field credentials ref",
 			expectError: true,
-			spec: GCPManagedClusterSpec{
+			spec: expinfrav1.GCPManagedClusterSpec{
 				Project: "old-project",
 				Region:  "us-central1",
 				CredentialsRef: &infrav1.ObjectReference{
@@ -86,11 +87,11 @@ func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			newMC := &GCPManagedCluster{
+			newMC := &expinfrav1.GCPManagedCluster{
 				Spec: tc.spec,
 			}
-			oldMC := &GCPManagedCluster{
-				Spec: GCPManagedClusterSpec{
+			oldMC := &expinfrav1.GCPManagedCluster{
+				Spec: expinfrav1.GCPManagedClusterSpec{
 					Project: "old-project",
 					Region:  "us-west1",
 					CredentialsRef: &infrav1.ObjectReference{
@@ -100,7 +101,7 @@ func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 				},
 			}
 
-			warn, err := (&gcpManagedClusterWebhook{}).ValidateUpdate(t.Context(), oldMC, newMC)
+			warn, err := (&GCPManagedCluster{}).ValidateUpdate(t.Context(), oldMC, newMC)
 
 			if tc.expectError {
 				g.Expect(err).To(HaveOccurred())

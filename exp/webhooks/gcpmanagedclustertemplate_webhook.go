@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -34,22 +35,22 @@ var gmctlog = logf.Log.WithName("gcpclustertemplate-resource")
 
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (r *GCPManagedClusterTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	mctw := new(gcpManagedClusterTemplateWebhook)
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
-		WithValidator(mctw).
+		For(&expinfrav1.GCPManagedClusterTemplate{}).
+		WithValidator(r).
 		Complete()
 }
 
-type gcpManagedClusterTemplateWebhook struct{}
+// GCPManagedClusterTemplate implements a validating webhook for GCPManagedClusterTemplate.
+type GCPManagedClusterTemplate struct{}
 
 //+kubebuilder:webhook:verbs=update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedclustertemplate,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedclustertemplates,versions=v1beta1,name=vgcpmanagedclustertemplate.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &gcpManagedClusterTemplateWebhook{}
+var _ webhook.CustomValidator = &GCPManagedClusterTemplate{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedClusterTemplateWebhook) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*GCPManagedClusterTemplate)
+func (*GCPManagedClusterTemplate) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*expinfrav1.GCPManagedClusterTemplate)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPManagedClusterTemplate but got a %T", obj))
 	}
@@ -60,13 +61,13 @@ func (*gcpManagedClusterTemplateWebhook) ValidateCreate(_ context.Context, obj r
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedClusterTemplateWebhook) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	old, ok := oldObj.(*GCPManagedClusterTemplate)
+func (*GCPManagedClusterTemplate) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	old, ok := oldObj.(*expinfrav1.GCPManagedClusterTemplate)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPManagedClusterTemplate but got a %T", oldObj))
 	}
 
-	r, ok := newObj.(*GCPManagedClusterTemplate)
+	r, ok := newObj.(*expinfrav1.GCPManagedClusterTemplate)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPManagedClusterTemplate but got a %T", newObj))
 	}
@@ -81,8 +82,8 @@ func (*gcpManagedClusterTemplateWebhook) ValidateUpdate(_ context.Context, oldOb
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*gcpManagedClusterTemplateWebhook) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*GCPManagedClusterTemplate)
+func (*GCPManagedClusterTemplate) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*expinfrav1.GCPManagedClusterTemplate)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected a GCPManagedClusterTemplate but got a %T", obj))
 	}

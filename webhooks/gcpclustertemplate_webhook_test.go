@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
@@ -27,26 +28,26 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		newTemplate *GCPClusterTemplate
-		oldTemplate *GCPClusterTemplate
+		newTemplate *infrav1.GCPClusterTemplate
+		oldTemplate *infrav1.GCPClusterTemplate
 		wantErr     bool
 	}{
 		{
 			name: "GCPClusterTemplated with immutable spec",
-			newTemplate: &GCPClusterTemplate{
-				Spec: GCPClusterTemplateSpec{
-					Template: GCPClusterTemplateResource{
-						Spec: GCPClusterSpec{
+			newTemplate: &infrav1.GCPClusterTemplate{
+				Spec: infrav1.GCPClusterTemplateSpec{
+					Template: infrav1.GCPClusterTemplateResource{
+						Spec: infrav1.GCPClusterSpec{
 							Project: "test-gcp-cluster",
 							Region:  "ap-south-1",
 						},
 					},
 				},
 			},
-			oldTemplate: &GCPClusterTemplate{
-				Spec: GCPClusterTemplateSpec{
-					Template: GCPClusterTemplateResource{
-						Spec: GCPClusterSpec{
+			oldTemplate: &infrav1.GCPClusterTemplate{
+				Spec: infrav1.GCPClusterTemplateSpec{
+					Template: infrav1.GCPClusterTemplateResource{
+						Spec: infrav1.GCPClusterSpec{
 							Project: "test-gcp-cluster",
 							Region:  "ap-south-1",
 						},
@@ -57,20 +58,20 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 		},
 		{
 			name: "GCPClusterTemplated with mutable spec",
-			newTemplate: &GCPClusterTemplate{
-				Spec: GCPClusterTemplateSpec{
-					Template: GCPClusterTemplateResource{
-						Spec: GCPClusterSpec{
+			newTemplate: &infrav1.GCPClusterTemplate{
+				Spec: infrav1.GCPClusterTemplateSpec{
+					Template: infrav1.GCPClusterTemplateResource{
+						Spec: infrav1.GCPClusterSpec{
 							Project: "test-gcp-cluster",
 							Region:  "ap-south-1",
 						},
 					},
 				},
 			},
-			oldTemplate: &GCPClusterTemplate{
-				Spec: GCPClusterTemplateSpec{
-					Template: GCPClusterTemplateResource{
-						Spec: GCPClusterSpec{
+			oldTemplate: &infrav1.GCPClusterTemplate{
+				Spec: infrav1.GCPClusterTemplateSpec{
+					Template: infrav1.GCPClusterTemplateResource{
+						Spec: infrav1.GCPClusterSpec{
 							Project: "test-gcp-cluster",
 							Region:  "ap-east-1",
 						},
@@ -83,7 +84,7 @@ func TestGCPClusterTemplate_ValidateUpdate(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			warn, err := (&gcpClusterTemplateWebhook{}).ValidateUpdate(t.Context(), test.oldTemplate, test.newTemplate)
+			warn, err := (&GCPClusterTemplate{}).ValidateUpdate(t.Context(), test.oldTemplate, test.newTemplate)
 			if test.wantErr {
 				g.Expect(err).To(HaveOccurred())
 			} else {
