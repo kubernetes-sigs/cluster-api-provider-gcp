@@ -106,12 +106,11 @@ func (s *ClusterScope) NetworkProject() string {
 	return ptr.Deref(s.GCPCluster.Spec.Network.HostProject, s.Project())
 }
 
-// SkipFirewallRuleCreation returns whether the spec indicates that firewall rules
-// should be created or not. If the RulesManagement for the default firewall rules is
-// set to unmanaged or when the cluster will include a shared VPC, the default firewall
-// rule creation will be skipped.
-func (s *ClusterScope) SkipFirewallRuleCreation() bool {
-	return (s.GCPCluster.Spec.Network.Firewall.DefaultRulesManagement == infrav1.RulesManagementUnmanaged) || s.IsSharedVpc()
+// SkipFirewallRulesManagement returns whether the spec indicates that firewall rules
+// should be created or not. Firewall rules will not be created when the cluster
+// contains a shared VPC network.
+func (s *ClusterScope) SkipFirewallRulesManagement() bool {
+	return s.IsSharedVpc()
 }
 
 // IsSharedVpc returns true If sharedVPC used else , returns false.
@@ -293,7 +292,12 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 
 // FirewallRulesSpec returns google compute firewall spec.
 func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
-	return createFirewallRules(s.Name(), s.NetworkLink(), s.GCPCluster.Spec.Network.Firewall.FirewallRules)
+	return createFirewallRules(
+		s.Name(),
+		s.NetworkLink(),
+		s.GCPCluster.Spec.Network.Firewall.DefaultRulesManagement,
+		s.GCPCluster.Spec.Network.Firewall.FirewallRules,
+	)
 }
 
 // ANCHOR_END: ClusterFirewallSpec

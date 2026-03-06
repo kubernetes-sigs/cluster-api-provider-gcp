@@ -67,6 +67,9 @@ var fakeGCPCluster = &infrav1.GCPCluster{
 					Purpose:   ptr.To[string]("INTERNAL_HTTPS_LOAD_BALANCER"),
 				},
 			},
+			Firewall: infrav1.FirewallSpec{
+				DefaultRulesManagement: infrav1.RulesManagementManaged,
+			},
 		},
 	},
 	Status: infrav1.GCPClusterStatus{

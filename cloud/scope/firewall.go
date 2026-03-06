@@ -11,46 +11,52 @@ import (
 )
 
 // createFirewallRules
-func createFirewallRules(clusterName, networkLink string, userSpecifiedRules []infrav1.FirewallRule) []*compute.Firewall {
-	firewallRules := []*compute.Firewall{
-		{
-			Name:    fmt.Sprintf("allow-%s-healthchecks", clusterName),
-			Network: networkLink,
-			Allowed: []*compute.FirewallAllowed{
-				{
-					IPProtocol: "TCP",
-					Ports: []string{
-						strconv.FormatInt(6443, 10),
+func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesManagementPolicy, userSpecifiedRules []infrav1.FirewallRule) []*compute.Firewall {
+	firewallRules := []*compute.Firewall{}
+
+	// Only when the user explicitly states that it is unmanaged, the rules should be skipped.
+	// When the policy is Managed or missing/empty the rules should be included.
+	if policy != infrav1.RulesManagementUnmanaged {
+		firewallRules = append(firewallRules, []*compute.Firewall{
+			{
+				Name:    fmt.Sprintf("allow-%s-healthchecks", clusterName),
+				Network: networkLink,
+				Allowed: []*compute.FirewallAllowed{
+					{
+						IPProtocol: "TCP",
+						Ports: []string{
+							strconv.FormatInt(6443, 10),
+						},
 					},
 				},
-			},
-			Direction: "INGRESS",
-			SourceRanges: []string{
-				"35.191.0.0/16",
-				"130.211.0.0/22",
-			},
-			TargetTags: []string{
-				clusterName + "-control-plane",
-			},
-		},
-		{
-			Name:    fmt.Sprintf("allow-%s-cluster", clusterName),
-			Network: networkLink,
-			Allowed: []*compute.FirewallAllowed{
-				{
-					IPProtocol: "all",
+				Direction: "INGRESS",
+				SourceRanges: []string{
+					"35.191.0.0/16",
+					"130.211.0.0/22",
+				},
+				TargetTags: []string{
+					clusterName + "-control-plane",
 				},
 			},
-			Direction: "INGRESS",
-			SourceTags: []string{
-				clusterName + "-control-plane",
-				clusterName + "-node",
+			{
+				Name:    fmt.Sprintf("allow-%s-cluster", clusterName),
+				Network: networkLink,
+				Allowed: []*compute.FirewallAllowed{
+					{
+						IPProtocol: "all",
+					},
+				},
+				Direction: "INGRESS",
+				SourceTags: []string{
+					clusterName + "-control-plane",
+					clusterName + "-node",
+				},
+				TargetTags: []string{
+					clusterName + "-control-plane",
+					clusterName + "-node",
+				},
 			},
-			TargetTags: []string{
-				clusterName + "-control-plane",
-				clusterName + "-node",
-			},
-		},
+		}...)
 	}
 
 	// Add user defined firewall rules.

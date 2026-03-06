@@ -276,7 +276,8 @@ type FirewallSpec struct {
 	// +kubebuilder:default:="Managed"
 	DefaultRulesManagement RulesManagementPolicy `json:"defaultRulesManagement,omitempty"`
 
-	// FirewallRules is a list of additional firewall rules to create.
+	// FirewallRules is a list of additional firewall rules to create. FirewallRules has no effect
+	// when a HostProject is specified.
 	// +kubebuilder:validation:MaxItems=50
 	// +optional
 	FirewallRules []FirewallRule `json:"firewallRules,omitempty"`
