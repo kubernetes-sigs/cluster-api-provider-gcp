@@ -14,7 +14,7 @@ spec:
     listKind: GCPManagedMachinePoolTemplateList
     plural: gcpmanagedmachinepooltemplates
     shortNames:
-    - ammpt
+    - gcpmmpt
     singular: gcpmanagedmachinepooltemplate
   scope: Namespaced
   versions:
