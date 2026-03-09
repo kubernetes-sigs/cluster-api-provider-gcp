@@ -14,7 +14,7 @@ spec:
     listKind: GCPManagedClusterTemplateList
     plural: gcpmanagedclustertemplates
     shortNames:
-    - amct
+    - gcpmct
     singular: gcpmanagedclustertemplate
   scope: Namespaced
   versions:
