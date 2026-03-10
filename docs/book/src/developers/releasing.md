@@ -59,7 +59,7 @@
     ```bash
     release-notes --org kubernetes-sigs --repo cluster-api-provider-gcp \
     --start-sha 1cf1ec4a1effd9340fe7370ab45b173a4979dc8f  \
-    --end-sha e843409f896981185ca31d6b4a4c939f27d975de
+    --end-sha e843409f896981185ca31d6b4a4c939f27d975de \
     --branch <NEW_RELEASE_BRANCH_OR_MAIN_BRANCH>
     ```
 
@@ -101,7 +101,7 @@ To promote images from the staging repository to the production registry (`regis
          i.e. `export USER_FORK=<personal GitHub handle>`.
        - `kpromo` uses `git@github.com:...` as remote to push the branch for the PR. If you don't have `ssh` set up you can configure
          git to use `https` instead via `git config --global url."https://github.com/".insteadOf git@github.com:`.
-       - This will automatically create a PR in [k8s.io](https://github.com/kubernetes/k8s.io) and assign the CAPV maintainers.
+       - This will automatically create a PR in [k8s.io](https://github.com/kubernetes/k8s.io) and assign the CAPG maintainers.
   1. Merge the PR (/lgtm + /hold cancel) and verify the images are available in the production registry:
     - Wait for the [promotion prow job](https://prow.k8s.io/?repo=kubernetes%2Fk8s.io&job=post-k8sio-image-promo) to complete successfully. Then verify that the production images are accessible:
 
