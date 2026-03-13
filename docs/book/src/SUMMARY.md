@@ -19,6 +19,7 @@
     - [Alias IP Ranges](./topics/alias-ip-ranges.md)
     - [Conformance](./topics/conformance.md)
     - [GPUs](./topics/gpus.md)
+    - [Load Balancers](./topics/load-balancers.md)
     - [Machine Locations](./topics/machine-locations.md)
     - [Preemptible VMs](./topics/preemptible-vms.md)
 - [Developer Guide](./developers/index.md)
