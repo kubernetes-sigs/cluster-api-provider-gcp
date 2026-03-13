@@ -380,6 +380,13 @@ var (
 	// InternalExternal creates both External and Internal Load Balancers to provide
 	// separate endpoints for managing both external and internal traffic.
 	InternalExternal = LoadBalancerType("InternalExternal")
+
+	// RegionalExternal creates a Regional External Load Balancer to manage traffic to backends in the configured region.
+	RegionalExternal = LoadBalancerType("RegionalExternal")
+
+	// RegionalInternalExternal creates both Regional External and Internal Load Balancers to provide
+	// separate endpoints for managing both external and internal traffic.
+	RegionalInternalExternal = LoadBalancerType("RegionalInternalExternal")
 )
 
 // LoadBalancerSpec contains configuration for one or more LoadBalancers.
