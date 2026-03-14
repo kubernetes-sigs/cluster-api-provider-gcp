@@ -41,6 +41,13 @@ export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= 1.34.0
 export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?=60s
 export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=60s
 
+# Calico version for e2e tests and dev workflows.
+# When updating, also update test/e2e/data/cni/calico/calico.yaml with the
+# manifest from the new release.
+# Ensure the Calico version is compatible with the Kubernetes version being targeted
+# (see https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements).
+CALICO_VERSION ?= v3.31.4
+
 # This option is for running docker manifest command
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
@@ -533,7 +540,7 @@ create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	${TIMEOUT} 15m bash -c "while ! kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep master; do sleep 1; done"
 
 	# Deploy calico
-	$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+	$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://raw.githubusercontent.com/projectcalico/calico/$(CALICO_VERSION)/manifests/calico.yaml
 
 	@echo 'run "$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) ..." to work with the new target cluster'
 
