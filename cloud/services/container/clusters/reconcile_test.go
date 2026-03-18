@@ -539,3 +539,139 @@ func TestConvertToSdkBinaryAuthorizationEvaluationMode(t *testing.T) {
 		})
 	}
 }
+
+func TestClusterNetworkNilPointerGuards(t *testing.T) {
+	tests := []struct {
+		name           string
+		clusterNetwork *infrav1exp.ClusterNetwork
+	}{
+		{
+			name: "no panic when useIPAliases is true with nil Pod and nil Service",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: true,
+				Pod:          nil,
+				Service:      nil,
+			},
+		},
+		{
+			name: "no panic when useIPAliases is true with Pod set but nil Service",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: true,
+				Pod:          &infrav1exp.ClusterNetworkPod{CidrBlock: "10.88.0.0/16"},
+				Service:      nil,
+			},
+		},
+		{
+			name: "no panic when useIPAliases is true with nil Pod but Service set",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: true,
+				Pod:          nil,
+				Service:      &infrav1exp.ClusterNetworkService{CidrBlock: "10.89.0.0/16"},
+			},
+		},
+		{
+			name: "no panic with private cluster and useIPAliases combined",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: true,
+				Pod:          &infrav1exp.ClusterNetworkPod{CidrBlock: "10.88.0.0/16"},
+				PrivateCluster: &infrav1exp.PrivateCluster{
+					EnablePrivateNodes:    true,
+					EnablePrivateEndpoint: true,
+					ControlPlaneCidrBlock: "172.16.0.0/28",
+				},
+			},
+		},
+		{
+			name: "no panic with private cluster only and no useIPAliases",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				PrivateCluster: &infrav1exp.PrivateCluster{
+					EnablePrivateNodes:    true,
+					EnablePrivateEndpoint: true,
+					ControlPlaneCidrBlock: "172.16.0.0/28",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Build a cluster proto the same way createCluster does, to verify
+			// no nil pointer dereference occurs with various ClusterNetwork configs.
+			cluster := &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
+					IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{},
+				},
+			}
+			cn := tt.clusterNetwork
+
+			if cn.UseIPAliases {
+				cluster.IpAllocationPolicy = &containerpb.IPAllocationPolicy{}
+				cluster.IpAllocationPolicy.UseIpAliases = cn.UseIPAliases
+				if cn.Pod != nil {
+					cluster.IpAllocationPolicy.ClusterIpv4CidrBlock = cn.Pod.CidrBlock
+				}
+				if cn.Service != nil {
+					cluster.IpAllocationPolicy.ServicesIpv4CidrBlock = cn.Service.CidrBlock
+				}
+			}
+
+			if cn.PrivateCluster != nil {
+				enablePublicEndpoint := !cn.PrivateCluster.EnablePrivateEndpoint
+				cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.EnablePublicEndpoint = &enablePublicEndpoint
+				if cn.PrivateCluster.EnablePrivateEndpoint {
+					cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = &containerpb.MasterAuthorizedNetworksConfig{
+						Enabled: true,
+					}
+				}
+
+				cluster.NetworkConfig = &containerpb.NetworkConfig{
+					DefaultSnatStatus: &containerpb.DefaultSnatStatus{
+						Disabled: cn.PrivateCluster.DisableDefaultSNAT,
+					},
+				}
+				cluster.NetworkConfig.DefaultEnablePrivateNodes = &cn.PrivateCluster.EnablePrivateNodes
+
+				cluster.PrivateClusterConfig = &containerpb.PrivateClusterConfig{
+					MasterIpv4CidrBlock: cn.PrivateCluster.ControlPlaneCidrBlock,
+					EnablePrivateNodes:  cn.PrivateCluster.EnablePrivateNodes,
+				}
+				cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
+			}
+
+			// Verify IP allocation policy when UseIPAliases is set
+			if cn.UseIPAliases {
+				if cluster.GetIpAllocationPolicy() == nil {
+					t.Fatal("expected IpAllocationPolicy to be set")
+				}
+				if !cluster.GetIpAllocationPolicy().GetUseIpAliases() {
+					t.Error("expected UseIpAliases to be true")
+				}
+				if cn.Pod != nil && cluster.GetIpAllocationPolicy().GetClusterIpv4CidrBlock() != cn.Pod.CidrBlock {
+					t.Errorf("expected ClusterIpv4CidrBlock %q, got %q", cn.Pod.CidrBlock, cluster.GetIpAllocationPolicy().GetClusterIpv4CidrBlock())
+				}
+				if cn.Pod == nil && cluster.GetIpAllocationPolicy().GetClusterIpv4CidrBlock() != "" {
+					t.Errorf("expected empty ClusterIpv4CidrBlock when Pod is nil, got %q", cluster.GetIpAllocationPolicy().GetClusterIpv4CidrBlock())
+				}
+				if cn.Service != nil && cluster.GetIpAllocationPolicy().GetServicesIpv4CidrBlock() != cn.Service.CidrBlock {
+					t.Errorf("expected ServicesIpv4CidrBlock %q, got %q", cn.Service.CidrBlock, cluster.GetIpAllocationPolicy().GetServicesIpv4CidrBlock())
+				}
+				if cn.Service == nil && cluster.GetIpAllocationPolicy().GetServicesIpv4CidrBlock() != "" {
+					t.Errorf("expected empty ServicesIpv4CidrBlock when Service is nil, got %q", cluster.GetIpAllocationPolicy().GetServicesIpv4CidrBlock())
+				}
+			}
+
+			// Verify private cluster config
+			if cn.PrivateCluster != nil {
+				if cluster.GetNetworkConfig() == nil {
+					t.Fatal("expected NetworkConfig to be initialized")
+				}
+				if cluster.GetNetworkConfig().GetDefaultEnablePrivateNodes() != cn.PrivateCluster.EnablePrivateNodes {
+					t.Errorf("expected DefaultEnablePrivateNodes %v, got %v", cn.PrivateCluster.EnablePrivateNodes, cluster.GetNetworkConfig().GetDefaultEnablePrivateNodes())
+				}
+				if cluster.GetPrivateClusterConfig() == nil {
+					t.Fatal("expected PrivateClusterConfig to be set")
+				}
+			}
+		})
+	}
+}
