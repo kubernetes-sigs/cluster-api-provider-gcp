@@ -61,6 +61,12 @@ spec:
                         - disabled
                         - project_singleton_policy_enforce
                         type: string
+                      clusterName:
+                        description: |-
+                          ClusterName allows you to specify the name of the GKE cluster.
+                          If you don't specify a name then a default name will be created
+                          based on the namespace and name of the managed control plane.
+                        type: string
                       clusterNetwork:
                         description: ClusterNetwork define the cluster network.
                         properties:
