@@ -350,10 +350,10 @@ func (s *ClusterScope) HealthCheckSpec(lbname string) *compute.HealthCheck {
 			PortSpecification: "USE_FIXED_PORT",
 			RequestPath:       "/readyz",
 		},
-		CheckIntervalSec:   10,
+		CheckIntervalSec:   5,
 		TimeoutSec:         5,
-		HealthyThreshold:   5,
-		UnhealthyThreshold: 3,
+		HealthyThreshold:   1,
+		UnhealthyThreshold: 6,
 	}
 }
 
