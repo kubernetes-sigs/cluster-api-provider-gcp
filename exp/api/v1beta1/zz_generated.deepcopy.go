@@ -199,6 +199,11 @@ func (in *GCPMachinePoolSpec) DeepCopyInto(out *GCPMachinePoolSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.AliasIPRanges != nil {
+		in, out := &in.AliasIPRanges, &out.AliasIPRanges
+		*out = make([]apiv1beta1.AliasIPRange, len(*in))
+		copy(*out, *in)
+	}
 	if in.ImageFamily != nil {
 		in, out := &in.ImageFamily, &out.ImageFamily
 		*out = new(string)
