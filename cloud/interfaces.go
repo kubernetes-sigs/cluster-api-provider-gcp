@@ -58,7 +58,7 @@ type ClusterGetter interface {
 	NetworkName() string
 	NetworkProject() string
 	IsSharedVpc() bool
-	SkipFirewallRuleCreation() bool
+	SkipFirewallRulesManagement() bool
 	Network() *infrav1.Network
 	AdditionalLabels() infrav1.Labels
 	FailureDomains() []string

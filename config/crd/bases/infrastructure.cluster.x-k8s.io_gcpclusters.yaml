@@ -202,8 +202,9 @@ spec:
                         - Unmanaged
                         type: string
                       firewallRules:
-                        description: FirewallRules is a list of additional firewall
-                          rules to create.
+                        description: |-
+                          FirewallRules is a list of additional firewall rules to create. FirewallRules has no effect
+                          when a HostProject is specified.
                         items:
                           description: FirewallRule describes a GCP firewall rule.
                           properties:
