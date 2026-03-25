@@ -19,6 +19,7 @@ package scope
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
