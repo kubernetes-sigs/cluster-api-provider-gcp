@@ -79,6 +79,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-autopilot-topology.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-dual-stack.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-dual-stack-with-ipv6primary.yaml"
 
 variables:
   KUBERNETES_VERSION: "v1.33.2"
