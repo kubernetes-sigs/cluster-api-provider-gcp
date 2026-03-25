@@ -61,6 +61,12 @@ type Network struct {
 	// +optional
 	APIServerAddress *string `json:"apiServerIpAddress,omitempty"`
 
+	// APIServerIPv6Address is the IPv6 global address assigned to the load balancer
+	// created for the API Server. This field is only applicable for dual stack
+	// configurations.
+	// +optional
+	APIServerIPv6Address *string `json:"apiServerIpv6Address,omitempty"`
+
 	// APIServerHealthCheck is the full reference to the health check
 	// created for the API Server.
 	// +optional
@@ -86,10 +92,22 @@ type Network struct {
 	// +optional
 	APIServerForwardingRule *string `json:"apiServerForwardingRule,omitempty"`
 
+	// APIServerIPv6ForwardingRule is the full reference to the IPv6 forwarding rule
+	// created for the API Server. This field is only applicable during dual stack
+	// configurations.
+	// +optional
+	APIServerIPv6ForwardingRule *string `json:"apiServerIpv6ForwardingRule,omitempty"`
+
 	// APIInternalAddress is the IPV4 regional address assigned to the
 	// internal Load Balancer.
 	// +optional
 	APIInternalAddress *string `json:"apiInternalIpAddress,omitempty"`
+
+	// APIInternalIPv6Address is the IPV6 regional address assigned to the
+	// internal Load Balancer. This field is only applicable for dual stack
+	// configurations.
+	// +optional
+	APIInternalIPv6Address *string `json:"apiInternalIpv6IpAddress,omitempty"`
 
 	// APIInternalHealthCheck is the full reference to the health check
 	// created for the internal Load Balancer.
@@ -105,6 +123,11 @@ type Network struct {
 	// created for the internal Load Balancer.
 	// +optional
 	APIInternalForwardingRule *string `json:"apiInternalForwardingRule,omitempty"`
+
+	// APIIPv6InternalForwardingRule is the full reference to the forwarding rule
+	// created for the internal IPv6 Load Balancer during dual stack configurations.
+	// +optional
+	APIIPv6InternalForwardingRule *string `json:"apiIpv6InternalForwardingRule,omitempty"`
 }
 
 // FirewallProtocol is a string enum type representing the IP Protocol for the firewall rule.
@@ -321,6 +344,18 @@ const (
 	DualStackType StackType = "DualStack"
 )
 
+// AddressPreferencePolicy is a string enum type indicating the preferred IP Address in a dual stack network configuration.
+// +kubebuilder:validation:Enum=IPv4Primary;IPv6Primary
+type AddressPreferencePolicy string
+
+const (
+	// IPv4Primary indicates a preference to use IPv4 addresses.
+	IPv4Primary AddressPreferencePolicy = "IPv4Primary"
+
+	// IPv6Primary indicates a preference to use IPv4 addresses.
+	IPv6Primary AddressPreferencePolicy = "IPv6Primary"
+)
+
 const (
 	// DualStackAdditionalResourceSuffix is an identifier appended to the resource name to indicate
 	// that it is not for the ipv4 [default] stack type.
@@ -408,6 +443,14 @@ type NetworkSpec struct {
 	// +kubebuilder:default=IPv4Only
 	// +optional
 	StackType StackType `json:"stackType,omitempty"`
+
+	// AddressPreferencePolicy: The AddressPreferencePolicy determines whether the
+	// IPv4 or IPv6 addresses should be preferred for load balancers. The value will
+	// also determine the address type in the APIEndpoint.
+	//
+	// +kubebuilder:default=IPv4Primary
+	// +optional
+	AddressPreferencePolicy AddressPreferencePolicy `json:"addressPreferencePolicy,omitempty"`
 }
 
 // LoadBalancerType defines the Load Balancer that should be created.

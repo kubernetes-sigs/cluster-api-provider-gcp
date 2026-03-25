@@ -157,6 +157,16 @@ spec:
                         description: NetworkSpec encapsulates all things related to
                           the GCP network.
                         properties:
+                          addressPreferencePolicy:
+                            default: IPv4Primary
+                            description: |-
+                              AddressPreferencePolicy: The AddressPreferencePolicy determines whether the
+                              IPv4 or IPv6 addresses should be preferred for load balancers. The value will
+                              also determine the address type in the APIEndpoint.
+                            enum:
+                            - IPv4Primary
+                            - IPv6Primary
+                            type: string
                           autoCreateSubnetworks:
                             description: |-
                               AutoCreateSubnetworks: When set to true, the VPC network is created

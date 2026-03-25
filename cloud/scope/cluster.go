@@ -124,6 +124,11 @@ func (s *ClusterScope) StackType() infrav1.StackType {
 	return s.GCPCluster.Spec.Network.StackType
 }
 
+// AddressPreferencePolicy returns the AddressPreferencePolicy for the cluster.
+func (s *ClusterScope) AddressPreferencePolicy() infrav1.AddressPreferencePolicy {
+	return s.GCPCluster.Spec.Network.AddressPreferencePolicy
+}
+
 // Ipv6Address returns the IPv6 address when one is provided in the spec and the cluster network is not IPv4 Only.
 func (s *ClusterScope) Ipv6Address() string {
 	address := ""
