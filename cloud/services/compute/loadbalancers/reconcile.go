@@ -225,7 +225,6 @@ func (s *Service) createExternalLoadBalancer(ctx context.Context, lbType infrav1
 	s.scope.Network().APIServerAddress = ptr.To[string](addr.SelfLink)
 	// For now the ip address/host for the control plane endpoint will always be the IPv4 Address
 	endpoint.Host = addr.Address
-	s.scope.SetControlPlaneEndpoint(endpoint)
 
 	forwardingrule, err := s.createOrGetForwardingRule(ctx, name, target, addr)
 	if err != nil {
@@ -234,20 +233,24 @@ func (s *Service) createExternalLoadBalancer(ctx context.Context, lbType infrav1
 	// For now the forwarding rule associated with IPv4 address will always be set as the API Server Forwarding Rule
 	s.scope.Network().APIServerForwardingRule = ptr.To[string](forwardingrule.SelfLink)
 
-	// Not sure what to do below yet but this will create the ipv6 address and the forwarding rule.
 	if s.scope.StackType() == infrav1.DualStackType {
-		// This ip address will need to be provided back in the status
 		ipv6Addr, err := s.createOrGetIPv6Address(ctx, name)
 		if err != nil {
 			return err
 		}
+		s.scope.Network().APIServerIPv6Address = ptr.To[string](ipv6Addr.SelfLink)
+		if s.scope.AddressPreferencePolicy() == infrav1.IPv6Primary {
+			endpoint.Host = ipv6Addr.Address
+		}
 
-		// This should be saved to s.scope.Network().APIServerIPv6ForwardingRule
-		_, err = s.createOrGetForwardingRule(ctx, name+"-ipv6", target, ipv6Addr)
+		ipv6ForwardingRule, err := s.createOrGetForwardingRule(ctx, name+"-ipv6", target, ipv6Addr)
 		if err != nil {
 			return err
 		}
+		s.scope.Network().APIServerIPv6ForwardingRule = ptr.To[string](ipv6ForwardingRule.SelfLink)
 	}
+
+	s.scope.SetControlPlaneEndpoint(endpoint)
 
 	return nil
 }
@@ -279,12 +282,8 @@ func (s *Service) createInternalLoadBalancer(ctx context.Context, name string, l
 		return err
 	}
 	s.scope.Network().APIInternalAddress = ptr.To[string](addr.SelfLink)
-	if lbType == infrav1.Internal {
-		// If only creating an internal Load Balancer, set the control plane endpoint
-		endpoint := s.scope.ControlPlaneEndpoint()
-		endpoint.Host = addr.Address
-		s.scope.SetControlPlaneEndpoint(endpoint)
-	}
+	endpoint := s.scope.ControlPlaneEndpoint()
+	endpoint.Host = addr.Address
 
 	// Create a regional forwarding rule to the backend service
 	forwardingrule, err := s.createOrGetRegionalForwardingRule(ctx, name, backendsvc, addr)
@@ -294,17 +293,25 @@ func (s *Service) createInternalLoadBalancer(ctx context.Context, name string, l
 	s.scope.Network().APIInternalForwardingRule = ptr.To[string](forwardingrule.SelfLink)
 
 	if s.scope.StackType() == infrav1.DualStackType {
-		// This ip address will need to be provided back in the status
 		ipv6Addr, err := s.createOrGetInternalIPv6Address(ctx, name)
 		if err != nil {
 			return err
 		}
+		s.scope.Network().APIInternalIPv6Address = ptr.To[string](ipv6Addr.SelfLink)
+		if s.scope.AddressPreferencePolicy() == infrav1.IPv6Primary {
+			endpoint.Host = ipv6Addr.Address
+		}
 
-		// This should be saved to s.scope.Network().APIInternalIPv6ForwardingRule
-		_, err = s.createOrGetRegionalForwardingRule(ctx, name+"-ipv6", backendsvc, ipv6Addr)
+		ipv6ForwardingRule, err := s.createOrGetRegionalForwardingRule(ctx, name+"-ipv6", backendsvc, ipv6Addr)
 		if err != nil {
 			return err
 		}
+		s.scope.Network().APIIPv6InternalForwardingRule = ptr.To[string](ipv6ForwardingRule.SelfLink)
+	}
+
+	// If only creating an internal Load Balancer, set the control plane endpoint
+	if lbType == infrav1.Internal {
+		s.scope.SetControlPlaneEndpoint(endpoint)
 	}
 
 	return nil

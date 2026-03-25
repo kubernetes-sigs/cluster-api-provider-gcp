@@ -163,6 +163,16 @@ spec:
                 description: NetworkSpec encapsulates all things related to the GCP
                   network.
                 properties:
+                  addressPreferencePolicy:
+                    default: IPv4Primary
+                    description: |-
+                      AddressPreferencePolicy: The AddressPreferencePolicy determines whether the
+                      IPv4 or IPv6 addresses should be preferred for load balancers. The value will
+                      also determine the address type in the APIEndpoint.
+                    enum:
+                    - IPv4Primary
+                    - IPv6Primary
+                    type: string
                   autoCreateSubnetworks:
                     description: |-
                       AutoCreateSubnetworks: When set to true, the VPC network is created
@@ -738,6 +748,17 @@ spec:
                       APIInternalAddress is the IPV4 regional address assigned to the
                       internal Load Balancer.
                     type: string
+                  apiInternalIpv6IpAddress:
+                    description: |-
+                      APIInternalIPv6Address is the IPV6 regional address assigned to the
+                      internal Load Balancer. This field is only applicable for dual stack
+                      configurations.
+                    type: string
+                  apiIpv6InternalForwardingRule:
+                    description: |-
+                      APIIPv6InternalForwardingRule is the full reference to the forwarding rule
+                      created for the internal IPv6 Load Balancer during dual stack configurations.
+                    type: string
                   apiServerBackendService:
                     description: |-
                       APIServerBackendService is the full reference to the backend service
@@ -764,6 +785,18 @@ spec:
                     description: |-
                       APIServerAddress is the IPV4 global address assigned to the load balancer
                       created for the API Server.
+                    type: string
+                  apiServerIpv6Address:
+                    description: |-
+                      APIServerIPv6Address is the IPv6 global address assigned to the load balancer
+                      created for the API Server. This field is only applicable for dual stack
+                      configurations.
+                    type: string
+                  apiServerIpv6ForwardingRule:
+                    description: |-
+                      APIServerIPv6ForwardingRule is the full reference to the IPv6 forwarding rule
+                      created for the API Server. This field is only applicable during dual stack
+                      configurations.
                     type: string
                   apiServerTargetProxy:
                     description: |-
