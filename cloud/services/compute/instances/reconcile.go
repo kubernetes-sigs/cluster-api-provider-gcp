@@ -32,6 +32,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/util/cloudinit"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -132,6 +133,12 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 	if err != nil {
 		log.Error(err, "Error getting bootstrap data for machine")
 		return nil, errors.Wrap(err, "failed to retrieve bootstrap data")
+	}
+
+	bootstrapData, err = cloudinit.PatchKubeadmTimeout(bootstrapData)
+	if err != nil {
+		log.Error(err, "Error patching bootstrap data for machine")
+		return nil, errors.Wrap(err, "failed to patch bootstrap data")
 	}
 
 	instanceSpec := s.scope.InstanceSpec(log)
