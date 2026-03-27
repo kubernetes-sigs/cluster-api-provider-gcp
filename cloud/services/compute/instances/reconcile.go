@@ -32,6 +32,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/util/cloudinit"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -127,6 +128,21 @@ func (s *Service) Delete(ctx context.Context) error {
 
 func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, error) {
 	log := log.FromContext(ctx)
+
+	instanceSpec := s.scope.InstanceSpec(log)
+	instanceName := instanceSpec.Name
+	instanceKey := meta.ZonalKey(instanceName, s.scope.Zone())
+
+	log.V(2).Info("Looking for instance", "name", instanceName, "zone", s.scope.Zone())
+	instance, err := s.instances.Get(ctx, instanceKey)
+	if err == nil {
+		return instance, nil
+	}
+	if !gcperrors.IsNotFound(err) {
+		log.Error(err, "Error looking for instance", "name", instanceName, "zone", s.scope.Zone())
+		return nil, err
+	}
+
 	log.V(2).Info("Getting bootstrap data for machine")
 	bootstrapData, err := s.scope.GetBootstrapData(ctx)
 	if err != nil {
@@ -134,32 +150,26 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 		return nil, errors.Wrap(err, "failed to retrieve bootstrap data")
 	}
 
-	instanceSpec := s.scope.InstanceSpec(log)
-	instanceName := instanceSpec.Name
-	instanceKey := meta.ZonalKey(instanceName, s.scope.Zone())
+	bootstrapData, err = cloudinit.PatchKubeadmTimeout(bootstrapData, "15m0s")
+	if err != nil {
+		log.Error(err, "Error patching bootstrap data for machine")
+		return nil, errors.Wrap(err, "failed to patch bootstrap data")
+	}
+
 	instanceSpec.Metadata.Items = append(instanceSpec.Metadata.Items, &compute.MetadataItems{
 		Key:   "user-data",
 		Value: ptr.To[string](bootstrapData),
 	})
 
-	log.V(2).Info("Looking for instance", "name", instanceName, "zone", s.scope.Zone())
-	instance, err := s.instances.Get(ctx, instanceKey)
+	log.V(2).Info("Creating an instance", "name", instanceName, "zone", s.scope.Zone())
+	if err := s.instances.Insert(ctx, instanceKey, instanceSpec); err != nil {
+		log.Error(err, "Error creating an instance", "name", instanceName, "zone", s.scope.Zone())
+		return nil, err
+	}
+
+	instance, err = s.instances.Get(ctx, instanceKey)
 	if err != nil {
-		if !gcperrors.IsNotFound(err) {
-			log.Error(err, "Error looking for instance", "name", instanceName, "zone", s.scope.Zone())
-			return nil, err
-		}
-
-		log.V(2).Info("Creating an instance", "name", instanceName, "zone", s.scope.Zone())
-		if err := s.instances.Insert(ctx, instanceKey, instanceSpec); err != nil {
-			log.Error(err, "Error creating an instance", "name", instanceName, "zone", s.scope.Zone())
-			return nil, err
-		}
-
-		instance, err = s.instances.Get(ctx, instanceKey)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	return instance, nil
