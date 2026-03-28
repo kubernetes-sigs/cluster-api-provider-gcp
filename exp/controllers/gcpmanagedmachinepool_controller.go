@@ -42,7 +42,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
-	exputil "sigs.k8s.io/cluster-api/exp/util"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -215,7 +214,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	// Get the machine pool
-	machinePool, err := exputil.GetOwnerMachinePool(ctx, r.Client, gcpManagedMachinePool.ObjectMeta)
+	machinePool, err := util.GetOwnerMachinePool(ctx, r.Client, gcpManagedMachinePool.ObjectMeta)
 	if err != nil {
 		log.Error(err, "Failed to retrieve owner MachinePool from the API Server")
 		return ctrl.Result{}, err
