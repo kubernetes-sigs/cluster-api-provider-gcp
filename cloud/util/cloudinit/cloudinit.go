@@ -42,13 +42,13 @@ const (
 // data is returned unmodified.
 func PatchKubeadmTimeout(bootstrapData string) (string, error) {
 	klog.V(4).InfoS("PatchKubeadmTimeout: called", "dataLen", len(bootstrapData), "first80", truncate(strings.TrimSpace(bootstrapData), 80))
-	if !strings.HasPrefix(strings.TrimSpace(bootstrapData), cloudConfigHeader) {
+
+	preamble, body, ok := extractCloudConfigBody(bootstrapData)
+	if !ok {
 		klog.V(4).Info("PatchKubeadmTimeout: not cloud-config, skipping")
 		return bootstrapData, nil
 	}
-
-	body := strings.TrimPrefix(strings.TrimSpace(bootstrapData), cloudConfigHeader)
-	klog.V(4).InfoS("PatchKubeadmTimeout: cloud-config body extracted", "bodyLen", len(body))
+	klog.V(4).InfoS("PatchKubeadmTimeout: cloud-config body extracted", "preamble", preamble, "bodyLen", len(body))
 
 	var cc map[string]interface{}
 	if err := yaml.Unmarshal([]byte(body), &cc); err != nil {
@@ -129,7 +129,7 @@ func PatchKubeadmTimeout(bootstrapData string) (string, error) {
 		return "", fmt.Errorf("re-serializing cloud-config: %w", err)
 	}
 
-	result := cloudConfigHeader + "\n" + string(out)
+	result := preamble + "\n" + string(out)
 	klog.V(4).InfoS("PatchKubeadmTimeout: final cloud-config produced", "resultLen", len(result))
 	klog.V(4).InfoS("PatchKubeadmTimeout: final cloud-config content", "result", truncate(result, 2000))
 	return result, nil
@@ -192,6 +192,29 @@ func patchKubeadmConfig(raw string) (string, bool, error) {
 	result := joinYAMLDocuments(docs)
 	klog.V(4).InfoS("patchKubeadmConfig: final joined result", "result", result)
 	return result, true, nil
+}
+
+// extractCloudConfigBody finds the #cloud-config header in the bootstrap data,
+// allowing for preamble lines like "## template: jinja" that cloud-init uses.
+// Returns the full preamble (up to and including the #cloud-config line),
+// the body (everything after #cloud-config), and whether it was found.
+func extractCloudConfigBody(data string) (preamble, body string, ok bool) {
+	trimmed := strings.TrimSpace(data)
+	lines := strings.SplitN(trimmed, "\n", -1)
+
+	for i, line := range lines {
+		if strings.TrimSpace(line) == cloudConfigHeader {
+			preamble = strings.Join(lines[:i+1], "\n")
+			body = strings.Join(lines[i+1:], "\n")
+			return preamble, body, true
+		}
+		// Only allow comment lines or blank lines before #cloud-config
+		stripped := strings.TrimSpace(line)
+		if stripped != "" && !strings.HasPrefix(stripped, "##") {
+			return "", "", false
+		}
+	}
+	return "", "", false
 }
 
 func truncate(s string, max int) string {

@@ -135,6 +135,20 @@ write_files:
 			wantTimeoutInBody: "15m0s",
 		},
 		{
+			name: "jinja preamble before cloud-config gets patched",
+			input: `## template: jinja
+#cloud-config
+write_files:
+  - path: /run/kubeadm/kubeadm.yaml
+    content: |
+      apiVersion: kubeadm.k8s.io/v1beta4
+      kind: ClusterConfiguration
+      kubernetesVersion: v1.34.0
+`,
+			wantChanged:       true,
+			wantTimeoutInBody: "15m0s",
+		},
+		{
 			name: "gzip+base64-encoded v1beta4 content gets patched",
 			input: func() string {
 				raw := "apiVersion: kubeadm.k8s.io/v1beta4\nkind: ClusterConfiguration\nkubernetesVersion: v1.34.0\n"
@@ -161,8 +175,8 @@ write_files:
 				return
 			}
 
-			if !strings.HasPrefix(result, "#cloud-config\n") {
-				t.Errorf("expected result to start with #cloud-config header, got: %s", result[:50])
+			if !strings.Contains(result, "#cloud-config\n") {
+				t.Errorf("expected result to contain #cloud-config header, got: %s", result[:50])
 			}
 
 			if tt.wantTimeoutInBody != "" {
@@ -195,7 +209,10 @@ ntp:
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	body := strings.TrimPrefix(strings.TrimSpace(result), "#cloud-config")
+	_, body, ok := extractCloudConfigBody(result)
+	if !ok {
+		t.Fatal("result is not a cloud-config")
+	}
 	var cc map[string]interface{}
 	if err := yaml.Unmarshal([]byte(body), &cc); err != nil {
 		t.Fatalf("failed to parse result: %v", err)
@@ -224,7 +241,10 @@ ntp:
 func verifyTimeoutInResult(t *testing.T, result, expectedTimeout string) {
 	t.Helper()
 
-	body := strings.TrimPrefix(strings.TrimSpace(result), "#cloud-config")
+	_, body, ok := extractCloudConfigBody(result)
+	if !ok {
+		t.Fatal("result is not a cloud-config")
+	}
 	var cc map[string]interface{}
 	if err := yaml.Unmarshal([]byte(body), &cc); err != nil {
 		t.Fatalf("failed to parse result cloud-config: %v", err)
