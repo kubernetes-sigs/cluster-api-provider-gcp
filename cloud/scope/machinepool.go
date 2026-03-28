@@ -257,10 +257,16 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 		return nil, fmt.Errorf("retrieving bootstrap data for instanceTemplate: %w", err)
 	}
 
+	originalLen := len(bootstrapData)
 	bootstrapData, err = cloudinit.PatchKubeadmTimeout(bootstrapData)
 	if err != nil {
 		return nil, fmt.Errorf("patching bootstrap data for instanceTemplate: %w", err)
 	}
+	log.V(4).Info("Bootstrap data after PatchKubeadmTimeout (machinepool)",
+		"originalLen", originalLen,
+		"patchedLen", len(bootstrapData),
+		"changed", originalLen != len(bootstrapData),
+	)
 
 	instance := &compute.InstanceProperties{
 		MachineType: m.GCPMachinePool.Spec.InstanceType,
