@@ -450,7 +450,23 @@ func (s *Service) createOrGetBackendService(ctx context.Context, lbname string, 
 		}
 	}
 
-	if len(backendsvc.Backends) != len(backendsvcSpec.Backends) {
+	// Check if backends need updating by comparing both count and actual backend references
+	backendsChanged := len(backendsvc.Backends) != len(backendsvcSpec.Backends)
+	if !backendsChanged && len(backendsvc.Backends) > 0 {
+		// If counts match, compare the actual instance group references
+		existingGroups := make(map[string]bool)
+		for _, be := range backendsvc.Backends {
+			existingGroups[be.Group] = true
+		}
+		for _, be := range backendsvcSpec.Backends {
+			if !existingGroups[be.Group] {
+				backendsChanged = true
+				break
+			}
+		}
+	}
+
+	if backendsChanged {
 		log.V(2).Info("Updating a backendservice", "name", backendsvcSpec.Name)
 		backendsvc.Backends = backendsvcSpec.Backends
 		if err := s.backendservices.Update(ctx, key, backendsvc); err != nil {
@@ -506,7 +522,23 @@ func (s *Service) createOrGetRegionalBackendService(ctx context.Context, lbname 
 		}
 	}
 
-	if len(backendsvc.Backends) != len(backendsvcSpec.Backends) {
+	// Check if backends need updating by comparing both count and actual backend references
+	backendsChanged := len(backendsvc.Backends) != len(backendsvcSpec.Backends)
+	if !backendsChanged && len(backendsvc.Backends) > 0 {
+		// If counts match, compare the actual instance group references
+		existingGroups := make(map[string]bool)
+		for _, be := range backendsvc.Backends {
+			existingGroups[be.Group] = true
+		}
+		for _, be := range backendsvcSpec.Backends {
+			if !existingGroups[be.Group] {
+				backendsChanged = true
+				break
+			}
+		}
+	}
+
+	if backendsChanged {
 		log.V(2).Info("Updating a regional backendservice", "name", backendsvcSpec.Name)
 		backendsvc.Backends = backendsvcSpec.Backends
 		if err := s.regionalbackendservices.Update(ctx, key, backendsvc); err != nil {
