@@ -32,6 +32,7 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/util/cloudinit"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/gcp"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -254,6 +255,11 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 	bootstrapData, err := m.getBootstrapData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving bootstrap data for instanceTemplate: %w", err)
+	}
+
+	bootstrapData, err = cloudinit.PatchKubeadmTimeout(bootstrapData, "15m0s")
+	if err != nil {
+		return nil, fmt.Errorf("patching bootstrap data for instanceTemplate: %w", err)
 	}
 
 	instance := &compute.InstanceProperties{
