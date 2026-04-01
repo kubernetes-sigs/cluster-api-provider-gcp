@@ -59,7 +59,7 @@ func (*GCPMachineTemplate) ValidateCreate(_ context.Context, obj runtime.Object)
 
 	clusterlog.Info("validate create", "name", r.Name)
 
-	return nil, validateConfidentialCompute(r.Spec.Template.Spec)
+	return nil, ValidateConfidentialCompute(r.Spec.Template.Spec.ConfidentialCompute, r.Spec.Template.Spec.OnHostMaintenance, r.Spec.Template.Spec.InstanceType)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
