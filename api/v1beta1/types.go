@@ -61,6 +61,12 @@ type Network struct {
 	// +optional
 	APIServerAddress *string `json:"apiServerIpAddress,omitempty"`
 
+	// APIServerIPv6Address is the IPv6 global address assigned to the load balancer
+	// created for the API Server. This field is only applicable for dual stack
+	// configurations.
+	// +optional
+	APIServerIPv6Address *string `json:"apiServerIpv6Address,omitempty"`
+
 	// APIServerHealthCheck is the full reference to the health check
 	// created for the API Server.
 	// +optional
@@ -86,10 +92,22 @@ type Network struct {
 	// +optional
 	APIServerForwardingRule *string `json:"apiServerForwardingRule,omitempty"`
 
+	// APIServerIPv6ForwardingRule is the full reference to the IPv6 forwarding rule
+	// created for the API Server. This field is only applicable during dual stack
+	// configurations.
+	// +optional
+	APIServerIPv6ForwardingRule *string `json:"apiServerIpv6ForwardingRule,omitempty"`
+
 	// APIInternalAddress is the IPV4 regional address assigned to the
 	// internal Load Balancer.
 	// +optional
 	APIInternalAddress *string `json:"apiInternalIpAddress,omitempty"`
+
+	// APIInternalIPv6Address is the IPV6 regional address assigned to the
+	// internal Load Balancer. This field is only applicable for dual stack
+	// configurations.
+	// +optional
+	APIInternalIPv6Address *string `json:"apiInternalIpv6IpAddress,omitempty"`
 
 	// APIInternalHealthCheck is the full reference to the health check
 	// created for the internal Load Balancer.
@@ -105,6 +123,11 @@ type Network struct {
 	// created for the internal Load Balancer.
 	// +optional
 	APIInternalForwardingRule *string `json:"apiInternalForwardingRule,omitempty"`
+
+	// APIIPv6InternalForwardingRule is the full reference to the forwarding rule
+	// created for the internal IPv6 Load Balancer during dual stack configurations.
+	// +optional
+	APIIPv6InternalForwardingRule *string `json:"apiIpv6InternalForwardingRule,omitempty"`
 }
 
 // FirewallProtocol is a string enum type representing the IP Protocol for the firewall rule.
@@ -309,6 +332,44 @@ const (
 	RulesManagementUnmanaged RulesManagementPolicy = "Unmanaged"
 )
 
+// StackType is a string enum type indicating the types of network addresses that are valid.
+// +kubebuilder:validation:Enum=IPv4Only;DualStack
+type StackType string
+
+const (
+	// IPv4OnlyStackType indicates a stack type where only IPv4 addresses are valid.
+	IPv4OnlyStackType StackType = "IPv4Only"
+
+	// DualStackType indicates a stack type where both IPv4 and IPv6 addresses are valid.
+	DualStackType StackType = "DualStack"
+)
+
+// AddressPreferencePolicy is a string enum type indicating the preferred IP Address in a dual stack network configuration.
+// +kubebuilder:validation:Enum=IPv4Primary;IPv6Primary
+type AddressPreferencePolicy string
+
+const (
+	// IPv4Primary indicates a preference to use IPv4 addresses.
+	IPv4Primary AddressPreferencePolicy = "IPv4Primary"
+
+	// IPv6Primary indicates a preference to use IPv6 addresses.
+	IPv6Primary AddressPreferencePolicy = "IPv6Primary"
+)
+
+const (
+	// DualStackAdditionalResourceSuffix is an identifier appended to the resource name to indicate
+	// that it is not for the ipv4 [default] stack type.
+	DualStackAdditionalResourceSuffix string = "ipv6"
+
+	// DualStackNetworkAccess is an identifier to describe the network access settings
+	// for dual stack infrastructure. IPv4 resources are default to an internal settings, but
+	// IPv6 resources require the identifier for ULAs.
+	DualStackNetworkAccess = "INTERNAL"
+
+	// GCPDualStack is the identifier used by GCP to indicate a dual stack infrastructure.
+	GCPDualStack = "IPV4_IPV6"
+)
+
 // NetworkSpec encapsulates all things related to a GCP network.
 type NetworkSpec struct {
 	// Name is the name of the network to be used.
@@ -363,6 +424,33 @@ type NetworkSpec struct {
 	// +kubebuilder:default:=64
 	// +optional
 	MinPortsPerVM int64 `json:"minPortsPerVm,omitempty"`
+
+	// Ipv6Address: An IPv6 internal network address for this network interface.
+	// To use a static internal IP address, it must be unused and in the same
+	// region as the instance's zone. If not specified, Google Cloud will
+	// automatically assign an internal IPv6 address from the instance's subnetwork.
+	// +optional
+	Ipv6Address string `json:"ipv6Address,omitempty"`
+
+	// StackType: The stackType for the subnets. If set to IPv4Only, new VMs in
+	// the subnet are assigned IPv4 addresses only. If set to DualStack, new VMs in
+	// the subnet can be assigned both IPv4 and IPv6 addresses. If not specified,
+	// IPv4Only is used. This field can be both set at resource creation time and
+	// updated using patch.
+	// GCP allows subnet stack types to be set independently, but, for simplicity,
+	// all subnets in the network will be created with the same stackType.
+	//
+	// +kubebuilder:default=IPv4Only
+	// +optional
+	StackType StackType `json:"stackType,omitempty"`
+
+	// AddressPreferencePolicy: The AddressPreferencePolicy determines whether the
+	// IPv4 or IPv6 addresses should be preferred for load balancers. The value will
+	// also determine the address type in the APIEndpoint.
+	//
+	// +kubebuilder:default=IPv4Primary
+	// +optional
+	AddressPreferencePolicy AddressPreferencePolicy `json:"addressPreferencePolicy,omitempty"`
 }
 
 // LoadBalancerType defines the Load Balancer that should be created.
@@ -457,21 +545,18 @@ type SubnetSpec struct {
 	// +optional
 	Purpose *string `json:"purpose,omitempty"`
 
-	// StackType: The stack type for the subnet. If set to IPV4_ONLY, new VMs in
-	// the subnet are assigned IPv4 addresses only. If set to IPV4_IPV6, new VMs in
+	// StackType: The stackType for the subnet. If set to IPv4Only, new VMs in
+	// the subnet are assigned IPv4 addresses only. If set to DualStack, new VMs in
 	// the subnet can be assigned both IPv4 and IPv6 addresses. If not specified,
-	// IPV4_ONLY is used. This field can be both set at resource creation time and
+	// IPv4Only is used. This field can be both set at resource creation time and
 	// updated using patch.
 	//
-	// Possible values:
-	//   "IPV4_IPV6" - New VMs in this subnet can have both IPv4 and IPv6
-	// addresses.
-	//   "IPV4_ONLY" - New VMs in this subnet will only be assigned IPv4 addresses.
-	//   "IPV6_ONLY" - New VMs in this subnet will only be assigned IPv6 addresses.
-	// +kubebuilder:validation:Enum=IPV4_ONLY;IPV4_IPV6;IPV6_ONLY
-	// +kubebuilder:default=IPV4_ONLY
+	// NOT IMPLEMENTED: Stack type is currently set in the `NetworkSpec` and all
+	// subnets will have the same stack type.
+	//
+	// +kubebuilder:default=IPv4Only
 	// +optional
-	StackType string `json:"stackType,omitempty"`
+	StackType StackType `json:"stackType,omitempty"`
 }
 
 // String returns a string representation of the subnet.
