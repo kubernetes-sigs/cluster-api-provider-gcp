@@ -321,6 +321,11 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 			// IPv4 networks default to internal addresses. IPv6 does not, so
 			// access must be explicitly set to INTERNAL to enable ULAs.
 			subnet.Ipv6AccessType = infrav1.DualStackNetworkAccess
+
+			// If an IPv6 CIDR range is explicitly specified, use it
+			if subnetwork.Ipv6CidrRange != "" {
+				subnet.Ipv6CidrRange = subnetwork.Ipv6CidrRange
+			}
 		}
 
 		subnets = append(subnets, subnet)

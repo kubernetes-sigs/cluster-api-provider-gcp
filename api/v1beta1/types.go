@@ -503,6 +503,14 @@ type SubnetSpec struct {
 	// can be set only at resource creation time.
 	CidrBlock string `json:"cidrBlock,omitempty"`
 
+	// Ipv6CidrRange is the range of internal IPv6 addresses that are owned by
+	// this subnetwork. Provide this property when you create the subnetwork. The
+	// range must be a unique /64 or larger from the ULA (Unique Local Address) range.
+	// For example, fd00:1234:5678::/64. This field can be set only at resource
+	// creation time and is only applicable when StackType is set to DualStack.
+	// +optional
+	Ipv6CidrRange string `json:"ipv6CidrRange,omitempty"`
+
 	// Description is an optional description associated with the resource.
 	// +optional
 	Description *string `json:"description,omitempty"`

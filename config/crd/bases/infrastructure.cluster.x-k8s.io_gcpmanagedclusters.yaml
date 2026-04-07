@@ -500,6 +500,14 @@ spec:
                             If this field is not explicitly set, it will not appear in get
                             listings. If not set the default behavior is to disable flow logging.
                           type: boolean
+                        ipv6CidrRange:
+                          description: |-
+                            Ipv6CidrRange is the range of internal IPv6 addresses that are owned by
+                            this subnetwork. Provide this property when you create the subnetwork. The
+                            range must be a unique /64 or larger from the ULA (Unique Local Address) range.
+                            For example, fd00:1234:5678::/64. This field can be set only at resource
+                            creation time and is only applicable when StackType is set to DualStack.
+                          type: string
                         name:
                           description: Name defines a unique identifier to reference
                             this resource.
