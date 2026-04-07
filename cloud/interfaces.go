@@ -68,6 +68,7 @@ type ClusterGetter interface {
 	ControlPlaneEndpoint() clusterv1.APIEndpoint
 	ResourceManagerTags() infrav1.ResourceManagerTags
 	LoadBalancer() infrav1.LoadBalancerSpec
+	Subnets() infrav1.Subnets
 }
 
 // ClusterSetter is an interface which can set cluster information.

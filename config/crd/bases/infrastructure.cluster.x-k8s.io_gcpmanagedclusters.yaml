@@ -500,6 +500,16 @@ spec:
                             If this field is not explicitly set, it will not appear in get
                             listings. If not set the default behavior is to disable flow logging.
                           type: boolean
+                        externalIpv6:
+                          default: false
+                          description: |-
+                            ExternalIpv6 specifies whether the subnet should have external IPv6 access.
+                            When true, the subnet will use EXTERNAL IPv6 access type and instances can
+                            have public IPv6 addresses. When false (default), the subnet will use INTERNAL
+                            IPv6 access type with ULA (Unique Local Address) ranges.
+                            This is only applicable when StackType is set to DualStack.
+                            Note: Subnets with EXTERNAL IPv6 cannot be used with internal load balancers.
+                          type: boolean
                         ipv6CidrRange:
                           description: |-
                             Ipv6CidrRange is the range of internal IPv6 addresses that are owned by

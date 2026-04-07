@@ -183,6 +183,11 @@ func (s *ClusterScope) Network() *infrav1.Network {
 	return &s.GCPCluster.Status.Network
 }
 
+// Subnets returns the cluster subnets configuration.
+func (s *ClusterScope) Subnets() infrav1.Subnets {
+	return s.GCPCluster.Spec.Network.Subnets
+}
+
 // AdditionalLabels returns the cluster additional labels.
 func (s *ClusterScope) AdditionalLabels() infrav1.Labels {
 	return s.GCPCluster.Spec.AdditionalLabels
@@ -318,9 +323,16 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 		}
 
 		if s.StackType() == infrav1.DualStackType {
-			// IPv4 networks default to internal addresses. IPv6 does not, so
-			// access must be explicitly set to INTERNAL to enable ULAs.
-			subnet.Ipv6AccessType = infrav1.DualStackNetworkAccess
+			// Determine IPv6 access type based on subnet configuration
+			if ptr.Deref(subnetwork.ExternalIpv6, false) {
+				// External IPv6 - uses globally unique addresses (GUA)
+				// Allows instances to have public IPv6 addresses
+				subnet.Ipv6AccessType = "EXTERNAL"
+			} else {
+				// Internal IPv6 - uses ULA (Unique Local Address) ranges
+				// Required for internal load balancers
+				subnet.Ipv6AccessType = infrav1.DualStackNetworkAccess
+			}
 
 			// If an IPv6 CIDR range is explicitly specified, use it
 			if subnetwork.Ipv6CidrRange != "" {

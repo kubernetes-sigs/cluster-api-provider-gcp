@@ -511,6 +511,16 @@ type SubnetSpec struct {
 	// +optional
 	Ipv6CidrRange string `json:"ipv6CidrRange,omitempty"`
 
+	// ExternalIpv6 specifies whether the subnet should have external IPv6 access.
+	// When true, the subnet will use EXTERNAL IPv6 access type and instances can
+	// have public IPv6 addresses. When false (default), the subnet will use INTERNAL
+	// IPv6 access type with ULA (Unique Local Address) ranges.
+	// This is only applicable when StackType is set to DualStack.
+	// Note: Subnets with EXTERNAL IPv6 cannot be used with internal load balancers.
+	// +kubebuilder:default=false
+	// +optional
+	ExternalIpv6 *bool `json:"externalIpv6,omitempty"`
+
 	// Description is an optional description associated with the resource.
 	// +optional
 	Description *string `json:"description,omitempty"`

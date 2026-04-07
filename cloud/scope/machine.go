@@ -331,9 +331,23 @@ func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, s
 		Network: path.Join("projects", cluster.NetworkProject(), "global", "networks", cluster.NetworkName()),
 	}
 
+	// Determine if this subnet has external IPv6 access enabled
+	hasExternalIpv6 := false
+	if subnet != nil && cluster.StackType() == infrav1.DualStackType {
+		subnetSpec := cluster.Subnets().FindByName(*subnet)
+		if subnetSpec != nil {
+			hasExternalIpv6 = ptr.Deref(subnetSpec.ExternalIpv6, false)
+		}
+	}
+
+	// Determine IPv6 access type based on subnet configuration
 	ipv6AccessType := infrav1.DualStackNetworkAccess
+	if hasExternalIpv6 {
+		ipv6AccessType = "EXTERNAL"
+	}
 
 	if publicIP != nil && *publicIP {
+		// IPv4 public access
 		networkInterface.AccessConfigs = []*compute.AccessConfig{
 			{
 				Type: "ONE_TO_ONE_NAT",
@@ -341,21 +355,15 @@ func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, s
 			},
 		}
 
-		// For now we cannot assign the IPv6AccessConfigs. The bootstrap node is the only one on our side
-		// that would be using this, but others may have different configurations.
-		// Issue: We set the subnets to internal so this external configuration will fail. The subnets (IPv6) are set
-		// to internal so that the internal load balancer address creation will complete.
-		// What we see: Error 400: Invalid value for field 'resource.networkInterfaces[0].ipv6AccessConfigs': ''.
-		//				IPv6 access config is not supported for this network interface.
-		// if cluster.StackType() == infrav1.DualStackType {
-		//	ipv6AccessType = "EXTERNAL"
-		//	networkInterface.Ipv6AccessConfigs = []*compute.AccessConfig{
-		//		{
-		//			Type: "DIRECT_IPV6",
-		//			Name: "External IPv6",
-		//		},
-		//	}
-		// }
+		// IPv6 public access - only available on subnets with external IPv6 enabled
+		if cluster.StackType() == infrav1.DualStackType && hasExternalIpv6 {
+			networkInterface.Ipv6AccessConfigs = []*compute.AccessConfig{
+				{
+					Type: "DIRECT_IPV6",
+					Name: "External IPv6",
+				},
+			}
+		}
 	}
 
 	if cluster.StackType() == infrav1.DualStackType {
