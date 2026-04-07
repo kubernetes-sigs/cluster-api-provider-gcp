@@ -19,6 +19,7 @@ package scope
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
@@ -141,6 +142,25 @@ func (s *ManagedClusterScope) IsSharedVpc() bool {
 	return s.NetworkProject() != s.Project()
 }
 
+// StackType returns the network stack type for the cluster.
+func (s *ManagedClusterScope) StackType() infrav1.StackType {
+	return s.GCPManagedCluster.Spec.Network.StackType
+}
+
+// AddressPreferencePolicy returns the AddressPreferencePolicy for the cluster.
+func (s *ManagedClusterScope) AddressPreferencePolicy() infrav1.AddressPreferencePolicy {
+	return s.GCPManagedCluster.Spec.Network.AddressPreferencePolicy
+}
+
+// Ipv6Address returns the IPv6 address when one is provided in the spec and the cluster network is not IPv4 Only.
+func (s *ManagedClusterScope) Ipv6Address() string {
+	address := ""
+	if s.StackType() != infrav1.IPv4OnlyStackType {
+		address = s.GCPManagedCluster.Spec.Network.Ipv6Address
+	}
+	return address
+}
+
 // NetworkLink returns the partial URL for the network.
 func (s *ManagedClusterScope) NetworkLink() string {
 	return fmt.Sprintf("projects/%s/global/networks/%s", s.NetworkProject(), s.NetworkName())
@@ -149,6 +169,11 @@ func (s *ManagedClusterScope) NetworkLink() string {
 // Network returns the cluster network object.
 func (s *ManagedClusterScope) Network() *infrav1.Network {
 	return &s.GCPManagedCluster.Status.Network
+}
+
+// Subnets returns the cluster subnets configuration.
+func (s *ManagedClusterScope) Subnets() infrav1.Subnets {
+	return s.GCPManagedCluster.Spec.Network.Subnets
 }
 
 // AdditionalLabels returns the cluster additional labels.
@@ -227,6 +252,12 @@ func (s *ManagedClusterScope) NetworkSpec() *compute.Network {
 		ForceSendFields:       []string{"AutoCreateSubnetworks"},
 	}
 
+	if s.StackType() == infrav1.DualStackType {
+		// IPv6/Dual Stack networks will require ULAs, because the subnets are
+		// going to be set to INTERNAL Access
+		network.EnableUlaInternalIpv6 = true
+	}
+
 	return network
 }
 
@@ -251,12 +282,19 @@ func (s *ManagedClusterScope) NatRouterSpec() *compute.Router {
 // SubnetSpecs returns google compute subnets spec.
 func (s *ManagedClusterScope) SubnetSpecs() []*compute.Subnetwork {
 	subnets := []*compute.Subnetwork{}
+
+	stackType := "IPV4_ONLY"
+	if s.StackType() == infrav1.DualStackType {
+		stackType = infrav1.GCPDualStack
+	}
+
 	for _, subnetwork := range s.GCPManagedCluster.Spec.Network.Subnets {
 		secondaryIPRanges := []*compute.SubnetworkSecondaryRange{}
 		for rangeName, secondaryCidrBlock := range subnetwork.SecondaryCidrBlocks {
 			secondaryIPRanges = append(secondaryIPRanges, &compute.SubnetworkSecondaryRange{RangeName: rangeName, IpCidrRange: secondaryCidrBlock})
 		}
-		subnets = append(subnets, &compute.Subnetwork{
+
+		subnet := &compute.Subnetwork{
 			Name:                  subnetwork.Name,
 			Region:                subnetwork.Region,
 			EnableFlowLogs:        ptr.Deref(subnetwork.EnableFlowLogs, false),
@@ -267,8 +305,28 @@ func (s *ManagedClusterScope) SubnetSpecs() []*compute.Subnetwork {
 			Network:               s.NetworkLink(),
 			Purpose:               ptr.Deref(subnetwork.Purpose, "PRIVATE_RFC_1918"),
 			Role:                  "ACTIVE",
-			StackType:             subnetwork.StackType,
-		})
+			StackType:             stackType,
+		}
+
+		if s.StackType() == infrav1.DualStackType {
+			// Determine IPv6 access type based on subnet configuration
+			if ptr.Deref(subnetwork.ExternalIpv6, false) {
+				// External IPv6 - uses globally unique addresses (GUA)
+				// Allows instances to have public IPv6 addresses
+				subnet.Ipv6AccessType = "EXTERNAL"
+			} else {
+				// Internal IPv6 - uses ULA (Unique Local Address) ranges
+				// Required for internal load balancers
+				subnet.Ipv6AccessType = infrav1.DualStackNetworkAccess
+			}
+
+			// If an IPv6 CIDR range is explicitly specified, use it
+			if subnetwork.Ipv6CidrRange != "" {
+				subnet.Ipv6CidrRange = subnetwork.Ipv6CidrRange
+			}
+		}
+
+		subnets = append(subnets, subnet)
 	}
 
 	return subnets
@@ -284,6 +342,35 @@ func (s *ManagedClusterScope) FirewallRulesSpec() []*compute.Firewall {
 		s.GCPManagedCluster.Spec.Network.Firewall.DefaultRulesManagement,
 		s.GCPManagedCluster.Spec.Network.Firewall.FirewallRules,
 	)
+}
+
+// IPv6FirewallRulesSpec returns google compute firewall spec for ipv6 addresses.
+func (s *ManagedClusterScope) IPv6FirewallRulesSpec() []*compute.Firewall {
+	firewallRules := []*compute.Firewall{
+		{
+			Name:    fmt.Sprintf("allow-%s-healthchecks-ipv6", s.Name()),
+			Network: s.NetworkLink(),
+			Allowed: []*compute.FirewallAllowed{
+				{
+					IPProtocol: "TCP",
+					Ports: []string{
+						strconv.FormatInt(6443, 10),
+					},
+				},
+			},
+			Direction: "INGRESS",
+			SourceRanges: []string{
+				// https://docs.cloud.google.com/load-balancing/docs/firewall-rules
+				"2600:2d00:1:b029::/64",
+				"2600:2d00:1:1::/64",
+			},
+			TargetTags: []string{
+				s.Name() + "-control-plane",
+			},
+		},
+	}
+
+	return firewallRules
 }
 
 // ANCHOR_END: ClusterFirewallSpec
