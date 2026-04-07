@@ -9,7 +9,13 @@ metadata:
 spec:
   clusterNetwork:
     pods:
-      cidrBlocks: ["192.168.0.0/16"]
+      cidrBlocks:
+      - "fd00:100:64::/48"
+      - "192.168.0.0/16"
+    services:
+      cidrBlocks:
+      - "fd00:100:96::/108"
+      - "10.96.0.0/12"
   infrastructureRef:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
     kind: GCPCluster
