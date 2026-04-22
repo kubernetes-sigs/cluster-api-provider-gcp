@@ -22,6 +22,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
@@ -184,6 +185,46 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 				Version:             &vV1_32_5,
 			},
 		},
+		{
+			name:        "pod secondary range name without UseIPAliases should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: false,
+						Pod:          &expinfrav1.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range")},
+					},
+				},
+			},
+		},
+		{
+			name:        "service secondary range name without UseIPAliases should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: false,
+						Service:      &expinfrav1.ClusterNetworkService{SecondaryRangeName: ptr.To("services-range")},
+					},
+				},
+			},
+		},
+		{
+			name:        "secondary range names with UseIPAliases should be valid",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod:          &expinfrav1.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range")},
+						Service:      &expinfrav1.ClusterNetworkService{SecondaryRangeName: ptr.To("services-range")},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -210,9 +251,21 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 }
 
 func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
+	defaultOldSpec := expinfrav1.GCPManagedControlPlaneSpec{
+		ClusterName: "default_cluster1",
+		GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+			ClusterNetwork: &expinfrav1.ClusterNetwork{
+				PrivateCluster: &expinfrav1.PrivateCluster{
+					EnablePrivateEndpoint: true,
+				},
+			},
+		},
+	}
+
 	tests := []struct {
 		name        string
 		expectError bool
+		oldSpec     *expinfrav1.GCPManagedControlPlaneSpec // nil uses defaultOldSpec
 		spec        expinfrav1.GCPManagedControlPlaneSpec
 	}{
 		{
@@ -266,27 +319,63 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "changing pod secondary range name should cause an error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				ClusterName: "default_cluster1",
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod:          &expinfrav1.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range")},
+					},
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				ClusterName: "default_cluster1",
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod:          &expinfrav1.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range-2")},
+					},
+				},
+			},
+		},
+		{
+			name:        "changing service secondary range name should cause an error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				ClusterName: "default_cluster1",
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Service:      &expinfrav1.ClusterNetworkService{SecondaryRangeName: ptr.To("services-range")},
+					},
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				ClusterName: "default_cluster1",
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Service:      &expinfrav1.ClusterNetworkService{SecondaryRangeName: ptr.To("services-range-2")},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			newMCP := &expinfrav1.GCPManagedControlPlane{
-				Spec: tc.spec,
+			newMCP := &expinfrav1.GCPManagedControlPlane{Spec: tc.spec}
+
+			oldSpec := defaultOldSpec
+			if tc.oldSpec != nil {
+				oldSpec = *tc.oldSpec
 			}
-			oldMCP := &expinfrav1.GCPManagedControlPlane{
-				Spec: expinfrav1.GCPManagedControlPlaneSpec{
-					ClusterName: "default_cluster1",
-					GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
-						ClusterNetwork: &expinfrav1.ClusterNetwork{
-							PrivateCluster: &expinfrav1.PrivateCluster{
-								EnablePrivateEndpoint: true,
-							},
-						},
-					},
-				},
-			}
+			oldMCP := &expinfrav1.GCPManagedControlPlane{Spec: oldSpec}
 
 			warn, err := (&GCPManagedControlPlane{}).ValidateUpdate(t.Context(), oldMCP, newMCP)
 
