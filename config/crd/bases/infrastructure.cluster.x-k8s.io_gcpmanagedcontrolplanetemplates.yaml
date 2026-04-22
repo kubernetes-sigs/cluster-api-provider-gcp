@@ -88,6 +88,12 @@ spec:
                                   (in CIDR notation) within a network range, a mask, or leave this field blank to use a default range.
                                   This setting is permanent.
                                 type: string
+                              secondaryRangeName:
+                                description: |-
+                                  SecondaryRangeName is the name of the existing secondary range in the cluster's subnetwork to
+                                  use for pod IP addresses. The range must already exist on the subnet. Only applicable if
+                                  UseIPAliases is true. Mutually exclusive with CidrBlock. This setting is permanent.
+                                type: string
                             type: object
                           privateCluster:
                             description: PrivateCluster defines the private cluster
@@ -129,6 +135,12 @@ spec:
                                   CidrBlock is where cluster services will be assigned an IP address from this IP address range. Enter a range
                                   (in CIDR notation) within a network range, a mask, or leave this field blank to use a default range.
                                   This setting is permanent.
+                                type: string
+                              secondaryRangeName:
+                                description: |-
+                                  SecondaryRangeName is the name of the existing secondary range in the cluster's subnetwork to
+                                  use for service cluster IPs. The range must already exist on the subnet. Only applicable if
+                                  UseIPAliases is true. Mutually exclusive with CidrBlock. This setting is permanent.
                                 type: string
                             type: object
                           useIPAliases:
