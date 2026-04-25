@@ -26,19 +26,19 @@ import (
 )
 
 var (
-	minCount               = int32(1)
-	maxCount               = int32(3)
-	invalidMinCount        = int32(-1)
-	enableAutoscaling      = false
-	diskSizeGb             = int32(200)
-	maxPods                = int64(10)
-	localSsds              = int32(0)
-	invalidDiskSizeGb      = int32(-200)
-	invalidMaxPods         = int64(-10)
-	invalidLocalSsds       = int32(-0)
-	sandboxTypeGvisor      = "GVISOR"
-	workloadMetadataGKE    = expinfrav1.WorkloadMetadataModeGKEMetadata
-	workloadMetadataGCE    = expinfrav1.WorkloadMetadataModeGCEMetadata
+	minCount            = int32(1)
+	maxCount            = int32(3)
+	invalidMinCount     = int32(-1)
+	enableAutoscaling   = false
+	diskSizeGb          = int32(200)
+	maxPods             = int64(10)
+	localSsds           = int32(0)
+	invalidDiskSizeGb   = int32(-200)
+	invalidMaxPods      = int64(-10)
+	invalidLocalSsds    = int32(-0)
+	sandboxTypeGvisor   = "GVISOR"
+	workloadMetadataGKE = expinfrav1.WorkloadMetadataModeGKEMetadata
+	workloadMetadataGCE = expinfrav1.WorkloadMetadataModeGCEMetadata
 )
 
 func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
