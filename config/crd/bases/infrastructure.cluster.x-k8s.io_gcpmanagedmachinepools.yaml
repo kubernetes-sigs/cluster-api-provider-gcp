@@ -265,6 +265,15 @@ spec:
                           type: string
                         type: array
                     type: object
+                  workloadMetadataMode:
+                    description: |-
+                      WorkloadMetadataMode sets the mode for how to expose metadata to workloads running on the node pool.
+                      Valid values are GKE_METADATA and GCE_METADATA. Unset here means unmanaged. See documentation for
+                      more details.
+                    enum:
+                    - GKE_METADATA
+                    - GCE_METADATA
+                    type: string
                 type: object
               preemptible:
                 description: |-
