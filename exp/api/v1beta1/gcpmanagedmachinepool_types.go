@@ -79,6 +79,17 @@ type NodeNetworkConfig struct {
 	PodRangeCidrBlock *string `json:"podRangeCidrBlock,omitempty"`
 }
 
+// WorkloadMetadataMode is the mode for how to expose metadata to workloads running on the node pool.
+// +kubebuilder:validation:Enum=GKE_METADATA;GCE_METADATA
+type WorkloadMetadataMode string
+
+const (
+	// WorkloadMetadataModeGKEMetadata enables the GKE Metadata Server on the node.
+	WorkloadMetadataModeGKEMetadata WorkloadMetadataMode = "GKE_METADATA"
+	// WorkloadMetadataModeGCEMetadata exposes the Compute Engine metadata server to the node.
+	WorkloadMetadataModeGCEMetadata WorkloadMetadataMode = "GCE_METADATA"
+)
+
 // NodeSecurityConfig encapsulates node security configurations.
 type NodeSecurityConfig struct {
 	// ServiceAccount specifies the identity details for node
@@ -96,6 +107,10 @@ type NodeSecurityConfig struct {
 	// integrity monitoring enabled.
 	// +optional
 	EnableIntegrityMonitoring *bool `json:"enableIntegrityMonitoring,omitempty"`
+	// WorkloadMetadataMode sets the mode for how to expose metadata to workloads running on the node pool.
+	// Valid values are GKE_METADATA and GCE_METADATA.
+	// +optional
+	WorkloadMetadataMode *WorkloadMetadataMode `json:"workloadMetadataMode,omitempty"`
 }
 
 // ServiceAccountConfig encapsulates service account options.
