@@ -26,16 +26,19 @@ import (
 )
 
 var (
-	minCount          = int32(1)
-	maxCount          = int32(3)
-	invalidMinCount   = int32(-1)
-	enableAutoscaling = false
-	diskSizeGb        = int32(200)
-	maxPods           = int64(10)
-	localSsds         = int32(0)
-	invalidDiskSizeGb = int32(-200)
-	invalidMaxPods    = int64(-10)
-	invalidLocalSsds  = int32(-0)
+	minCount               = int32(1)
+	maxCount               = int32(3)
+	invalidMinCount        = int32(-1)
+	enableAutoscaling      = false
+	diskSizeGb             = int32(200)
+	maxPods                = int64(10)
+	localSsds              = int32(0)
+	invalidDiskSizeGb      = int32(-200)
+	invalidMaxPods         = int64(-10)
+	invalidLocalSsds       = int32(-0)
+	sandboxTypeGvisor      = "GVISOR"
+	workloadMetadataGKE    = expinfrav1.WorkloadMetadataModeGKEMetadata
+	workloadMetadataGCE    = expinfrav1.WorkloadMetadataModeGCEMetadata
 )
 
 func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
@@ -197,6 +200,42 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 				},
 			},
 			expectError: true,
+		},
+		{
+			name: "immutable nodeSecurity sandboxType is mutated",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					NodeSecurity: expinfrav1.NodeSecurityConfig{
+						SandboxType: &sandboxTypeGvisor,
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "mutable workloadMetadataMode can be set to GKE_METADATA",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					NodeSecurity: expinfrav1.NodeSecurityConfig{
+						WorkloadMetadataMode: &workloadMetadataGKE,
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "mutable workloadMetadataMode can be set to GCE_METADATA",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					NodeSecurity: expinfrav1.NodeSecurityConfig{
+						WorkloadMetadataMode: &workloadMetadataGCE,
+					},
+				},
+			},
+			expectError: false,
 		},
 	}
 
