@@ -127,6 +127,20 @@ func ConvertToSdkCgroupMode(cgroupMode ManagedNodePoolCgroupMode) containerpb.Li
 	return containerpb.LinuxNodeConfig_CGROUP_MODE_UNSPECIFIED
 }
 
+// ConvertToSdkWorkloadMetadataMode converts a WorkloadMetadataMode to the GCP SDK WorkloadMetadataConfig.
+func ConvertToSdkWorkloadMetadataMode(mode *WorkloadMetadataMode) *containerpb.WorkloadMetadataConfig {
+	if mode == nil {
+		return nil
+	}
+	switch *mode {
+	case WorkloadMetadataModeGKEMetadata:
+		return &containerpb.WorkloadMetadataConfig{Mode: containerpb.WorkloadMetadataConfig_GKE_METADATA}
+	case WorkloadMetadataModeGCEMetadata:
+		return &containerpb.WorkloadMetadataConfig{Mode: containerpb.WorkloadMetadataConfig_GCE_METADATA}
+	}
+	return nil
+}
+
 // ConvertToSdkLinuxNodeConfig converts GCP SDK node version to k8s version.
 func ConvertToSdkLinuxNodeConfig(linuxNodeConfig *LinuxNodeConfig) *containerpb.LinuxNodeConfig {
 	sdkLinuxNodeConfig := containerpb.LinuxNodeConfig{}
