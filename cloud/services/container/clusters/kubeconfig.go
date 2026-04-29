@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"cloud.google.com/go/iam/credentials/apiv1/credentialspb"
 	"github.com/go-logr/logr"
@@ -238,11 +239,22 @@ func (s *Service) createBaseKubeConfig(contextName string, cluster *containerpb.
 }
 
 func (s *Service) generateToken(ctx context.Context) (string, error) {
+	email := ""
+	if cred := s.scope.GetCredential(); cred != nil {
+		email = cred.ClientEmail
+	}
+	if email == "" {
+		// WIF / implicit ADC path: discover the bound GCP service account email
+		// from the GKE metadata server.
+		var err error
+		email, err = metadata.EmailWithContext(ctx, "default")
+		if err != nil {
+			return "", fmt.Errorf("fetching service account email from metadata server: %w", err)
+		}
+	}
 	req := &credentialspb.GenerateAccessTokenRequest{
-		Name: "projects/-/serviceAccounts/" + s.scope.GetCredential().ClientEmail,
-		Scope: []string{
-			GkeScope,
-		},
+		Name:  "projects/-/serviceAccounts/" + email,
+		Scope: []string{GkeScope},
 	}
 	resp, err := s.scope.CredentialsClient().GenerateAccessToken(ctx, req)
 	if err != nil {

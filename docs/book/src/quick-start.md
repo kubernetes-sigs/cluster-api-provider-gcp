@@ -20,15 +20,44 @@ Before installing CAPG, your Kubernetes cluster has to be transformed into a CAP
 - `make` to use `Makefile` targets
 - Install `coreutils` (for timeout) on *OSX*
 
-### Create a Service Account
+### Credentials
 
-To create and manage clusters, this infrastructure provider uses a service account to authenticate with GCP's APIs.
+To create and manage clusters, CAPG uses a GCP service account to authenticate with GCP's APIs. There are two supported authentication methods.
 
-From your cloud console, follow [these instructions](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) to create a new service account with `Editor` permissions.
+First, [create a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) with `Editor` permissions. If you plan to use GKE the service account will also need the `iam.serviceAccountTokenCreator` role.
 
-If you plan to use GKE the service account will also need the `iam.serviceAccountTokenCreator` role.
+#### Service Account JSON Key
 
-Afterwards, generate a JSON Key and store it somewhere safe.
+Generate a JSON Key for the service account and store it somewhere safe. This key will be base64-encoded and provided to CAPG at installation time (see [Installing CAPG](#installing-capg)).
+
+#### Workload Identity Federation (GKE management clusters)
+
+If your CAPI management cluster runs on GKE, [Workload Identity Federation](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity) is the preferred authentication method. It eliminates the need to manage JSON key files by binding the CAPG Kubernetes ServiceAccount to a GCP service account.
+
+Enable Workload Identity on your GKE management cluster (if not already enabled):
+```
+gcloud container clusters update <MANAGEMENT_CLUSTER> \
+  --workload-pool=<PROJECT_ID>.svc.id.goog \
+  --region <REGION>
+```
+
+Grant the Workload Identity User role so the CAPG Kubernetes ServiceAccount can impersonate the GCP service account:
+```
+export GCP_SA_EMAIL=<gcp-service-account>@<PROJECT_ID>.iam.gserviceaccount.com
+
+gcloud iam service-accounts add-iam-policy-binding "${GCP_SA_EMAIL}" \
+  --role roles/iam.workloadIdentityUser \
+  --member "serviceAccount:<PROJECT_ID>.svc.id.goog[capg-system/capg-manager]"
+```
+
+Then deploy CAPG using the `config/wif` overlay, substituting your GCP service account email:
+```
+export GCP_SA_EMAIL=<gcp-service-account>@<PROJECT_ID>.iam.gserviceaccount.com
+
+kustomize build config/wif/ | envsubst | kubectl apply -f -
+```
+
+CAPG will authenticate via the GKE metadata server automatically — no credentials secret is needed.
 
 
 ### Installing CAPG
