@@ -288,9 +288,15 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 			cluster.IpAllocationPolicy.UseIpAliases = cn.UseIPAliases
 			if cn.Pod != nil {
 				cluster.IpAllocationPolicy.ClusterIpv4CidrBlock = cn.Pod.CidrBlock
+				if cn.Pod.SecondaryRangeName != nil {
+					cluster.IpAllocationPolicy.ClusterSecondaryRangeName = *cn.Pod.SecondaryRangeName
+				}
 			}
 			if cn.Service != nil {
 				cluster.IpAllocationPolicy.ServicesIpv4CidrBlock = cn.Service.CidrBlock
+				if cn.Service.SecondaryRangeName != nil {
+					cluster.IpAllocationPolicy.ServicesSecondaryRangeName = *cn.Service.SecondaryRangeName
+				}
 			}
 		}
 
