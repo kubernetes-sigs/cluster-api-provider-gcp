@@ -28,9 +28,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc/codes"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
@@ -231,11 +229,8 @@ func (s *Service) describeCluster(ctx context.Context, log *logr.Logger) (*conta
 	}
 	cluster, err := s.scope.ManagedControlPlaneClient().GetCluster(ctx, getClusterRequest)
 	if err != nil {
-		var e *apierror.APIError
-		if ok := errors.As(err, &e); ok {
-			if e.GRPCStatus().Code() == codes.NotFound {
-				return nil, nil
-			}
+		if shared.IsNotFound(err) {
+			return nil, nil
 		}
 		log.Error(err, "Error getting GKE cluster", "name", s.scope.ClusterName())
 		return nil, err
