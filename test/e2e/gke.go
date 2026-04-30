@@ -196,6 +196,51 @@ func GetManagedControlPlaneByCluster(ctx context.Context, input GetManagedContro
 	return nil
 }
 
+// WaitForManagedClusterResourcesDeletedInput is the input type for WaitForManagedClusterResourcesDeleted.
+type WaitForManagedClusterResourcesDeletedInput struct {
+	Lister    framework.Lister
+	Namespace string
+}
+
+// WaitForManagedClusterResourcesDeleted asserts that all CAPG managed cluster objects in the
+// given namespace are fully removed from the API server. This covers the complete deletion
+// cascade: MachinePool, GCPManagedMachinePool, GCPManagedControlPlane, and GCPManagedCluster.
+// Checking each type individually gives a precise failure message identifying which resource
+// type has a stuck finalizer or is otherwise blocked, rather than relying solely on the
+// top-level Cluster resource disappearing.
+func WaitForManagedClusterResourcesDeleted(ctx context.Context, input WaitForManagedClusterResourcesDeletedInput, intervals ...interface{}) {
+	Expect(ctx).NotTo(BeNil(), "ctx is required for WaitForManagedClusterResourcesDeleted")
+	Expect(input.Lister).ToNot(BeNil(), "Invalid argument. input.Lister can't be nil when calling WaitForManagedClusterResourcesDeleted")
+
+	By("Verifying all MachinePool objects are deleted")
+	Eventually(func(g Gomega) {
+		list := &expv1.MachinePoolList{}
+		g.Expect(input.Lister.List(ctx, list, client.InNamespace(input.Namespace))).To(Succeed())
+		g.Expect(list.Items).To(BeEmpty(), "MachinePool objects still present in namespace %q", input.Namespace)
+	}, intervals...).Should(Succeed())
+
+	By("Verifying all GCPManagedMachinePool objects are deleted")
+	Eventually(func(g Gomega) {
+		list := &infrav1exp.GCPManagedMachinePoolList{}
+		g.Expect(input.Lister.List(ctx, list, client.InNamespace(input.Namespace))).To(Succeed())
+		g.Expect(list.Items).To(BeEmpty(), "GCPManagedMachinePool objects still present in namespace %q — possible stuck finalizer", input.Namespace)
+	}, intervals...).Should(Succeed())
+
+	By("Verifying all GCPManagedControlPlane objects are deleted")
+	Eventually(func(g Gomega) {
+		list := &infrav1exp.GCPManagedControlPlaneList{}
+		g.Expect(input.Lister.List(ctx, list, client.InNamespace(input.Namespace))).To(Succeed())
+		g.Expect(list.Items).To(BeEmpty(), "GCPManagedControlPlane objects still present in namespace %q", input.Namespace)
+	}, intervals...).Should(Succeed())
+
+	By("Verifying all GCPManagedCluster objects are deleted")
+	Eventually(func(g Gomega) {
+		list := &infrav1exp.GCPManagedClusterList{}
+		g.Expect(input.Lister.List(ctx, list, client.InNamespace(input.Namespace))).To(Succeed())
+		g.Expect(list.Items).To(BeEmpty(), "GCPManagedCluster objects still present in namespace %q", input.Namespace)
+	}, intervals...).Should(Succeed())
+}
+
 func setDefaults(input *ApplyManagedClusterTemplateAndWaitInput) {
 	if input.WaitForControlPlaneInitialized == nil {
 		input.WaitForControlPlaneInitialized = func(ctx context.Context, input ApplyManagedClusterTemplateAndWaitInput, result *ApplyManagedClusterTemplateAndWaitResult) {
