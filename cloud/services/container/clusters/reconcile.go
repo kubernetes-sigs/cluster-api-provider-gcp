@@ -31,6 +31,7 @@ import (
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
@@ -154,6 +155,11 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		s.scope.GCPManagedControlPlane.Status.Ready = true
 		return ctrl.Result{}, nil
 	}
+
+	if err = s.syncLabels(ctx, cluster, &log); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition, infrav1exp.GKEControlPlaneUpdatedReason, clusterv1beta1.ConditionSeverityInfo, "")
 
 	// Reconcile kubeconfig
@@ -254,10 +260,11 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 
 	isRegional := shared.IsRegional(s.scope.Region())
 	cluster := &containerpb.Cluster{
-		Name:        s.scope.ClusterName(),
-		Description: s.scope.GCPManagedControlPlane.Spec.Description,
-		Network:     *s.scope.GCPManagedCluster.Spec.Network.Name,
-		Subnetwork:  s.getSubnetNameInClusterRegion(),
+		Name:           s.scope.ClusterName(),
+		Description:    s.scope.GCPManagedControlPlane.Spec.Description,
+		Network:        *s.scope.GCPManagedCluster.Spec.Network.Name,
+		ResourceLabels: map[string]string(s.scope.GCPManagedCluster.Spec.AdditionalLabels),
+		Subnetwork:     s.getSubnetNameInClusterRegion(),
 		Autopilot: &containerpb.Autopilot{
 			Enabled: s.scope.GCPManagedControlPlane.Spec.EnableAutopilot,
 		},
@@ -405,6 +412,35 @@ func (s *Service) deleteCluster(ctx context.Context, log *logr.Logger) error {
 		return err
 	}
 
+	return nil
+}
+
+// labelsNeedSync returns true if the desired labels differ from the existing cluster labels.
+// Returns false when desired is nil or empty, making label management opt-in: the controller
+// only manages ResourceLabels when additionalLabels is explicitly set on the spec.
+func labelsNeedSync(existing, desired infrav1.Labels) bool {
+	if len(desired) == 0 {
+		return false
+	}
+	return !existing.Equals(desired)
+}
+
+func (s *Service) syncLabels(ctx context.Context, cluster *containerpb.Cluster, log *logr.Logger) error {
+	desired := s.scope.GCPManagedCluster.Spec.AdditionalLabels
+	existing := infrav1.Labels(cluster.GetResourceLabels())
+	if !labelsNeedSync(existing, desired) {
+		return nil
+	}
+	log.V(2).Info("Resource labels update required", "current", existing, "desired", desired)
+	_, err := s.scope.ManagedControlPlaneClient().SetLabels(ctx, &containerpb.SetLabelsRequest{
+		Name:             s.scope.ClusterFullName(),
+		ResourceLabels:   map[string]string(desired),
+		LabelFingerprint: cluster.GetLabelFingerprint(),
+	})
+	if err != nil {
+		log.Error(err, "Error setting labels on GKE cluster", "name", s.scope.ClusterName())
+		return err
+	}
 	return nil
 }
 
