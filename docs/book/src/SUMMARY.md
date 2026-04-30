@@ -16,6 +16,7 @@
     - [Enabling](./clusterclass/enabling.md)
     - [Disabling](./clusterclass/disabling.md)
 - [General Topics](./topics/index.md)
+    - [Additional Labels](./topics/additional-labels.md)
     - [Alias IP Ranges](./topics/alias-ip-ranges.md)
     - [Conformance](./topics/conformance.md)
     - [GPUs](./topics/gpus.md)
