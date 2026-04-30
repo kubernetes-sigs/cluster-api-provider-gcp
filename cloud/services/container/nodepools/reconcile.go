@@ -339,6 +339,12 @@ func (s *Service) deleteNodePool(ctx context.Context) error {
 	}
 	_, err := s.scope.ManagedMachinePoolClient().DeleteNodePool(ctx, deleteNodePoolRequest)
 	if err != nil {
+		var e *apierror.APIError
+		if ok := errors.As(err, &e); ok {
+			if e.GRPCStatus().Code() == codes.NotFound {
+				return nil
+			}
+		}
 		return err
 	}
 
