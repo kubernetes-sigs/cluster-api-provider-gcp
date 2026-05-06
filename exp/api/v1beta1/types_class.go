@@ -29,6 +29,12 @@ type GCPManagedControlPlaneClassSpec struct {
 	// +optional
 	MachineTemplate *GCPManagedControlPlaneTemplateMachineTemplate `json:"machineTemplate,omitempty"`
 
+	// ClusterName allows you to specify the name of the GKE cluster.
+	// If you don't specify a name then a default name will be created
+	// based on the namespace and name of the managed control plane.
+	// +optional
+	ClusterName string `json:"clusterName,omitempty"`
+
 	// ClusterNetwork define the cluster network.
 	// +optional
 	ClusterNetwork *ClusterNetwork `json:"clusterNetwork,omitempty"`
