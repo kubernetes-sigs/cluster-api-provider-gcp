@@ -15,9 +15,13 @@
 
  1. If you don't have a GitHub token, create one by going to your GitHub settings in [Personal access tokens](https://github.com/settings/tokens). Make sure you give the token the `repo` scope. If you have one, make sure it has the right scope and it is not expired.
  
- 1. Configure gcloud authentication:
+ 1. Configure gcloud authentication. If you have multiple gcloud configurations, make sure to activate the one relevant to CAPG first:
 
     ```bash
+    # Only needed if you have multiple gcloud configurations
+    gcloud config configurations list
+    gcloud config configurations activate <your-capg-config>
+
     gcloud auth login <your-community-email-address>
     ```
 
@@ -78,7 +82,7 @@ Create the GitHub release in the UI
 
 Images are built by the [push images job](https://prow.k8s.io/?repo=kubernetes-sigs%2Fcluster-api-provider-gcp&job=post-cluster-api-provider-gcp-push-images) after pushing a tag.
 
-To promote images from the staging repository to the production registry (`registry.k8s.io/cluster-api-provider-gcp`):
+To promote images from the staging repository to the production registry (`registry.k8s.io/cluster-api-gcp`):
 
   1. Wait until images for the tag have been built and pushed to the [staging repository](https://console.cloud.google.com/gcr/images/k8s-staging-cluster-api-gcp/global/cluster-api-gcp-controller) by
       the [push images job](https://prow.k8s.io/?repo=kubernetes-sigs%2Fcluster-api-provider-gcp&job=post-cluster-api-provider-gcp-push-images).
