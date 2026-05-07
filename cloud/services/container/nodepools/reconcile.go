@@ -154,20 +154,26 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		templateLabels = nil
 	}
 
+	// Run all checks before applying any update so that a persistent diff in one
+	// category cannot permanently starve updates in another. GKE only allows one
+	// concurrent operation per node pool, so we apply one per cycle (with requeue)
+	// in priority order: size first (user-initiated scaling is most time-sensitive),
+	// then autoscaling config, then general config.
+	needUpdateSize, setNodePoolSizeRequest := s.checkDiffAndPrepareUpdateSize(nodePool)
+	needUpdateAutoscaling, setNodePoolAutoscalingRequest := s.checkDiffAndPrepareUpdateAutoscaling(nodePool)
 	needUpdateConfig, nodePoolUpdateConfigRequest := s.checkDiffAndPrepareUpdateConfig(nodePool, templateLabels)
-	if needUpdateConfig {
-		log.Info("Node pool config update required", "request", nodePoolUpdateConfigRequest)
-		err = s.updateNodePoolConfig(ctx, nodePoolUpdateConfigRequest)
+
+	if needUpdateSize {
+		log.Info("Size update required")
+		err = s.updateNodePoolSize(ctx, setNodePoolSizeRequest)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("node pool config update (either version/labels/taints/locations/image type/network tag/linux node config or all) failed: %w", err)
+			return ctrl.Result{}, err
 		}
-		log.Info("Node pool config updating in progress")
-		s.scope.GCPManagedMachinePool.Status.Ready = true
+		log.Info("Node pool size updating in progress")
 		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolUpdatingCondition)
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
-	needUpdateAutoscaling, setNodePoolAutoscalingRequest := s.checkDiffAndPrepareUpdateAutoscaling(nodePool)
 	if needUpdateAutoscaling {
 		log.Info("Auto scaling update required")
 		err = s.updateNodePoolAutoscaling(ctx, setNodePoolAutoscalingRequest)
@@ -179,14 +185,14 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
-	needUpdateSize, setNodePoolSizeRequest := s.checkDiffAndPrepareUpdateSize(nodePool)
-	if needUpdateSize {
-		log.Info("Size update required")
-		err = s.updateNodePoolSize(ctx, setNodePoolSizeRequest)
+	if needUpdateConfig {
+		log.Info("Node pool config update required", "request", nodePoolUpdateConfigRequest)
+		err = s.updateNodePoolConfig(ctx, nodePoolUpdateConfigRequest)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("node pool config update (either version/labels/taints/locations/image type/network tag/linux node config or all) failed: %w", err)
 		}
-		log.Info("Node pool size updating in progress")
+		log.Info("Node pool config updating in progress")
+		s.scope.GCPManagedMachinePool.Status.Ready = true
 		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolUpdatingCondition)
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
