@@ -403,11 +403,15 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 			Tags: desiredNetworkTags,
 		}
 	}
-	// LinuxNodeConfig
-	desiredLinuxNodeConfig := infrav1exp.ConvertToSdkLinuxNodeConfig(s.scope.GCPManagedMachinePool.Spec.LinuxNodeConfig)
-	if !cmp.Equal(desiredLinuxNodeConfig, existingNodePool.GetConfig().GetLinuxNodeConfig(), cmpopts.IgnoreUnexported(containerpb.LinuxNodeConfig{})) {
-		needUpdate = true
-		updateNodePoolRequest.LinuxNodeConfig = desiredLinuxNodeConfig
+	// LinuxNodeConfig — only compare when the user has set it. ConvertToSdkLinuxNodeConfig
+	// returns a non-nil pointer even for nil input, which always differs from the nil
+	// GKE returns for pools with no linux node config, producing a spurious update loop.
+	if s.scope.GCPManagedMachinePool.Spec.LinuxNodeConfig != nil {
+		desiredLinuxNodeConfig := infrav1exp.ConvertToSdkLinuxNodeConfig(s.scope.GCPManagedMachinePool.Spec.LinuxNodeConfig)
+		if !cmp.Equal(desiredLinuxNodeConfig, existingNodePool.GetConfig().GetLinuxNodeConfig(), cmpopts.IgnoreUnexported(containerpb.LinuxNodeConfig{})) {
+			needUpdate = true
+			updateNodePoolRequest.LinuxNodeConfig = desiredLinuxNodeConfig
+		}
 	}
 
 	return needUpdate, &updateNodePoolRequest
