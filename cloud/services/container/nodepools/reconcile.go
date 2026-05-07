@@ -430,11 +430,16 @@ func (s *Service) checkDiffAndPrepareUpdateAutoscaling(existingNodePool *contain
 
 func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.NodePool) (bool, *containerpb.SetNodePoolSizeRequest) {
 	needUpdate := false
-	desiredAutoscaling := infrav1exp.ConvertToSdkAutoscaling(s.scope.GCPManagedMachinePool.Spec.Scaling)
 
-	if desiredAutoscaling.GetEnabled() {
-		// Do not update node pool size if autoscaling is enabled.
-		return false, nil
+	// Only skip size update if autoscaling is explicitly configured and enabled.
+	// ConvertToSdkAutoscaling returns {Enabled: true} when passed nil, so without this
+	// guard any node pool with no Spec.Scaling set would have manual size updates silently
+	// suppressed.
+	if s.scope.GCPManagedMachinePool.Spec.Scaling != nil {
+		desiredAutoscaling := infrav1exp.ConvertToSdkAutoscaling(s.scope.GCPManagedMachinePool.Spec.Scaling)
+		if desiredAutoscaling.GetEnabled() {
+			return false, nil
+		}
 	}
 
 	setNodePoolSizeRequest := containerpb.SetNodePoolSizeRequest{
