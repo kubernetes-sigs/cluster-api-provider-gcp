@@ -144,7 +144,17 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	needUpdateConfig, nodePoolUpdateConfigRequest := s.checkDiffAndPrepareUpdateConfig(nodePool)
+	// Fetch instance template labels for AdditionalLabels sync. GKE does not echo
+	// NodeConfig.ResourceLabels in GetNodePool responses; the instance template's
+	// properties.labels is the authoritative source of what labels GKE stamps onto
+	// every node in the pool. On error we proceed without label sync for this cycle.
+	templateLabels, err := s.fetchInstanceTemplateLabels(ctx, nodePool)
+	if err != nil {
+		log.Error(err, "Failed to read instance template labels, skipping AdditionalLabels sync this cycle")
+		templateLabels = nil
+	}
+
+	needUpdateConfig, nodePoolUpdateConfigRequest := s.checkDiffAndPrepareUpdateConfig(nodePool, templateLabels)
 	if needUpdateConfig {
 		log.Info("Node pool config update required", "request", nodePoolUpdateConfigRequest)
 		err = s.updateNodePoolConfig(ctx, nodePoolUpdateConfigRequest)
@@ -286,6 +296,47 @@ func (s *Service) getInstances(ctx context.Context, nodePool *containerpb.NodePo
 	return instances, nil
 }
 
+// fetchInstanceTemplateLabels returns the properties.labels from the instance template
+// used by the first instance group in the node pool. These are the labels GKE stamps
+// onto every node in the pool and are the authoritative source for AdditionalLabels sync.
+// Returns nil if the node pool has no instance groups yet.
+func (s *Service) fetchInstanceTemplateLabels(ctx context.Context, nodePool *containerpb.NodePool) (map[string]string, error) {
+	urls := nodePool.GetInstanceGroupUrls()
+	if len(urls) == 0 {
+		return nil, nil
+	}
+	igURL, err := resourceurl.Parse(urls[0])
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing instance group url")
+	}
+	mig, err := s.scope.InstanceGroupManagersClient().Get(ctx, &computepb.GetInstanceGroupManagerRequest{
+		InstanceGroupManager: igURL.Name,
+		Project:              igURL.Project,
+		Zone:                 igURL.Location,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting instance group manager")
+	}
+	// Instance template URL format:
+	// https://www.googleapis.com/compute/v1/projects/{project}/global/instanceTemplates/{name}
+	templateURL := mig.GetInstanceTemplate()
+	if templateURL == "" {
+		return nil, nil
+	}
+	parts := strings.SplitN(strings.TrimPrefix(templateURL, "https://www.googleapis.com/compute/v1/projects/"), "/", 4)
+	if len(parts) != 4 {
+		return nil, errors.Errorf("unexpected instance template url format: %s", templateURL)
+	}
+	tmpl, err := s.scope.InstanceTemplatesClient().Get(ctx, &computepb.GetInstanceTemplateRequest{
+		Project:          parts[0],
+		InstanceTemplate: parts[3],
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting instance template")
+	}
+	return tmpl.GetProperties().GetLabels(), nil
+}
+
 func (s *Service) createNodePool(ctx context.Context, log *logr.Logger) error {
 	log.V(2).Info("Running pre-flight checks on machine pool before creation")
 	if err := shared.ManagedMachinePoolPreflightCheck(s.scope.GCPManagedMachinePool, s.scope.MachinePool, s.scope.Region()); err != nil {
@@ -345,7 +396,7 @@ func (s *Service) deleteNodePool(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.NodePool) (bool, *containerpb.UpdateNodePoolRequest) {
+func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.NodePool, existingTemplateLabels map[string]string) (bool, *containerpb.UpdateNodePoolRequest) {
 	needUpdate := false
 	updateNodePoolRequest := containerpb.UpdateNodePoolRequest{
 		Name: s.scope.NodePoolFullName(),
@@ -382,11 +433,20 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 		needUpdate = true
 		updateNodePoolRequest.ImageType = desiredNodePool.GetConfig().GetImageType()
 	}
-	// Additional resource labels
-	if !cmp.Equal(desiredNodePool.GetConfig().GetResourceLabels(), existingNodePool.GetConfig().GetResourceLabels()) {
-		needUpdate = true
-		updateNodePoolRequest.ResourceLabels = &containerpb.ResourceLabels{
-			Labels: desiredNodePool.GetConfig().GetResourceLabels(),
+	// Resource labels (AdditionalLabels) — GKE does not echo NodeConfig.ResourceLabels in
+	// GetNodePool responses, so we compare against the instance template's properties.labels
+	// instead (see fetchInstanceTemplateLabels). We use a subset check: all desired labels
+	// must be present with the correct value; GKE-internal labels on the template are ignored.
+	if existingTemplateLabels != nil {
+		desiredResourceLabels := scope.NodePoolResourceLabels(s.scope.GCPManagedMachinePool.Spec.AdditionalLabels, s.scope.GCPManagedControlPlane.Spec.ClusterName)
+		for k, v := range desiredResourceLabels {
+			if existingTemplateLabels[k] != v {
+				needUpdate = true
+				updateNodePoolRequest.ResourceLabels = &containerpb.ResourceLabels{
+					Labels: desiredResourceLabels,
+				}
+				break
+			}
 		}
 	}
 	// Locations
