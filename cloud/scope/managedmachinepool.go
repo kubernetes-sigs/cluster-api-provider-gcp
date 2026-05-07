@@ -43,6 +43,7 @@ import (
 type ManagedMachinePoolScopeParams struct {
 	ManagedClusterClient        *container.ClusterManagerClient
 	InstanceGroupManagersClient *compute.InstanceGroupManagersClient
+	InstanceTemplatesClient     *compute.InstanceTemplatesClient
 	Client                      client.Client
 	Cluster                     *clusterv1.Cluster
 	MachinePool                 *clusterv1.MachinePool
@@ -84,6 +85,13 @@ func NewManagedMachinePoolScope(ctx context.Context, params ManagedMachinePoolSc
 		}
 		params.InstanceGroupManagersClient = instanceGroupManagersClient
 	}
+	if params.InstanceTemplatesClient == nil {
+		instanceTemplatesClient, err := newInstanceTemplatesRESTClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
+		if err != nil {
+			return nil, errors.Errorf("failed to create gcp instance templates client: %v", err)
+		}
+		params.InstanceTemplatesClient = instanceTemplatesClient
+	}
 
 	helper, err := v1beta1patch.NewHelper(params.GCPManagedMachinePool, params.Client)
 	if err != nil {
@@ -91,14 +99,15 @@ func NewManagedMachinePoolScope(ctx context.Context, params ManagedMachinePoolSc
 	}
 
 	return &ManagedMachinePoolScope{
-		client:                 params.Client,
-		Cluster:                params.Cluster,
-		MachinePool:            params.MachinePool,
-		GCPManagedControlPlane: params.GCPManagedControlPlane,
-		GCPManagedMachinePool:  params.GCPManagedMachinePool,
-		mcClient:               params.ManagedClusterClient,
-		migClient:              params.InstanceGroupManagersClient,
-		patchHelper:            helper,
+		client:                  params.Client,
+		Cluster:                 params.Cluster,
+		MachinePool:             params.MachinePool,
+		GCPManagedControlPlane:  params.GCPManagedControlPlane,
+		GCPManagedMachinePool:   params.GCPManagedMachinePool,
+		mcClient:                params.ManagedClusterClient,
+		migClient:               params.InstanceGroupManagersClient,
+		instanceTemplatesClient: params.InstanceTemplatesClient,
+		patchHelper:             helper,
 	}, nil
 }
 
@@ -112,8 +121,9 @@ type ManagedMachinePoolScope struct {
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	GCPManagedMachinePool  *infrav1exp.GCPManagedMachinePool
-	mcClient               *container.ClusterManagerClient
-	migClient              *compute.InstanceGroupManagersClient
+	mcClient                *container.ClusterManagerClient
+	migClient               *compute.InstanceGroupManagersClient
+	instanceTemplatesClient *compute.InstanceTemplatesClient
 }
 
 // PatchObject persists the managed control plane configuration and status.
@@ -133,6 +143,7 @@ func (s *ManagedMachinePoolScope) PatchObject() error {
 func (s *ManagedMachinePoolScope) Close() error {
 	s.mcClient.Close()
 	s.migClient.Close()
+	s.instanceTemplatesClient.Close()
 	return s.PatchObject()
 }
 
@@ -149,6 +160,11 @@ func (s *ManagedMachinePoolScope) ManagedMachinePoolClient() *container.ClusterM
 // InstanceGroupManagersClient returns a client used to interact with GCP MIG.
 func (s *ManagedMachinePoolScope) InstanceGroupManagersClient() *compute.InstanceGroupManagersClient {
 	return s.migClient
+}
+
+// InstanceTemplatesClient returns a client used to interact with GCE instance templates.
+func (s *ManagedMachinePoolScope) InstanceTemplatesClient() *compute.InstanceTemplatesClient {
+	return s.instanceTemplatesClient
 }
 
 // NodePoolVersion returns the k8s version of the node pool.
