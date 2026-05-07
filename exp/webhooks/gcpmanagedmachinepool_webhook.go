@@ -279,6 +279,20 @@ func (*GCPManagedMachinePool) ValidateUpdate(_ context.Context, oldObj, newObj r
 		allErrs = append(allErrs, err)
 	}
 
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "preemptible"),
+		old.Spec.Preemptible,
+		r.Spec.Preemptible); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "spot"),
+		old.Spec.Spot,
+		r.Spec.Spot); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
 	if len(allErrs) == 0 {
 		return nil, nil
 	}

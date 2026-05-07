@@ -269,6 +269,12 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 			Type: containerpb.SandboxConfig_GVISOR,
 		}
 	}
+	if ptr.Deref(nodePool.Spec.Preemptible, false) {
+		sdkNodePool.Config.Preemptible = true
+	}
+	if ptr.Deref(nodePool.Spec.Spot, false) {
+		sdkNodePool.Config.Spot = true
+	}
 	if machinePool.Spec.Template.Spec.Version != "" {
 		sdkNodePool.Version = strings.Replace(machinePool.Spec.Template.Spec.Version, "v", "", 1)
 	}
