@@ -238,19 +238,32 @@ func (s *Service) createBaseKubeConfig(contextName string, cluster *containerpb.
 	return cfg, nil
 }
 
+// tokenEmailResolver resolves the service account email used for token generation.
+type tokenEmailResolver interface {
+	Email(ctx context.Context) (string, error)
+}
+
+// credentialEmailResolver uses an explicit service account email from loaded credentials.
+type credentialEmailResolver struct {
+	email string
+}
+
+func (r credentialEmailResolver) Email(_ context.Context) (string, error) {
+	return r.email, nil
+}
+
+// metadataEmailResolver discovers the bound service account email from the GKE
+// metadata server, used when running under Workload Identity Federation.
+type metadataEmailResolver struct{}
+
+func (r metadataEmailResolver) Email(ctx context.Context) (string, error) {
+	return metadata.EmailWithContext(ctx, "default")
+}
+
 func (s *Service) generateToken(ctx context.Context) (string, error) {
-	email := ""
-	if cred := s.scope.GetCredential(); cred != nil {
-		email = cred.ClientEmail
-	}
-	if email == "" {
-		// WIF / implicit ADC path: discover the bound GCP service account email
-		// from the GKE metadata server.
-		var err error
-		email, err = metadata.EmailWithContext(ctx, "default")
-		if err != nil {
-			return "", fmt.Errorf("fetching service account email from metadata server: %w", err)
-		}
+	email, err := s.emailResolver.Email(ctx)
+	if err != nil {
+		return "", fmt.Errorf("fetching service account email from metadata server: %w", err)
 	}
 	req := &credentialspb.GenerateAccessTokenRequest{
 		Name:  "projects/-/serviceAccounts/" + email,
