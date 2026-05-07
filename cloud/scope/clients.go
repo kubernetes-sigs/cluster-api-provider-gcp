@@ -183,6 +183,24 @@ func newInstanceGroupManagerClient(ctx context.Context, credentialsRef *infrav1.
 	return instanceGroupManagersClient, nil
 }
 
+func newInstanceTemplatesRESTClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*computerest.InstanceTemplatesClient, error) {
+	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	if err != nil {
+		return nil, fmt.Errorf("getting default gcp client options: %w", err)
+	}
+
+	if endpoints != nil && endpoints.ComputeServiceEndpoint != "" {
+		opts = append(opts, option.WithEndpoint(endpoints.ComputeServiceEndpoint))
+	}
+
+	instanceTemplatesClient, err := computerest.NewInstanceTemplatesRESTClient(ctx, opts...)
+	if err != nil {
+		return nil, errors.Errorf("failed to create gcp instance templates rest client: %v", err)
+	}
+
+	return instanceTemplatesClient, nil
+}
+
 func newTagBindingsClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, location string, endpoints *infrav1.ServiceEndpoints) (*resourcemanager.TagBindingsClient, error) {
 	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
 
