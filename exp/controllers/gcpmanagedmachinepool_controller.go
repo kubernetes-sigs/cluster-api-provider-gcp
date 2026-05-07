@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/nodepools"
 	"sigs.k8s.io/cluster-api/util/annotations"
-	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/record"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	exputil "sigs.k8s.io/cluster-api/exp/util"
 	"sigs.k8s.io/cluster-api/util"
@@ -261,7 +260,11 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 
 	if !gcpManagedControlPlane.Status.Ready {
 		log.Info("Control plane is not ready yet")
-		v1beta1conditions.MarkFalse(gcpManagedMachinePool, infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.WaitingForGKEControlPlaneReason, clusterv1beta1.ConditionSeverityInfo, "")
+		conditions.Set(gcpManagedMachinePool, metav1.Condition{
+			Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+			Status: metav1.ConditionFalse,
+			Reason: infrav1exp.WaitingForGKEControlPlaneReason,
+		})
 		return ctrl.Result{}, nil
 	}
 
@@ -362,7 +365,8 @@ func (r *GCPManagedMachinePoolReconciler) reconcileDelete(ctx context.Context, m
 		}
 	}
 
-	if v1beta1conditions.Get(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.GKEMachinePoolDeletingCondition).Reason == infrav1exp.GKEMachinePoolDeletedReason {
+	cond := conditions.Get(managedMachinePoolScope.GCPManagedMachinePool, string(infrav1exp.GKEMachinePoolDeletingCondition))
+	if cond != nil && cond.Reason == infrav1exp.GKEMachinePoolDeletedReason {
 		controllerutil.RemoveFinalizer(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.ManagedMachinePoolFinalizer)
 	}
 

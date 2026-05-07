@@ -24,6 +24,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
@@ -32,7 +33,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/networks"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/subnets"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
@@ -179,20 +179,22 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 		return ctrl.Result{}, err
 	}
 
-	failureDomains := make(clusterv1beta1.FailureDomains, len(zones))
+	failureDomains := []clusterv1.FailureDomain{}
 	for _, zone := range zones {
 		if len(clusterScope.GCPCluster.Spec.FailureDomains) > 0 {
 			for _, fd := range clusterScope.GCPCluster.Spec.FailureDomains {
 				if fd == zone.Name {
-					failureDomains[zone.Name] = clusterv1beta1.FailureDomainSpec{
-						ControlPlane: true,
-					}
+					failureDomains = append(failureDomains, clusterv1.FailureDomain{
+						Name:         zone.Name,
+						ControlPlane: ptr.To(true),
+					})
 				}
 			}
 		} else {
-			failureDomains[zone.Name] = clusterv1beta1.FailureDomainSpec{
-				ControlPlane: true,
-			}
+			failureDomains = append(failureDomains, clusterv1.FailureDomain{
+				Name:         zone.Name,
+				ControlPlane: ptr.To(true),
+			})
 		}
 	}
 

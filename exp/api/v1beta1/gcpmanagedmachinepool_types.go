@@ -18,9 +18,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
-
 const (
 	// MachinePoolFinalizer is the finalizer for the machine pool.
 	MachinePoolFinalizer = "gcpmachinepool.infrastructure.cluster.x-k8s.io"
@@ -118,8 +116,11 @@ type GCPManagedMachinePoolStatus struct {
 	// Replicas is the most recently observed number of replicas.
 	// +optional
 	Replicas int32 `json:"replicas"`
-	// Conditions specifies the cpnditions for the managed machine pool
-	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+	// Conditions specifies the conditions for the managed machine pool
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 	// InfrastructureMachineKind is the kind of the infrastructure resources behind MachinePool Machines.
 	// +optional
 	InfrastructureMachineKind string `json:"infrastructureMachineKind,omitempty"`
@@ -214,12 +215,12 @@ const (
 )
 
 // GetConditions returns the machine pool conditions.
-func (r *GCPManagedMachinePool) GetConditions() clusterv1beta1.Conditions {
+func (r *GCPManagedMachinePool) GetConditions() []metav1.Condition {
 	return r.Status.Conditions
 }
 
 // SetConditions sets the status conditions for the GCPManagedMachinePool.
-func (r *GCPManagedMachinePool) SetConditions(conditions clusterv1beta1.Conditions) {
+func (r *GCPManagedMachinePool) SetConditions(conditions []metav1.Condition) {
 	r.Status.Conditions = conditions
 }
 
