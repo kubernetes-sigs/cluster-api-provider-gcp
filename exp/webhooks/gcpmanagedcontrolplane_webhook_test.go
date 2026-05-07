@@ -225,6 +225,38 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "pod secondaryRangeName and cidrBlock together should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod: &expinfrav1.ClusterNetworkPod{
+							CidrBlock:          "10.0.0.0/14",
+							SecondaryRangeName: ptr.To("pods-range"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "service secondaryRangeName and cidrBlock together should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Service: &expinfrav1.ClusterNetworkService{
+							CidrBlock:          "10.4.0.0/19",
+							SecondaryRangeName: ptr.To("services-range"),
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -337,6 +369,41 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 					ClusterNetwork: &expinfrav1.ClusterNetwork{
 						UseIPAliases: true,
 						Pod:          &expinfrav1.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range-2")},
+					},
+				},
+			},
+		},
+		{
+			name:        "setting pod secondary range name when previously unset should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				ClusterName: "default_cluster1",
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod:          &expinfrav1.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range")},
+					},
+				},
+			},
+		},
+		{
+			name:        "removing pod secondary range name when previously set should cause an error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				ClusterName: "default_cluster1",
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod:          &expinfrav1.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range")},
+					},
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				ClusterName: "default_cluster1",
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod:          &expinfrav1.ClusterNetworkPod{},
 					},
 				},
 			},

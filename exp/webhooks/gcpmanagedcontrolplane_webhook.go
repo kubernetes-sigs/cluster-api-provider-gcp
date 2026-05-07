@@ -127,17 +127,31 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, obj runtime.Obj
 	}
 
 	cn := r.Spec.ClusterNetwork
-	if cn != nil && !cn.UseIPAliases {
-		if cn.Pod != nil && cn.Pod.SecondaryRangeName != nil {
+	if cn != nil {
+		if !cn.UseIPAliases {
+			if cn.Pod != nil && cn.Pod.SecondaryRangeName != nil {
+				allErrs = append(allErrs, field.Invalid(
+					field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
+					cn.Pod.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				))
+			}
+			if cn.Service != nil && cn.Service.SecondaryRangeName != nil {
+				allErrs = append(allErrs, field.Invalid(
+					field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
+					cn.Service.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				))
+			}
+		}
+		if cn.Pod != nil && cn.Pod.CidrBlock != "" && cn.Pod.SecondaryRangeName != nil {
 			allErrs = append(allErrs, field.Invalid(
 				field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
-				cn.Pod.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				cn.Pod.SecondaryRangeName, "secondaryRangeName and cidrBlock are mutually exclusive",
 			))
 		}
-		if cn.Service != nil && cn.Service.SecondaryRangeName != nil {
+		if cn.Service != nil && cn.Service.CidrBlock != "" && cn.Service.SecondaryRangeName != nil {
 			allErrs = append(allErrs, field.Invalid(
 				field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
-				cn.Service.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				cn.Service.SecondaryRangeName, "secondaryRangeName and cidrBlock are mutually exclusive",
 			))
 		}
 	}
