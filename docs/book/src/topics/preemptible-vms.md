@@ -52,3 +52,34 @@ spec:
 ```
 
 NOTE: specifying `preemptible: true` and `provisioningModel: Spot` is equivalent to only `provisioningModel: Spot`. Spot takes priority. 
+
+## GKE Managed Node Pools
+
+For GKE clusters, interruptible capacity is configured directly on `GCPManagedMachinePool` using two distinct boolean fields:
+
+- **`spot`** — creates nodes as [Spot VMs](https://cloud.google.com/compute/docs/instances/spot). Spot VMs can be reclaimed at any time and are the recommended choice for new workloads.
+- **`preemptible`** — creates nodes as [Preemptible VMs](https://cloud.google.com/compute/docs/instances/preemptible). Preemptible VMs have a maximum lifetime of 24 hours and are the legacy offering.
+
+Both fields are **immutable** — they cannot be changed after the node pool is created.
+
+### Spot node pool
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedMachinePool
+metadata:
+  name: spot-nodepool
+spec:
+  spot: true
+```
+
+### Preemptible node pool
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedMachinePool
+metadata:
+  name: preemptible-nodepool
+spec:
+  preemptible: true
+```
