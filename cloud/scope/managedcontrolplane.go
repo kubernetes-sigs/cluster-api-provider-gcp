@@ -22,8 +22,6 @@ import (
 
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
-	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
-
 	container "cloud.google.com/go/container/apiv1"
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
@@ -31,6 +29,8 @@ import (
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
 	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -137,6 +137,12 @@ func (s *ManagedControlPlaneScope) PatchObject() error {
 			infrav1exp.GKEControlPlaneCreatingCondition,
 			infrav1exp.GKEControlPlaneUpdatingCondition,
 			infrav1exp.GKEControlPlaneDeletingCondition,
+		}},
+		v1beta1patch.WithOwnedV1Beta2Conditions{Conditions: []string{
+			string(infrav1exp.GKEControlPlaneReadyCondition),
+			string(infrav1exp.GKEControlPlaneCreatingCondition),
+			string(infrav1exp.GKEControlPlaneUpdatingCondition),
+			string(infrav1exp.GKEControlPlaneDeletingCondition),
 		}})
 }
 
@@ -148,8 +154,13 @@ func (s *ManagedControlPlaneScope) Close() error {
 	return s.PatchObject()
 }
 
-// ConditionSetter return a condition setter (which is GCPManagedControlPlane itself).
+// ConditionSetter returns a v1beta1 condition setter for this scope.
 func (s *ManagedControlPlaneScope) ConditionSetter() v1beta1conditions.Setter {
+	return s.GCPManagedControlPlane
+}
+
+// V1Beta2ConditionSetter returns a v1beta2 condition setter for this scope.
+func (s *ManagedControlPlaneScope) V1Beta2ConditionSetter() v1beta2conditions.Setter {
 	return s.GCPManagedControlPlane
 }
 

@@ -261,6 +261,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 	if !gcpManagedControlPlane.Status.Ready {
 		log.Info("Control plane is not ready yet")
 		v1beta1conditions.MarkFalse(gcpManagedMachinePool, infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.WaitingForGKEControlPlaneReason, clusterv1beta1.ConditionSeverityInfo, "")
+
 		return ctrl.Result{}, nil
 	}
 

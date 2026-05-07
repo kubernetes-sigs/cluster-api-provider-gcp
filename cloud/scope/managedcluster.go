@@ -174,7 +174,7 @@ func (s *ManagedClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags 
 func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 	endpoint := clusterv1.APIEndpoint{
 		Host: s.GCPManagedCluster.Spec.ControlPlaneEndpoint.Host,
-		Port: 443,
+		Port: APIServerPort,
 	}
 	if s.Cluster.Spec.ClusterNetwork.APIServerPort != 0 {
 		endpoint.Port = s.Cluster.Spec.ClusterNetwork.APIServerPort

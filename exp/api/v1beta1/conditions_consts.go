@@ -38,6 +38,8 @@ const (
 	GKEControlPlaneCreatingReason = "GKEControlPlaneCreating"
 	// GKEControlPlaneCreatedReason used to report GKE control plane is created.
 	GKEControlPlaneCreatedReason = "GKEControlPlaneCreated"
+	// GKEControlPlaneUpdatingReason used to report GKE control plane being updated.
+	GKEControlPlaneUpdatingReason = "GKEControlPlaneUpdating"
 	// GKEControlPlaneUpdatedReason used to report GKE control plane is updated.
 	GKEControlPlaneUpdatedReason = "GKEControlPlaneUpdated"
 	// GKEControlPlaneDeletingReason used to report GKE control plane being deleted.
@@ -66,6 +68,8 @@ const (
 	GKEMachinePoolCreatingReason = "GKEMachinePoolCreating"
 	// GKEMachinePoolCreatedReason used to report GKE node pool is created.
 	GKEMachinePoolCreatedReason = "GKEMachinePoolCreated"
+	// GKEMachinePoolUpdatingReason used to report GKE node pool being updated.
+	GKEMachinePoolUpdatingReason = "GKEMachinePoolUpdating"
 	// GKEMachinePoolUpdatedReason used to report GKE node pool is updated.
 	GKEMachinePoolUpdatedReason = "GKEMachinePoolUpdated"
 	// GKEMachinePoolDeletingReason used to report GKE node pool being deleted.

@@ -65,6 +65,23 @@ type GKEConfigStatus struct {
 	// Conditions defines current service state of the GKEConfig.
 	// +optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+
+	// v1beta2 groups all the fields that will be added or modified in GKEConfig's status
+	// with the v1beta2 version of the Cluster API contract.
+	// +optional
+	V1Beta2 *GKEConfigV1Beta2Status `json:"v1beta2,omitempty"`
+}
+
+// GKEConfigV1Beta2Status groups the fields that will be added or modified in GKEConfig's status
+// with the v1beta2 version of the Cluster API contract.
+type GKEConfigV1Beta2Status struct {
+	// conditions represents the observations of a GKEConfig's current state.
+	// Known condition types are Ready.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	// +kubebuilder:validation:MaxItems=32
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true

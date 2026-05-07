@@ -192,12 +192,13 @@ func (s *ClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags {
 func (s *ClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 	endpoint := clusterv1.APIEndpoint{
 		Host: s.GCPCluster.Spec.ControlPlaneEndpoint.Host,
-		Port: 443,
+		Port: APIServerPort,
 	}
 
 	if s.Cluster.Spec.ClusterNetwork.APIServerPort != 0 {
 		endpoint.Port = s.Cluster.Spec.ClusterNetwork.APIServerPort
 	}
+
 	return endpoint
 }
 
