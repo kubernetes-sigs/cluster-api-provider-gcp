@@ -68,7 +68,8 @@ type ClusterNetworkPod struct {
 	CidrBlock string `json:"cidrBlock,omitempty"`
 
 	// SecondaryRangeName is the name of the existing secondary range in the cluster's subnetwork to
-	// use for pod IP addresses. Only applicable if UseIPAliases is true. This setting is permanent.
+	// use for pod IP addresses. The range must already exist on the subnet. Only applicable if
+	// UseIPAliases is true. Mutually exclusive with CidrBlock. This setting is permanent.
 	// +optional
 	SecondaryRangeName *string `json:"secondaryRangeName,omitempty"`
 }
@@ -82,7 +83,8 @@ type ClusterNetworkService struct {
 	CidrBlock string `json:"cidrBlock,omitempty"`
 
 	// SecondaryRangeName is the name of the existing secondary range in the cluster's subnetwork to
-	// use for service cluster IPs. Only applicable if UseIPAliases is true. This setting is permanent.
+	// use for service cluster IPs. The range must already exist on the subnet. Only applicable if
+	// UseIPAliases is true. Mutually exclusive with CidrBlock. This setting is permanent.
 	// +optional
 	SecondaryRangeName *string `json:"secondaryRangeName,omitempty"`
 }

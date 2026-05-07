@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -126,18 +127,38 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, obj runtime.Obj
 		}
 	}
 
-	cn := r.Spec.ClusterNetwork
-	if cn != nil && !cn.UseIPAliases {
-		if cn.Pod != nil && cn.Pod.SecondaryRangeName != nil {
+	if cn := r.Spec.ClusterNetwork; cn != nil {
+		var podSecondaryRange, serviceSecondaryRange string
+		if cn.Pod != nil {
+			podSecondaryRange = ptr.Deref(cn.Pod.SecondaryRangeName, "")
+		}
+		if cn.Service != nil {
+			serviceSecondaryRange = ptr.Deref(cn.Service.SecondaryRangeName, "")
+		}
+		if !cn.UseIPAliases {
+			if podSecondaryRange != "" {
+				allErrs = append(allErrs, field.Invalid(
+					field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
+					cn.Pod.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				))
+			}
+			if serviceSecondaryRange != "" {
+				allErrs = append(allErrs, field.Invalid(
+					field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
+					cn.Service.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				))
+			}
+		}
+		if podSecondaryRange != "" && cn.Pod.CidrBlock != "" {
 			allErrs = append(allErrs, field.Invalid(
 				field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
-				cn.Pod.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				cn.Pod.SecondaryRangeName, "secondaryRangeName and cidrBlock are mutually exclusive",
 			))
 		}
-		if cn.Service != nil && cn.Service.SecondaryRangeName != nil {
+		if serviceSecondaryRange != "" && cn.Service.CidrBlock != "" {
 			allErrs = append(allErrs, field.Invalid(
 				field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
-				cn.Service.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				cn.Service.SecondaryRangeName, "secondaryRangeName and cidrBlock are mutually exclusive",
 			))
 		}
 	}
