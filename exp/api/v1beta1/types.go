@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
+	"k8s.io/klog/v2"
 )
 
 // TaintEffect is the effect for a Kubernetes taint.
@@ -137,6 +138,8 @@ func ConvertToSdkWorkloadMetadataMode(mode *WorkloadMetadataMode) *containerpb.W
 		return &containerpb.WorkloadMetadataConfig{Mode: containerpb.WorkloadMetadataConfig_GKE_METADATA}
 	case WorkloadMetadataModeGCEMetadata:
 		return &containerpb.WorkloadMetadataConfig{Mode: containerpb.WorkloadMetadataConfig_GCE_METADATA}
+	default:
+		klog.Warningf("unknown WorkloadMetadataMode %q, ignoring", *mode)
 	}
 	return nil
 }
