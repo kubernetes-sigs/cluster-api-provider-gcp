@@ -88,7 +88,7 @@ If you have an active interest and you want to get involved, you have real power
 
 ### Other ways to communicate with the contributors
 
-Please check in with us in the [#cluster-api-gcp] on Slack. 
+Please check in with us in the [#cluster-api-gcp] on Slack.
 
 ## Github Issues
 
