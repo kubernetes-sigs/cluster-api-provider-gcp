@@ -27,8 +27,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -36,7 +38,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// GCPLogCollector collects serial port output from GCP VM instances using gcloud CLI.
+// GCPLogCollector collects logs from GCP VM instances using gcloud CLI.
+// It collects serial port output (always works via GCP API) and optionally
+// attempts SSH-based collection for richer logs (kubelet, containerd, cloud-init).
 type GCPLogCollector struct{}
 
 func (c GCPLogCollector) CollectMachineLog(ctx context.Context, managementClusterClient client.Client, m *clusterv1.Machine, outputPath string) error {
@@ -45,7 +49,14 @@ func (c GCPLogCollector) CollectMachineLog(ctx context.Context, managementCluste
 		return err
 	}
 
-	return collectSerialLog(ctx, project, zone, instanceName, outputPath)
+	serialErr := collectSerialLog(ctx, project, zone, instanceName, outputPath)
+
+	sshErr := collectSSHLogs(ctx, project, zone, instanceName, outputPath)
+	if sshErr != nil {
+		klog.Warningf("SSH-based log collection failed for %s (serial logs may still be available): %v", instanceName, sshErr)
+	}
+
+	return serialErr
 }
 
 func (c GCPLogCollector) CollectMachinePoolLog(_ context.Context, _ client.Client, _ *clusterv1.MachinePool, _ string) error {
@@ -138,4 +149,130 @@ func collectSerialLog(ctx context.Context, project, zone, instanceName, outputPa
 	cmd.Stderr = os.Stderr
 
 	return cmd.Run()
+}
+
+type sshLogSpec struct {
+	fileName string
+	command  string
+}
+
+func collectSSHLogs(ctx context.Context, project, zone, instanceName, outputPath string) error {
+	sshKeyFile, err := prepareSSHKeyPair()
+	if err != nil {
+		return err
+	}
+
+	specs := []sshLogSpec{
+		{"kubelet.log", "sudo journalctl --no-pager --output=short-precise -u kubelet.service"},
+		{"containerd.log", "sudo journalctl --no-pager --output=short-precise -u containerd.service"},
+		{"cloud-init.log", "sudo cat /var/log/cloud-init.log"},
+		{"cloud-init-output.log", "sudo cat /var/log/cloud-init-output.log"},
+	}
+
+	funcs := make([]func() error, 0, len(specs))
+	for _, s := range specs {
+		funcs = append(funcs, func() error {
+			return executeSSHCommand(ctx, project, zone, instanceName, outputPath, sshKeyFile, s.fileName, s.command)
+		})
+	}
+
+	return aggregateConcurrent(funcs...)
+}
+
+func executeSSHCommand(ctx context.Context, project, zone, instanceName, outputPath, sshKeyFile, fileName, command string) error {
+	if err := os.MkdirAll(outputPath, 0o750); err != nil {
+		return err
+	}
+
+	f, err := os.Create(filepath.Join(outputPath, fileName)) //nolint:gosec
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	cmd := exec.CommandContext(ctx, //nolint:gosec
+		"gcloud", "compute", "ssh", "--quiet",
+		instanceName,
+		"--zone", zone,
+		"--project", project,
+		"--ssh-key-file", sshKeyFile,
+		"--command", command,
+		"--",
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "ConnectTimeout=30",
+	)
+
+	output, runErr := cmd.CombinedOutput()
+	if len(output) > 0 {
+		if _, writeErr := f.Write(output); writeErr != nil {
+			return kerrors.NewAggregate([]error{runErr, writeErr})
+		}
+	}
+
+	return runErr
+}
+
+// prepareSSHKeyPair ensures gcloud compute ssh can find a matching key pair.
+// gcloud expects <key-file>.pub alongside the private key, but the test-infra
+// preset-k8s-ssh mounts them at separate paths in a read-only secret volume.
+// Copy both keys to a writable temp directory so gcloud finds the pair.
+func prepareSSHKeyPair() (string, error) {
+	privKeyFile := os.Getenv("GCE_SSH_PRIVATE_KEY_FILE")
+	if privKeyFile == "" {
+		return "", fmt.Errorf("GCE_SSH_PRIVATE_KEY_FILE not set, skipping SSH log collection")
+	}
+
+	pubKeyFile := os.Getenv("GCE_SSH_PUBLIC_KEY_FILE")
+	if pubKeyFile == "" {
+		return "", fmt.Errorf("GCE_SSH_PUBLIC_KEY_FILE not set, cannot create key pair for gcloud")
+	}
+
+	privKeyBytes, err := os.ReadFile(privKeyFile) //nolint:gosec
+	if err != nil {
+		return "", errors.Wrapf(err, "reading private key from %s", privKeyFile)
+	}
+
+	pubKeyBytes, err := os.ReadFile(pubKeyFile) //nolint:gosec
+	if err != nil {
+		return "", errors.Wrapf(err, "reading public key from %s", pubKeyFile)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "capg-ssh-*")
+	if err != nil {
+		return "", errors.Wrap(err, "creating temp directory for SSH keys")
+	}
+
+	dst := filepath.Join(tmpDir, "ssh-key")
+	if err := os.WriteFile(dst, privKeyBytes, 0o600); err != nil {
+		return "", errors.Wrapf(err, "writing private key to %s", dst)
+	}
+	if err := os.WriteFile(dst+".pub", pubKeyBytes, 0o600); err != nil {
+		return "", errors.Wrapf(err, "writing public key to %s", dst+".pub")
+	}
+
+	klog.Infof("Prepared SSH key pair at %s for gcloud compatibility", dst)
+	return dst, nil
+}
+
+func aggregateConcurrent(funcs ...func() error) error {
+	ch := make(chan error, len(funcs))
+	var wg sync.WaitGroup
+	for _, f := range funcs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ch <- f()
+		}()
+	}
+	wg.Wait()
+	close(ch)
+
+	var errs []error
+	for err := range ch {
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return kerrors.NewAggregate(errs)
 }

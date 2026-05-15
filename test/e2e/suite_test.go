@@ -140,6 +140,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(configPath).To(BeAnExistingFile(), "Invalid test suite argument. e2e.config should be an existing file.")
 	Expect(os.MkdirAll(artifactFolder, 0o755)).To(Succeed(), "Invalid test suite argument. Can't create e2e.artifacts-folder %q", artifactFolder)
 
+	setupSSHKeyEnv()
+
 	By("Initializing a runtime.Scheme with all the GVK relevant for this test")
 	scheme := initScheme()
 
@@ -270,4 +272,26 @@ func tearDown(bootstrapClusterProvider bootstrap.ClusterProvider, bootstrapClust
 	if bootstrapClusterProvider != nil {
 		bootstrapClusterProvider.Dispose(context.TODO())
 	}
+}
+
+// setupSSHKeyEnv reads the SSH public key injected by the test-infra preset-k8s-ssh
+// (https://github.com/kubernetes/test-infra/blob/master/config/prow/cluster/ssh-key-secret/)
+// and sets GCP_SSH_KEY for clusterctl template substitution. The preset mounts the
+// ssh-key-secret and exposes GCE_SSH_PUBLIC_KEY_FILE / GCE_SSH_PRIVATE_KEY_FILE env vars.
+func setupSSHKeyEnv() {
+	pubKeyPath, ok := os.LookupEnv("GCE_SSH_PUBLIC_KEY_FILE")
+	if !ok || pubKeyPath == "" {
+		klog.Warning("GCE_SSH_PUBLIC_KEY_FILE not set — SSH key will not be injected into VM metadata")
+		return
+	}
+
+	pubKeyBytes, err := os.ReadFile(pubKeyPath) //nolint:gosec
+	if err != nil {
+		klog.Warningf("Failed to read SSH public key from %s: %v", pubKeyPath, err)
+		return
+	}
+
+	sshKey := fmt.Sprintf("capi:%s", strings.TrimSpace(string(pubKeyBytes)))
+	os.Setenv("GCP_SSH_KEY", sshKey)
+	klog.Infof("Set GCP_SSH_KEY for VM metadata injection (key from %s)", pubKeyPath)
 }
