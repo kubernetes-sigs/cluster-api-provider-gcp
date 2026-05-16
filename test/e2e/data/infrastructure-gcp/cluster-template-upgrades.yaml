@@ -5,6 +5,7 @@ metadata:
   name: "${CLUSTER_NAME}"
   labels:
     cni: "${CLUSTER_NAME}-crs-cni"
+    ccm: "${CLUSTER_NAME}-crs-ccm"
 spec:
   clusterNetwork:
     pods:
@@ -53,6 +54,16 @@ spec:
           cloud-provider: external
           allocate-node-cidrs: "false"
       kubernetesVersion: "${KUBERNETES_VERSION}"
+    files:
+    - content: |
+        [Global]
+
+        project-id = "${GCP_PROJECT}"
+        network-name = "${GCP_NETWORK_NAME}"
+        multizone = true
+      owner: root:root
+      path: /etc/kubernetes/cloud.config
+      permissions: "0744"
     joinConfiguration:
       nodeRegistration:
         name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
