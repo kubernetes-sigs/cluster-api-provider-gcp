@@ -27,13 +27,13 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/networks"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/subnets"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
@@ -187,11 +187,12 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 		return err
 	}
 
-	failureDomains := make(clusterv1beta1.FailureDomains, len(zones))
+	failureDomains := []clusterv1.FailureDomain{}
 	for _, zone := range zones {
-		failureDomains[zone.Name] = clusterv1beta1.FailureDomainSpec{
-			ControlPlane: false,
-		}
+		failureDomains = append(failureDomains, clusterv1.FailureDomain{
+			Name:         zone.Name,
+			ControlPlane: ptr.To(false),
+		})
 	}
 	clusterScope.SetFailureDomains(failureDomains)
 
