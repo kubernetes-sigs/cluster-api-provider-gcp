@@ -34,8 +34,8 @@ source "${REPO_ROOT}/hack/ensure-go.sh"
 source "${REPO_ROOT}/hack/ensure-kustomize.sh"
 
 # Configure e2e tests
-export GINKGO_NODES=3
-export GINKGO_ARGS="--fail-fast" # Other ginkgo args that need to be appended to the command.
+# Use --parallel to dynamically compute the number of Ginkgo nodes based on the available CPUs.
+export GINKGO_ARGS="--parallel --fail-fast"
 ARTIFACTS="${ARTIFACTS:-${PWD}/_artifacts}"
 mkdir -p "${ARTIFACTS}/logs/"
 
