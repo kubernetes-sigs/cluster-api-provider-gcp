@@ -69,6 +69,10 @@ spec:
     spec:
       instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
       image: "${KUBERNETES_IMAGE_UPGRADE_FROM}"
+      publicIP: true
+      additionalMetadata:
+      - key: "ssh-keys"
+        value: "${GCP_SSH_KEY}"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -102,6 +106,10 @@ spec:
     spec:
       instanceType: "${GCP_NODE_MACHINE_TYPE}"
       image: "${KUBERNETES_IMAGE_UPGRADE_FROM}"
+      publicIP: true
+      additionalMetadata:
+      - key: "ssh-keys"
+        value: "${GCP_SSH_KEY}"
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
@@ -144,6 +152,10 @@ spec:
     spec:
       instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
       image: "${KUBERNETES_IMAGE_UPGRADE_TO}"
+      publicIP: true
+      additionalMetadata:
+      - key: "ssh-keys"
+        value: "${GCP_SSH_KEY}"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
@@ -154,6 +166,10 @@ spec:
     spec:
       instanceType: "${GCP_NODE_MACHINE_TYPE}"
       image: "${KUBERNETES_IMAGE_UPGRADE_TO}"
+      publicIP: true
+      additionalMetadata:
+      - key: "ssh-keys"
+        value: "${GCP_SSH_KEY}"
 ---
 apiVersion: v1
 kind: ConfigMap

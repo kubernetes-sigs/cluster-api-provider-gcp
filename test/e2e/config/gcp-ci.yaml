@@ -114,6 +114,7 @@ variables:
   GKE_MACHINE_POOL_MIN_CRITICAL_ADDONS_ONLY: "0"
   GKE_MACHINE_POOL_MAX_CRITICAL_ADDONS_ONLY: "1"
   CAPG_LOGLEVEL: "4"
+  GCP_SSH_KEY: "${GCP_SSH_KEY:-}"
 
 intervals:
   default/wait-controllers: ["5m", "10s"]
