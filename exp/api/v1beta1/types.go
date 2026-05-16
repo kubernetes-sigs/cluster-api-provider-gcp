@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
+	"k8s.io/klog/v2"
 )
 
 // TaintEffect is the effect for a Kubernetes taint.
@@ -125,6 +126,22 @@ func ConvertToSdkCgroupMode(cgroupMode ManagedNodePoolCgroupMode) containerpb.Li
 		return containerpb.LinuxNodeConfig_CGROUP_MODE_V2
 	}
 	return containerpb.LinuxNodeConfig_CGROUP_MODE_UNSPECIFIED
+}
+
+// ConvertToSdkWorkloadMetadataMode converts a WorkloadMetadataMode to the GCP SDK WorkloadMetadataConfig.
+func ConvertToSdkWorkloadMetadataMode(mode *WorkloadMetadataMode) *containerpb.WorkloadMetadataConfig {
+	if mode == nil {
+		return nil
+	}
+	switch *mode {
+	case WorkloadMetadataModeGKEMetadata:
+		return &containerpb.WorkloadMetadataConfig{Mode: containerpb.WorkloadMetadataConfig_GKE_METADATA}
+	case WorkloadMetadataModeGCEMetadata:
+		return &containerpb.WorkloadMetadataConfig{Mode: containerpb.WorkloadMetadataConfig_GCE_METADATA}
+	default:
+		klog.Warningf("unknown WorkloadMetadataMode %q, ignoring", *mode)
+	}
+	return nil
 }
 
 // ConvertToSdkLinuxNodeConfig converts GCP SDK node version to k8s version.

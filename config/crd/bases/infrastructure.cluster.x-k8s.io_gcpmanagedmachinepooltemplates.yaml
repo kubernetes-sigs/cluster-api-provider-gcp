@@ -257,6 +257,14 @@ spec:
                                   type: string
                                 type: array
                             type: object
+                          workloadMetadataMode:
+                            description: |-
+                              WorkloadMetadataMode sets the mode for how to expose metadata to workloads running on the node pool.
+                              Valid values are GKE_METADATA and GCE_METADATA.
+                            enum:
+                            - GKE_METADATA
+                            - GCE_METADATA
+                            type: string
                         type: object
                       scaling:
                         description: Scaling specifies scaling for the node pool
