@@ -24,14 +24,12 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/util/resourceurl"
 
 	"google.golang.org/api/iterator"
-	"google.golang.org/grpc/codes"
 
 	"cloud.google.com/go/compute/apiv1/computepb"
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
@@ -244,11 +242,8 @@ func (s *Service) describeNodePool(ctx context.Context, log *logr.Logger) (*cont
 	}
 	nodePool, err := s.scope.ManagedMachinePoolClient().GetNodePool(ctx, getNodePoolRequest)
 	if err != nil {
-		var e *apierror.APIError
-		if ok := errors.As(err, &e); ok {
-			if e.GRPCStatus().Code() == codes.NotFound {
-				return nil, nil
-			}
+		if shared.IsNotFound(err) {
+			return nil, nil
 		}
 		log.Error(err, "Error getting GKE node pool", "name", s.scope.GCPManagedMachinePool.Name)
 		return nil, err
@@ -339,6 +334,9 @@ func (s *Service) deleteNodePool(ctx context.Context) error {
 	}
 	_, err := s.scope.ManagedMachinePoolClient().DeleteNodePool(ctx, deleteNodePoolRequest)
 	if err != nil {
+		if shared.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
 
