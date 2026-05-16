@@ -62,3 +62,27 @@ kubectl --namespace=default get secret managed-test-user-kubeconfig \
 This kubeconfig is used internally by CAPI and shouldn't be used outside of the management server. It is used by CAPI to perform operations, such as draining a node. The name of the secret that contains the kubeconfig will be `[cluster-name]-kubeconfig` where you need to replace **[cluster-name]** with the name of your cluster. Note that there is NO `-user` in the name.
 
 The kubeconfig is regenerated every `sync-period` as the token that is embedded in the kubeconfig is only valid for a short period of time.
+
+## VPC-native clusters: named secondary IP ranges
+
+VPC-native GKE clusters (those with `useIPAliases: true`) can source pod and service IPs from named secondary ranges on the cluster's subnet, rather than specifying CIDR blocks directly. This is useful when subnets are pre-allocated and shared across multiple clusters.
+
+Set `secondaryRangeName` on the `pod` and/or `service` blocks of `clusterNetwork`:
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedControlPlane
+metadata:
+  name: my-gke-control-plane
+spec:
+  project: my-gcp-project
+  location: us-central1
+  clusterNetwork:
+    useIPAliases: true
+    pod:
+      secondaryRangeName: pods-range
+    service:
+      secondaryRangeName: services-range
+```
+
+The named ranges must already exist on the subnet before the cluster is created. Both fields are optional and independent of each other. They are **immutable** after cluster creation — the GCP API does not allow changes to the IP allocation policy of an existing cluster.

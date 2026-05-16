@@ -126,6 +126,36 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, obj runtime.Obj
 		}
 	}
 
+	cn := r.Spec.ClusterNetwork
+	if cn != nil {
+		if !cn.UseIPAliases {
+			if cn.Pod != nil && cn.Pod.SecondaryRangeName != nil {
+				allErrs = append(allErrs, field.Invalid(
+					field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
+					cn.Pod.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				))
+			}
+			if cn.Service != nil && cn.Service.SecondaryRangeName != nil {
+				allErrs = append(allErrs, field.Invalid(
+					field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
+					cn.Service.SecondaryRangeName, "secondaryRangeName requires useIPAliases to be true",
+				))
+			}
+		}
+		if cn.Pod != nil && cn.Pod.CidrBlock != "" && cn.Pod.SecondaryRangeName != nil {
+			allErrs = append(allErrs, field.Invalid(
+				field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
+				cn.Pod.SecondaryRangeName, "secondaryRangeName and cidrBlock are mutually exclusive",
+			))
+		}
+		if cn.Service != nil && cn.Service.CidrBlock != "" && cn.Service.SecondaryRangeName != nil {
+			allErrs = append(allErrs, field.Invalid(
+				field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
+				cn.Service.SecondaryRangeName, "secondaryRangeName and cidrBlock are mutually exclusive",
+			))
+		}
+	}
+
 	if len(allErrs) == 0 {
 		return allWarns, nil
 	}
@@ -203,11 +233,39 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, oldObj, newObj 
 		}
 	}
 
+	if !cmp.Equal(clusterNetworkPodSecondaryRangeName(r.Spec.ClusterNetwork), clusterNetworkPodSecondaryRangeName(old.Spec.ClusterNetwork)) {
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
+			clusterNetworkPodSecondaryRangeName(r.Spec.ClusterNetwork), "field is immutable",
+		))
+	}
+
+	if !cmp.Equal(clusterNetworkServiceSecondaryRangeName(r.Spec.ClusterNetwork), clusterNetworkServiceSecondaryRangeName(old.Spec.ClusterNetwork)) {
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
+			clusterNetworkServiceSecondaryRangeName(r.Spec.ClusterNetwork), "field is immutable",
+		))
+	}
+
 	if len(allErrs) == 0 {
 		return nil, nil
 	}
 
 	return nil, apierrors.NewInvalid(expinfrav1.GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
+}
+
+func clusterNetworkPodSecondaryRangeName(cn *expinfrav1.ClusterNetwork) *string {
+	if cn == nil || cn.Pod == nil {
+		return nil
+	}
+	return cn.Pod.SecondaryRangeName
+}
+
+func clusterNetworkServiceSecondaryRangeName(cn *expinfrav1.ClusterNetwork) *string {
+	if cn == nil || cn.Service == nil {
+		return nil
+	}
+	return cn.Service.SecondaryRangeName
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
