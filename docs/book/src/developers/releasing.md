@@ -31,13 +31,13 @@
 
  1. Add a git remote to the upstream project. git remote add upstream `git@github.com:kubernetes-sigs/cluster-api-provider-gcp.git`
 
- 1. If this is a major or minor release, create a new release branch and push to GitHub, otherwise switch to it, e.g. `git checkout release-1.7`.
+ 1. If this is a major or minor release, create a new release branch `git checkout -b release-1.7`. Otherwise if it is a patch release the branch should already exist to it, fetch the latest and sync up your local branch: e.g. `git fetch upstream release-1.7 && git checkout release-1.7 && git reset upstream/release-1.7 --hard`.
 
- 1. If this is a major or minor release, update metadata.yaml by adding a new section with the version, and make a commit.
+ 1. If this is a major or minor release, update `metadata.yaml` by adding a new section with the version, and make a commit.
 
- 1. Update the release branch on the repository, e.g. `git push origin HEAD:release-1.7`. origin refers to the remote git reference to your fork.
+ 1. Push new/existing release branch to your repository's fork, e.g. `git push origin HEAD:release-1.7`. origin refers to the remote git reference to your fork.
 
- 1. Update the release branch on the repository, e.g. git push upstream HEAD:release-1.7. upstream refers to the upstream git reference.
+ 1. Push new/existing release branch to the upstream repository, e.g. `git push upstream HEAD:release-1.7`. upstream refers to the upstream git reference.
 
  1. Make sure your repo is clean by git standards.
 
@@ -58,7 +58,7 @@
 
 1. Generate release-notes (requires exported `GITHUB_TOKEN` variable, ensure the TOKEN is not expired!):
 
-    Run the release-notes tool with the appropriate commits. Commits range from the first commit after the previous non-beta release to the newest commit of the release branch. Set branch to the release branch you are cutting this release from. For example if this is release `v1.11.z`, branch is going to be `release-1.11`. When this finishes it will log the path to the temporary file where the notes have been written.
+    Run the release-notes tool with the appropriate commits. Commits range from the first commit after the previous non-beta release to the newest commit of the release branch. Set branch to the release branch you are cutting this release from. For example if this is release `v1.11.z`, branch is going to be `release-1.11`. When this finishes it will log the path to the temporary file where the notes have been written. You can obtain the starting and ending SHAs by 
 
     ```bash
     release-notes --org kubernetes-sigs --repo cluster-api-provider-gcp \
@@ -93,6 +93,7 @@ To promote images from the staging repository to the production registry (`regis
 
       ```bash
       # Export the tag of the release to be cut, e.g.:
+      export USER_FORK=<personal GitHub handle> # if needed (see notes below)
       export VERSION=v1.11.0-beta.0
       export GITHUB_TOKEN=<your GH token>
       make promote-images
