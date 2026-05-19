@@ -1,0 +1,554 @@
+/*
+CORS-4448 Implementation Example
+This file shows concrete code examples for the critical changes needed.
+DO NOT COMPILE - This is for reference only.
+*/
+
+package loadbalancers
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
+	"google.golang.org/api/compute/v1"
+	"k8s.io/utils/ptr"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+// ============================================================================
+// EXAMPLE 1: Helper Functions
+// ============================================================================
+
+// isRegionalExternalLoadBalancer returns true if the load balancer type
+// requires regional external resources (for GCD).
+func isRegionalExternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
+	return lbType == infrav1.RegionalExternal ||
+	       lbType == infrav1.RegionalInternalExternal
+}
+
+// shouldCreateExternalLoadBalancer returns true if an external load balancer
+// should be created.
+func shouldCreateExternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
+	return lbType == infrav1.External ||
+	       lbType == infrav1.InternalExternal ||
+	       lbType == infrav1.RegionalExternal ||
+	       lbType == infrav1.RegionalInternalExternal
+}
+
+// ============================================================================
+// EXAMPLE 2: Modified Reconcile Function
+// ============================================================================
+
+// Reconcile reconcile cluster control-plane loadbalancer components.
+func (s *Service) ReconcileExample(ctx context.Context) error {
+	log := log.FromContext(ctx)
+	log.Info("Reconciling loadbalancer resources")
+
+	// Creates instance groups used by load balancer(s)
+	instancegroups, err := s.createOrGetInstanceGroups(ctx)
+	if err != nil {
+		return err
+	}
+
+	lbSpec := s.scope.LoadBalancer()
+	lbType := ptr.Deref(lbSpec.LoadBalancerType, infrav1.External)
+
+	// Create External Load Balancer (Global or Regional based on type)
+	// THIS IS THE KEY CHANGE - branching logic based on regional vs global
+	if shouldCreateExternalLoadBalancer(lbType) {
+		if isRegionalExternalLoadBalancer(lbType) {
+			// NEW: Create Regional External LB for GCD
+			if err = s.createRegionalExternalLoadBalancer(ctx, lbType, instancegroups); err != nil {
+				return err
+			}
+		} else {
+			// EXISTING: Create Global External LB
+			if err = s.createExternalLoadBalancer(ctx, lbType, instancegroups); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Create Regional Internal Passthrough Load Balancer if configured
+	if lbType == infrav1.Internal ||
+	   lbType == infrav1.InternalExternal ||
+	   lbType == infrav1.RegionalInternalExternal {
+		name := infrav1.InternalRoleTagValue
+		if lbSpec.InternalLoadBalancer != nil {
+			name = ptr.Deref(lbSpec.InternalLoadBalancer.Name, infrav1.InternalRoleTagValue)
+		}
+		if err = s.createInternalLoadBalancer(ctx, name, lbType, instancegroups); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ============================================================================
+// EXAMPLE 3: Create Regional External Load Balancer (Main Orchestration)
+// ============================================================================
+
+// createRegionalExternalLoadBalancer creates the components for a Regional
+// External Proxy LoadBalancer required by GCD (Google Cloud Distributed).
+func (s *Service) createRegionalExternalLoadBalancer(ctx context.Context, lbType infrav1.LoadBalancerType, instancegroups []*compute.InstanceGroup) error {
+	lbSpec := s.scope.LoadBalancer()
+	name := infrav1.APIServerRoleTagValue
+
+	// Allow custom name from configuration
+	if lbSpec.ExternalLoadBalancer != nil && lbSpec.ExternalLoadBalancer.Name != nil {
+		name = *lbSpec.ExternalLoadBalancer.Name
+	}
+
+	// Step 1: Create Regional Health Check
+	healthcheck, err := s.createOrGetRegionalHealthCheck(ctx, name)
+	if err != nil {
+		return err
+	}
+	s.scope.Network().APIServerHealthCheck = ptr.To[string](healthcheck.SelfLink)
+
+	// Determine balancing mode based on whether internal LB is also being created
+	mode := loadBalancingModeUtilization
+	if lbType == infrav1.RegionalInternalExternal {
+		// Must match internal LB balancing mode
+		mode = loadBalancingModeConnection
+	}
+
+	// Step 2: Create Regional Backend Service (EXTERNAL scheme)
+	backendsvc, err := s.createOrGetRegionalBackendServiceExternal(ctx, name, mode, instancegroups, healthcheck)
+	if err != nil {
+		return err
+	}
+	s.scope.Network().APIServerBackendService = ptr.To[string](backendsvc.SelfLink)
+
+	// Step 3: Create Regional TargetTCPProxy *** CRITICAL NEW COMPONENT ***
+	target, err := s.createOrGetRegionalTargetTCPProxy(ctx, backendsvc)
+	if err != nil {
+		return err
+	}
+	s.scope.Network().APIServerTargetProxy = ptr.To[string](target.SelfLink)
+
+	// Step 4: Create Regional Address (EXTERNAL type)
+	addr, err := s.createOrGetRegionalAddress(ctx, name)
+	if err != nil {
+		return err
+	}
+	s.scope.Network().APIServerAddress = ptr.To[string](addr.SelfLink)
+
+	// Set control plane endpoint to the external address
+	endpoint := s.scope.ControlPlaneEndpoint()
+	endpoint.Host = addr.Address
+	s.scope.SetControlPlaneEndpoint(endpoint)
+
+	// Step 5: Create Regional Forwarding Rule (points to Target TCP Proxy)
+	forwarding, err := s.createOrGetRegionalForwardingRuleWithProxy(ctx, name, target, addr)
+	if err != nil {
+		return err
+	}
+	s.scope.Network().APIServerForwardingRule = ptr.To[string](forwarding.SelfLink)
+
+	return nil
+}
+
+// ============================================================================
+// EXAMPLE 4: CRITICAL - Regional Target TCP Proxy
+// ============================================================================
+
+// createOrGetRegionalTargetTCPProxy creates or gets a regional TargetTCPProxy.
+// This is the CRITICAL MISSING PIECE for regional external load balancers in GCD.
+//
+// Key Differences from Global Target TCP Proxy:
+// - Uses meta.RegionalKey() instead of meta.GlobalKey()
+// - Sets Region field in the spec
+// - Uses regionaltargettcpproxies interface instead of targettcpproxies
+func (s *Service) createOrGetRegionalTargetTCPProxy(ctx context.Context, service *compute.BackendService) (*compute.TargetTcpProxy, error) {
+	log := log.FromContext(ctx)
+
+	// Get the target TCP proxy spec from scope
+	targetSpec := s.scope.TargetTCPProxySpec()
+	targetSpec.Service = service.SelfLink
+
+	// CRITICAL: Set the region for regional resource
+	targetSpec.Region = s.scope.Region()
+
+	// CRITICAL: Use RegionalKey instead of GlobalKey
+	key := meta.RegionalKey(targetSpec.Name, s.scope.Region())
+
+	// Try to get existing regional target TCP proxy
+	target, err := s.regionaltargettcpproxies.Get(ctx, key)
+	if err != nil {
+		if !gcperrors.IsNotFound(err) {
+			log.Error(err, "Error looking for regional targettcpproxy", "name", targetSpec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+
+		// Create new regional target TCP proxy
+		log.V(2).Info("Creating a regional targettcpproxy", "name", targetSpec.Name, "region", s.scope.Region())
+		if err := s.regionaltargettcpproxies.Insert(ctx, key, targetSpec); err != nil {
+			log.Error(err, "Error creating a regional targettcpproxy", "name", targetSpec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+
+		// Get the created resource
+		target, err = s.regionaltargettcpproxies.Get(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return target, nil
+}
+
+// ============================================================================
+// EXAMPLE 5: Regional Backend Service for External LB
+// ============================================================================
+
+// createOrGetRegionalBackendServiceExternal creates a regional backend service
+// for external load balancers.
+//
+// Key Differences from Internal Regional Backend Service:
+// - LoadBalancingScheme: "EXTERNAL" (not "INTERNAL")
+// - Does not set Network field
+// - Does not clear PortName
+func (s *Service) createOrGetRegionalBackendServiceExternal(ctx context.Context, lbname string, mode loadBalancingMode, instancegroups []*compute.InstanceGroup, healthcheck *compute.HealthCheck) (*compute.BackendService, error) {
+	log := log.FromContext(ctx)
+
+	// Create backends from instance groups
+	backends := make([]*compute.Backend, 0, len(instancegroups))
+	for _, group := range instancegroups {
+		be := &compute.Backend{
+			BalancingMode: string(mode),
+			Group:         group.SelfLink,
+		}
+		if mode == loadBalancingModeConnection {
+			// Set max connections for CONNECTION mode
+			be.MaxConnections = 1000
+		}
+		backends = append(backends, be)
+	}
+
+	// Create backend service spec
+	backendsvcSpec := s.scope.BackendServiceSpec(lbname)
+	backendsvcSpec.Backends = backends
+	backendsvcSpec.HealthChecks = []string{healthcheck.SelfLink}
+	backendsvcSpec.Region = s.scope.Region()
+
+	// CRITICAL: Use EXTERNAL scheme (not INTERNAL like internal LB)
+	backendsvcSpec.LoadBalancingScheme = "EXTERNAL"
+
+	// NOTE: Do NOT set Network field - external LBs don't need it
+	// NOTE: Do NOT clear PortName - keep it for external LBs
+
+	// Use RegionalKey for regional resource
+	key := meta.RegionalKey(backendsvcSpec.Name, s.scope.Region())
+
+	// Try to get existing backend service
+	backendsvc, err := s.regionalbackendservices.Get(ctx, key)
+	if err != nil {
+		if !gcperrors.IsNotFound(err) {
+			log.Error(err, "Error looking for regional backend service", "name", backendsvcSpec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+
+		// Create new backend service
+		log.V(2).Info("Creating a regional backend service for external LB", "name", backendsvcSpec.Name, "region", s.scope.Region())
+		if err := s.regionalbackendservices.Insert(ctx, key, backendsvcSpec); err != nil {
+			log.Error(err, "Error creating a regional backend service", "name", backendsvcSpec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+
+		backendsvc, err = s.regionalbackendservices.Get(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Update backends if count changed
+	if len(backendsvc.Backends) != len(backendsvcSpec.Backends) {
+		log.V(2).Info("Updating a regional backend service", "name", backendsvcSpec.Name, "region", s.scope.Region())
+		backendsvc.Backends = backendsvcSpec.Backends
+		if err := s.regionalbackendservices.Update(ctx, key, backendsvc); err != nil {
+			log.Error(err, "Error updating a regional backend service", "name", backendsvcSpec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+	}
+
+	return backendsvc, nil
+}
+
+// ============================================================================
+// EXAMPLE 6: Regional Address for External LB
+// ============================================================================
+
+// createOrGetRegionalAddress creates or gets a regional address for external
+// load balancers.
+//
+// Key Differences from Internal Address:
+// - AddressType: "EXTERNAL" (not "INTERNAL")
+// - Does not set Subnetwork field
+// - Does not set Purpose field
+func (s *Service) createOrGetRegionalAddress(ctx context.Context, lbname string) (*compute.Address, error) {
+	log := log.FromContext(ctx)
+
+	// Create address spec
+	addrSpec := s.scope.AddressSpec(lbname)
+	addrSpec.Region = s.scope.Region()
+
+	// CRITICAL: Set address type to EXTERNAL (not INTERNAL)
+	addrSpec.AddressType = "EXTERNAL"
+
+	// Allow user to specify custom IP address
+	lbSpec := s.scope.LoadBalancer()
+	if lbSpec.ExternalLoadBalancer != nil && lbSpec.ExternalLoadBalancer.IPAddress != nil {
+		addrSpec.Address = *lbSpec.ExternalLoadBalancer.IPAddress
+	}
+
+	// NOTE: Do NOT set Subnetwork - external addresses don't need it
+	// NOTE: Do NOT set Purpose - not needed for external addresses
+
+	log.V(2).Info("Looking for regional external address", "name", addrSpec.Name, "region", s.scope.Region())
+	key := meta.RegionalKey(addrSpec.Name, s.scope.Region())
+
+	// Try to get existing address
+	addr, err := s.addresses.Get(ctx, key)
+	if err != nil {
+		if !gcperrors.IsNotFound(err) {
+			log.Error(err, "Error looking for regional external address", "name", addrSpec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+
+		// Create new address
+		log.V(2).Info("Creating a regional external address", "name", addrSpec.Name, "region", s.scope.Region())
+		if err := s.addresses.Insert(ctx, key, addrSpec); err != nil {
+			log.Error(err, "Error creating a regional external address", "name", addrSpec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+
+		addr, err = s.addresses.Get(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return addr, nil
+}
+
+// ============================================================================
+// EXAMPLE 7: Regional Forwarding Rule with Proxy
+// ============================================================================
+
+// createOrGetRegionalForwardingRuleWithProxy creates a regional forwarding
+// rule that points to a target proxy.
+//
+// Key Differences from Internal Regional Forwarding Rule:
+// - Points to Target (TCP proxy) instead of BackendService
+// - LoadBalancingScheme: "EXTERNAL" (not "INTERNAL")
+// - Uses PortRange instead of Ports array
+// - Does not set Subnetwork field
+// - Does not set AllowGlobalAccess
+func (s *Service) createOrGetRegionalForwardingRuleWithProxy(ctx context.Context, lbname string, target *compute.TargetTcpProxy, addr *compute.Address) (*compute.ForwardingRule, error) {
+	log := log.FromContext(ctx)
+
+	// Create forwarding rule spec
+	spec := s.scope.ForwardingRuleSpec(lbname)
+	spec.Region = s.scope.Region()
+
+	// CRITICAL: Point to Target TCP Proxy (not BackendService)
+	spec.Target = target.SelfLink
+
+	// Set IP address
+	spec.IPAddress = addr.SelfLink
+
+	// CRITICAL: Use EXTERNAL scheme (not INTERNAL)
+	spec.LoadBalancingScheme = "EXTERNAL"
+
+	// NOTE: Use PortRange (not Ports array like internal LB)
+	// NOTE: Do NOT set Subnetwork - external LBs don't need it
+	// NOTE: Do NOT set AllowGlobalAccess - only for internal LBs
+
+	key := meta.RegionalKey(spec.Name, s.scope.Region())
+	log.V(2).Info("Looking for regional forwarding rule with proxy", "name", spec.Name, "region", s.scope.Region())
+
+	// Try to get existing forwarding rule
+	forwarding, err := s.regionalforwardingrules.Get(ctx, key)
+	if err != nil {
+		if !gcperrors.IsNotFound(err) {
+			log.Error(err, "Error looking for regional forwarding rule", "name", spec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+
+		// Create new forwarding rule
+		log.V(2).Info("Creating a regional forwarding rule with proxy", "name", spec.Name, "region", s.scope.Region())
+		if err := s.regionalforwardingrules.Insert(ctx, key, spec); err != nil {
+			log.Error(err, "Error creating a regional forwarding rule", "name", spec.Name, "region", s.scope.Region())
+			return nil, err
+		}
+
+		forwarding, err = s.regionalforwardingrules.Get(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Labels on ForwardingRules must be added after resource is created
+	labels := s.scope.AdditionalLabels()
+	if !labels.Equals(forwarding.Labels) {
+		setLabelsRequest := &compute.RegionSetLabelsRequest{
+			LabelFingerprint: forwarding.LabelFingerprint,
+			Labels:           labels,
+		}
+		if err = s.regionalforwardingrules.SetLabels(ctx, key, setLabelsRequest); err != nil {
+			return nil, err
+		}
+	}
+
+	return forwarding, nil
+}
+
+// ============================================================================
+// EXAMPLE 8: Delete Regional External Load Balancer
+// ============================================================================
+
+// deleteRegionalExternalLoadBalancer deletes all components of a regional
+// external load balancer.
+//
+// Deletion order is reverse of creation to respect dependencies:
+// 1. Forwarding Rule (depends on Target TCP Proxy and Address)
+// 2. Address (standalone)
+// 3. Target TCP Proxy (depends on Backend Service)
+// 4. Backend Service (depends on Health Check)
+// 5. Health Check (standalone)
+func (s *Service) deleteRegionalExternalLoadBalancer(ctx context.Context) error {
+	log := log.FromContext(ctx)
+	log.Info("Deleting regional external loadbalancer resources")
+
+	lbSpec := s.scope.LoadBalancer()
+	name := infrav1.APIServerRoleTagValue
+	if lbSpec.ExternalLoadBalancer != nil && lbSpec.ExternalLoadBalancer.Name != nil {
+		name = *lbSpec.ExternalLoadBalancer.Name
+	}
+
+	// Step 1: Delete Forwarding Rule
+	if err := s.deleteRegionalForwardingRule(ctx, name); err != nil {
+		return fmt.Errorf("deleting Regional ForwardingRule: %w", err)
+	}
+	s.scope.Network().APIServerForwardingRule = nil
+
+	// Step 2: Delete Address
+	if err := s.deleteRegionalAddress(ctx, name); err != nil {
+		return fmt.Errorf("deleting Regional Address: %w", err)
+	}
+	s.scope.Network().APIServerAddress = nil
+
+	// Step 3: Delete Target TCP Proxy
+	if err := s.deleteRegionalTargetTCPProxy(ctx); err != nil {
+		return fmt.Errorf("deleting Regional TargetTCPProxy: %w", err)
+	}
+	s.scope.Network().APIServerTargetProxy = nil
+
+	// Step 4: Delete Backend Service
+	if err := s.deleteRegionalBackendService(ctx, name); err != nil {
+		return fmt.Errorf("deleting Regional BackendService: %w", err)
+	}
+	s.scope.Network().APIServerBackendService = nil
+
+	// Step 5: Delete Health Check
+	if err := s.deleteRegionalHealthCheck(ctx, name); err != nil {
+		return fmt.Errorf("deleting Regional HealthCheck: %w", err)
+	}
+	s.scope.Network().APIServerHealthCheck = nil
+
+	return nil
+}
+
+// ============================================================================
+// EXAMPLE 9: Delete Regional Address
+// ============================================================================
+
+func (s *Service) deleteRegionalAddress(ctx context.Context, lbname string) error {
+	log := log.FromContext(ctx)
+	spec := s.scope.AddressSpec(lbname)
+
+	// CRITICAL: Use RegionalKey (not GlobalKey)
+	key := meta.RegionalKey(spec.Name, s.scope.Region())
+
+	log.V(2).Info("Deleting a regional address", "name", spec.Name, "region", s.scope.Region())
+	if err := s.addresses.Delete(ctx, key); err != nil && !gcperrors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
+// ============================================================================
+// EXAMPLE 10: Delete Regional Target TCP Proxy
+// ============================================================================
+
+func (s *Service) deleteRegionalTargetTCPProxy(ctx context.Context) error {
+	log := log.FromContext(ctx)
+	spec := s.scope.TargetTCPProxySpec()
+
+	// CRITICAL: Use RegionalKey (not GlobalKey)
+	key := meta.RegionalKey(spec.Name, s.scope.Region())
+
+	log.V(2).Info("Deleting a regional targettcpproxy", "name", spec.Name, "region", s.scope.Region())
+
+	// CRITICAL: Use regionaltargettcpproxies interface (not targettcpproxies)
+	if err := s.regionaltargettcpproxies.Delete(ctx, key); err != nil && !gcperrors.IsNotFound(err) {
+		log.Error(err, "Error deleting a regional targettcpproxy", "name", spec.Name, "region", s.scope.Region())
+		return err
+	}
+	return nil
+}
+
+// ============================================================================
+// EXAMPLE 11: Modified Delete Function
+// ============================================================================
+
+// Delete deletes cluster control-plane loadbalancer components.
+func (s *Service) DeleteExample(ctx context.Context) error {
+	log := log.FromContext(ctx)
+	var allErrs []error
+	lbSpec := s.scope.LoadBalancer()
+	lbType := ptr.Deref(lbSpec.LoadBalancerType, infrav1.External)
+
+	// Delete External Load Balancer (Global or Regional based on type)
+	// THIS IS THE KEY CHANGE - branching logic based on regional vs global
+	if shouldCreateExternalLoadBalancer(lbType) {
+		if isRegionalExternalLoadBalancer(lbType) {
+			// NEW: Delete Regional External LB
+			if err := s.deleteRegionalExternalLoadBalancer(ctx); err != nil {
+				allErrs = append(allErrs, err)
+			}
+		} else {
+			// EXISTING: Delete Global External LB
+			if err := s.deleteExternalLoadBalancer(ctx); err != nil {
+				allErrs = append(allErrs, err)
+			}
+		}
+	}
+
+	// Delete Internal Load Balancer if configured
+	if lbType == infrav1.Internal ||
+	   lbType == infrav1.InternalExternal ||
+	   lbType == infrav1.RegionalInternalExternal {
+		name := infrav1.InternalRoleTagValue
+		if lbSpec.InternalLoadBalancer != nil {
+			name = ptr.Deref(lbSpec.InternalLoadBalancer.Name, infrav1.InternalRoleTagValue)
+		}
+		if err := s.deleteInternalLoadBalancer(ctx, name); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
+
+	// Delete instance groups
+	if err := s.deleteInstanceGroups(ctx); err != nil {
+		log.Error(err, "Error deleting instancegroup")
+		allErrs = append(allErrs, err)
+	}
+
+	return errors.Join(allErrs...)
+}
