@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	capgwebhooks "sigs.k8s.io/cluster-api-provider-gcp/webhooks"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -56,9 +57,10 @@ func (*GCPMachinePool) ValidateCreate(_ context.Context, obj runtime.Object) (ad
 
 	gcpMachinePoolLog.Info("Validating GCPMachinePool create", "name", r.Name)
 
-	// Add custom validation logic upon creation if needed.
-
-	return nil, nil
+	if err := capgwebhooks.ValidateConfidentialCompute(r.Spec.ConfidentialCompute, r.Spec.OnHostMaintenance, r.Spec.InstanceType); err != nil {
+		return nil, err
+	}
+	return nil, capgwebhooks.ValidateCustomerEncryptionKey(r.Spec.RootDiskEncryptionKey, r.Spec.AdditionalDisks)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
@@ -70,9 +72,10 @@ func (*GCPMachinePool) ValidateUpdate(_ context.Context, _, newObj runtime.Objec
 
 	gcpMachinePoolLog.Info("Validating GCPMachinePool update", "name", r.Name)
 
-	// Add custom validation logic upon update if needed.
-
-	return nil, nil
+	if err := capgwebhooks.ValidateConfidentialCompute(r.Spec.ConfidentialCompute, r.Spec.OnHostMaintenance, r.Spec.InstanceType); err != nil {
+		return nil, err
+	}
+	return nil, capgwebhooks.ValidateCustomerEncryptionKey(r.Spec.RootDiskEncryptionKey, r.Spec.AdditionalDisks)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
