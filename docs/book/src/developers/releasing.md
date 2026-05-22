@@ -21,13 +21,13 @@ TODO
 
   ```bash
     # Export the tag of the release to be cut, e.g.:
-    export RELEASE_TAG=v1.11.0-beta.0
+    export VERSION=v1.11.0-beta.0
     # Create tags locally
-    git tag -s -a ${RELEASE_TAG} -m ${RELEASE_TAG}
+    git tag -s -a ${VERSION} -m ${VERSION}
 
     # Push tags
     # Note: `upstream` must be the remote pointing to `github.com/kubernetes-sigs/cluster-api-provider-gcp`.
-    git push upstream ${RELEASE_TAG}
+    git push upstream ${VERSION}
   ```
 
   Notes:
