@@ -21,13 +21,13 @@ TODO
 
   ```bash
     # Export the tag of the release to be cut, e.g.:
-    export RELEASE_TAG=v1.11.0-beta.0
+    export VERSION=v1.11.0-beta.0
     # Create tags locally
-    git tag -s -a ${RELEASE_TAG} -m ${RELEASE_TAG}
+    git tag -s -a ${VERSION} -m ${VERSION}
 
     # Push tags
     # Note: `upstream` must be the remote pointing to `github.com/kubernetes-sigs/cluster-api-provider-gcp`.
-    git push upstream ${RELEASE_TAG}
+    git push upstream ${VERSION}
   ```
 
   Notes:
@@ -39,7 +39,25 @@ TODO
 
 * `glcoud auth login <your-community-email-address>
 
-5. `make release` from repo, this will create the release artifacts in the `out/` folder
+ 1. Add a git remote to the upstream project. git remote add upstream `git@github.com:kubernetes-sigs/cluster-api-provider-gcp.git`
+
+ 1. If this is a major or minor release, create a new release branch `git checkout -b release-1.7`. Otherwise if it is a patch release the branch should already exist to it, fetch the latest and sync up your local branch: e.g. `git fetch upstream release-1.7 && git checkout release-1.7 && git reset upstream/release-1.7 --hard`.
+
+ 1. If this is a major or minor release, update `metadata.yaml` by adding a new section with the version, and make a commit.
+
+ 1. Push new/existing release branch to your repository's fork, e.g. `git push origin HEAD:release-1.7`. origin refers to the remote git reference to your fork.
+
+ 1. Push new/existing release branch to the upstream repository, e.g. `git push upstream HEAD:release-1.7`. upstream refers to the upstream git reference.
+
+ 1. Make sure your repo is clean by git standards.
+
+ 1. Set the environment variable VERSION which is the current release that you are making, e.g. `export VERSION=v1.7.0`, or `export VERSION=v1.7.1`). Note: the version MUST contain a v in front. Note: you must have a gpg signing configured with git and registered with GitHub.
+
+ 1. Create a tag locally `git tag -s -a $VERSION -m $VERSION` -s flag is for GNU Privacy Guard (GPG) signing.
+
+ 1. Make sure you have push permissions to the upstream CAPG repo. Push tag you've just created `git push <upstream-repo-remote> $VERSION`. `<upstream-repo-remote>` must be the remote pointing to `github.com/kubernetes-sigs/cluster-api-provider-gcp`.
+   
+ 1. Pushing this will create the tag and this will automatically trigger a [ProwJob](https://prow.k8s.io/?repo=kubernetes-sigs%2Fcluster-api-provider-gcp&job=post-cluster-api-provider-gcp-push-images) to publish images to the staging image repository.
 
 
 6. Install the `release-notes` tool according to [instructions](https://github.com/kubernetes/release/blob/master/cmd/release-notes/README.md)
@@ -55,12 +73,34 @@ TODO
   --branch <RELEASE_BRANCH_OR_MAIN_BRANCH>
   ```
 
-8. Manually format and categorize the release notes
+    Commits range from the first commit after the previous non-beta release to the newest commit of the release branch. Set branch to the release branch you are cutting this release from. For example if this is release `v1.11.z`, branch is going to be `release-1.11`.
+
+    First, compute the required variables. Review the output and verify the values are correct before proceeding:
+
+    ```bash
+    source ./hack/compute-release-notes-vars.sh
+    ```
+
+    Once the values look correct, run the release-notes tool. When this finishes it will log the path to the temporary file where the notes have been written:
+
+    ```bash
+    release-notes --org kubernetes-sigs --repo cluster-api-provider-gcp \
+    --start-rev "${PREVIOUS_TAG}" \
+    --end-rev "${VERSION}" \
+    --branch "${RELEASE_BRANCH}" \
+    --required-author "" \
+    --go-template "go-template:hack/release-notes.tpl"
+    ```
+
+    > **Note**: The `--required-author ""` flag is needed because the tool defaults to only processing commits authored by `k8s-ci-robot`, which would skip most PRs since CAPG uses squash merges that preserve the original author.
+
+1. Open the output temporary file logged by the tool and manually format and categorize the release notes.
 
 ## Prepare release in GitHub
 
-Create the GitHub release in the UI
+Create the GitHub release in the UI:
 
+ - Go to: https://github.com/kubernetes-sigs/cluster-api-provider-gcp/releases  
  - Create a draft release with the output from above in GitHub and associate it with the tag that was created
  - Copy paste the release notes
  - Upload [artifacts](#expected-artifacts) from the `out/` folder
@@ -80,7 +120,8 @@ To promote images from the staging repository to the production registry (`regis
 
       ```bash
       # Export the tag of the release to be cut, e.g.:
-      export RELEASE_TAG=v1.11.0-beta.0
+      export USER_FORK=<personal GitHub handle> # if needed (see notes below)
+      export VERSION=v1.11.0-beta.0
       export GITHUB_TOKEN=<your GH token>
       make promote-images
       ```
@@ -97,7 +138,7 @@ To promote images from the staging repository to the production registry (`regis
     - Wait for the [promotion prow job](https://prow.k8s.io/?repo=kubernetes%2Fk8s.io&job=post-k8sio-image-promo) to complete successfully. Then verify that the production images are accessible:
 
      ```bash
-     docker pull registry.k8s.io/cluster-api-provider-gcp/cluster-api-gcp-controller:${RELEASE_TAG}
+     docker pull registry.k8s.io/cluster-api-provider-gcp/cluster-api-gcp-controller:${VERSION}
      ```
 
 Example PR: https://github.com/kubernetes/k8s.io/pull/1462
