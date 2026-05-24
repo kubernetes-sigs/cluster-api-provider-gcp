@@ -103,6 +103,20 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Obje
 		)
 	}
 
+	if !reflect.DeepEqual(c.Spec.Network.Name, old.Spec.Network.Name) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "network", "name"),
+				c.Spec.Network.Name, "field is immutable"),
+		)
+	}
+
+	if !reflect.DeepEqual(c.Spec.Network.Subnets, old.Spec.Network.Subnets) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "network", "subnets"),
+				c.Spec.Network.Subnets, "field is immutable"),
+		)
+	}
+
 	if c.Spec.Network.Mtu < int64(1300) {
 		allErrs = append(allErrs,
 			field.Invalid(field.NewPath("spec", "Network", "Mtu"),
