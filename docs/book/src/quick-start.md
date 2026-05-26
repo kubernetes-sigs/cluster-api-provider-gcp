@@ -56,7 +56,7 @@ This process may take some time and, once the provider is running, you'll be abl
 
 #### Cluster API Operator
 
-You can refer to the Cluster API Operator book [here](https://cluster-api-operator.sigs.k8s.io/01_user/02_quick-start) to learn about the basics of the project and how to install the operator.
+You can refer to the Cluster API Operator book [here](https://cluster-api-operator.sigs.k8s.io/user/quick-start) to learn about the basics of the project and how to install the operator.
 
 When using Cluster API Operator, secrets are used to store credentials for cloud providers and not environment variables, which means you'll have to create a new secret containing the base64 encoded version of your GCP credentials and it will be referenced in the yaml file used to initialize the provider. As you can see, by using Cluster API Operator, we're able to manage provider installation declaratively.
 
