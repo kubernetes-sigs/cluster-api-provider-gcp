@@ -63,6 +63,60 @@ func shouldCreateExternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
 		lbType == infrav1.RegionalInternalExternal
 }
 
+// shouldCreateInternalLoadBalancer returns true if an internal load balancer
+// should be created for the given load balancer type.
+func shouldCreateInternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
+	return lbType == infrav1.Internal ||
+		lbType == infrav1.InternalExternal ||
+		lbType == infrav1.RegionalInternalExternal
+}
+
+// getExternalLoadBalancerName returns the name to use for external load balancer resources.
+// Returns the custom name from configuration if set, otherwise returns the default API server name.
+func getExternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
+	if lbSpec.ExternalLoadBalancer != nil && lbSpec.ExternalLoadBalancer.Name != nil {
+		return *lbSpec.ExternalLoadBalancer.Name
+	}
+	return infrav1.APIServerRoleTagValue
+}
+
+// getInternalLoadBalancerName returns the name to use for internal load balancer resources.
+// Returns the custom name from configuration if set, otherwise returns the default internal name.
+func getInternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
+	if lbSpec.InternalLoadBalancer != nil && lbSpec.InternalLoadBalancer.Name != nil {
+		return *lbSpec.InternalLoadBalancer.Name
+	}
+	return infrav1.InternalRoleTagValue
+}
+
+// getLoadBalancingMode returns the appropriate balancing mode based on the load balancer type.
+// RegionalInternalExternal uses CONNECTION mode to match internal LB requirements.
+// All other external LBs use UTILIZATION mode.
+func getLoadBalancingMode(lbType infrav1.LoadBalancerType) loadBalancingMode {
+	if lbType == infrav1.RegionalInternalExternal || lbType == infrav1.InternalExternal {
+		return loadBalancingModeConnection
+	}
+	return loadBalancingModeUtilization
+}
+
+// createBackends creates backend instances for the given instance groups with the specified balancing mode.
+func createBackends(instancegroups []*compute.InstanceGroup, mode loadBalancingMode) []*compute.Backend {
+	backends := make([]*compute.Backend, 0, len(instancegroups))
+	for _, group := range instancegroups {
+		be := &compute.Backend{
+			BalancingMode: string(mode),
+			Group:         group.SelfLink,
+		}
+		if mode == loadBalancingModeConnection {
+			// Set max connections to a reasonable limit based
+			// on database max connections https://cloud.google.com/sql/docs/postgres/flags#postgres-m
+			be.MaxConnections = 1000
+		}
+		backends = append(backends, be)
+	}
+	return backends
+}
+
 // Reconcile reconcile cluster control-plane loadbalancer components.
 func (s *Service) Reconcile(ctx context.Context) error {
 	log := log.FromContext(ctx)
@@ -93,11 +147,8 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	}
 
 	// Create a Regional Internal Passthrough Load Balancer if configured
-	if lbType == infrav1.Internal || lbType == infrav1.InternalExternal || lbType == infrav1.RegionalInternalExternal {
-		name := infrav1.InternalRoleTagValue
-		if lbSpec.InternalLoadBalancer != nil {
-			name = ptr.Deref(lbSpec.InternalLoadBalancer.Name, infrav1.InternalRoleTagValue)
-		}
+	if shouldCreateInternalLoadBalancer(lbType) {
+		name := getInternalLoadBalancerName(lbSpec)
 		if err = s.createInternalLoadBalancer(ctx, name, lbType, instancegroups); err != nil {
 			return err
 		}
@@ -126,11 +177,8 @@ func (s *Service) Delete(ctx context.Context) error {
 		}
 	}
 
-	if lbType == infrav1.Internal || lbType == infrav1.InternalExternal || lbType == infrav1.RegionalInternalExternal {
-		name := infrav1.InternalRoleTagValue
-		if lbSpec.InternalLoadBalancer != nil {
-			name = ptr.Deref(lbSpec.InternalLoadBalancer.Name, infrav1.InternalRoleTagValue)
-		}
+	if shouldCreateInternalLoadBalancer(lbType) {
+		name := getInternalLoadBalancerName(lbSpec)
 		if err := s.deleteInternalLoadBalancer(ctx, name); err != nil {
 			allErrs = append(allErrs, err)
 		}
@@ -205,10 +253,7 @@ func (s *Service) deleteRegionalExternalLoadBalancer(ctx context.Context) error 
 	log := log.FromContext(ctx)
 	log.Info("Deleting regional external loadbalancer resources")
 	lbSpec := s.scope.LoadBalancer()
-	name := infrav1.APIServerRoleTagValue
-	if lbSpec.ExternalLoadBalancer != nil && lbSpec.ExternalLoadBalancer.Name != nil {
-		name = *lbSpec.ExternalLoadBalancer.Name
-	}
+	name := getExternalLoadBalancerName(lbSpec)
 
 	// Delete in reverse order of creation
 	if err := s.deleteRegionalForwardingRule(ctx, name); err != nil {
@@ -248,13 +293,8 @@ func (s *Service) createExternalLoadBalancer(ctx context.Context, lbType infrav1
 	}
 	s.scope.Network().APIServerHealthCheck = ptr.To[string](healthcheck.SelfLink)
 
-	// If an Internal LoadBalancer is being created, the BalancingMode must match the Internal LB.
-	// which must be CONNECTION for Internal Proxy Load Balancers, see
-	// https://cloud.google.com/load-balancing/docs/backend-service#balancing-mode-lb
-	mode := loadBalancingModeUtilization
-	if lbType == infrav1.InternalExternal {
-		mode = loadBalancingModeConnection
-	}
+	// Determine balancing mode based on load balancer type
+	mode := getLoadBalancingMode(lbType)
 	backendsvc, err := s.createOrGetBackendService(ctx, name, mode, instancegroups, healthcheck)
 	if err != nil {
 		return err
@@ -329,12 +369,7 @@ func (s *Service) createInternalLoadBalancer(ctx context.Context, name string, l
 // global load balancer resources.
 func (s *Service) createRegionalExternalLoadBalancer(ctx context.Context, lbType infrav1.LoadBalancerType, instancegroups []*compute.InstanceGroup) error {
 	lbSpec := s.scope.LoadBalancer()
-	name := infrav1.APIServerRoleTagValue
-
-	// Allow custom name from external load balancer configuration
-	if lbSpec.ExternalLoadBalancer != nil && lbSpec.ExternalLoadBalancer.Name != nil {
-		name = *lbSpec.ExternalLoadBalancer.Name
-	}
+	name := getExternalLoadBalancerName(lbSpec)
 
 	// Step 1: Create Regional Health Check
 	healthcheck, err := s.createOrGetRegionalHealthCheck(ctx, name)
@@ -343,13 +378,8 @@ func (s *Service) createRegionalExternalLoadBalancer(ctx context.Context, lbType
 	}
 	s.scope.Network().APIServerHealthCheck = ptr.To[string](healthcheck.SelfLink)
 
-	// Determine balancing mode based on whether internal LB is also being created
-	// If creating both external and internal LBs, modes must match for consistency
-	mode := loadBalancingModeUtilization
-	if lbType == infrav1.RegionalInternalExternal {
-		// Must use CONNECTION mode to match internal passthrough LB
-		mode = loadBalancingModeConnection
-	}
+	// Determine balancing mode based on load balancer type
+	mode := getLoadBalancingMode(lbType)
 
 	// Step 2: Create Regional Backend Service (with EXTERNAL load balancing scheme)
 	backendsvc, err := s.createOrGetRegionalBackendServiceExternal(ctx, name, mode, instancegroups, healthcheck)
@@ -484,19 +514,7 @@ func (s *Service) createOrGetRegionalHealthCheck(ctx context.Context, lbname str
 
 func (s *Service) createOrGetBackendService(ctx context.Context, lbname string, mode loadBalancingMode, instancegroups []*compute.InstanceGroup, healthcheck *compute.HealthCheck) (*compute.BackendService, error) {
 	log := log.FromContext(ctx)
-	backends := make([]*compute.Backend, 0, len(instancegroups))
-	for _, group := range instancegroups {
-		be := &compute.Backend{
-			BalancingMode: string(mode),
-			Group:         group.SelfLink,
-		}
-		if mode == loadBalancingModeConnection {
-			// Set max connections to a reasonable limit based
-			// on database max connections https://cloud.google.com/sql/docs/postgres/flags#postgres-m
-			be.MaxConnections = 1000
-		}
-		backends = append(backends, be)
-	}
+	backends := createBackends(instancegroups, mode)
 
 	backendsvcSpec := s.scope.BackendServiceSpec(lbname)
 	backendsvcSpec.Backends = backends
@@ -537,15 +555,8 @@ func (s *Service) createOrGetBackendService(ctx context.Context, lbname string, 
 // createOrGetRegionalBackendService is used for internal passthrough load balancers.
 func (s *Service) createOrGetRegionalBackendService(ctx context.Context, lbname string, instancegroups []*compute.InstanceGroup, healthcheck *compute.HealthCheck) (*compute.BackendService, error) {
 	log := log.FromContext(ctx)
-	backends := make([]*compute.Backend, 0, len(instancegroups))
-	for _, group := range instancegroups {
-		be := &compute.Backend{
-			// Always use connection mode for passthrough load balancer
-			BalancingMode: string(loadBalancingModeConnection),
-			Group:         group.SelfLink,
-		}
-		backends = append(backends, be)
-	}
+	// Always use connection mode for passthrough load balancer
+	backends := createBackends(instancegroups, loadBalancingModeConnection)
 
 	backendsvcSpec := s.scope.BackendServiceSpec(lbname)
 	backendsvcSpec.Backends = backends
@@ -595,19 +606,7 @@ func (s *Service) createOrGetRegionalBackendService(ctx context.Context, lbname 
 // and uses INTERNAL load balancing scheme with a network field.
 func (s *Service) createOrGetRegionalBackendServiceExternal(ctx context.Context, lbname string, mode loadBalancingMode, instancegroups []*compute.InstanceGroup, healthcheck *compute.HealthCheck) (*compute.BackendService, error) {
 	log := log.FromContext(ctx)
-	backends := make([]*compute.Backend, 0, len(instancegroups))
-	for _, group := range instancegroups {
-		be := &compute.Backend{
-			BalancingMode: string(mode),
-			Group:         group.SelfLink,
-		}
-		if mode == loadBalancingModeConnection {
-			// Set max connections to a reasonable limit based
-			// on database max connections https://cloud.google.com/sql/docs/postgres/flags#postgres-m
-			be.MaxConnections = 1000
-		}
-		backends = append(backends, be)
-	}
+	backends := createBackends(instancegroups, mode)
 
 	backendsvcSpec := s.scope.BackendServiceSpec(lbname)
 	backendsvcSpec.Backends = backends
