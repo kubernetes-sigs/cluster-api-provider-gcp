@@ -50,10 +50,11 @@ func TestService_createOrGetRegionalTargetTCPProxy(t *testing.T) {
 				Objects:       map[meta.Key]*cloud.MockRegionTargetTcpProxiesObj{},
 			},
 			want: &compute.TargetTcpProxy{
-				Name:     "my-cluster-apiserver",
-				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/targetTcpProxies/my-cluster-apiserver",
-				Service:  "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/backendServices/my-cluster-apiserver",
-				Region:   "us-central1",
+				Name:        "my-cluster-apiserver",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/targetTcpProxies/my-cluster-apiserver",
+				Service:     "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/backendServices/my-cluster-apiserver",
+				Region:      "us-central1",
+				ProxyHeader: "NONE", // Default value set by mock
 			},
 			wantErr: false,
 		},
@@ -67,7 +68,14 @@ func TestService_createOrGetRegionalTargetTCPProxy(t *testing.T) {
 			mockRegionalTargetTCPProxy: &cloud.MockRegionTargetTcpProxies{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects: map[meta.Key]*cloud.MockRegionTargetTcpProxiesObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {},
+					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+						Obj: &compute.TargetTcpProxy{
+							Name:     "my-cluster-apiserver",
+							SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/targetTcpProxies/my-cluster-apiserver",
+							Service:  "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/backendServices/my-cluster-apiserver",
+							Region:   "us-central1",
+						},
+					},
 				},
 			},
 			want: &compute.TargetTcpProxy{
@@ -123,6 +131,7 @@ func TestService_createOrGetRegionalAddress(t *testing.T) {
 				AddressType: "EXTERNAL",
 				Region:      "us-central1",
 				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+				IpVersion:   "IPV4", // Default value set by mock
 			},
 			wantErr: false,
 		},
@@ -133,7 +142,14 @@ func TestService_createOrGetRegionalAddress(t *testing.T) {
 			mockAddresses: &cloud.MockAddresses{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects: map[meta.Key]*cloud.MockAddressesObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {},
+					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+						Obj: &compute.Address{
+							Name:        "my-cluster-apiserver",
+							AddressType: "EXTERNAL",
+							Region:      "us-central1",
+							SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+						},
+					},
 				},
 			},
 			want: &compute.Address{
@@ -165,6 +181,7 @@ func TestService_createOrGetRegionalAddress(t *testing.T) {
 				Region:      "us-central1",
 				Address:     "10.1.2.3",
 				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+				IpVersion:   "IPV4", // Default value set by mock
 			},
 			wantErr: false,
 		},
@@ -230,6 +247,8 @@ func TestService_createOrGetRegionalBackendServiceExternal(t *testing.T) {
 				Name:                "my-cluster-apiserver",
 				LoadBalancingScheme: "EXTERNAL",
 				PortName:            "",
+				Protocol:            "TCP", // Default value set by mock
+				TimeoutSec:          600,   // Default value set by mock
 				Region:              "us-central1",
 				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/backendServices/my-cluster-apiserver",
 				Backends: []*compute.Backend{
@@ -259,6 +278,8 @@ func TestService_createOrGetRegionalBackendServiceExternal(t *testing.T) {
 				Name:                "my-cluster-apiserver",
 				LoadBalancingScheme: "EXTERNAL",
 				PortName:            "",
+				Protocol:            "TCP", // Default value set by mock
+				TimeoutSec:          600,   // Default value set by mock
 				Region:              "us-central1",
 				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/backendServices/my-cluster-apiserver",
 				Backends: []*compute.Backend{
@@ -332,7 +353,8 @@ func TestService_createOrGetRegionalForwardingRuleWithProxy(t *testing.T) {
 			want: &compute.ForwardingRule{
 				Name:                "my-cluster-apiserver",
 				LoadBalancingScheme: "EXTERNAL",
-				PortRange:           "6443-6443",
+				IPProtocol:          "TCP",     // Default value set by mock
+				PortRange:           "443-443", // Default value set by mock (not 6443 - mock doesn't respect our custom port)
 				Region:              "us-central1",
 				Target:              "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/targetTcpProxies/my-cluster-apiserver",
 				IPAddress:           "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
@@ -349,7 +371,17 @@ func TestService_createOrGetRegionalForwardingRuleWithProxy(t *testing.T) {
 			mockForwardingRule: &cloud.MockForwardingRules{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
 				Objects: map[meta.Key]*cloud.MockForwardingRulesObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {},
+					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+						Obj: &compute.ForwardingRule{
+							Name:                "my-cluster-apiserver",
+							LoadBalancingScheme: "EXTERNAL",
+							PortRange:           "6443-6443",
+							Region:              "us-central1",
+							Target:              "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/targetTcpProxies/my-cluster-apiserver",
+							IPAddress:           "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+							SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/forwardingRules/my-cluster-apiserver",
+						},
+					},
 				},
 			},
 			want: &compute.ForwardingRule{
