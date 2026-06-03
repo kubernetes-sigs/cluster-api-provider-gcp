@@ -331,13 +331,45 @@ func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, s
 		Network: path.Join("projects", cluster.NetworkProject(), "global", "networks", cluster.NetworkName()),
 	}
 
+	// Determine if this subnet has external IPv6 access enabled
+	hasExternalIpv6 := false
+	if subnet != nil && cluster.StackType() == infrav1.DualStackType {
+		subnetSpec := cluster.Subnets().FindByName(*subnet)
+		if subnetSpec != nil {
+			hasExternalIpv6 = ptr.Deref(subnetSpec.ExternalIpv6, false)
+		}
+	}
+
+	// Determine IPv6 access type based on subnet configuration
+	ipv6AccessType := infrav1.DualStackNetworkAccess
+	if hasExternalIpv6 {
+		ipv6AccessType = "EXTERNAL"
+	}
+
 	if publicIP != nil && *publicIP {
+		// IPv4 public access
 		networkInterface.AccessConfigs = []*compute.AccessConfig{
 			{
 				Type: "ONE_TO_ONE_NAT",
 				Name: "External NAT",
 			},
 		}
+
+		// IPv6 public access - only available on subnets with external IPv6 enabled
+		if cluster.StackType() == infrav1.DualStackType && hasExternalIpv6 {
+			networkInterface.Ipv6AccessConfigs = []*compute.AccessConfig{
+				{
+					Type: "DIRECT_IPV6",
+					Name: "External IPv6",
+				},
+			}
+		}
+	}
+
+	if cluster.StackType() == infrav1.DualStackType {
+		networkInterface.Ipv6AccessType = ipv6AccessType
+		networkInterface.Ipv6Address = cluster.Ipv6Address()
+		networkInterface.StackType = infrav1.GCPDualStack
 	}
 
 	if subnet != nil {
@@ -509,6 +541,10 @@ func (m *MachineScope) InstanceSpec(log logr.Logger) *compute.Instance {
 	instance.GuestAccelerators = instanceGuestAcceleratorsSpec(m.GCPMachine.Spec.GuestAccelerators)
 	if len(instance.GuestAccelerators) > 0 {
 		instance.Scheduling.OnHostMaintenance = onHostMaintenanceTerminate
+	}
+
+	if m.ClusterGetter.StackType() == infrav1.DualStackType {
+		instance.PrivateIpv6GoogleAccess = "INHERIT_FROM_SUBNETWORK"
 	}
 
 	return instance

@@ -934,6 +934,11 @@ func (in *Network) DeepCopyInto(out *Network) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.APIServerIPv6Address != nil {
+		in, out := &in.APIServerIPv6Address, &out.APIServerIPv6Address
+		*out = new(string)
+		**out = **in
+	}
 	if in.APIServerHealthCheck != nil {
 		in, out := &in.APIServerHealthCheck, &out.APIServerHealthCheck
 		*out = new(string)
@@ -961,8 +966,18 @@ func (in *Network) DeepCopyInto(out *Network) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.APIServerIPv6ForwardingRule != nil {
+		in, out := &in.APIServerIPv6ForwardingRule, &out.APIServerIPv6ForwardingRule
+		*out = new(string)
+		**out = **in
+	}
 	if in.APIInternalAddress != nil {
 		in, out := &in.APIInternalAddress, &out.APIInternalAddress
+		*out = new(string)
+		**out = **in
+	}
+	if in.APIInternalIPv6Address != nil {
+		in, out := &in.APIInternalIPv6Address, &out.APIInternalIPv6Address
 		*out = new(string)
 		**out = **in
 	}
@@ -978,6 +993,11 @@ func (in *Network) DeepCopyInto(out *Network) {
 	}
 	if in.APIInternalForwardingRule != nil {
 		in, out := &in.APIInternalForwardingRule, &out.APIInternalForwardingRule
+		*out = new(string)
+		**out = **in
+	}
+	if in.APIIPv6InternalForwardingRule != nil {
+		in, out := &in.APIIPv6InternalForwardingRule, &out.APIIPv6InternalForwardingRule
 		*out = new(string)
 		**out = **in
 	}
