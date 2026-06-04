@@ -31,7 +31,6 @@ import (
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -76,8 +75,8 @@ func getBaseClusterScope() (*scope.ClusterScope, error) {
 			},
 		},
 		Status: infrav1.GCPClusterStatus{
-			FailureDomains: clusterv1beta1.FailureDomains{
-				"us-central1-a": clusterv1beta1.FailureDomainSpec{ControlPlane: true},
+			FailureDomains: []clusterv1.FailureDomain{
+				{Name: "us-central1-a", ControlPlane: ptr.To(true)},
 			},
 		},
 	}

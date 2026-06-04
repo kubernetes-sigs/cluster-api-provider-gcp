@@ -22,7 +22,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/strings/slices"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 const (
@@ -168,7 +168,7 @@ type GCPManagedControlPlaneSpec struct {
 
 	// Endpoint represents the endpoint used to communicate with the control plane.
 	// +optional
-	Endpoint clusterv1beta1.APIEndpoint `json:"endpoint"`
+	Endpoint clusterv1.APIEndpoint `json:"endpoint"`
 }
 
 // GCPManagedControlPlaneStatus defines the observed state of GCPManagedControlPlane.
@@ -184,7 +184,10 @@ type GCPManagedControlPlaneStatus struct {
 	Initialized bool `json:"initialized,omitempty"`
 
 	// Conditions specifies the conditions for the managed control plane
-	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// CurrentVersion shows the current version of the GKE control plane.
 	//
@@ -301,12 +304,12 @@ func (m MonitoringService) String() string {
 }
 
 // GetConditions returns the control planes conditions.
-func (r *GCPManagedControlPlane) GetConditions() clusterv1beta1.Conditions {
+func (r *GCPManagedControlPlane) GetConditions() []metav1.Condition {
 	return r.Status.Conditions
 }
 
 // SetConditions sets the status conditions for the GCPManagedControlPlane.
-func (r *GCPManagedControlPlane) SetConditions(conditions clusterv1beta1.Conditions) {
+func (r *GCPManagedControlPlane) SetConditions(conditions []metav1.Condition) {
 	r.Status.Conditions = conditions
 }
 
