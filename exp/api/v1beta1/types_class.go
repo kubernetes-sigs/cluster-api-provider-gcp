@@ -147,4 +147,13 @@ type GCPManagedMachinePoolClassSpec struct {
 	// LinuxNodeConfig specifies the settings for Linux agent nodes.
 	// +optional
 	LinuxNodeConfig *LinuxNodeConfig `json:"linuxNodeConfig,omitempty"`
+	// Preemptible specifies whether to create nodes using preemptible VM instances.
+	// Preemptible VMs have a maximum lifetime of 24 hours and may be reclaimed with 30 seconds
+	// notice. This field is immutable.
+	// +optional
+	Preemptible *bool `json:"preemptible,omitempty"`
+	// Spot specifies whether to create nodes using Spot VM instances. Spot VMs can be reclaimed at
+	// any time and are recommended over Preemptible VMs for new workloads. This field is immutable.
+	// +optional
+	Spot *bool `json:"spot,omitempty"`
 }

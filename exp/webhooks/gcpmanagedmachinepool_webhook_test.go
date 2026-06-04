@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
@@ -194,6 +195,26 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
 					DiskSizeGb:   &diskSizeGb,
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "immutable field preemptible set after creation",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					Preemptible:  ptr.To(true),
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "immutable field spot set after creation",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					Spot:         ptr.To(true),
 				},
 			},
 			expectError: true,

@@ -258,6 +258,12 @@ spec:
                                 type: array
                             type: object
                         type: object
+                      preemptible:
+                        description: |-
+                          Preemptible specifies whether to create nodes using preemptible VM instances.
+                          Preemptible VMs have a maximum lifetime of 24 hours and may be reclaimed with 30 seconds
+                          notice. This field is immutable.
+                        type: boolean
                       scaling:
                         description: Scaling specifies scaling for the node pool
                         properties:
@@ -282,6 +288,11 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      spot:
+                        description: |-
+                          Spot specifies whether to create nodes using Spot VM instances. Spot VMs can be reclaimed at
+                          any time and are recommended over Preemptible VMs for new workloads. This field is immutable.
+                        type: boolean
                     type: object
                 required:
                 - spec
