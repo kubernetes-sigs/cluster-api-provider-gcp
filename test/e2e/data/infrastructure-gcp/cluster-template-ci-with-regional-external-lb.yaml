@@ -34,7 +34,7 @@ spec:
         purpose: PRIVATE
         region: "${GCP_REGION}"
       - name: proxy-only-subnet
-        cidrBlock: "10.128.0.0/26"
+        cidrBlock: "10.1.0.0/26"
         purpose: REGIONAL_MANAGED_PROXY
         region: "${GCP_REGION}"
   loadBalancer:
