@@ -81,7 +81,7 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	}
 
 	if lbType == infrav1.RegionalInternalExternal || lbType == infrav1.RegionalExternal {
-		if err = s.createRegionalExternalLoadBalancer(ctx, lbType, instancegroups); err != nil {
+		if err = s.createRegionalExternalLoadBalancer(ctx, instancegroups); err != nil {
 			return err
 		}
 	}
@@ -267,8 +267,8 @@ func (s *Service) createExternalLoadBalancer(ctx context.Context, lbType infrav1
 	return nil
 }
 
-// createExternalLoadBalancer creates the components for a Global External Proxy LoadBalancer.
-func (s *Service) createRegionalExternalLoadBalancer(ctx context.Context, lbType infrav1.LoadBalancerType, instancegroups []*compute.InstanceGroup) error {
+// createRegionalExternalLoadBalancer creates the components for a Regional External Proxy LoadBalancer.
+func (s *Service) createRegionalExternalLoadBalancer(ctx context.Context, instancegroups []*compute.InstanceGroup) error {
 	name := infrav1.APIServerRoleTagValue
 	healthcheck, err := s.createOrGetRegionalHealthCheck(ctx, name)
 	if err != nil {
@@ -529,7 +529,6 @@ func (s *Service) createOrGetRegionalBackendService(ctx context.Context, lbname 
 		// and specify the port name as "apiserver"
 		backendsvcSpec.LoadBalancingScheme = string(loadBalanceTrafficExternalManaged)
 		backendsvcSpec.PortName = "apiserver"
-
 	} else {
 		backendsvcSpec.LoadBalancingScheme = string(loadBalanceTrafficInternal)
 		network := s.scope.Network()
@@ -846,7 +845,6 @@ func (s *Service) createOrGetRegionalForwardingRule(ctx context.Context, lbname 
 }
 
 func (s *Service) createOrGetRegionalExternalForwardingRule(ctx context.Context, lbname string, target *compute.TargetTcpProxy, addr *compute.Address) (*compute.ForwardingRule, error) {
-
 	log := log.FromContext(ctx)
 	spec := s.scope.ForwardingRuleSpec(lbname)
 	spec.LoadBalancingScheme = string(loadBalanceTrafficExternalManaged)
