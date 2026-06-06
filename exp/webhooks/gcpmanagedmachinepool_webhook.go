@@ -273,9 +273,27 @@ func (*GCPManagedMachinePool) ValidateUpdate(_ context.Context, oldObj, newObj r
 	}
 
 	if err := webhookutils.ValidateImmutable(
-		field.NewPath("spec", "nodeSecurity"),
-		old.Spec.NodeSecurity,
-		r.Spec.NodeSecurity); err != nil {
+		field.NewPath("spec", "nodeSecurity", "serviceAccount"),
+		old.Spec.NodeSecurity.ServiceAccount,
+		r.Spec.NodeSecurity.ServiceAccount); err != nil {
+		allErrs = append(allErrs, err)
+	}
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "nodeSecurity", "sandboxType"),
+		old.Spec.NodeSecurity.SandboxType,
+		r.Spec.NodeSecurity.SandboxType); err != nil {
+		allErrs = append(allErrs, err)
+	}
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "nodeSecurity", "enableSecureBoot"),
+		old.Spec.NodeSecurity.EnableSecureBoot,
+		r.Spec.NodeSecurity.EnableSecureBoot); err != nil {
+		allErrs = append(allErrs, err)
+	}
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "nodeSecurity", "enableIntegrityMonitoring"),
+		old.Spec.NodeSecurity.EnableIntegrityMonitoring,
+		r.Spec.NodeSecurity.EnableIntegrityMonitoring); err != nil {
 		allErrs = append(allErrs, err)
 	}
 
