@@ -49,6 +49,57 @@ const (
 	addressPurposeGCEEndpoint         = "GCE_ENDPOINT"
 )
 
+func isRegionalExternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
+	return lbType == infrav1.RegionalExternal ||
+		lbType == infrav1.RegionalInternalExternal
+}
+
+func shouldCreateExternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
+	return lbType == infrav1.External ||
+		lbType == infrav1.InternalExternal
+}
+
+func shouldCreateInternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
+	return lbType == infrav1.Internal ||
+		lbType == infrav1.InternalExternal ||
+		lbType == infrav1.RegionalInternalExternal
+}
+
+func getInternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
+	if lbSpec.InternalLoadBalancer != nil {
+		return ptr.Deref(lbSpec.InternalLoadBalancer.Name, infrav1.InternalRoleTagValue)
+	}
+	return infrav1.InternalRoleTagValue
+}
+
+// getLoadBalancingMode returns the appropriate balancing mode for the global
+// backend service. When an internal proxy LB is created alongside an external
+// one (InternalExternal), the modes must match — internal proxy LBs require
+// CONNECTION mode. See https://cloud.google.com/load-balancing/docs/backend-service#balancing-mode-lb
+func getLoadBalancingMode(lbType infrav1.LoadBalancerType) loadBalancingMode {
+	if lbType == infrav1.InternalExternal {
+		return loadBalancingModeConnection
+	}
+	return loadBalancingModeUtilization
+}
+
+func createBackends(instancegroups []*compute.InstanceGroup, mode loadBalancingMode) []*compute.Backend {
+	backends := make([]*compute.Backend, 0, len(instancegroups))
+	for _, group := range instancegroups {
+		be := &compute.Backend{
+			BalancingMode: string(mode),
+			Group:         group.SelfLink,
+		}
+		if mode == loadBalancingModeConnection {
+			// Set max connections to a reasonable limit based
+			// on database max connections https://cloud.google.com/sql/docs/postgres/flags#postgres-m
+			be.MaxConnections = 1000
+		}
+		backends = append(backends, be)
+	}
+	return backends
+}
+
 // Reconcile reconcile cluster control-plane loadbalancer components.
 func (s *Service) Reconcile(ctx context.Context) error {
 	log := log.FromContext(ctx)
