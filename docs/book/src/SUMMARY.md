@@ -19,4 +19,5 @@
     - [Creating a cluster](./developers/cluster-creation.md)
     - [CI Jobs](./developers/jobs.md)
     - [Releasing](./developers/releasing.md)
+    - [Bumping Go](./developers/bump-go.md)
 - [Roadmap](./roadmap.md)
