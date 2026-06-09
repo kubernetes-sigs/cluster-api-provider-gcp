@@ -105,9 +105,11 @@ spec:
                             maxLength: 16
                             pattern: (^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)
                             type: string
-                          internalLoadBalancer:
-                            description: InternalLoadBalancer is the configuration
-                              for an Internal Passthrough Network Load Balancer.
+                          externalLoadBalancer:
+                            description: |-
+                              ExternalLoadBalancer is the configuration for an External Proxy Load Balancer.
+                              Applies to all load balancer types that include an external component:
+                              External, InternalExternal, RegionalExternal, and RegionalInternalExternal.
                             properties:
                               internalAccess:
                                 default: Regional
@@ -116,6 +118,7 @@ spec:
                                   It determines whether the load balancer allows global access,
                                   or restricts traffic to clients within the same region as the load balancer.
                                   If unspecified, the value defaults to "Regional".
+                                  This field only applies to Internal Load Balancers.
 
                                   Possible values:
                                     "Regional" - Only clients in the same region as the load balancer can access it.
@@ -128,26 +131,76 @@ spec:
                                 description: |-
                                   IPAddress is the static IP address to use for the Load Balancer.
                                   If not set, a new static IP address will be allocated.
-                                  If set, it must be a valid free IP address from the LoadBalancer Subnet.
+                                  For Internal Load Balancers, this must be a valid IP address from the LoadBalancer Subnet.
+                                  For Regional External Load Balancers, this must be a valid external IP address in the region.
                                 type: string
                               name:
                                 description: |-
                                   Name is the name of the Load Balancer. If not set a default name
-                                  will be used. For an Internal Load Balancer service the default
-                                  name is "api-internal".
+                                  will be used. For an Internal Load Balancer the default name is "api-internal".
+                                  For a Regional External Load Balancer the default name is "api-server".
                                 pattern: (^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)
                                 type: string
                               subnet:
                                 description: |-
-                                  Subnet is the name of the subnet to use for a regional Load Balancer. A subnet is
-                                  required for the Load Balancer, if not defined the first configured subnet will be
-                                  used.
+                                  Subnet is the name of the subnet to use for a regional Load Balancer.
+                                  For Internal Load Balancers, a subnet is required. If not defined,
+                                  the first configured subnet will be used.
+                                  For Regional External Load Balancers, this field is not applicable.
+                                type: string
+                            type: object
+                          internalLoadBalancer:
+                            description: InternalLoadBalancer is the configuration
+                              for an Internal Passthrough Network Load Balancer.
+                            properties:
+                              internalAccess:
+                                default: Regional
+                                description: |-
+                                  InternalAccess defines the access for the Internal Passthrough Load Balancer.
+                                  It determines whether the load balancer allows global access,
+                                  or restricts traffic to clients within the same region as the load balancer.
+                                  If unspecified, the value defaults to "Regional".
+                                  This field only applies to Internal Load Balancers.
+
+                                  Possible values:
+                                    "Regional" - Only clients in the same region as the load balancer can access it.
+                                    "Global" - Clients from any region can access the load balancer.
+                                enum:
+                                - Regional
+                                - Global
+                                type: string
+                              ipAddress:
+                                description: |-
+                                  IPAddress is the static IP address to use for the Load Balancer.
+                                  If not set, a new static IP address will be allocated.
+                                  For Internal Load Balancers, this must be a valid IP address from the LoadBalancer Subnet.
+                                  For Regional External Load Balancers, this must be a valid external IP address in the region.
+                                type: string
+                              name:
+                                description: |-
+                                  Name is the name of the Load Balancer. If not set a default name
+                                  will be used. For an Internal Load Balancer the default name is "api-internal".
+                                  For a Regional External Load Balancer the default name is "api-server".
+                                pattern: (^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)
+                                type: string
+                              subnet:
+                                description: |-
+                                  Subnet is the name of the subnet to use for a regional Load Balancer.
+                                  For Internal Load Balancers, a subnet is required. If not defined,
+                                  the first configured subnet will be used.
+                                  For Regional External Load Balancers, this field is not applicable.
                                 type: string
                             type: object
                           loadBalancerType:
                             description: |-
                               LoadBalancerType defines the type of Load Balancer that should be created.
                               If not set, a Global External Proxy Load Balancer will be created by default.
+                            enum:
+                            - External
+                            - RegionalExternal
+                            - Internal
+                            - InternalExternal
+                            - RegionalInternalExternal
                             type: string
                         type: object
                       network:

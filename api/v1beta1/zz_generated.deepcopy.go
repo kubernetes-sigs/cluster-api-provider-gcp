@@ -857,6 +857,11 @@ func (in *LoadBalancerSpec) DeepCopyInto(out *LoadBalancerSpec) {
 		*out = new(LoadBalancerType)
 		**out = **in
 	}
+	if in.ExternalLoadBalancer != nil {
+		in, out := &in.ExternalLoadBalancer, &out.ExternalLoadBalancer
+		*out = new(LoadBalancer)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.InternalLoadBalancer != nil {
 		in, out := &in.InternalLoadBalancer, &out.InternalLoadBalancer
 		*out = new(LoadBalancer)
