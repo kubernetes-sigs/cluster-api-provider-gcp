@@ -184,7 +184,7 @@ func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 
 // FailureDomains returns the cluster failure domains.
 func (s *ManagedClusterScope) FailureDomains() []string {
-	failureDomains := []string{}
+	failureDomains := make([]string, 0, len(s.GCPManagedCluster.Status.FailureDomains))
 	for failureDomainName := range s.GCPManagedCluster.Status.FailureDomains {
 		failureDomains = append(failureDomains, failureDomainName)
 	}
@@ -250,9 +250,9 @@ func (s *ManagedClusterScope) NatRouterSpec() *compute.Router {
 
 // SubnetSpecs returns google compute subnets spec.
 func (s *ManagedClusterScope) SubnetSpecs() []*compute.Subnetwork {
-	subnets := []*compute.Subnetwork{}
+	subnets := make([]*compute.Subnetwork, 0, len(s.GCPManagedCluster.Spec.Network.Subnets))
 	for _, subnetwork := range s.GCPManagedCluster.Spec.Network.Subnets {
-		secondaryIPRanges := []*compute.SubnetworkSecondaryRange{}
+		secondaryIPRanges := make([]*compute.SubnetworkSecondaryRange, 0, len(subnetwork.SecondaryCidrBlocks))
 		for rangeName, secondaryCidrBlock := range subnetwork.SecondaryCidrBlocks {
 			secondaryIPRanges = append(secondaryIPRanges, &compute.SubnetworkSecondaryRange{RangeName: rangeName, IpCidrRange: secondaryCidrBlock})
 		}

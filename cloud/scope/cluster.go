@@ -32,6 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	loadBalanceTrafficExternal = "EXTERNAL"
+	protocolTCP                = "TCP"
+	metadataKeyUserData        = "user-data"
+)
+
 // ClusterScopeParams defines the input parameters used to create a new Scope.
 type ClusterScopeParams struct {
 	GCPServices
@@ -197,7 +203,7 @@ func (s *ClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 
 // FailureDomains returns the cluster failure domains.
 func (s *ClusterScope) FailureDomains() []string {
-	failureDomains := []string{}
+	failureDomains := make([]string, 0, len(s.GCPCluster.Status.FailureDomains))
 	for failureDomainName := range s.GCPCluster.Status.FailureDomains {
 		failureDomains = append(failureDomains, failureDomainName)
 	}
@@ -264,9 +270,9 @@ func (s *ClusterScope) NatRouterSpec() *compute.Router {
 
 // SubnetSpecs returns google compute subnets spec.
 func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
-	subnets := []*compute.Subnetwork{}
+	subnets := make([]*compute.Subnetwork, 0, len(s.GCPCluster.Spec.Network.Subnets))
 	for _, subnetwork := range s.GCPCluster.Spec.Network.Subnets {
-		secondaryIPRanges := []*compute.SubnetworkSecondaryRange{}
+		secondaryIPRanges := make([]*compute.SubnetworkSecondaryRange, 0, len(subnetwork.SecondaryCidrBlocks))
 		for rangeName, secondaryCidrBlock := range subnetwork.SecondaryCidrBlocks {
 			secondaryIPRanges = append(secondaryIPRanges, &compute.SubnetworkSecondaryRange{RangeName: rangeName, IpCidrRange: secondaryCidrBlock})
 		}
@@ -308,7 +314,7 @@ func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
 func (s *ClusterScope) AddressSpec(lbname string) *compute.Address {
 	return &compute.Address{
 		Name:        fmt.Sprintf("%s-%s", s.Name(), lbname),
-		AddressType: "EXTERNAL",
+		AddressType: loadBalanceTrafficExternal,
 		IpVersion:   "IPV4",
 	}
 }
@@ -317,9 +323,9 @@ func (s *ClusterScope) AddressSpec(lbname string) *compute.Address {
 func (s *ClusterScope) BackendServiceSpec(lbname string) *compute.BackendService {
 	return &compute.BackendService{
 		Name:                fmt.Sprintf("%s-%s", s.Name(), lbname),
-		LoadBalancingScheme: "EXTERNAL",
+		LoadBalancingScheme: loadBalanceTrafficExternal,
 		PortName:            "apiserver",
-		Protocol:            "TCP",
+		Protocol:            protocolTCP,
 		TimeoutSec:          int64((10 * time.Minute).Seconds()),
 	}
 }
@@ -333,8 +339,8 @@ func (s *ClusterScope) ForwardingRuleSpec(lbname string) *compute.ForwardingRule
 	portRange := fmt.Sprintf("%d-%d", port, port)
 	return &compute.ForwardingRule{
 		Name:                fmt.Sprintf("%s-%s", s.Name(), lbname),
-		IPProtocol:          "TCP",
-		LoadBalancingScheme: "EXTERNAL",
+		IPProtocol:          protocolTCP,
+		LoadBalancingScheme: loadBalanceTrafficExternal,
 		PortRange:           portRange,
 		Labels:              s.AdditionalLabels(),
 	}
