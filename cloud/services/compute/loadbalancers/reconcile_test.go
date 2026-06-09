@@ -324,6 +324,7 @@ func TestService_createOrGetBackendService(t *testing.T) {
 		name               string
 		scope              func(s *scope.ClusterScope) Scope
 		lbName             string
+		mode               loadBalancingMode
 		healthCheck        *compute.HealthCheck
 		instanceGroups     []*compute.InstanceGroup
 		mockBackendService *cloud.MockBackendServices
@@ -334,6 +335,7 @@ func TestService_createOrGetBackendService(t *testing.T) {
 			name:   "backend service does not exist for external load balancer (should create backendservice)",
 			scope:  func(s *scope.ClusterScope) Scope { return s },
 			lbName: infrav1.APIServerRoleTagValue,
+			mode:   loadBalancingModeUtilization,
 			healthCheck: &compute.HealthCheck{
 				HttpsHealthCheck: &compute.HTTPSHealthCheck{Port: 6443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
 				Name:             "my-cluster-apiserver",
@@ -353,8 +355,48 @@ func TestService_createOrGetBackendService(t *testing.T) {
 			want: &compute.BackendService{
 				Backends: []*compute.Backend{
 					{
-						BalancingMode: "UTILIZATION",
+						BalancingMode: string(loadBalancingModeUtilization),
 						Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-master-us-central1-a",
+					},
+				},
+				HealthChecks: []string{
+					"https://www.googleapis.com/compute/v1/projects/proj-id/global/healthChecks/my-cluster-apiserver",
+				},
+				LoadBalancingScheme: "EXTERNAL",
+				Name:                "my-cluster-apiserver",
+				PortName:            "apiserver",
+				Protocol:            "TCP",
+				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/global/backendServices/my-cluster-apiserver",
+				TimeoutSec:          600,
+			},
+		},
+		{
+			name:   "backend service does not exist for InternalExternal load balancer (should create backendservice with CONNECTION mode and MaxConnections)",
+			scope:  func(s *scope.ClusterScope) Scope { return s },
+			lbName: infrav1.APIServerRoleTagValue,
+			mode:   loadBalancingModeConnection,
+			healthCheck: &compute.HealthCheck{
+				HttpsHealthCheck: &compute.HTTPSHealthCheck{Port: 6443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
+				Name:             "my-cluster-apiserver",
+				SelfLink:         "https://www.googleapis.com/compute/v1/projects/proj-id/global/healthChecks/my-cluster-apiserver",
+			},
+			instanceGroups: []*compute.InstanceGroup{
+				{
+					Name:       "my-cluster-master-us-central1-a",
+					NamedPorts: []*compute.NamedPort{{Name: "apiserver", Port: 6443}},
+					SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-master-us-central1-a",
+				},
+			},
+			mockBackendService: &cloud.MockBackendServices{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockBackendServicesObj{},
+			},
+			want: &compute.BackendService{
+				Backends: []*compute.Backend{
+					{
+						BalancingMode:  string(loadBalancingModeConnection),
+						Group:          "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-master-us-central1-a",
+						MaxConnections: 1000,
 					},
 				},
 				HealthChecks: []string{
@@ -378,8 +420,7 @@ func TestService_createOrGetBackendService(t *testing.T) {
 			}
 			s := New(tt.scope(clusterScope))
 			s.backendservices = tt.mockBackendService
-			mode := loadBalancingModeUtilization
-			got, err := s.createOrGetBackendService(ctx, tt.lbName, mode, tt.instanceGroups, tt.healthCheck)
+			got, err := s.createOrGetBackendService(ctx, tt.lbName, tt.mode, tt.instanceGroups, tt.healthCheck)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service s.createOrGetBackendService() error = %v, wantErr %v", err, tt.wantErr)
 				return
