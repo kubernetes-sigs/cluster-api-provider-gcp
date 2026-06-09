@@ -254,14 +254,18 @@ func TestGetLoadBalancingMode(t *testing.T) {
 }
 
 func TestCreateBackends(t *testing.T) {
+	const (
+		igZoneASelfLink = "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a"
+		igZoneBSelfLink = "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b"
+	)
 	instanceGroups := []*compute.InstanceGroup{
 		{
 			Name:     "ig-zone-a",
-			SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
+			SelfLink: igZoneASelfLink,
 		},
 		{
 			Name:     "ig-zone-b",
-			SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b",
+			SelfLink: igZoneBSelfLink,
 		},
 	}
 
@@ -277,12 +281,12 @@ func TestCreateBackends(t *testing.T) {
 			mode:           loadBalancingModeUtilization,
 			want: []*compute.Backend{
 				{
-					BalancingMode: "UTILIZATION",
-					Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
+					BalancingMode: string(loadBalancingModeUtilization),
+					Group:         igZoneASelfLink,
 				},
 				{
-					BalancingMode: "UTILIZATION",
-					Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b",
+					BalancingMode: string(loadBalancingModeUtilization),
+					Group:         igZoneBSelfLink,
 				},
 			},
 		},
@@ -292,13 +296,13 @@ func TestCreateBackends(t *testing.T) {
 			mode:           loadBalancingModeConnection,
 			want: []*compute.Backend{
 				{
-					BalancingMode:  "CONNECTION",
-					Group:          "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
+					BalancingMode:  string(loadBalancingModeConnection),
+					Group:          igZoneASelfLink,
 					MaxConnections: 1000,
 				},
 				{
-					BalancingMode:  "CONNECTION",
-					Group:          "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b",
+					BalancingMode:  string(loadBalancingModeConnection),
+					Group:          igZoneBSelfLink,
 					MaxConnections: 1000,
 				},
 			},
@@ -314,14 +318,14 @@ func TestCreateBackends(t *testing.T) {
 			instancegroups: []*compute.InstanceGroup{
 				{
 					Name:     "ig-zone-a",
-					SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
+					SelfLink: igZoneASelfLink,
 				},
 			},
 			mode: loadBalancingModeUtilization,
 			want: []*compute.Backend{
 				{
-					BalancingMode: "UTILIZATION",
-					Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
+					BalancingMode: string(loadBalancingModeUtilization),
+					Group:         igZoneASelfLink,
 				},
 			},
 		},

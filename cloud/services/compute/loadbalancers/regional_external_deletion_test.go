@@ -26,6 +26,13 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 )
 
+const (
+	deletionTestProjectID    = "proj-id"
+	deletionTestRegion       = "us-central1"
+	deletionTestLBName       = "apiserver"
+	deletionTestResourceName = "my-cluster-apiserver"
+)
+
 func TestService_deleteRegionalForwardingRule(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -38,14 +45,14 @@ func TestService_deleteRegionalForwardingRule(t *testing.T) {
 		{
 			name:   "regional forwarding rule exists (should delete)",
 			scope:  func(s *scope.ClusterScope) Scope { return s },
-			lbname: "apiserver",
+			lbname: deletionTestLBName,
 			mockForwardingRule: &cloud.MockForwardingRules{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects: map[meta.Key]*cloud.MockForwardingRulesObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+					*meta.RegionalKey(deletionTestResourceName, deletionTestRegion): {
 						Obj: &compute.ForwardingRule{
-							Name:     "my-cluster-apiserver",
-							Region:   "us-central1",
+							Name:     deletionTestResourceName,
+							Region:   deletionTestRegion,
 							SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/forwardingRules/my-cluster-apiserver",
 						},
 					},
@@ -57,9 +64,9 @@ func TestService_deleteRegionalForwardingRule(t *testing.T) {
 		{
 			name:   "regional forwarding rule does not exist (should succeed - no-op)",
 			scope:  func(s *scope.ClusterScope) Scope { return s },
-			lbname: "apiserver",
+			lbname: deletionTestLBName,
 			mockForwardingRule: &cloud.MockForwardingRules{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects:       map[meta.Key]*cloud.MockForwardingRulesObj{},
 			},
 			wantErr:     false,
@@ -84,7 +91,7 @@ func TestService_deleteRegionalForwardingRule(t *testing.T) {
 			}
 
 			if tt.wantDeleted {
-				key := meta.RegionalKey("my-cluster-apiserver", "us-central1")
+				key := meta.RegionalKey(deletionTestResourceName, deletionTestRegion)
 				if _, exists := tt.mockForwardingRule.Objects[*key]; exists {
 					t.Errorf("Service.deleteRegionalForwardingRule() did not delete the resource")
 				}
@@ -108,56 +115,56 @@ func TestService_deleteRegionalExternalLoadBalancer(t *testing.T) {
 			name:  "all regional resources exist (should delete all)",
 			scope: func(s *scope.ClusterScope) Scope { return s },
 			mockForwardingRule: &cloud.MockForwardingRules{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects: map[meta.Key]*cloud.MockForwardingRulesObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+					*meta.RegionalKey(deletionTestResourceName, deletionTestRegion): {
 						Obj: &compute.ForwardingRule{
-							Name:   "my-cluster-apiserver",
-							Region: "us-central1",
+							Name:   deletionTestResourceName,
+							Region: deletionTestRegion,
 						},
 					},
 				},
 			},
 			mockRegionalTargetTCPProxy: &cloud.MockRegionTargetTcpProxies{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects: map[meta.Key]*cloud.MockRegionTargetTcpProxiesObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+					*meta.RegionalKey(deletionTestResourceName, deletionTestRegion): {
 						Obj: &compute.TargetTcpProxy{
-							Name:   "my-cluster-apiserver",
-							Region: "us-central1",
+							Name:   deletionTestResourceName,
+							Region: deletionTestRegion,
 						},
 					},
 				},
 			},
 			mockRegionalAddresses: &cloud.MockAddresses{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects: map[meta.Key]*cloud.MockAddressesObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+					*meta.RegionalKey(deletionTestResourceName, deletionTestRegion): {
 						Obj: &compute.Address{
-							Name:   "my-cluster-apiserver",
-							Region: "us-central1",
+							Name:   deletionTestResourceName,
+							Region: deletionTestRegion,
 						},
 					},
 				},
 			},
 			mockBackendService: &cloud.MockRegionBackendServices{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects: map[meta.Key]*cloud.MockRegionBackendServicesObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+					*meta.RegionalKey(deletionTestResourceName, deletionTestRegion): {
 						Obj: &compute.BackendService{
-							Name:   "my-cluster-apiserver",
-							Region: "us-central1",
+							Name:   deletionTestResourceName,
+							Region: deletionTestRegion,
 						},
 					},
 				},
 			},
 			mockHealthCheck: &cloud.MockRegionHealthChecks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects: map[meta.Key]*cloud.MockRegionHealthChecksObj{
-					*meta.RegionalKey("my-cluster-apiserver", "us-central1"): {
+					*meta.RegionalKey(deletionTestResourceName, deletionTestRegion): {
 						Obj: &compute.HealthCheck{
-							Name:   "my-cluster-apiserver",
-							Region: "us-central1",
+							Name:   deletionTestResourceName,
+							Region: deletionTestRegion,
 						},
 					},
 				},
@@ -168,23 +175,23 @@ func TestService_deleteRegionalExternalLoadBalancer(t *testing.T) {
 			name:  "no resources exist (should succeed - no-op)",
 			scope: func(s *scope.ClusterScope) Scope { return s },
 			mockForwardingRule: &cloud.MockForwardingRules{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects:       map[meta.Key]*cloud.MockForwardingRulesObj{},
 			},
 			mockRegionalTargetTCPProxy: &cloud.MockRegionTargetTcpProxies{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects:       map[meta.Key]*cloud.MockRegionTargetTcpProxiesObj{},
 			},
 			mockRegionalAddresses: &cloud.MockAddresses{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects:       map[meta.Key]*cloud.MockAddressesObj{},
 			},
 			mockBackendService: &cloud.MockRegionBackendServices{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects:       map[meta.Key]*cloud.MockRegionBackendServicesObj{},
 			},
 			mockHealthCheck: &cloud.MockRegionHealthChecks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: deletionTestProjectID},
 				Objects:       map[meta.Key]*cloud.MockRegionHealthChecksObj{},
 			},
 			wantErr: false,
@@ -211,7 +218,7 @@ func TestService_deleteRegionalExternalLoadBalancer(t *testing.T) {
 				return
 			}
 
-			key := meta.RegionalKey("my-cluster-apiserver", "us-central1")
+			key := meta.RegionalKey(deletionTestResourceName, deletionTestRegion)
 			if _, exists := tt.mockForwardingRule.Objects[*key]; exists {
 				t.Errorf("Service.deleteRegionalExternalLoadBalancer() did not delete forwarding rule")
 			}
