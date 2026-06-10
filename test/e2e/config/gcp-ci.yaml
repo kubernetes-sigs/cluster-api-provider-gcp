@@ -82,7 +82,7 @@ providers:
 variables:
   KUBERNETES_VERSION: "v1.35.5"
   CCM_VERSION: "v35.1.3" # major version must match KUBERNETES_VERSION minor; tag must exist at https://github.com/kubernetes/cloud-provider-gcp/tags
-  KUBERNETES_VERSION_MANAGEMENT: "v1.35.5" # latest patch of target k8s minor that is available as a kindest/node image: https://hub.docker.com/r/kindest/node/tags
+  KUBERNETES_VERSION_MANAGEMENT: "v1.35.1" # latest patch of target k8s minor that is available as a kindest/node image: https://hub.docker.com/r/kindest/node/tags
   ETCD_VERSION_UPGRADE_TO: "3.6.6-0"
   COREDNS_VERSION_UPGRADE_TO: "v1.13.1"
   # These images are built by the image-builder project's nightly job: # https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
