@@ -18,7 +18,6 @@ package webhooks
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -27,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -35,8 +33,7 @@ import (
 // +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinetemplate,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinetemplates,versions=v1beta1,name=default.gcpmachinetemplate.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1beta1
 
 func (r *GCPMachineTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&infrav1.GCPMachineTemplate{}).
+	return ctrl.NewWebhookManagedBy(mgr, &infrav1.GCPMachineTemplate{}).
 		WithValidator(r).
 		WithDefaulter(r).
 		Complete()
@@ -46,29 +43,17 @@ func (r *GCPMachineTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 type GCPMachineTemplate struct{}
 
 var (
-	_ webhook.CustomValidator = &GCPMachineTemplate{}
-	_ webhook.CustomDefaulter = &GCPMachineTemplate{}
+	_ admission.Validator[*infrav1.GCPMachineTemplate] = &GCPMachineTemplate{}
+	_ admission.Defaulter[*infrav1.GCPMachineTemplate] = &GCPMachineTemplate{}
 )
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPMachineTemplate) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*infrav1.GCPMachineTemplate)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPMachineTemplate object but got %T", r)
-	}
-
+func (*GCPMachineTemplate) ValidateCreate(_ context.Context, r *infrav1.GCPMachineTemplate) (admission.Warnings, error) {
 	clusterlog.Info("validate create", "name", r.Name)
 
 	return nil, validateConfidentialCompute(r.Spec.Template.Spec)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPMachineTemplate) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*infrav1.GCPMachineTemplate)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPMachineTemplate object but got %T", r)
-	}
-
+func (*GCPMachineTemplate) ValidateUpdate(_ context.Context, oldObj, r *infrav1.GCPMachineTemplate) (admission.Warnings, error) {
 	newGCPMachineTemplate, err := runtime.DefaultUnstructuredConverter.ToUnstructured(r)
 	if err != nil {
 		return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPMachineTemplate").GroupKind(), r.Name, field.ErrorList{
@@ -106,12 +91,10 @@ func (*GCPMachineTemplate) ValidateUpdate(_ context.Context, oldObj, newObj runt
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPMachineTemplate) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPMachineTemplate) ValidateDelete(_ context.Context, _ *infrav1.GCPMachineTemplate) (admission.Warnings, error) {
 	return nil, nil
 }
 
-// Default implements webhookutil.defaulter so a webhook will be registered for the type.
-func (*GCPMachineTemplate) Default(_ context.Context, _ runtime.Object) error {
+func (*GCPMachineTemplate) Default(_ context.Context, _ *infrav1.GCPMachineTemplate) error {
 	return nil
 }

@@ -15,8 +15,8 @@ providers:
   - name: cluster-api
     type: CoreProvider
     versions:
-      - name: v1.12.8
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.12.8/core-components.yaml
+      - name: v1.13.2
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.2/core-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -28,8 +28,8 @@ providers:
   - name: kubeadm
     type: BootstrapProvider
     versions:
-      - name: v1.12.8
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.12.8/bootstrap-components.yaml
+      - name: v1.13.2
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.2/bootstrap-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -41,8 +41,8 @@ providers:
   - name: kubeadm
     type: ControlPlaneProvider
     versions:
-      - name: v1.12.8
-        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.12.8/control-plane-components.yaml
+      - name: v1.13.2
+        value: https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.13.2/control-plane-components.yaml
         type: url
         files:
           - sourcePath: "../data/shared/v1beta1/metadata.yaml"
@@ -54,7 +54,7 @@ providers:
   - name: gcp
     type: InfrastructureProvider
     versions:
-      - name: v1.12.99 # next; use manifest from source files
+      - name: v1.13.99 # next; use manifest from source files
         value: "${PWD}/config/default"
     files:
       - sourcePath: "${PWD}/metadata.yaml"
@@ -80,20 +80,20 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
 
 variables:
-  KUBERNETES_VERSION: "v1.34.8"
-  CCM_VERSION: "v34.2.0" # major version must match KUBERNETES_VERSION minor
-  KUBERNETES_VERSION_MANAGEMENT: "v1.34.3"
-  ETCD_VERSION_UPGRADE_TO: "3.6.5-0"
-  COREDNS_VERSION_UPGRADE_TO: "v1.12.1"
+  KUBERNETES_VERSION: "v1.35.5"
+  CCM_VERSION: "v35.1.3" # major version must match KUBERNETES_VERSION minor; tag must exist at https://github.com/kubernetes/cloud-provider-gcp/tags
+  KUBERNETES_VERSION_MANAGEMENT: "v1.35.1" # latest patch of target k8s minor that is available as a kindest/node image: https://hub.docker.com/r/kindest/node/tags
+  ETCD_VERSION_UPGRADE_TO: "3.6.6-0"
+  COREDNS_VERSION_UPGRADE_TO: "v1.13.1"
   # These images are built by the image-builder project's nightly job: # https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
   # To update/add a new Kubernetes version, add/update the config files at:https://github.com/kubernetes-sigs/image-builder/tree/main/images/capi/packer/gce/ci/nightly
-  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-33-4-nightly"
-  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-34-8-nightly"
+  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-34-8-nightly"
+  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-35-5-nightly"
 
   CONTROL_PLANE_MACHINE_TEMPLATE_UPGRADE_TO: "cp-k8s-upgrade-and-conformance"
   WORKERS_MACHINE_TEMPLATE_UPGRADE_TO: "worker-k8s-upgrade-and-conformance"
-  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.33.4}"
-  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.34.8}"
+  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.34.8}"
+  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.35.5}"
   EXP_CLUSTER_RESOURCE_SET: "true"
   CLUSTER_TOPOLOGY: "true"
   # Cluster Addons

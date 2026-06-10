@@ -26,12 +26,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/hash"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -44,8 +42,7 @@ const (
 var gcpmanagedcontrolplanelog = logf.Log.WithName("gcpmanagedcontrolplane-resource")
 
 func (w *GCPManagedControlPlane) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&expinfrav1.GCPManagedControlPlane{}).
+	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedControlPlane{}).
 		WithValidator(w).
 		WithDefaulter(w).
 		Complete()
@@ -56,15 +53,9 @@ func (w *GCPManagedControlPlane) SetupWebhookWithManager(mgr ctrl.Manager) error
 // GCPManagedControlPlane implements a validating and defaulting webhook for GCPManagedControlPlane.
 type GCPManagedControlPlane struct{}
 
-var _ webhook.CustomDefaulter = &GCPManagedControlPlane{}
+var _ admission.Defaulter[*expinfrav1.GCPManagedControlPlane] = &GCPManagedControlPlane{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (*GCPManagedControlPlane) Default(_ context.Context, obj runtime.Object) error {
-	r, ok := obj.(*expinfrav1.GCPManagedControlPlane)
-	if !ok {
-		return fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
-	}
-
+func (*GCPManagedControlPlane) Default(_ context.Context, r *expinfrav1.GCPManagedControlPlane) error {
 	gcpmanagedcontrolplanelog.Info("default", "name", r.Name)
 
 	if r.Spec.ClusterName == "" {
@@ -83,15 +74,9 @@ func (*GCPManagedControlPlane) Default(_ context.Context, obj runtime.Object) er
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcontrolplane,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=create;update,versions=v1beta1,name=vgcpmanagedcontrolplane.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &GCPManagedControlPlane{}
+var _ admission.Validator[*expinfrav1.GCPManagedControlPlane] = &GCPManagedControlPlane{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*expinfrav1.GCPManagedControlPlane)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
-	}
-
+func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.GCPManagedControlPlane) (admission.Warnings, error) {
 	gcpmanagedcontrolplanelog.Info("validate create", "name", r.Name)
 	var allErrs field.ErrorList
 	var allWarns admission.Warnings
@@ -133,16 +118,9 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, obj runtime.Obj
 	return allWarns, apierrors.NewInvalid(expinfrav1.GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*expinfrav1.GCPManagedControlPlane)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPManagedControlPlane object but got %T", r)
-	}
-
+func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfrav1.GCPManagedControlPlane) (admission.Warnings, error) {
 	gcpmanagedcontrolplanelog.Info("validate update", "name", r.Name)
 	var allErrs field.ErrorList
-	old := oldObj.(*expinfrav1.GCPManagedControlPlane)
 
 	if !cmp.Equal(r.Spec.ClusterName, old.Spec.ClusterName) {
 		allErrs = append(allErrs,
@@ -210,8 +188,7 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, oldObj, newObj 
 	return nil, apierrors.NewInvalid(expinfrav1.GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedControlPlane) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPManagedControlPlane) ValidateDelete(_ context.Context, _ *expinfrav1.GCPManagedControlPlane) (admission.Warnings, error) {
 	return nil, nil
 }
 
