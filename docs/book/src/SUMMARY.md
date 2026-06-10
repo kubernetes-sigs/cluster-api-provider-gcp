@@ -28,4 +28,5 @@
     - [CI Jobs](./developers/jobs.md)
     - [Adding new E2E test](./developers/e2e.md)
     - [Releasing](./developers/releasing.md)
+    - [Bumping Go](./developers/bump-go.md)
 - [Roadmap](./roadmap.md)
