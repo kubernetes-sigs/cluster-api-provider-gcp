@@ -23,7 +23,7 @@ func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesMa
 				Network: networkLink,
 				Allowed: []*compute.FirewallAllowed{
 					{
-						IPProtocol: "TCP",
+						IPProtocol: protocolTCP,
 						Ports: []string{
 							strconv.FormatInt(6443, 10),
 						},

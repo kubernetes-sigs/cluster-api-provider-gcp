@@ -350,7 +350,7 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 	}
 
 	instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
-		Key:   "user-data",
+		Key:   metadataKeyUserData,
 		Value: ptr.To[string](bootstrapData),
 	})
 

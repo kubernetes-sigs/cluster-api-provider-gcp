@@ -283,7 +283,7 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 
 // ConvertToSdkNodePools converts node pools to format that is used by GCP SDK.
 func ConvertToSdkNodePools(nodePools []infrav1exp.GCPManagedMachinePool, machinePools []clusterv1.MachinePool, regional bool, clusterName string) []*containerpb.NodePool {
-	res := []*containerpb.NodePool{}
+	res := make([]*containerpb.NodePool, 0, len(nodePools))
 	for i := range nodePools {
 		res = append(res, ConvertToSdkNodePool(nodePools[i], machinePools[i], regional, clusterName))
 	}

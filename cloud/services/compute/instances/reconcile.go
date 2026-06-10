@@ -35,6 +35,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const metadataKeyUserData = "user-data"
+
 // Reconcile reconcile machine instance.
 func (s *Service) Reconcile(ctx context.Context) error {
 	log := log.FromContext(ctx)
@@ -138,7 +140,7 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 	instanceName := instanceSpec.Name
 	instanceKey := meta.ZonalKey(instanceName, s.scope.Zone())
 	instanceSpec.Metadata.Items = append(instanceSpec.Metadata.Items, &compute.MetadataItems{
-		Key:   "user-data",
+		Key:   metadataKeyUserData,
 		Value: ptr.To[string](bootstrapData),
 	})
 
