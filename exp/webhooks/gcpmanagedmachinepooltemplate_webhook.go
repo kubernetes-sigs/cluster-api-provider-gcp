@@ -18,18 +18,15 @@ package webhooks
 
 import (
 	"context"
-	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	webhookutils "sigs.k8s.io/cluster-api-provider-gcp/util/webhook"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-
-	webhookutils "sigs.k8s.io/cluster-api-provider-gcp/util/webhook"
 )
 
 // log is for logging in this package.
@@ -39,8 +36,8 @@ var gmmplog = logf.Log.WithName("gcpmanagedmachinepool-resource")
 func SetupGCPManagedMachinePoolTemplateWebhookWithManager(mgr ctrl.Manager) error {
 	mmptw := &GCPManagedMachinePoolTemplate{Client: mgr.GetClient()}
 	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedMachinePoolTemplate{}).
-		WithCustomDefaulter(mmptw).
-		WithCustomValidator(mmptw).
+		WithDefaulter(mmptw).
+		WithValidator(mmptw).
 		Complete()
 }
 
@@ -51,25 +48,13 @@ type GCPManagedMachinePoolTemplate struct {
 
 //+kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedmachinepooltemplate,mutating=true,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepooltemplates,versions=v1beta1,name=mgcpmanagedmachinepooltemplate.kb.io,admissionReviewVersions=v1
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (*GCPManagedMachinePoolTemplate) Default(_ context.Context, obj runtime.Object) error {
-	r, ok := obj.(*expinfrav1.GCPManagedMachinePoolTemplate)
-	if !ok {
-		return fmt.Errorf("expected a GCPManagedMachinePoolTemplate object but got %T", r)
-	}
-
+func (*GCPManagedMachinePoolTemplate) Default(_ context.Context, r *expinfrav1.GCPManagedMachinePoolTemplate) error {
 	gmmplog.Info("default", "name", r.Name)
 
 	return nil
 }
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedMachinePoolTemplate) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*expinfrav1.GCPManagedMachinePoolTemplate)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPManagedMachinePoolTemplate object but got %T", r)
-	}
-
+func (*GCPManagedMachinePoolTemplate) ValidateCreate(_ context.Context, r *expinfrav1.GCPManagedMachinePoolTemplate) (admission.Warnings, error) {
 	gmmplog.Info("Validating GCPManagedMachinePoolTemplate create", "name", r.Name)
 
 	var allErrs field.ErrorList
@@ -123,18 +108,7 @@ func (*GCPManagedMachinePoolTemplate) ValidateCreate(_ context.Context, obj runt
 	)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedMachinePoolTemplate) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	old, ok := oldObj.(*expinfrav1.GCPManagedMachinePoolTemplate)
-	if !ok {
-		return nil, fmt.Errorf("expected a GCPManagedMachinePoolTemplate object but got %T", old)
-	}
-
-	r, ok := newObj.(*expinfrav1.GCPManagedMachinePoolTemplate)
-	if !ok {
-		return nil, fmt.Errorf("expected a GCPManagedMachinePoolTemplate object but got %T", r)
-	}
-
+func (*GCPManagedMachinePoolTemplate) ValidateUpdate(_ context.Context, old, r *expinfrav1.GCPManagedMachinePoolTemplate) (admission.Warnings, error) {
 	gcpmanagedmachinepoollog.Info("Validating GCPManagedMachinePoolTemplate update", "name", r.Name)
 
 	var allErrs field.ErrorList
@@ -244,7 +218,6 @@ func (*GCPManagedMachinePoolTemplate) ValidateUpdate(_ context.Context, oldObj, 
 	)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedMachinePoolTemplate) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPManagedMachinePoolTemplate) ValidateDelete(_ context.Context, _ *expinfrav1.GCPManagedMachinePoolTemplate) (admission.Warnings, error) {
 	return nil, nil
 }

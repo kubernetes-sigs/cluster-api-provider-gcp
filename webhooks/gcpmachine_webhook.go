@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -44,8 +43,8 @@ var (
 
 func (m *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, &infrav1.GCPMachine{}).
-		WithCustomValidator(m).
-		WithCustomDefaulter(m).
+		WithValidator(m).
+		WithDefaulter(m).
 		Complete()
 }
 
@@ -56,17 +55,11 @@ func (m *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
 type GCPMachine struct{}
 
 var (
-	_ webhook.CustomValidator = &GCPMachine{}
-	_ webhook.CustomDefaulter = &GCPMachine{}
+	_ admission.Validator[*infrav1.GCPMachine] = &GCPMachine{}
+	_ admission.Defaulter[*infrav1.GCPMachine] = &GCPMachine{}
 )
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPMachine) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	m, ok := obj.(*infrav1.GCPMachine)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPMachine object but got %T", m)
-	}
-
+func (*GCPMachine) ValidateCreate(_ context.Context, m *infrav1.GCPMachine) (admission.Warnings, error) {
 	clusterlog.Info("validate create", "name", m.Name)
 
 	if err := validateConfidentialCompute(m.Spec); err != nil {
@@ -75,13 +68,7 @@ func (*GCPMachine) ValidateCreate(_ context.Context, obj runtime.Object) (admiss
 	return nil, validateCustomerEncryptionKey(m.Spec)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPMachine) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	m, ok := newObj.(*infrav1.GCPMachine)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPMachine object but got %T", m)
-	}
-
+func (*GCPMachine) ValidateUpdate(_ context.Context, oldObj, m *infrav1.GCPMachine) (admission.Warnings, error) {
 	newGCPMachine, err := runtime.DefaultUnstructuredConverter.ToUnstructured(m)
 	if err != nil {
 		return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPMachine").GroupKind(), m.Name, field.ErrorList{
@@ -119,13 +106,11 @@ func (*GCPMachine) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Obje
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPMachine) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPMachine) ValidateDelete(_ context.Context, _ *infrav1.GCPMachine) (admission.Warnings, error) {
 	return nil, nil
 }
 
-// Default implements webhookutil.defaulter so a webhook will be registered for the type.
-func (*GCPMachine) Default(_ context.Context, _ runtime.Object) error {
+func (*GCPMachine) Default(_ context.Context, _ *infrav1.GCPMachine) error {
 	return nil
 }
 

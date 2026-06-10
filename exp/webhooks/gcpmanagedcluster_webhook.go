@@ -18,17 +18,14 @@ package webhooks
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/go-cmp/cmp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -37,8 +34,8 @@ var gcpmanagedclusterlog = logf.Log.WithName("gcpmanagedcluster-resource")
 
 func (w *GCPManagedCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedCluster{}).
-		WithCustomValidator(w).
-		WithCustomDefaulter(w).
+		WithValidator(w).
+		WithDefaulter(w).
 		Complete()
 }
 
@@ -47,39 +44,25 @@ func (w *GCPManagedCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // GCPManagedCluster implements a validating and defaulting webhook for GCPManagedCluster.
 type GCPManagedCluster struct{}
 
-var _ webhook.CustomDefaulter = &GCPManagedCluster{}
+var _ admission.Defaulter[*expinfrav1.GCPManagedCluster] = &GCPManagedCluster{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (*GCPManagedCluster) Default(_ context.Context, _ runtime.Object) error {
+func (*GCPManagedCluster) Default(_ context.Context, _ *expinfrav1.GCPManagedCluster) error {
 	return nil
 }
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedcluster,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedclusters,verbs=create;update,versions=v1beta1,name=vgcpmanagedcluster.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &GCPManagedCluster{}
+var _ admission.Validator[*expinfrav1.GCPManagedCluster] = &GCPManagedCluster{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (w *GCPManagedCluster) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*expinfrav1.GCPManagedCluster)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPManagedCluster object but got %T", r)
-	}
-
+func (w *GCPManagedCluster) ValidateCreate(_ context.Context, r *expinfrav1.GCPManagedCluster) (admission.Warnings, error) {
 	gcpmanagedclusterlog.Info("validate create", "name", r.Name)
 
 	return w.validate(r)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (w *GCPManagedCluster) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*expinfrav1.GCPManagedCluster)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPManagedCluster object but got %T", r)
-	}
-
+func (w *GCPManagedCluster) ValidateUpdate(_ context.Context, old, r *expinfrav1.GCPManagedCluster) (admission.Warnings, error) {
 	gcpmanagedclusterlog.Info("validate update", "name", r.Name)
 	var allErrs field.ErrorList
-	old := oldObj.(*expinfrav1.GCPManagedCluster)
 
 	if !cmp.Equal(r.Spec.Project, old.Spec.Project) {
 		allErrs = append(allErrs,
@@ -109,8 +92,7 @@ func (w *GCPManagedCluster) ValidateUpdate(_ context.Context, oldObj, newObj run
 	return nil, apierrors.NewInvalid(expinfrav1.GroupVersion.WithKind("GCPManagedCluster").GroupKind(), r.Name, allErrs)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedCluster) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPManagedCluster) ValidateDelete(_ context.Context, _ *expinfrav1.GCPManagedCluster) (admission.Warnings, error) {
 	return nil, nil
 }
 

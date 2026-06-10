@@ -100,7 +100,7 @@ linters:
         text: 'printf: non-constant format string in call to sigs.k8s.io/cluster-api/util/conditions.MarkFalse'
       - linters:
           - revive
-        text: 'exported: exported method .*\.(Reconcile|SetupWithManager|SetupWebhookWithManager) should have comment or be unexported'
+        text: 'exported: exported method .*\.(Reconcile|SetupWithManager|SetupWebhookWithManager|Default|ValidateCreate|ValidateUpdate|ValidateDelete) should have comment or be unexported'
       - linters:
           - errcheck
         text: Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*print(f|ln)?|os\.(Un)?Setenv). is not checked
@@ -147,7 +147,7 @@ linters:
       # Temporary exclusion during upgrade from CAPI v1beta1 to v1beta2
       - linters:
           - staticcheck
-        text: 'SA1019: .* This package is deprecated and is going to be removed when support for v1beta1 will be dropped'
+        text: 'SA1019: .* This (package|type) is deprecated and is going to be removed when support for v1beta1 will be dropped'
 
     paths:
       - zz_generated.*\.go$

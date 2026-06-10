@@ -21,13 +21,11 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	webhookutils "sigs.k8s.io/cluster-api-provider-gcp/util/webhook"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -40,8 +38,8 @@ var gcpmanagedmachinepoollog = logf.Log.WithName("gcpmanagedmachinepooltemplate-
 
 func (w *GCPManagedMachinePool) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedMachinePool{}).
-		WithCustomValidator(w).
-		WithCustomDefaulter(w).
+		WithValidator(w).
+		WithDefaulter(w).
 		Complete()
 }
 
@@ -50,16 +48,15 @@ func (w *GCPManagedMachinePool) SetupWebhookWithManager(mgr ctrl.Manager) error 
 // GCPManagedMachinePool implements a validating and defaulting webhook for GCPManagedMachinePool.
 type GCPManagedMachinePool struct{}
 
-var _ webhook.CustomDefaulter = &GCPManagedMachinePool{}
+var _ admission.Defaulter[*expinfrav1.GCPManagedMachinePool] = &GCPManagedMachinePool{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (*GCPManagedMachinePool) Default(_ context.Context, _ runtime.Object) error {
+func (*GCPManagedMachinePool) Default(_ context.Context, _ *expinfrav1.GCPManagedMachinePool) error {
 	return nil
 }
 
 //+kubebuilder:webhook:path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedmachinepool,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepools,verbs=create;update,versions=v1beta1,name=vgcpmanagedmachinepool.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &GCPManagedMachinePool{}
+var _ admission.Validator[*expinfrav1.GCPManagedMachinePool] = &GCPManagedMachinePool{}
 
 func validateNodePoolName(name string, fldPath *field.Path) *field.Error {
 	if len(name) > maxNodePoolNameLength {
@@ -107,13 +104,7 @@ func validateScaling(scaling *expinfrav1.NodePoolAutoScaling, minField, maxField
 	return allErrs
 }
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*expinfrav1.GCPManagedMachinePool)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPManagedMachinePool object but got %T", r)
-	}
-
+func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GCPManagedMachinePool) (admission.Warnings, error) {
 	gcpmanagedmachinepoollog.Info("Validating GCPManagedMachinePool create", "name", r.Name)
 
 	var allErrs field.ErrorList
@@ -167,18 +158,7 @@ func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, obj runtime.Obje
 	)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedMachinePool) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	old, ok := oldObj.(*expinfrav1.GCPManagedMachinePool)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPManagedMachinePool object but got %T", old)
-	}
-
-	r, ok := newObj.(*expinfrav1.GCPManagedMachinePool)
-	if !ok {
-		return nil, fmt.Errorf("expected an GCPManagedMachinePool object but got %T", r)
-	}
-
+func (*GCPManagedMachinePool) ValidateUpdate(_ context.Context, old, r *expinfrav1.GCPManagedMachinePool) (admission.Warnings, error) {
 	gcpmanagedmachinepoollog.Info("Validating GCPManagedMachinePool update", "name", r.Name)
 
 	var allErrs field.ErrorList
@@ -299,7 +279,6 @@ func (*GCPManagedMachinePool) ValidateUpdate(_ context.Context, oldObj, newObj r
 	return nil, apierrors.NewInvalid(expinfrav1.GroupVersion.WithKind("GCPManagedMachinePool").GroupKind(), r.Name, allErrs)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (*GCPManagedMachinePool) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*GCPManagedMachinePool) ValidateDelete(_ context.Context, _ *expinfrav1.GCPManagedMachinePool) (admission.Warnings, error) {
 	return nil, nil
 }
