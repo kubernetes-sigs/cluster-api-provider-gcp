@@ -44,10 +44,9 @@ const (
 var gcpmanagedcontrolplanelog = logf.Log.WithName("gcpmanagedcontrolplane-resource")
 
 func (w *GCPManagedControlPlane) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&expinfrav1.GCPManagedControlPlane{}).
-		WithValidator(w).
-		WithDefaulter(w).
+	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedControlPlane{}).
+		WithCustomValidator(w).
+		WithCustomDefaulter(w).
 		Complete()
 }
 

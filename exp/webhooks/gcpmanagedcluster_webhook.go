@@ -36,10 +36,9 @@ import (
 var gcpmanagedclusterlog = logf.Log.WithName("gcpmanagedcluster-resource")
 
 func (w *GCPManagedCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&expinfrav1.GCPManagedCluster{}).
-		WithValidator(w).
-		WithDefaulter(w).
+	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedCluster{}).
+		WithCustomValidator(w).
+		WithCustomDefaulter(w).
 		Complete()
 }
 

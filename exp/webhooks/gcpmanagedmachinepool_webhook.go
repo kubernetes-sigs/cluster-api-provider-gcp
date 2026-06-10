@@ -39,10 +39,9 @@ const (
 var gcpmanagedmachinepoollog = logf.Log.WithName("gcpmanagedmachinepooltemplate-resource")
 
 func (w *GCPManagedMachinePool) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&expinfrav1.GCPManagedMachinePool{}).
-		WithValidator(w).
-		WithDefaulter(w).
+	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedMachinePool{}).
+		WithCustomValidator(w).
+		WithCustomDefaulter(w).
 		Complete()
 }
 

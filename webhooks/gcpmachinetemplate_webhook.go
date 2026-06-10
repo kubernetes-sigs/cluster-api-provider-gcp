@@ -35,10 +35,9 @@ import (
 // +kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinetemplate,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinetemplates,versions=v1beta1,name=default.gcpmachinetemplate.infrastructure.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1beta1
 
 func (r *GCPMachineTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&infrav1.GCPMachineTemplate{}).
-		WithValidator(r).
-		WithDefaulter(r).
+	return ctrl.NewWebhookManagedBy(mgr, &infrav1.GCPMachineTemplate{}).
+		WithCustomValidator(r).
+		WithCustomDefaulter(r).
 		Complete()
 }
 

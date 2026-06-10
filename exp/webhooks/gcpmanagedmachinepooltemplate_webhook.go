@@ -38,10 +38,9 @@ var gmmplog = logf.Log.WithName("gcpmanagedmachinepool-resource")
 // SetupGCPManagedMachinePoolTemplateWebhookWithManager sets up and registers the webhook with the manager.
 func SetupGCPManagedMachinePoolTemplateWebhookWithManager(mgr ctrl.Manager) error {
 	mmptw := &GCPManagedMachinePoolTemplate{Client: mgr.GetClient()}
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&expinfrav1.GCPManagedMachinePoolTemplate{}).
-		WithDefaulter(mmptw).
-		WithValidator(mmptw).
+	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedMachinePoolTemplate{}).
+		WithCustomDefaulter(mmptw).
+		WithCustomValidator(mmptw).
 		Complete()
 }
 

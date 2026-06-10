@@ -30,10 +30,9 @@ import (
 )
 
 func (r *GCPClusterTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&infrav1.GCPClusterTemplate{}).
-		WithValidator(r).
-		WithDefaulter(r).
+	return ctrl.NewWebhookManagedBy(mgr, &infrav1.GCPClusterTemplate{}).
+		WithCustomValidator(r).
+		WithCustomDefaulter(r).
 		Complete()
 }
 

@@ -34,9 +34,8 @@ var gcpMachinePoolLog = logf.Log.WithName("gcpmachinepool-resource")
 
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (r *GCPMachinePool) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&expinfrav1.GCPMachinePool{}).
-		WithValidator(r).
+	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPMachinePool{}).
+		WithCustomValidator(r).
 		Complete()
 }
 

@@ -35,9 +35,8 @@ var gmctlog = logf.Log.WithName("gcpclustertemplate-resource")
 
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (r *GCPManagedClusterTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&expinfrav1.GCPManagedClusterTemplate{}).
-		WithValidator(r).
+	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedClusterTemplate{}).
+		WithCustomValidator(r).
 		Complete()
 }
 

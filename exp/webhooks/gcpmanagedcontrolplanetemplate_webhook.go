@@ -38,10 +38,9 @@ var gmcptlog = logf.Log.WithName("gcpmanagedcontrolplane-resource")
 // SetupGCPManagedControlPlaneTemplateWebhookWithManager sets up and registers the webhook with the manager.
 func SetupGCPManagedControlPlaneTemplateWebhookWithManager(mgr ctrl.Manager) error {
 	mcptw := &GCPManagedControlPlaneTemplate{Client: mgr.GetClient()}
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&expinfrav1.GCPManagedControlPlaneTemplate{}).
-		WithDefaulter(mcptw).
-		WithValidator(mcptw).
+	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedControlPlaneTemplate{}).
+		WithCustomDefaulter(mcptw).
+		WithCustomValidator(mcptw).
 		Complete()
 }
 

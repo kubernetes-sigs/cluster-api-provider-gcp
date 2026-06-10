@@ -36,10 +36,9 @@ var clusterlog = logf.Log.WithName("gcpcluster-resource")
 
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (c *GCPCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&infrav1.GCPCluster{}).
-		WithValidator(c).
-		WithDefaulter(c).
+	return ctrl.NewWebhookManagedBy(mgr, &infrav1.GCPCluster{}).
+		WithCustomValidator(c).
+		WithCustomDefaulter(c).
 		Complete()
 }
 

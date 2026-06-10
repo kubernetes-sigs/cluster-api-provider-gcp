@@ -43,10 +43,9 @@ var (
 )
 
 func (m *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&infrav1.GCPMachine{}).
-		WithValidator(m).
-		WithDefaulter(m).
+	return ctrl.NewWebhookManagedBy(mgr, &infrav1.GCPMachine{}).
+		WithCustomValidator(m).
+		WithCustomDefaulter(m).
 		Complete()
 }
 
