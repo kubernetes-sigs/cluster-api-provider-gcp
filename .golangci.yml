@@ -144,6 +144,11 @@ linters:
       - path: (.+)\.go$
         text: (G104|G307)
 
+      # Temporary exclusion: CAPI's record.InitFromRecorder still requires the old EventRecorder type
+      - linters:
+          - staticcheck
+        text: 'SA1019: mgr.GetEventRecorderFor is deprecated: this uses the old events API and will be removed in a future release. Please use GetEventRecorder instead.'
+
       # Temporary exclusion during upgrade from CAPI v1beta1 to v1beta2
       - linters:
           - staticcheck
