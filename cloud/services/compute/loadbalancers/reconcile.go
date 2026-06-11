@@ -541,7 +541,7 @@ func (s *Service) createOrGetRegionalBackendService(ctx context.Context, lbname 
 		// When using a regional external load balancer, we need to set the load balancing scheme to EXTERNAL_MANAGED
 		// and specify the port name as "apiserver"
 		backendsvcSpec.LoadBalancingScheme = string(loadBalanceTrafficExternalManaged)
-		backendsvcSpec.PortName = "apiserver"
+		backendsvcSpec.PortName = infrav1.APIServerRoleTagValue
 	} else {
 		backendsvcSpec.LoadBalancingScheme = string(loadBalanceTrafficInternal)
 		network := s.scope.Network()
@@ -683,7 +683,7 @@ func (s *Service) createOrGetRegionalAddress(ctx context.Context, lbname string)
 	log := log.FromContext(ctx)
 	addrSpec := s.scope.AddressSpec(lbname)
 	addrSpec.Region = s.scope.Region()
-	addrSpec.AddressType = "EXTERNAL"
+	addrSpec.AddressType = loadBalanceTrafficExternal
 	addrSpec.IpVersion = ""
 	log.V(2).Info("Looking for address", "name", addrSpec.Name)
 	key := meta.RegionalKey(addrSpec.Name, s.scope.Region())
