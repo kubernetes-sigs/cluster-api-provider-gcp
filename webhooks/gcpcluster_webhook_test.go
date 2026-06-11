@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
@@ -211,6 +212,58 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 				},
 			},
 			wantErr: false,
+		},
+		{
+			name: "GCPCluster with immutable network name",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Name: ptr.To("new-network"),
+						Mtu:  int64(1500),
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Name: ptr.To("old-network"),
+						Mtu:  int64(1500),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with immutable network subnets",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu: int64(1500),
+						Subnets: infrav1.Subnets{
+							{
+								Name:      "new-subnet",
+								CidrBlock: "10.1.0.0/24",
+								Region:    "us-central1",
+							},
+						},
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu: int64(1500),
+						Subnets: infrav1.Subnets{
+							{
+								Name:      "old-subnet",
+								CidrBlock: "10.0.0.0/24",
+								Region:    "us-central1",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
 		},
 	}
 	for _, test := range tests {
