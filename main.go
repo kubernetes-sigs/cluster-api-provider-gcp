@@ -165,8 +165,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize event recorder.
-	record.InitFromRecorder(mgr.GetEventRecorderFor("gcp-controller"))
+	// Initialize event recorder. CAPI's record.InitFromRecorder requires the old client-go
+	// record.EventRecorder; mgr.GetEventRecorder returns the incompatible events.EventRecorder,
+	// so we keep GetEventRecorderFor until CAPI migrates.
+	record.InitFromRecorder(mgr.GetEventRecorderFor("gcp-controller")) //nolint:staticcheck
 
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
