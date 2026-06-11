@@ -216,7 +216,7 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) error {
 
 		if err := (&expcontrollers.GCPMachinePoolReconciler{
 			Client:           mgr.GetClient(),
-			Recorder:         mgr.GetEventRecorderFor("gcpmachinepool-controller"),
+			Recorder:         mgr.GetEventRecorder("gcpmachinepool-controller"),
 			WatchFilterValue: watchFilterValue,
 		}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: gcpMachinePoolConcurrency, RecoverPanic: ptr.To[bool](true)}); err != nil {
 			return fmt.Errorf("creating GCPMachinePool controller: %w", err)

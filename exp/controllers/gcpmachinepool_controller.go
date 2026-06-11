@@ -27,7 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,7 +55,7 @@ import (
 // GCPMachinePoolReconciler reconciles a GCPMachinePool object.
 type GCPMachinePoolReconciler struct {
 	Client           client.Client
-	Recorder         record.EventRecorder
+	Recorder         events.EventRecorder
 	WatchFilterValue string
 }
 
@@ -284,7 +284,7 @@ func (r *GCPMachinePoolReconciler) reconcileDelete(ctx context.Context, machineP
 
 	if err := instancegroupmanagers.New(machinePoolScope).Delete(ctx); err != nil {
 		log.Error(err, "Error deleting instanceGroupManager")
-		r.Recorder.Eventf(machinePoolScope.GCPMachinePool, corev1.EventTypeWarning, "FailedDelete", "Failed to delete instancegroupmanager: %v", err)
+		r.Recorder.Eventf(machinePoolScope.GCPMachinePool, nil, corev1.EventTypeWarning, "FailedDelete", "DeleteInstanceGroupManager", "Failed to delete instancegroupmanager: %v", err)
 
 		conditions.Set(machinePoolScope.GCPMachinePool, metav1.Condition{
 			Type:    string(expinfrav1.MIGReadyCondition),
@@ -297,7 +297,7 @@ func (r *GCPMachinePoolReconciler) reconcileDelete(ctx context.Context, machineP
 
 	if err := instancetemplates.New(machinePoolScope).Delete(ctx); err != nil {
 		log.Error(err, "Error deleting instanceTemplates")
-		r.Recorder.Eventf(machinePoolScope.GCPMachinePool, corev1.EventTypeWarning, "FailedDelete", "Failed to delete instance template: %v", err)
+		r.Recorder.Eventf(machinePoolScope.GCPMachinePool, nil, corev1.EventTypeWarning, "FailedDelete", "DeleteInstanceTemplate", "Failed to delete instance template: %v", err)
 
 		conditions.Set(machinePoolScope.GCPMachinePool, metav1.Condition{
 			Type:    string(expinfrav1.InstanceTemplateReadyCondition),
