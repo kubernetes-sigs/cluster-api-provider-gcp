@@ -69,9 +69,6 @@ func TestIsRegionalExternalLoadBalancer(t *testing.T) {
 }
 
 func TestShouldCreateExternalLoadBalancer(t *testing.T) {
-	// In this branch, shouldCreateExternalLoadBalancer targets only the
-	// global external proxy LB. Regional external cases are dispatched
-	// through isRegionalExternalLoadBalancer instead.
 	tests := []struct {
 		name   string
 		lbType infrav1.LoadBalancerType
@@ -157,6 +154,54 @@ func TestShouldCreateInternalLoadBalancer(t *testing.T) {
 	}
 }
 
+func TestGetExternalLoadBalancerName(t *testing.T) {
+	tests := []struct {
+		name   string
+		lbSpec infrav1.LoadBalancerSpec
+		want   string
+	}{
+		{
+			name: "returns custom name when set",
+			lbSpec: infrav1.LoadBalancerSpec{
+				ExternalLoadBalancer: &infrav1.LoadBalancer{
+					Name: ptr.To[string]("custom-external-lb"),
+				},
+			},
+			want: "custom-external-lb",
+		},
+		{
+			name: "returns default name when ExternalLoadBalancer is nil",
+			lbSpec: infrav1.LoadBalancerSpec{
+				ExternalLoadBalancer: nil,
+			},
+			want: infrav1.APIServerRoleTagValue,
+		},
+		{
+			name: "returns default name when Name is nil",
+			lbSpec: infrav1.LoadBalancerSpec{
+				ExternalLoadBalancer: &infrav1.LoadBalancer{
+					Name: nil,
+				},
+			},
+			want: infrav1.APIServerRoleTagValue,
+		},
+		{
+			name:   "returns default name for empty spec",
+			lbSpec: infrav1.LoadBalancerSpec{},
+			want:   infrav1.APIServerRoleTagValue,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getExternalLoadBalancerName(tt.lbSpec)
+			if got != tt.want {
+				t.Errorf("getExternalLoadBalancerName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGetInternalLoadBalancerName(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -206,11 +251,6 @@ func TestGetInternalLoadBalancerName(t *testing.T) {
 }
 
 func TestGetLoadBalancingMode(t *testing.T) {
-	// In this branch, getLoadBalancingMode only services the global backend
-	// service path (createOrGetBackendService). InternalExternal must pair
-	// CONNECTION mode with the internal proxy LB; all other inputs that
-	// reach the global path use UTILIZATION. The regional backend service
-	// path always uses CONNECTION directly without consulting this helper.
 	tests := []struct {
 		name   string
 		lbType infrav1.LoadBalancerType
@@ -222,13 +262,8 @@ func TestGetLoadBalancingMode(t *testing.T) {
 			want:   loadBalancingModeConnection,
 		},
 		{
-			name:   "External returns UTILIZATION mode",
-			lbType: infrav1.External,
-			want:   loadBalancingModeUtilization,
-		},
-		{
-			name:   "Internal returns UTILIZATION mode",
-			lbType: infrav1.Internal,
+			name:   "RegionalInternalExternal returns UTILIZATION mode",
+			lbType: infrav1.RegionalInternalExternal,
 			want:   loadBalancingModeUtilization,
 		},
 		{
@@ -237,8 +272,13 @@ func TestGetLoadBalancingMode(t *testing.T) {
 			want:   loadBalancingModeUtilization,
 		},
 		{
-			name:   "RegionalInternalExternal returns UTILIZATION mode",
-			lbType: infrav1.RegionalInternalExternal,
+			name:   "External returns UTILIZATION mode",
+			lbType: infrav1.External,
+			want:   loadBalancingModeUtilization,
+		},
+		{
+			name:   "Internal returns UTILIZATION mode",
+			lbType: infrav1.Internal,
 			want:   loadBalancingModeUtilization,
 		},
 	}
@@ -254,18 +294,14 @@ func TestGetLoadBalancingMode(t *testing.T) {
 }
 
 func TestCreateBackends(t *testing.T) {
-	const (
-		igZoneASelfLink = "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a"
-		igZoneBSelfLink = "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b"
-	)
 	instanceGroups := []*compute.InstanceGroup{
 		{
 			Name:     "ig-zone-a",
-			SelfLink: igZoneASelfLink,
+			SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
 		},
 		{
 			Name:     "ig-zone-b",
-			SelfLink: igZoneBSelfLink,
+			SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b",
 		},
 	}
 
@@ -277,52 +313,52 @@ func TestCreateBackends(t *testing.T) {
 		want           []*compute.Backend
 	}{
 		{
-			name:           "UTILIZATION mode, no maxConnections",
+			name:           "creates backends with UTILIZATION mode",
 			instancegroups: instanceGroups,
 			mode:           loadBalancingModeUtilization,
 			maxConnections: 0,
 			want: []*compute.Backend{
 				{
-					BalancingMode: string(loadBalancingModeUtilization),
-					Group:         igZoneASelfLink,
+					BalancingMode: "UTILIZATION",
+					Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
 				},
 				{
-					BalancingMode: string(loadBalancingModeUtilization),
-					Group:         igZoneBSelfLink,
+					BalancingMode: "UTILIZATION",
+					Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b",
 				},
 			},
 		},
 		{
-			name:           "CONNECTION mode with maxConnections (proxy LB)",
+			name:           "creates backends with CONNECTION mode and MaxConnections",
 			instancegroups: instanceGroups,
 			mode:           loadBalancingModeConnection,
 			maxConnections: 1000,
 			want: []*compute.Backend{
 				{
-					BalancingMode:  string(loadBalancingModeConnection),
-					Group:          igZoneASelfLink,
+					BalancingMode:  "CONNECTION",
+					Group:          "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
 					MaxConnections: 1000,
 				},
 				{
-					BalancingMode:  string(loadBalancingModeConnection),
-					Group:          igZoneBSelfLink,
+					BalancingMode:  "CONNECTION",
+					Group:          "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b",
 					MaxConnections: 1000,
 				},
 			},
 		},
 		{
-			name:           "CONNECTION mode without maxConnections (internal passthrough LB)",
+			name:           "CONNECTION mode without maxConnections (for INTERNAL backend service)",
 			instancegroups: instanceGroups,
 			mode:           loadBalancingModeConnection,
 			maxConnections: 0,
 			want: []*compute.Backend{
 				{
-					BalancingMode: string(loadBalancingModeConnection),
-					Group:         igZoneASelfLink,
+					BalancingMode: "CONNECTION",
+					Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
 				},
 				{
-					BalancingMode: string(loadBalancingModeConnection),
-					Group:         igZoneBSelfLink,
+					BalancingMode: "CONNECTION",
+					Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-b/instanceGroups/ig-zone-b",
 				},
 			},
 		},
@@ -332,6 +368,23 @@ func TestCreateBackends(t *testing.T) {
 			mode:           loadBalancingModeUtilization,
 			maxConnections: 0,
 			want:           []*compute.Backend{},
+		},
+		{
+			name: "handles single instance group",
+			instancegroups: []*compute.InstanceGroup{
+				{
+					Name:     "ig-zone-a",
+					SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
+				},
+			},
+			mode:           loadBalancingModeUtilization,
+			maxConnections: 0,
+			want: []*compute.Backend{
+				{
+					BalancingMode: "UTILIZATION",
+					Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/ig-zone-a",
+				},
+			},
 		},
 	}
 
