@@ -374,6 +374,11 @@ var (
 	// Balancer and will be created if no LoadBalancerType is defined.
 	External = LoadBalancerType("External")
 
+	// RegionalExternal creates a Regional External Proxy Load Balancer
+	// to manage traffic to backends in a single region. This is required for
+	// GCD (Google Cloud Distributed/Sovereign Cloud) environments.
+	RegionalExternal = LoadBalancerType("RegionalExternal")
+
 	// Internal creates a Regional Internal Passthrough Load
 	// Balancer to manage traffic to backends in the configured region.
 	Internal = LoadBalancerType("Internal")
@@ -382,11 +387,9 @@ var (
 	// separate endpoints for managing both external and internal traffic.
 	InternalExternal = LoadBalancerType("InternalExternal")
 
-	// RegionalExternal creates a Regional External Load Balancer to manage traffic to backends in the configured region.
-	RegionalExternal = LoadBalancerType("RegionalExternal")
-
-	// RegionalInternalExternal creates both Regional External and Internal Load Balancers to provide
-	// separate endpoints for managing both external and internal traffic.
+	// RegionalInternalExternal creates both RegionalExternal and Internal Load Balancers
+	// to provide separate endpoints for managing both external and internal traffic in
+	// GCD (Google Cloud Distributed/Sovereign Cloud) environments.
 	RegionalInternalExternal = LoadBalancerType("RegionalInternalExternal")
 )
 
@@ -402,8 +405,15 @@ type LoadBalancerSpec struct {
 
 	// LoadBalancerType defines the type of Load Balancer that should be created.
 	// If not set, a Global External Proxy Load Balancer will be created by default.
+	// +kubebuilder:validation:Enum=External;RegionalExternal;Internal;InternalExternal;RegionalInternalExternal
 	// +optional
 	LoadBalancerType *LoadBalancerType `json:"loadBalancerType,omitempty"`
+
+	// ExternalLoadBalancer is the configuration for an External Proxy Load Balancer.
+	// Applies to all load balancer types that include an external component:
+	// External, InternalExternal, RegionalExternal, and RegionalInternalExternal.
+	// +optional
+	ExternalLoadBalancer *LoadBalancer `json:"externalLoadBalancer,omitempty"`
 
 	// InternalLoadBalancer is the configuration for an Internal Passthrough Network Load Balancer.
 	// +optional
@@ -594,22 +604,25 @@ const (
 // LoadBalancer specifies the configuration of a LoadBalancer.
 type LoadBalancer struct {
 	// Name is the name of the Load Balancer. If not set a default name
-	// will be used. For an Internal Load Balancer service the default
-	// name is "api-internal".
+	// will be used. For an Internal Load Balancer the default name is "api-internal".
+	// For a Regional External Load Balancer the default name is "api-server".
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Pattern=`(^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)`
 	// +optional
 	Name *string `json:"name,omitempty"`
 
-	// Subnet is the name of the subnet to use for a regional Load Balancer. A subnet is
-	// required for the Load Balancer, if not defined the first configured subnet will be
-	// used.
+	// Subnet is the name of the subnet to use for a regional Load Balancer.
+	// For Internal Load Balancers, a subnet is required. If not defined,
+	// the first configured subnet will be used.
+	// For Regional External Load Balancers, this field is not applicable.
+	// +optional
 	Subnet *string `json:"subnet,omitempty"`
 
 	// InternalAccess defines the access for the Internal Passthrough Load Balancer.
 	// It determines whether the load balancer allows global access,
 	// or restricts traffic to clients within the same region as the load balancer.
 	// If unspecified, the value defaults to "Regional".
+	// This field only applies to Internal Load Balancers.
 	//
 	// Possible values:
 	//   "Regional" - Only clients in the same region as the load balancer can access it.
@@ -621,7 +634,8 @@ type LoadBalancer struct {
 
 	// IPAddress is the static IP address to use for the Load Balancer.
 	// If not set, a new static IP address will be allocated.
-	// If set, it must be a valid free IP address from the LoadBalancer Subnet.
+	// For Internal Load Balancers, this must be a valid IP address from the LoadBalancer Subnet.
+	// For Regional External Load Balancers, this must be a valid external IP address in the region.
 	// +optional
 	IPAddress *string `json:"ipAddress,omitempty"`
 }
