@@ -18,6 +18,7 @@
 - [General Topics](./topics/index.md)
     - [Alias IP Ranges](./topics/alias-ip-ranges.md)
     - [Conformance](./topics/conformance.md)
+    - [Firewall Rules](./topics/firewall-rules.md)
     - [GPUs](./topics/gpus.md)
     - [Machine Locations](./topics/machine-locations.md)
     - [Preemptible VMs](./topics/preemptible-vms.md)
