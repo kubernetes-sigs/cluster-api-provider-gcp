@@ -72,6 +72,13 @@ func getInternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
 	return infrav1.InternalRoleTagValue
 }
 
+func getExternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
+	if lbSpec.ExternalLoadBalancer != nil {
+		return ptr.Deref(lbSpec.ExternalLoadBalancer.Name, infrav1.APIServerRoleTagValue)
+	}
+	return infrav1.APIServerRoleTagValue
+}
+
 // getLoadBalancingMode returns the appropriate balancing mode for the global
 // backend service. When an internal proxy LB is created alongside an external
 // one (InternalExternal), the modes must match — internal proxy LBs require
@@ -170,7 +177,7 @@ func (s *Service) Delete(ctx context.Context) error {
 func (s *Service) deleteExternalLoadBalancer(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	log.Info("Deleting external loadbalancer resources")
-	name := infrav1.APIServerRoleTagValue
+	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 	if err := s.deleteForwardingRule(ctx, name); err != nil {
 		return fmt.Errorf("deleting ForwardingRule: %w", err)
 	}
@@ -202,7 +209,7 @@ func (s *Service) deleteExternalLoadBalancer(ctx context.Context) error {
 func (s *Service) deleteRegionalExternalLoadBalancer(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	log.Info("Deleting external regional loadbalancer resources")
-	name := infrav1.APIServerRoleTagValue
+	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 
 	if err := s.deleteRegionalForwardingRule(ctx, name); err != nil {
 		return fmt.Errorf("deleting regional ForwardingRule: %w", err)
@@ -264,7 +271,7 @@ func (s *Service) deleteInternalLoadBalancer(ctx context.Context, name string) e
 
 // createExternalLoadBalancer creates the components for a Global External Proxy LoadBalancer.
 func (s *Service) createExternalLoadBalancer(ctx context.Context, lbType infrav1.LoadBalancerType, instancegroups []*compute.InstanceGroup) error {
-	name := infrav1.APIServerRoleTagValue
+	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 	healthcheck, err := s.createOrGetHealthCheck(ctx, name)
 	if err != nil {
 		return err
@@ -304,7 +311,7 @@ func (s *Service) createExternalLoadBalancer(ctx context.Context, lbType infrav1
 
 // createRegionalExternalLoadBalancer creates the components for a Regional External Proxy LoadBalancer.
 func (s *Service) createRegionalExternalLoadBalancer(ctx context.Context, instancegroups []*compute.InstanceGroup) error {
-	name := infrav1.APIServerRoleTagValue
+	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 	healthcheck, err := s.createOrGetRegionalHealthCheck(ctx, name)
 	if err != nil {
 		return err
