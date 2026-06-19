@@ -614,6 +614,7 @@ func TestService_createOrGetAddress(t *testing.T) {
 		want        *compute.Address
 		wantErr     bool
 		sharedVPC   bool
+		staticIP    string
 	}{
 		{
 			name:   "address does not exist for external load balancer (should create address)",
@@ -646,6 +647,23 @@ func TestService_createOrGetAddress(t *testing.T) {
 			},
 			sharedVPC: true,
 		},
+		{
+			name:   "static IP from ExternalLoadBalancerConfig is honored",
+			scope:  func(s *scope.ClusterScope) Scope { return s },
+			lbName: infrav1.APIServerRoleTagValue,
+			mockAddress: &cloud.MockGlobalAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockGlobalAddressesObj{},
+			},
+			staticIP: "203.0.113.10",
+			want: &compute.Address{
+				IpVersion:   "IPV4",
+				Name:        "my-cluster-apiserver",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/global/addresses/my-cluster-apiserver",
+				AddressType: "EXTERNAL",
+				Address:     "203.0.113.10",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -659,6 +677,11 @@ func TestService_createOrGetAddress(t *testing.T) {
 			}
 			if err != nil {
 				t.Fatal(err)
+			}
+			if tt.staticIP != "" {
+				clusterScope.GCPCluster.Spec.LoadBalancer.ExternalLoadBalancerConfig = &infrav1.ExternalLoadBalancer{
+					IPAddress: ptr.To(tt.staticIP),
+				}
 			}
 			s := New(tt.scope(clusterScope))
 			s.addresses = tt.mockAddress
@@ -682,6 +705,7 @@ func TestService_createOrGetRegionalAddress(t *testing.T) {
 		mockAddress *cloud.MockAddresses
 		want        *compute.Address
 		wantErr     bool
+		staticIP    string
 	}{
 		{
 			name:   "regional address does not exist for regional external load balancer (should create address)",
@@ -699,6 +723,24 @@ func TestService_createOrGetRegionalAddress(t *testing.T) {
 				AddressType: "EXTERNAL",
 			},
 		},
+		{
+			name:   "static IP from ExternalLoadBalancerConfig is honored",
+			scope:  func(s *scope.ClusterScope) Scope { return s },
+			lbName: infrav1.APIServerRoleTagValue,
+			mockAddress: &cloud.MockAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockAddressesObj{},
+			},
+			staticIP: "203.0.113.42",
+			want: &compute.Address{
+				IpVersion:   "",
+				Name:        "my-cluster-apiserver",
+				Region:      "us-central1",
+				SelfLink:    "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/addresses/my-cluster-apiserver",
+				AddressType: "EXTERNAL",
+				Address:     "203.0.113.42",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -706,6 +748,11 @@ func TestService_createOrGetRegionalAddress(t *testing.T) {
 			clusterScope, err := getBaseClusterScope()
 			if err != nil {
 				t.Fatal(err)
+			}
+			if tt.staticIP != "" {
+				clusterScope.GCPCluster.Spec.LoadBalancer.ExternalLoadBalancerConfig = &infrav1.ExternalLoadBalancer{
+					IPAddress: ptr.To(tt.staticIP),
+				}
 			}
 			s := New(tt.scope(clusterScope))
 			s.regionaladdresses = tt.mockAddress

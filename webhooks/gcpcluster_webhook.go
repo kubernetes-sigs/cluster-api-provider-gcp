@@ -55,13 +55,23 @@ func (*GCPCluster) Default(_ context.Context, _ *infrav1.GCPCluster) error {
 	return nil
 }
 
-func (*GCPCluster) ValidateCreate(_ context.Context, _ *infrav1.GCPCluster) (admission.Warnings, error) {
-	return nil, nil
+func (*GCPCluster) ValidateCreate(_ context.Context, c *infrav1.GCPCluster) (admission.Warnings, error) {
+	clusterlog.Info("validate create", "name", c.Name)
+	warnings, allErrs := c.Spec.LoadBalancer.Validate(field.NewPath("spec", "loadBalancer"))
+	if len(allErrs) == 0 {
+		return warnings, nil
+	}
+	return warnings, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
 func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster) (admission.Warnings, error) {
 	clusterlog.Info("validate update", "name", c.Name)
-	var allErrs field.ErrorList
+
+	// Re-run the semantic LoadBalancer validation on updates. The
+	// LoadBalancer field is immutable and blocked below, but running
+	// Validate() here still catches invalid state that slipped in via a
+	// client that bypassed the create webhook (e.g. Go SDK/operator).
+	warnings, allErrs := c.Spec.LoadBalancer.Validate(field.NewPath("spec", "loadBalancer"))
 
 	if !reflect.DeepEqual(c.Spec.Project, old.Spec.Project) {
 		allErrs = append(allErrs,
@@ -133,10 +143,10 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster)
 	}
 
 	if len(allErrs) == 0 {
-		return nil, nil
+		return warnings, nil
 	}
 
-	return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
+	return warnings, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
 func (*GCPCluster) ValidateDelete(_ context.Context, _ *infrav1.GCPCluster) (admission.Warnings, error) {
