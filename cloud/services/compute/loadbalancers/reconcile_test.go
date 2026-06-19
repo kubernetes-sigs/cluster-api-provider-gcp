@@ -432,8 +432,9 @@ func TestService_createOrGetRegionalBackendService(t *testing.T) {
 			want: &compute.BackendService{
 				Backends: []*compute.Backend{
 					{
-						BalancingMode: "CONNECTION",
-						Group:         "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-master-us-central1-a",
+						BalancingMode:  "CONNECTION",
+						Group:          "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-master-us-central1-a",
+						MaxConnections: 1000,
 					},
 				},
 				HealthChecks: []string{
