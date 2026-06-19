@@ -273,12 +273,14 @@ func TestCreateBackends(t *testing.T) {
 		name           string
 		instancegroups []*compute.InstanceGroup
 		mode           loadBalancingMode
+		maxConnections int64
 		want           []*compute.Backend
 	}{
 		{
-			name:           "creates backends with UTILIZATION mode",
+			name:           "UTILIZATION mode, no maxConnections",
 			instancegroups: instanceGroups,
 			mode:           loadBalancingModeUtilization,
+			maxConnections: 0,
 			want: []*compute.Backend{
 				{
 					BalancingMode: string(loadBalancingModeUtilization),
@@ -291,9 +293,10 @@ func TestCreateBackends(t *testing.T) {
 			},
 		},
 		{
-			name:           "creates backends with CONNECTION mode and MaxConnections",
+			name:           "CONNECTION mode with maxConnections (proxy LB)",
 			instancegroups: instanceGroups,
 			mode:           loadBalancingModeConnection,
+			maxConnections: 1000,
 			want: []*compute.Backend{
 				{
 					BalancingMode:  string(loadBalancingModeConnection),
@@ -308,32 +311,33 @@ func TestCreateBackends(t *testing.T) {
 			},
 		},
 		{
+			name:           "CONNECTION mode without maxConnections (internal passthrough LB)",
+			instancegroups: instanceGroups,
+			mode:           loadBalancingModeConnection,
+			maxConnections: 0,
+			want: []*compute.Backend{
+				{
+					BalancingMode: string(loadBalancingModeConnection),
+					Group:         igZoneASelfLink,
+				},
+				{
+					BalancingMode: string(loadBalancingModeConnection),
+					Group:         igZoneBSelfLink,
+				},
+			},
+		},
+		{
 			name:           "handles empty instance groups",
 			instancegroups: []*compute.InstanceGroup{},
 			mode:           loadBalancingModeUtilization,
+			maxConnections: 0,
 			want:           []*compute.Backend{},
-		},
-		{
-			name: "handles single instance group",
-			instancegroups: []*compute.InstanceGroup{
-				{
-					Name:     "ig-zone-a",
-					SelfLink: igZoneASelfLink,
-				},
-			},
-			mode: loadBalancingModeUtilization,
-			want: []*compute.Backend{
-				{
-					BalancingMode: string(loadBalancingModeUtilization),
-					Group:         igZoneASelfLink,
-				},
-			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := createBackends(tt.instancegroups, tt.mode)
+			got := createBackends(tt.instancegroups, tt.mode, tt.maxConnections)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("createBackends() mismatch (-want +got):\n%s", d)
 			}

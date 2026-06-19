@@ -83,19 +83,18 @@ func getLoadBalancingMode(lbType infrav1.LoadBalancerType) loadBalancingMode {
 	return loadBalancingModeUtilization
 }
 
-func createBackends(instancegroups []*compute.InstanceGroup, mode loadBalancingMode) []*compute.Backend {
+// createBackends builds Backend specs for the given instance groups.
+// maxConnections is applied as-is to each Backend; pass 0 to leave the field
+// unset (required for INTERNAL passthrough backend services — GCP rejects
+// maxConnections on those).
+func createBackends(instancegroups []*compute.InstanceGroup, mode loadBalancingMode, maxConnections int64) []*compute.Backend {
 	backends := make([]*compute.Backend, 0, len(instancegroups))
 	for _, group := range instancegroups {
-		be := &compute.Backend{
-			BalancingMode: string(mode),
-			Group:         group.SelfLink,
-		}
-		if mode == loadBalancingModeConnection {
-			// Set max connections to a reasonable limit based
-			// on database max connections https://cloud.google.com/sql/docs/postgres/flags#postgres-m
-			be.MaxConnections = 1000
-		}
-		backends = append(backends, be)
+		backends = append(backends, &compute.Backend{
+			BalancingMode:  string(mode),
+			Group:          group.SelfLink,
+			MaxConnections: maxConnections,
+		})
 	}
 	return backends
 }
@@ -479,7 +478,13 @@ func (s *Service) createOrGetRegionalHealthCheck(ctx context.Context, lbname str
 func (s *Service) createOrGetBackendService(ctx context.Context, lbname string, mode loadBalancingMode, instancegroups []*compute.InstanceGroup, healthcheck *compute.HealthCheck) (*compute.BackendService, error) {
 	log := log.FromContext(ctx)
 	backendsvcSpec := s.scope.BackendServiceSpec(lbname)
-	backendsvcSpec.Backends = createBackends(instancegroups, mode)
+	// Global proxy backend services accept maxConnections when using CONNECTION mode.
+	var maxConns int64
+	if mode == loadBalancingModeConnection {
+		// https://cloud.google.com/sql/docs/postgres/flags#postgres-m
+		maxConns = 1000
+	}
+	backendsvcSpec.Backends = createBackends(instancegroups, mode, maxConns)
 	backendsvcSpec.HealthChecks = []string{healthcheck.SelfLink}
 
 	key := meta.GlobalKey(backendsvcSpec.Name)
@@ -521,8 +526,14 @@ func (s *Service) createOrGetRegionalBackendService(ctx context.Context, lbname 
 	lbType := ptr.Deref(lbSpec.LoadBalancerType, infrav1.External)
 	backendsvcSpec := s.scope.BackendServiceSpec(lbname)
 	// Regional backend services always use CONNECTION mode for passthrough behavior.
-	// RegionalExternal also sets MaxConnections (via createBackends).
-	backendsvcSpec.Backends = createBackends(instancegroups, loadBalancingModeConnection)
+	// maxConnections is only allowed for the RegionalExternal (EXTERNAL_MANAGED) case;
+	// GCP rejects it on INTERNAL passthrough backend services.
+	var maxConns int64
+	if lbType == infrav1.RegionalExternal {
+		// https://cloud.google.com/sql/docs/postgres/flags#postgres-m
+		maxConns = 1000
+	}
+	backendsvcSpec.Backends = createBackends(instancegroups, loadBalancingModeConnection, maxConns)
 	backendsvcSpec.HealthChecks = []string{healthcheck.SelfLink}
 	backendsvcSpec.Region = s.scope.Region()
 
