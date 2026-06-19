@@ -30,6 +30,12 @@ const (
 	// owner: @richardchen331 & @richardcase
 	// alpha: v0.1
 	GKE featuregate.Feature = "GKE"
+
+	// RegionalLoadBalancer is used to enable the RegionalExternal and
+	// RegionalInternalExternal load balancer types.
+	// owner: @DvdChe & @barbacbd
+	// alpha: v1.14
+	RegionalLoadBalancer featuregate.Feature = "RegionalLoadBalancer"
 )
 
 func init() {
@@ -39,5 +45,6 @@ func init() {
 // defaultCAPGFeatureGates consists of all known capg-specific feature keys.
 // To add a new feature, define a key for it above and add it here.
 var defaultCAPGFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
-	GKE: {Default: false, PreRelease: featuregate.Alpha},
+	GKE:                  {Default: false, PreRelease: featuregate.Alpha},
+	RegionalLoadBalancer: {Default: false, PreRelease: featuregate.Alpha},
 }
