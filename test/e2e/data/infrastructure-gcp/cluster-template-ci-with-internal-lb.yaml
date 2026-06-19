@@ -33,7 +33,7 @@ spec:
       - name: control-plane-subnet
         cidrBlock: "10.0.0.0/17"
         purpose: PRIVATE
-        region: us-east4
+        region: "${GCP_REGION}"
   controlPlaneEndpoint:
     port: 6443
   loadBalancer:
