@@ -32,7 +32,8 @@ const (
 	GKE featuregate.Feature = "GKE"
 
 	// RegionalLoadBalancer is used to enable the RegionalExternal and
-	// RegionalInternalExternal load balancer types.
+	// RegionalInternalExternal load balancer types and the
+	// ExternalLoadBalancerConfig field of LoadBalancerSpec.
 	// owner: @DvdChe & @barbacbd
 	// alpha: v1.14
 	RegionalLoadBalancer featuregate.Feature = "RegionalLoadBalancer"

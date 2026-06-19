@@ -73,6 +73,13 @@ func getInternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
 	return infrav1.InternalRoleTagValue
 }
 
+func getExternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
+	if lbSpec.ExternalLoadBalancerConfig != nil {
+		return ptr.Deref(lbSpec.ExternalLoadBalancerConfig.Name, infrav1.APIServerRoleTagValue)
+	}
+	return infrav1.APIServerRoleTagValue
+}
+
 // getLoadBalancingMode returns the appropriate balancing mode for the global
 // backend service. When an internal proxy LB is created alongside an external
 // one (InternalExternal), the modes must match — internal proxy LBs require
@@ -102,7 +109,8 @@ func createBackends(instancegroups []*compute.InstanceGroup, mode loadBalancingM
 
 // checkRegionalLoadBalancerFeatureGate refuses to reconcile a LoadBalancerSpec
 // that uses a field guarded by the RegionalLoadBalancer feature gate while the
-// gate is disabled. Delete is intentionally not gated so that a cluster
+// gate is disabled. The webhook enforces the same rule on create; this covers
+// clients that bypass it. Delete is intentionally not gated so that a cluster
 // created while the gate was enabled can still be torn down.
 func checkRegionalLoadBalancerFeatureGate(lbSpec infrav1.LoadBalancerSpec) error {
 	if feature.Gates.Enabled(feature.RegionalLoadBalancer) {
@@ -110,6 +118,9 @@ func checkRegionalLoadBalancerFeatureGate(lbSpec infrav1.LoadBalancerSpec) error
 	}
 	if lbType := ptr.Deref(lbSpec.LoadBalancerType, infrav1.External); isRegionalExternalLoadBalancer(lbType) {
 		return fmt.Errorf("load balancer type %s requires the RegionalLoadBalancer feature gate", lbType)
+	}
+	if lbSpec.ExternalLoadBalancerConfig != nil {
+		return errors.New("externalLoadBalancerConfig requires the RegionalLoadBalancer feature gate")
 	}
 	return nil
 }
@@ -189,7 +200,7 @@ func (s *Service) Delete(ctx context.Context) error {
 func (s *Service) deleteExternalLoadBalancer(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	log.Info("Deleting external loadbalancer resources")
-	name := infrav1.APIServerRoleTagValue
+	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 	if err := s.deleteForwardingRule(ctx, name); err != nil {
 		return fmt.Errorf("deleting ForwardingRule: %w", err)
 	}
@@ -221,7 +232,7 @@ func (s *Service) deleteExternalLoadBalancer(ctx context.Context) error {
 func (s *Service) deleteRegionalExternalLoadBalancer(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	log.Info("Deleting external regional loadbalancer resources")
-	name := infrav1.APIServerRoleTagValue
+	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 
 	if err := s.deleteRegionalForwardingRule(ctx, name); err != nil {
 		return fmt.Errorf("deleting regional ForwardingRule: %w", err)
@@ -283,7 +294,7 @@ func (s *Service) deleteInternalLoadBalancer(ctx context.Context, name string) e
 
 // createExternalLoadBalancer creates the components for a Global External Proxy LoadBalancer.
 func (s *Service) createExternalLoadBalancer(ctx context.Context, lbType infrav1.LoadBalancerType, instancegroups []*compute.InstanceGroup) error {
-	name := infrav1.APIServerRoleTagValue
+	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 	healthcheck, err := s.createOrGetHealthCheck(ctx, name)
 	if err != nil {
 		return err
@@ -323,7 +334,7 @@ func (s *Service) createExternalLoadBalancer(ctx context.Context, lbType infrav1
 
 // createRegionalExternalLoadBalancer creates the components for a Regional External Proxy LoadBalancer.
 func (s *Service) createRegionalExternalLoadBalancer(ctx context.Context, instancegroups []*compute.InstanceGroup) error {
-	name := infrav1.APIServerRoleTagValue
+	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 	healthcheck, err := s.createOrGetRegionalHealthCheck(ctx, name)
 	if err != nil {
 		return err
@@ -673,6 +684,10 @@ func (s *Service) deleteRegionalTargetTCPProxy(ctx context.Context) error {
 func (s *Service) createOrGetAddress(ctx context.Context, lbname string) (*compute.Address, error) {
 	log := log.FromContext(ctx)
 	addrSpec := s.scope.AddressSpec(lbname)
+	if cfg := s.scope.LoadBalancer().ExternalLoadBalancerConfig; cfg != nil && cfg.IPAddress != nil {
+		// Use the user-provided static IP instead of allocating a new one.
+		addrSpec.Address = *cfg.IPAddress
+	}
 	log.V(2).Info("Looking for address", "name", addrSpec.Name)
 	key := meta.GlobalKey(addrSpec.Name)
 	addr, err := s.addresses.Get(ctx, key)
@@ -704,6 +719,10 @@ func (s *Service) createOrGetRegionalAddress(ctx context.Context, lbname string)
 	addrSpec.Region = s.scope.Region()
 	addrSpec.AddressType = loadBalanceTrafficExternal
 	addrSpec.IpVersion = ""
+	if cfg := s.scope.LoadBalancer().ExternalLoadBalancerConfig; cfg != nil && cfg.IPAddress != nil {
+		// Use the user-provided static IP instead of allocating a new one.
+		addrSpec.Address = *cfg.IPAddress
+	}
 	log.V(2).Info("Looking for address", "name", addrSpec.Name)
 	key := meta.RegionalKey(addrSpec.Name, s.scope.Region())
 	addr, err := s.regionaladdresses.Get(ctx, key)
