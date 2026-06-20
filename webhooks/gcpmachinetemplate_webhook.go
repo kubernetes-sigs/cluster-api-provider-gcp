@@ -50,7 +50,7 @@ var (
 func (*GCPMachineTemplate) ValidateCreate(_ context.Context, r *infrav1.GCPMachineTemplate) (admission.Warnings, error) {
 	clusterlog.Info("validate create", "name", r.Name)
 
-	return nil, validateConfidentialCompute(r.Spec.Template.Spec)
+	return nil, ValidateConfidentialCompute(r.Spec.Template.Spec.ConfidentialCompute, r.Spec.Template.Spec.OnHostMaintenance, r.Spec.Template.Spec.InstanceType)
 }
 
 func (*GCPMachineTemplate) ValidateUpdate(_ context.Context, oldObj, r *infrav1.GCPMachineTemplate) (admission.Warnings, error) {

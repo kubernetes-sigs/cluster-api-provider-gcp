@@ -20,6 +20,7 @@ import (
 	"context"
 
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	capgwebhooks "sigs.k8s.io/cluster-api-provider-gcp/webhooks"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -45,17 +46,19 @@ var _ admission.Validator[*expinfrav1.GCPMachinePool] = &GCPMachinePool{}
 func (*GCPMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GCPMachinePool) (admission.Warnings, error) {
 	gcpMachinePoolLog.Info("Validating GCPMachinePool create", "name", r.Name)
 
-	// Add custom validation logic upon creation if needed.
-
-	return nil, nil
+	if err := capgwebhooks.ValidateConfidentialCompute(r.Spec.ConfidentialCompute, r.Spec.OnHostMaintenance, r.Spec.InstanceType); err != nil {
+		return nil, err
+	}
+	return nil, capgwebhooks.ValidateCustomerEncryptionKey(r.Spec.RootDiskEncryptionKey, r.Spec.AdditionalDisks)
 }
 
 func (*GCPMachinePool) ValidateUpdate(_ context.Context, _, r *expinfrav1.GCPMachinePool) (admission.Warnings, error) {
 	gcpMachinePoolLog.Info("Validating GCPMachinePool update", "name", r.Name)
 
-	// Add custom validation logic upon update if needed.
-
-	return nil, nil
+	if err := capgwebhooks.ValidateConfidentialCompute(r.Spec.ConfidentialCompute, r.Spec.OnHostMaintenance, r.Spec.InstanceType); err != nil {
+		return nil, err
+	}
+	return nil, capgwebhooks.ValidateCustomerEncryptionKey(r.Spec.RootDiskEncryptionKey, r.Spec.AdditionalDisks)
 }
 
 func (*GCPMachinePool) ValidateDelete(_ context.Context, r *expinfrav1.GCPMachinePool) (admission.Warnings, error) {
