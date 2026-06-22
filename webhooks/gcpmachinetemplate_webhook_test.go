@@ -243,3 +243,71 @@ func TestGCPMachineTemplate_ValidateCreate(t *testing.T) {
 		})
 	}
 }
+
+func TestGCPMachineTemplate_ValidateUpdate(t *testing.T) {
+	tests := []struct {
+		name        string
+		oldTemplate *infrav1.GCPMachineTemplate
+		newTemplate *infrav1.GCPMachineTemplate
+		wantErr     bool
+	}{
+		{
+			name: "allows changing only additionalNetworkTags",
+			oldTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType: "n2d-standard-4",
+						},
+					},
+				},
+			},
+			newTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType:          "n2d-standard-4",
+							AdditionalNetworkTags: []string{"new-tag"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "rejects changing instanceType",
+			oldTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType: "n2d-standard-4",
+						},
+					},
+				},
+			},
+			newTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType: "n2d-standard-8",
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			g := NewWithT(t)
+			warn, err := (&GCPMachineTemplate{}).ValidateUpdate(t.Context(), test.oldTemplate, test.newTemplate)
+			if test.wantErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			g.Expect(warn).To(BeNil())
+		})
+	}
+}

@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -70,17 +71,10 @@ func (*GCPMachineTemplate) ValidateUpdate(_ context.Context, oldObj, r *infrav1.
 	newGCPMachineTemplateSpec := newGCPMachineTemplate["spec"].(map[string]interface{})
 	oldGCPMachineTemplateSpec := oldGCPMachineTemplate["spec"].(map[string]interface{})
 
-	// allow changes to providerID
-	delete(oldGCPMachineTemplateSpec, "providerID")
-	delete(newGCPMachineTemplateSpec, "providerID")
-
-	// allow changes to additionalLabels
-	delete(oldGCPMachineTemplateSpec, "additionalLabels")
-	delete(newGCPMachineTemplateSpec, "additionalLabels")
-
-	// allow changes to additionalNetworkTags
-	delete(oldGCPMachineTemplateSpec, "additionalNetworkTags")
-	delete(newGCPMachineTemplateSpec, "additionalNetworkTags")
+	for _, fieldName := range []string{"providerID", "additionalLabels", "additionalNetworkTags"} {
+		unstructured.RemoveNestedField(oldGCPMachineTemplateSpec, "template", "spec", fieldName)
+		unstructured.RemoveNestedField(newGCPMachineTemplateSpec, "template", "spec", fieldName)
+	}
 
 	if !reflect.DeepEqual(oldGCPMachineTemplateSpec, newGCPMachineTemplateSpec) {
 		return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPMachineTemplate").GroupKind(), r.Name, field.ErrorList{
