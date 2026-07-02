@@ -221,3 +221,95 @@ var _ = Describe("GKE workload cluster creation", func() {
 		})
 	})
 })
+
+var _ = Describe("GKE workload cluster deletion", func() {
+	var (
+		ctx                 = context.TODO()
+		specName            = "delete-gke-workload-cluster"
+		namespace           *corev1.Namespace
+		cancelWatches       context.CancelFunc
+		result              *ApplyManagedClusterTemplateAndWaitResult
+		clusterName         string
+		clusterctlLogFolder string
+	)
+
+	BeforeEach(func() {
+		Expect(e2eConfig).ToNot(BeNil(), "Invalid argument. e2eConfig can't be nil when calling %s spec", specName)
+		Expect(clusterctlConfigPath).To(BeAnExistingFile(), "Invalid argument. clusterctlConfigPath must be an existing file when calling %s spec", specName)
+		Expect(bootstrapClusterProxy).ToNot(BeNil(), "Invalid argument. bootstrapClusterProxy can't be nil when calling %s spec", specName)
+		Expect(os.MkdirAll(artifactFolder, 0o755)).To(Succeed(), "Invalid argument. artifactFolder can't be created for %s spec", specName)
+
+		Expect(e2eConfig.Variables).To(HaveKey(KubernetesVersion))
+
+		clusterName = fmt.Sprintf("capg-e2e-%s", util.RandomString(6))
+		namespace, cancelWatches = setupSpecNamespace(ctx, specName, bootstrapClusterProxy, artifactFolder)
+		result = new(ApplyManagedClusterTemplateAndWaitResult)
+		clusterctlLogFolder = filepath.Join(os.TempDir(), "clusters", bootstrapClusterProxy.GetName())
+	})
+
+	AfterEach(func() {
+		dumpSpecResourcesAndCleanup(ctx, cleanupInput{
+			SpecName:             specName,
+			Cluster:              result.Cluster,
+			ClusterProxy:         bootstrapClusterProxy,
+			ClusterctlConfigPath: clusterctlConfigPath,
+			Namespace:            namespace,
+			CancelWatches:        cancelWatches,
+			IntervalsGetter:      e2eConfig.GetIntervals,
+			SkipCleanup:          skipCleanup,
+			ArtifactFolder:       artifactFolder,
+		})
+	})
+
+	Context("Deleting a running GKE cluster", func() {
+		It("Should cleanly remove all managed resources without requiring manual finalizer intervention", func() {
+			minPoolSize, ok := e2eConfig.Variables["GKE_MACHINE_POOL_MIN"]
+			Expect(ok).To(BeTrue(), "must have min pool size set via the GKE_MACHINE_POOL_MIN variable")
+			maxPoolSize, ok := e2eConfig.Variables["GKE_MACHINE_POOL_MAX"]
+			Expect(ok).To(BeTrue(), "must have max pool size set via the GKE_MACHINE_POOL_MAX variable")
+			minCriticalAddonsOnlyPoolSize, ok := e2eConfig.Variables["GKE_MACHINE_POOL_MIN_CRITICAL_ADDONS_ONLY"]
+			Expect(ok).To(BeTrue(), "must have min critical addons only pool size set via the GKE_MACHINE_POOL_MIN_CRITICAL_ADDONS_ONLY variable")
+			maxCriticalAddonsOnlyPoolSize, ok := e2eConfig.Variables["GKE_MACHINE_POOL_MAX_CRITICAL_ADDONS_ONLY"]
+			Expect(ok).To(BeTrue(), "must have max critical addons only pool size set via the GKE_MACHINE_POOL_MAX_CRITICAL_ADDONS_ONLY variable")
+
+			By("Creating a GKE workload cluster")
+			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-gke",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](3),
+					ClusterctlVariables: map[string]string{
+						"GKE_MACHINE_POOL_MIN":                      minPoolSize,
+						"GKE_MACHINE_POOL_MAX":                      maxPoolSize,
+						"GKE_MACHINE_POOL_MIN_CRITICAL_ADDONS_ONLY": minCriticalAddonsOnlyPoolSize,
+						"GKE_MACHINE_POOL_MAX_CRITICAL_ADDONS_ONLY": maxCriticalAddonsOnlyPoolSize,
+					},
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-worker-machine-pools"),
+			}, result)
+
+			By("Deleting the GKE workload cluster")
+			framework.DeleteAllClustersAndWait(ctx, framework.DeleteAllClustersAndWaitInput{
+				ClusterProxy:         bootstrapClusterProxy,
+				ClusterctlConfigPath: clusterctlConfigPath,
+				Namespace:            namespace.Name,
+				ArtifactFolder:       artifactFolder,
+			}, e2eConfig.GetIntervals(specName, "wait-delete-cluster")...)
+
+			WaitForManagedClusterResourcesDeleted(ctx, WaitForManagedClusterResourcesDeletedInput{
+				Lister:    bootstrapClusterProxy.GetClient(),
+				Namespace: namespace.Name,
+			}, e2eConfig.GetIntervals(specName, "wait-delete-cluster")...)
+		})
+	})
+})
