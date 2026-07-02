@@ -7,4 +7,4 @@ export EXP_CAPG_GKE=true
 clusterctl init --infrastructure gcp
 ```
 
-> IMPORTANT: To use GKE the service account used for CAPG will need the `iam.serviceAccountTokenCreator` role assigned.
+> IMPORTANT: To use GKE the service account used for CAPG will need the `iam.serviceAccountTokenCreator` role assigned. When using [Workload Identity Federation](../quick-start.md#workload-identity-federation-gke-management-clusters), assign this role to the GCP service account that is bound via WIF.
