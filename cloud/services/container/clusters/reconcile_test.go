@@ -540,6 +540,76 @@ func TestConvertToSdkBinaryAuthorizationEvaluationMode(t *testing.T) {
 	}
 }
 
+func TestCreateClusterSecondaryRangeNames(t *testing.T) {
+	tests := []struct {
+		name            string
+		clusterNetwork  *infrav1exp.ClusterNetwork
+		wantClusterName string
+		wantServiceName string
+	}{
+		{
+			name: "pod secondary range name populates ClusterSecondaryRangeName",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: true,
+				Pod:          &infrav1exp.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range")},
+			},
+			wantClusterName: "pods-range",
+		},
+		{
+			name: "service secondary range name populates ServicesSecondaryRangeName",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: true,
+				Service:      &infrav1exp.ClusterNetworkService{SecondaryRangeName: ptr.To("services-range")},
+			},
+			wantServiceName: "services-range",
+		},
+		{
+			name: "both secondary range names populated together",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: true,
+				Pod:          &infrav1exp.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range")},
+				Service:      &infrav1exp.ClusterNetworkService{SecondaryRangeName: ptr.To("services-range")},
+			},
+			wantClusterName: "pods-range",
+			wantServiceName: "services-range",
+		},
+		{
+			name: "nil secondary range names leave fields empty",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: true,
+				Pod:          &infrav1exp.ClusterNetworkPod{},
+				Service:      &infrav1exp.ClusterNetworkService{},
+			},
+		},
+		{
+			name: "secondary range names ignored when UseIPAliases is false",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				UseIPAliases: false,
+				Pod:          &infrav1exp.ClusterNetworkPod{SecondaryRangeName: ptr.To("pods-range")},
+				Service:      &infrav1exp.ClusterNetworkService{SecondaryRangeName: ptr.To("services-range")},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var policy *containerpb.IPAllocationPolicy
+			if tt.clusterNetwork.UseIPAliases {
+				policy = buildIPAllocationPolicy(tt.clusterNetwork)
+			}
+
+			got := policy.GetClusterSecondaryRangeName()
+			if got != tt.wantClusterName {
+				t.Errorf("ClusterSecondaryRangeName = %q, want %q", got, tt.wantClusterName)
+			}
+			got = policy.GetServicesSecondaryRangeName()
+			if got != tt.wantServiceName {
+				t.Errorf("ServicesSecondaryRangeName = %q, want %q", got, tt.wantServiceName)
+			}
+		})
+	}
+}
+
 func TestClusterNetworkNilPointerGuards(t *testing.T) {
 	tests := []struct {
 		name           string

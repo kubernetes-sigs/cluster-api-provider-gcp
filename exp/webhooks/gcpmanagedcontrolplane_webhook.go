@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/pkg/errors"
@@ -111,6 +112,27 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.G
 		}
 	}
 
+	if cn := r.Spec.ClusterNetwork; cn != nil {
+		var podRangeName, serviceRangeName *string
+		var podCidrBlock, serviceCidrBlock string
+		if cn.Pod != nil {
+			podRangeName = cn.Pod.SecondaryRangeName
+			podCidrBlock = cn.Pod.CidrBlock
+		}
+		if cn.Service != nil {
+			serviceRangeName = cn.Service.SecondaryRangeName
+			serviceCidrBlock = cn.Service.CidrBlock
+		}
+		allErrs = append(allErrs, validateSecondaryRangeName(
+			podRangeName, cn.UseIPAliases, podCidrBlock,
+			field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
+		)...)
+		allErrs = append(allErrs, validateSecondaryRangeName(
+			serviceRangeName, cn.UseIPAliases, serviceCidrBlock,
+			field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
+		)...)
+	}
+
 	if len(allErrs) == 0 {
 		return allWarns, nil
 	}
@@ -181,6 +203,20 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 		}
 	}
 
+	if !cmp.Equal(clusterNetworkPodSecondaryRangeName(r.Spec.ClusterNetwork), clusterNetworkPodSecondaryRangeName(old.Spec.ClusterNetwork)) {
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "clusterNetwork", "pod", "secondaryRangeName"),
+			clusterNetworkPodSecondaryRangeName(r.Spec.ClusterNetwork), "field is immutable",
+		))
+	}
+
+	if !cmp.Equal(clusterNetworkServiceSecondaryRangeName(r.Spec.ClusterNetwork), clusterNetworkServiceSecondaryRangeName(old.Spec.ClusterNetwork)) {
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
+			clusterNetworkServiceSecondaryRangeName(r.Spec.ClusterNetwork), "field is immutable",
+		))
+	}
+
 	if len(allErrs) == 0 {
 		return nil, nil
 	}
@@ -188,8 +224,44 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 	return nil, apierrors.NewInvalid(expinfrav1.GroupVersion.WithKind("GCPManagedControlPlane").GroupKind(), r.Name, allErrs)
 }
 
+func clusterNetworkPodSecondaryRangeName(cn *expinfrav1.ClusterNetwork) *string {
+	if cn == nil || cn.Pod == nil {
+		return nil
+	}
+	return cn.Pod.SecondaryRangeName
+}
+
+func clusterNetworkServiceSecondaryRangeName(cn *expinfrav1.ClusterNetwork) *string {
+	if cn == nil || cn.Service == nil {
+		return nil
+	}
+	return cn.Service.SecondaryRangeName
+}
+
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
 func (*GCPManagedControlPlane) ValidateDelete(_ context.Context, _ *expinfrav1.GCPManagedControlPlane) (admission.Warnings, error) {
 	return nil, nil
+}
+
+// validateSecondaryRangeName validates a secondary range name pointer against RFC1035 rules
+// and its preconditions (useIPAliases required, mutually exclusive with cidrBlock).
+func validateSecondaryRangeName(name *string, useIPAliases bool, cidrBlock string, path *field.Path) field.ErrorList {
+	if name == nil {
+		return nil
+	}
+	var errs field.ErrorList
+	for _, msg := range validation.IsDNS1035Label(*name) {
+		errs = append(errs, field.Invalid(path, *name, msg))
+	}
+	if *name != "" {
+		if !useIPAliases {
+			errs = append(errs, field.Invalid(path, *name, "secondaryRangeName requires useIPAliases to be true"))
+		}
+		if cidrBlock != "" {
+			errs = append(errs, field.Invalid(path, *name, "secondaryRangeName and cidrBlock are mutually exclusive"))
+		}
+	}
+	return errs
 }
 
 func generateGKEName(resourceName, namespace string, maxLength int) (string, error) {

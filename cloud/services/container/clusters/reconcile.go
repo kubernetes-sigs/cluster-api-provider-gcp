@@ -284,14 +284,7 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	if s.scope.GCPManagedControlPlane.Spec.ClusterNetwork != nil {
 		cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork
 		if cn.UseIPAliases {
-			cluster.IpAllocationPolicy = &containerpb.IPAllocationPolicy{}
-			cluster.IpAllocationPolicy.UseIpAliases = cn.UseIPAliases
-			if cn.Pod != nil {
-				cluster.IpAllocationPolicy.ClusterIpv4CidrBlock = cn.Pod.CidrBlock
-			}
-			if cn.Service != nil {
-				cluster.IpAllocationPolicy.ServicesIpv4CidrBlock = cn.Service.CidrBlock
-			}
+			cluster.IpAllocationPolicy = buildIPAllocationPolicy(cn)
 		}
 
 		if cn.PrivateCluster != nil {
@@ -576,4 +569,21 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 		return false
 	}
 	return true
+}
+
+func buildIPAllocationPolicy(cn *infrav1exp.ClusterNetwork) *containerpb.IPAllocationPolicy {
+	policy := &containerpb.IPAllocationPolicy{UseIpAliases: true}
+	if cn.Pod != nil {
+		policy.ClusterIpv4CidrBlock = cn.Pod.CidrBlock
+		if cn.Pod.SecondaryRangeName != nil {
+			policy.ClusterSecondaryRangeName = *cn.Pod.SecondaryRangeName
+		}
+	}
+	if cn.Service != nil {
+		policy.ServicesIpv4CidrBlock = cn.Service.CidrBlock
+		if cn.Service.SecondaryRangeName != nil {
+			policy.ServicesSecondaryRangeName = *cn.Service.SecondaryRangeName
+		}
+	}
+	return policy
 }
