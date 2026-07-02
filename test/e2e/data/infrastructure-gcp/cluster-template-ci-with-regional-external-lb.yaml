@@ -33,8 +33,12 @@ spec:
         cidrBlock: "10.0.0.0/17"
         purpose: PRIVATE
         region: "${GCP_REGION}"
+      - name: proxy-only-subnet
+        cidrBlock: "10.1.0.0/26"
+        purpose: REGIONAL_MANAGED_PROXY
+        region: "${GCP_REGION}"
   loadBalancer:
-    loadBalancerType: InternalExternal
+    loadBalancerType: RegionalExternal
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KubeadmControlPlane
@@ -87,10 +91,6 @@ spec:
     spec:
       instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
       image: "${IMAGE_ID}"
-      publicIP: true
-      additionalMetadata:
-      - key: "ssh-keys"
-        value: "${GCP_SSH_KEY}"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -124,10 +124,6 @@ spec:
     spec:
       instanceType: "${GCP_NODE_MACHINE_TYPE}"
       image: "${IMAGE_ID}"
-      publicIP: true
-      additionalMetadata:
-      - key: "ssh-keys"
-        value: "${GCP_SSH_KEY}"
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
