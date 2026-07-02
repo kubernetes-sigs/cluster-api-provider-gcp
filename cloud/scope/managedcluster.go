@@ -174,7 +174,7 @@ func (s *ManagedClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags 
 func (s *ManagedClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 	endpoint := clusterv1.APIEndpoint{
 		Host: s.GCPManagedCluster.Spec.ControlPlaneEndpoint.Host,
-		Port: 443,
+		Port: APIServerPort,
 	}
 	if s.Cluster.Spec.ClusterNetwork.APIServerPort != 0 {
 		endpoint.Port = s.Cluster.Spec.ClusterNetwork.APIServerPort
@@ -289,11 +289,11 @@ func (s *ManagedClusterScope) FirewallRulesSpec() []*compute.Firewall {
 // ANCHOR_END: ClusterFirewallSpec
 
 // PatchObject persists the cluster configuration and status.
-func (s *ManagedClusterScope) PatchObject() error {
-	return s.patchHelper.Patch(context.TODO(), s.GCPManagedCluster)
+func (s *ManagedClusterScope) PatchObject(ctx context.Context) error {
+	return s.patchHelper.Patch(ctx, s.GCPManagedCluster)
 }
 
 // Close closes the current scope persisting the cluster configuration and status.
-func (s *ManagedClusterScope) Close() error {
-	return s.PatchObject()
+func (s *ManagedClusterScope) Close(ctx context.Context) error {
+	return s.PatchObject(ctx)
 }

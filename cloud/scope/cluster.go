@@ -192,12 +192,13 @@ func (s *ClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags {
 func (s *ClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 	endpoint := clusterv1.APIEndpoint{
 		Host: s.GCPCluster.Spec.ControlPlaneEndpoint.Host,
-		Port: 443,
+		Port: APIServerPort,
 	}
 
 	if s.Cluster.Spec.ClusterNetwork.APIServerPort != 0 {
 		endpoint.Port = s.Cluster.Spec.ClusterNetwork.APIServerPort
 	}
+
 	return endpoint
 }
 
@@ -389,11 +390,11 @@ func (s *ClusterScope) TargetTCPProxySpec() *compute.TargetTcpProxy {
 // ANCHOR_END: ClusterControlPlaneSpec
 
 // PatchObject persists the cluster configuration and status.
-func (s *ClusterScope) PatchObject() error {
-	return s.patchHelper.Patch(context.TODO(), s.GCPCluster)
+func (s *ClusterScope) PatchObject(ctx context.Context) error {
+	return s.patchHelper.Patch(ctx, s.GCPCluster)
 }
 
 // Close closes the current scope persisting the cluster configuration and status.
-func (s *ClusterScope) Close() error {
-	return s.PatchObject()
+func (s *ClusterScope) Close(ctx context.Context) error {
+	return s.PatchObject(ctx)
 }

@@ -38,6 +38,8 @@ const (
 	GKEControlPlaneCreatingReason = "GKEControlPlaneCreating"
 	// GKEControlPlaneCreatedReason used to report GKE control plane is created.
 	GKEControlPlaneCreatedReason = "GKEControlPlaneCreated"
+	// GKEControlPlaneUpdatingReason used to report GKE control plane being updated.
+	GKEControlPlaneUpdatingReason = "GKEControlPlaneUpdating"
 	// GKEControlPlaneUpdatedReason used to report GKE control plane is updated.
 	GKEControlPlaneUpdatedReason = "GKEControlPlaneUpdated"
 	// GKEControlPlaneDeletingReason used to report GKE control plane being deleted.
@@ -66,6 +68,8 @@ const (
 	GKEMachinePoolCreatingReason = "GKEMachinePoolCreating"
 	// GKEMachinePoolCreatedReason used to report GKE node pool is created.
 	GKEMachinePoolCreatedReason = "GKEMachinePoolCreated"
+	// GKEMachinePoolUpdatingReason used to report GKE node pool being updated.
+	GKEMachinePoolUpdatingReason = "GKEMachinePoolUpdating"
 	// GKEMachinePoolUpdatedReason used to report GKE node pool is updated.
 	GKEMachinePoolUpdatedReason = "GKEMachinePoolUpdated"
 	// GKEMachinePoolDeletingReason used to report GKE node pool being deleted.
@@ -88,4 +92,32 @@ const (
 	InstanceTemplateReadyCondition clusterv1.ConditionType = "InstanceTemplateReady"
 	// InstanceTemplateReconcileFailedReason used for failures during Launch Template reconciliation.
 	InstanceTemplateReconcileFailedReason = "InstanceTemplateReconcileFailed"
+)
+
+// GCPManagedControlPlane v1beta2 condition types.
+const (
+	// GCPManagedControlPlaneReadyCondition reports on the overall readiness of the GCPManagedControlPlane.
+	GCPManagedControlPlaneReadyCondition = "Ready"
+	// GCPManagedControlPlaneGKEControlPlaneReadyCondition reports on the readiness of the GKE control plane.
+	GCPManagedControlPlaneGKEControlPlaneReadyCondition = "GKEControlPlaneReady"
+	// GCPManagedControlPlaneGKEControlPlaneCreatingCondition reports on whether the GKE control plane is creating.
+	GCPManagedControlPlaneGKEControlPlaneCreatingCondition = "GKEControlPlaneCreating"
+	// GCPManagedControlPlaneGKEControlPlaneUpdatingCondition reports on whether the GKE control plane is updating.
+	GCPManagedControlPlaneGKEControlPlaneUpdatingCondition = "GKEControlPlaneUpdating"
+	// GCPManagedControlPlaneGKEControlPlaneDeletingCondition reports on whether the GKE control plane is deleting.
+	GCPManagedControlPlaneGKEControlPlaneDeletingCondition = "GKEControlPlaneDeleting"
+)
+
+// GCPManagedMachinePool v1beta2 condition types.
+const (
+	// GCPManagedMachinePoolReadyCondition reports on the overall readiness of the GCPManagedMachinePool.
+	GCPManagedMachinePoolReadyCondition = "Ready"
+	// GCPManagedMachinePoolGKEMachinePoolReadyCondition reports on the readiness of the GKE machine pool.
+	GCPManagedMachinePoolGKEMachinePoolReadyCondition = "GKEMachinePoolReady"
+	// GCPManagedMachinePoolGKEMachinePoolCreatingCondition reports on whether the GKE machine pool is creating.
+	GCPManagedMachinePoolGKEMachinePoolCreatingCondition = "GKEMachinePoolCreating"
+	// GCPManagedMachinePoolGKEMachinePoolUpdatingCondition reports on whether the GKE machine pool is updating.
+	GCPManagedMachinePoolGKEMachinePoolUpdatingCondition = "GKEMachinePoolUpdating"
+	// GCPManagedMachinePoolGKEMachinePoolDeletingCondition reports on whether the GKE machine pool is deleting.
+	GCPManagedMachinePoolGKEMachinePoolDeletingCondition = "GKEMachinePoolDeleting"
 )

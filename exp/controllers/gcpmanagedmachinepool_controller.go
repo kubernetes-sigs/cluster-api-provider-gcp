@@ -261,6 +261,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 	if !gcpManagedControlPlane.Status.Ready {
 		log.Info("Control plane is not ready yet")
 		v1beta1conditions.MarkFalse(gcpManagedMachinePool, infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.WaitingForGKEControlPlaneReason, clusterv1beta1.ConditionSeverityInfo, "")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -278,7 +279,7 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 
 	// Always close the scope when exiting this function so we can persist any GCPMachine changes.
 	defer func() {
-		if err := managedMachinePoolScope.Close(); err != nil && reterr == nil {
+		if err := managedMachinePoolScope.Close(ctx); err != nil && reterr == nil {
 			log.Error(err, "Failed to patch GCPManagedMachinePool object", "GCPManagedMachinePool", managedMachinePoolScope.GCPManagedMachinePool.Name)
 			reterr = err
 		}
@@ -299,7 +300,7 @@ func (r *GCPManagedMachinePoolReconciler) reconcile(ctx context.Context, managed
 
 	controllerutil.AddFinalizer(managedMachinePoolScope.GCPManagedMachinePool, infrav1exp.ManagedMachinePoolFinalizer)
 	managedMachinePoolScope.SetInfrastructureMachineKind()
-	if err := managedMachinePoolScope.PatchObject(); err != nil {
+	if err := managedMachinePoolScope.PatchObject(ctx); err != nil {
 		return ctrl.Result{}, err
 	}
 

@@ -26,8 +26,6 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
-	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
-
 	compute "cloud.google.com/go/compute/apiv1"
 	container "cloud.google.com/go/container/apiv1"
 	"cloud.google.com/go/container/apiv1/containerpb"
@@ -35,6 +33,8 @@ import (
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
 	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -117,27 +117,38 @@ type ManagedMachinePoolScope struct {
 }
 
 // PatchObject persists the managed control plane configuration and status.
-func (s *ManagedMachinePoolScope) PatchObject() error {
+func (s *ManagedMachinePoolScope) PatchObject(ctx context.Context) error {
 	return s.patchHelper.Patch(
-		context.TODO(),
+		ctx,
 		s.GCPManagedMachinePool,
 		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
 			infrav1exp.GKEMachinePoolReadyCondition,
 			infrav1exp.GKEMachinePoolCreatingCondition,
 			infrav1exp.GKEMachinePoolUpdatingCondition,
 			infrav1exp.GKEMachinePoolDeletingCondition,
+		}},
+		v1beta1patch.WithOwnedV1Beta2Conditions{Conditions: []string{
+			string(infrav1exp.GKEMachinePoolReadyCondition),
+			string(infrav1exp.GKEMachinePoolCreatingCondition),
+			string(infrav1exp.GKEMachinePoolUpdatingCondition),
+			string(infrav1exp.GKEMachinePoolDeletingCondition),
 		}})
 }
 
 // Close closes the current scope persisting the managed control plane configuration and status.
-func (s *ManagedMachinePoolScope) Close() error {
+func (s *ManagedMachinePoolScope) Close(ctx context.Context) error {
 	s.mcClient.Close()
 	s.migClient.Close()
-	return s.PatchObject()
+	return s.PatchObject(ctx)
 }
 
-// ConditionSetter return a condition setter (which is GCPManagedMachinePool itself).
+// ConditionSetter returns a v1beta1 condition setter for this scope.
 func (s *ManagedMachinePoolScope) ConditionSetter() v1beta1conditions.Setter {
+	return s.GCPManagedMachinePool
+}
+
+// V1Beta2ConditionSetter returns a v1beta2 condition setter for this scope.
+func (s *ManagedMachinePoolScope) V1Beta2ConditionSetter() v1beta2conditions.Setter {
 	return s.GCPManagedMachinePool
 }
 

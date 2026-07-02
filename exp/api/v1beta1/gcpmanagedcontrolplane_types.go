@@ -22,6 +22,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/strings/slices"
+
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
@@ -184,6 +185,7 @@ type GCPManagedControlPlaneStatus struct {
 	Initialized bool `json:"initialized,omitempty"`
 
 	// Conditions specifies the conditions for the managed control plane
+	// +optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
 
 	// CurrentVersion shows the current version of the GKE control plane.
@@ -196,6 +198,20 @@ type GCPManagedControlPlaneStatus struct {
 	// Version represents the version of the GKE control plane.
 	// +optional
 	Version *string `json:"version,omitempty"`
+
+	// v1beta2 groups all the fields that will be added or modified in GCPManagedControlPlane's status with the v1beta2 contract.
+	// +optional
+	V1Beta2 *GCPManagedControlPlaneV1Beta2Status `json:"v1beta2,omitempty"`
+}
+
+// GCPManagedControlPlaneV1Beta2Status groups the v1beta2 fields of GCPManagedControlPlaneStatus.
+type GCPManagedControlPlaneV1Beta2Status struct {
+	// conditions represents the observations of a GCPManagedControlPlane's current state.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	// +kubebuilder:validation:MaxItems=32
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -308,6 +324,22 @@ func (r *GCPManagedControlPlane) GetConditions() clusterv1beta1.Conditions {
 // SetConditions sets the status conditions for the GCPManagedControlPlane.
 func (r *GCPManagedControlPlane) SetConditions(conditions clusterv1beta1.Conditions) {
 	r.Status.Conditions = conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (r *GCPManagedControlPlane) GetV1Beta2Conditions() []metav1.Condition {
+	if r.Status.V1Beta2 == nil {
+		return nil
+	}
+	return r.Status.V1Beta2.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (r *GCPManagedControlPlane) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	if r.Status.V1Beta2 == nil {
+		r.Status.V1Beta2 = &GCPManagedControlPlaneV1Beta2Status{}
+	}
+	r.Status.V1Beta2.Conditions = conditions
 }
 
 func init() {
