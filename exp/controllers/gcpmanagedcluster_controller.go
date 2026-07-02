@@ -125,7 +125,7 @@ func (r *GCPManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Always close the scope when exiting this function so we can persist any GCPMachine changes.
 	defer func() {
-		if err := clusterScope.Close(); err != nil && reterr == nil {
+		if err := clusterScope.Close(ctx); err != nil && reterr == nil {
 			reterr = err
 		}
 	}()
@@ -173,7 +173,7 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 	log.Info("Reconciling GCPManagedCluster")
 
 	controllerutil.AddFinalizer(clusterScope.GCPManagedCluster, infrav1exp.ClusterFinalizer)
-	if err := clusterScope.PatchObject(); err != nil {
+	if err := clusterScope.PatchObject(ctx); err != nil {
 		return err
 	}
 
