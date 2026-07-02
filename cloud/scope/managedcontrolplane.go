@@ -28,6 +28,7 @@ import (
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -190,15 +191,21 @@ func (s *ManagedControlPlaneScope) GetAllNodePools(ctx context.Context) ([]infra
 		if err := s.client.List(ctx, machinePoolList, listOptions...); err != nil {
 			return nil, nil, err
 		}
-		managedMachinePoolList := &infrav1exp.GCPManagedMachinePoolList{}
-		if err := s.client.List(ctx, managedMachinePoolList, listOptions...); err != nil {
-			return nil, nil, err
-		}
-		if len(machinePoolList.Items) != len(managedMachinePoolList.Items) {
-			return nil, nil, fmt.Errorf("machinePoolList length (%d) != managedMachinePoolList length (%d)", len(machinePoolList.Items), len(managedMachinePoolList.Items))
-		}
+
 		s.AllMachinePools = machinePoolList.Items
-		s.AllManagedMachinePools = managedMachinePoolList.Items
+		s.AllManagedMachinePools = []infrav1exp.GCPManagedMachinePool{}
+		for _, machinePool := range s.AllMachinePools {
+			managedMachinePool := infrav1exp.GCPManagedMachinePool{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      machinePool.Spec.Template.Spec.InfrastructureRef.Name,
+					Namespace: machinePool.GetNamespace(),
+				},
+			}
+			if err := s.client.Get(ctx, client.ObjectKeyFromObject(&managedMachinePool), &managedMachinePool); err != nil {
+				return nil, nil, fmt.Errorf("getting GCPManagedMachinePool %s for MachinePool %s: %w", managedMachinePool.GetName(), machinePool.GetName(), err)
+			}
+			s.AllManagedMachinePools = append(s.AllManagedMachinePools, managedMachinePool)
+		}
 	}
 
 	return s.AllManagedMachinePools, s.AllMachinePools, nil
