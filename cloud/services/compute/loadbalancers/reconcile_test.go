@@ -40,6 +40,8 @@ var lbTypeInternal = infrav1.Internal
 
 var lbTypeRegionalExternal = infrav1.RegionalExternal
 
+var lbTypeRegionalInternalExternal = infrav1.RegionalInternalExternal
+
 func init() {
 	_ = clusterv1.AddToScheme(scheme.Scheme)
 	_ = infrav1.AddToScheme(scheme.Scheme)
@@ -437,6 +439,7 @@ func TestService_createOrGetRegionalBackendService(t *testing.T) {
 		name               string
 		scope              func(s *scope.ClusterScope) Scope
 		lbName             string
+		scheme             string
 		healthCheck        *compute.HealthCheck
 		instanceGroups     []*compute.InstanceGroup
 		mockBackendService *cloud.MockRegionBackendServices
@@ -453,6 +456,7 @@ func TestService_createOrGetRegionalBackendService(t *testing.T) {
 				return s
 			},
 			lbName: infrav1.InternalRoleTagValue,
+			scheme: loadBalanceTrafficInternal,
 			healthCheck: &compute.HealthCheck{
 				HttpsHealthCheck: &compute.HTTPSHealthCheck{Port: 6443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
 				Name:             "my-cluster-api-internal",
@@ -499,6 +503,60 @@ func TestService_createOrGetRegionalBackendService(t *testing.T) {
 				return s
 			},
 			lbName: infrav1.APIServerRoleTagValue,
+			scheme: loadBalanceTrafficExternalManaged,
+			healthCheck: &compute.HealthCheck{
+				HttpsHealthCheck: &compute.HTTPSHealthCheck{Port: 6443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
+				Name:             "my-cluster-apiserver",
+				Region:           "us-central1",
+				SelfLink:         "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/healthChecks/my-cluster-apiserver",
+			},
+			instanceGroups: []*compute.InstanceGroup{
+				{
+					Name:       "my-cluster-apiserver-us-central1-a",
+					NamedPorts: []*compute.NamedPort{{Name: "apiserver", Port: 6443}},
+					SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-master-us-central1-a",
+				},
+			},
+			mockBackendService: &cloud.MockRegionBackendServices{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockRegionBackendServicesObj{},
+			},
+			want: &compute.BackendService{
+				Backends: []*compute.Backend{
+					{
+						BalancingMode:  "CONNECTION",
+						Group:          "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instanceGroups/my-cluster-master-us-central1-a",
+						MaxConnections: 1000,
+					},
+				},
+				HealthChecks: []string{
+					"https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/healthChecks/my-cluster-apiserver",
+				},
+				LoadBalancingScheme: "EXTERNAL_MANAGED",
+				Name:                "my-cluster-apiserver",
+				PortName:            "apiserver",
+				Protocol:            "TCP",
+				Region:              "us-central1",
+				SelfLink:            "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/backendServices/my-cluster-apiserver",
+				TimeoutSec:          600,
+			},
+		},
+		{
+			// Regression: with LoadBalancerType=RegionalInternalExternal the reconciler
+			// creates two regional backend services from the same lbType — the external
+			// (EXTERNAL_MANAGED) and the internal passthrough (INTERNAL). Before the
+			// scheme became an explicit parameter, both fell through the "not
+			// RegionalExternal" branch and got INTERNAL, silently breaking the
+			// external LB path. Force scheme=EXTERNAL_MANAGED here to guard that.
+			name: "RegionalInternalExternal: external backend gets EXTERNAL_MANAGED even though lbType != RegionalExternal",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
+					LoadBalancerType: &lbTypeRegionalInternalExternal,
+				}
+				return s
+			},
+			lbName: infrav1.APIServerRoleTagValue,
+			scheme: loadBalanceTrafficExternalManaged,
 			healthCheck: &compute.HealthCheck{
 				HttpsHealthCheck: &compute.HTTPSHealthCheck{Port: 6443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
 				Name:             "my-cluster-apiserver",
@@ -546,7 +604,7 @@ func TestService_createOrGetRegionalBackendService(t *testing.T) {
 			}
 			s := New(tt.scope(clusterScope))
 			s.regionalbackendservices = tt.mockBackendService
-			got, err := s.createOrGetRegionalBackendService(ctx, tt.lbName, tt.instanceGroups, tt.healthCheck)
+			got, err := s.createOrGetRegionalBackendService(ctx, tt.lbName, tt.scheme, tt.instanceGroups, tt.healthCheck)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service s.createOrGetRegionalBackendService() error = %v, wantErr %v", err, tt.wantErr)
 				return

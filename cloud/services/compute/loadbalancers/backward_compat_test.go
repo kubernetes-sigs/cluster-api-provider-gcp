@@ -122,9 +122,9 @@ func TestBackwardCompatibility_DefaultBehavior(t *testing.T) {
 			}
 
 			// Verify external LB creation logic
-			gotExternal := shouldCreateExternalLoadBalancer(gotType)
+			gotExternal := shouldCreateGlobalExternalLoadBalancer(gotType)
 			if gotExternal != tt.wantExternal {
-				t.Errorf("shouldCreateExternalLoadBalancer() = %v, want %v", gotExternal, tt.wantExternal)
+				t.Errorf("shouldCreateGlobalExternalLoadBalancer() = %v, want %v", gotExternal, tt.wantExternal)
 			}
 
 			// Verify regional external LB routing
