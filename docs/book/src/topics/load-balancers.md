@@ -52,7 +52,7 @@ spec:
       region: us-central1 # Optional, defaults to the cluster region
 ```
 
-The subnet is created with the `ACTIVE` role.
+The subnet is created with the `ACTIVE` role. Before creating a regional external load balancer, the controller checks that a subnet with `purpose: REGIONAL_MANAGED_PROXY` exists in the cluster region; if it is missing, reconciliation fails and a `Warning` event explaining how to add it is recorded on the `GCPCluster`.
 
 ## External Load Balancer Configuration
 
