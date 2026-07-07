@@ -21,6 +21,7 @@
     - [Gateway API](./topics/gateway-api.md)
     - [GPUs](./topics/gpus.md)
     - [Machine Locations](./topics/machine-locations.md)
+    - [Monitoring](./topics/monitoring.md)
     - [Preemptible VMs](./topics/preemptible-vms.md)
 - [Developer Guide](./developers/index.md)
     - [Development](./developers/development.md)
