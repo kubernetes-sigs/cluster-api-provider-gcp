@@ -104,6 +104,11 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.G
 			r.Spec.LoggingService, "can't be set when autopilot is enabled"))
 	}
 
+	if r.Spec.EnableAutopilot && r.Spec.MonitoringConfig != nil && r.Spec.MonitoringConfig.ManagedPrometheusConfig != nil {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "MonitoringConfig", "ManagedPrometheusConfig"),
+			r.Spec.MonitoringConfig.ManagedPrometheusConfig.Enabled, "can't be set when autopilot is enabled"))
+	}
+
 	if r.Spec.EnableAutopilot && r.Spec.ClusterNetwork != nil && r.Spec.ClusterNetwork.GatewayAPIChannel != nil {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ClusterNetwork", "GatewayAPIChannel"),
 			r.Spec.ClusterNetwork.GatewayAPIChannel, "can't be set when autopilot is enabled"))
@@ -190,7 +195,12 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 
 	if old.Spec.EnableAutopilot && r.Spec.MonitoringService != nil {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "MonitoringService"),
-			r.Spec.LoggingService, "can't be set when autopilot is enabled"))
+			r.Spec.MonitoringService, "can't be set when autopilot is enabled"))
+	}
+
+	if old.Spec.EnableAutopilot && r.Spec.MonitoringConfig != nil && r.Spec.MonitoringConfig.ManagedPrometheusConfig != nil {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "MonitoringConfig", "ManagedPrometheusConfig"),
+			r.Spec.MonitoringConfig.ManagedPrometheusConfig.Enabled, "can't be set when autopilot is enabled"))
 	}
 
 	if old.Spec.EnableAutopilot && r.Spec.ClusterNetwork != nil && r.Spec.ClusterNetwork.GatewayAPIChannel != nil {
