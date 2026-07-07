@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"time"
 
+	container "cloud.google.com/go/container/apiv1"
+	"cloud.google.com/go/container/apiv1/containerpb"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog/v2"
@@ -239,6 +241,29 @@ func WaitForManagedClusterResourcesDeleted(ctx context.Context, input WaitForMan
 		g.Expect(input.Lister.List(ctx, list, client.InNamespace(input.Namespace))).To(Succeed())
 		g.Expect(list.Items).To(BeEmpty(), "GCPManagedCluster objects still present in namespace %q", input.Namespace)
 	}, intervals...).Should(Succeed())
+}
+
+// VerifyManagedPrometheusEnabled queries the live GKE cluster via the GCP container API and asserts
+// that Google Cloud Managed Service for Prometheus is enabled/disabled as expected. This proves the
+// setting actually took effect on GCP, rather than just that the CAPG reconcile round-tripped it.
+func VerifyManagedPrometheusEnabled(ctx context.Context, controlPlane *infrav1exp.GCPManagedControlPlane, wantEnabled bool) {
+	Expect(controlPlane).ToNot(BeNil(), "Invalid argument. controlPlane can't be nil when calling VerifyManagedPrometheusEnabled")
+
+	clusterManagerClient, err := container.NewClusterManagerClient(ctx)
+	Expect(err).ToNot(HaveOccurred(), "Failed to create GCP cluster manager client")
+	defer clusterManagerClient.Close()
+
+	clusterFullName := fmt.Sprintf("projects/%s/locations/%s/clusters/%s",
+		controlPlane.Spec.Project, controlPlane.Spec.Location, controlPlane.Spec.ClusterName)
+
+	var cluster *containerpb.Cluster
+	Eventually(func() error {
+		cluster, err = clusterManagerClient.GetCluster(ctx, &containerpb.GetClusterRequest{Name: clusterFullName})
+		return err
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to get GKE cluster %s", clusterFullName)
+
+	Expect(cluster.GetMonitoringConfig().GetManagedPrometheusConfig().GetEnabled()).To(Equal(wantEnabled),
+		"Expected managed Prometheus enabled=%v on GKE cluster %s", wantEnabled, clusterFullName)
 }
 
 func setDefaults(input *ApplyManagedClusterTemplateAndWaitInput) {
