@@ -479,7 +479,7 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 	}
 	// WorkloadMetadataConfig
 	desiredWorkloadMetadataConfig := infrav1exp.ConvertToSdkWorkloadMetadataMode(s.scope.GCPManagedMachinePool.Spec.NodeSecurity.WorkloadMetadataMode)
-	if !cmp.Equal(desiredWorkloadMetadataConfig, existingNodePool.GetConfig().GetWorkloadMetadataConfig(), cmpopts.IgnoreUnexported(containerpb.WorkloadMetadataConfig{})) {
+	if desiredWorkloadMetadataConfig != nil && !cmp.Equal(desiredWorkloadMetadataConfig, existingNodePool.GetConfig().GetWorkloadMetadataConfig(), cmpopts.IgnoreUnexported(containerpb.WorkloadMetadataConfig{})) {
 		needUpdate = true
 		updateNodePoolRequest.WorkloadMetadataConfig = desiredWorkloadMetadataConfig
 	}
