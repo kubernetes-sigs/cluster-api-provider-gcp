@@ -61,6 +61,11 @@ const (
 	// GKEControlPlaneAutopilotRequiresRegionalReason used to report that an Autopilot cluster cannot be zonal
 	GKEControlPlaneAutopilotRequiresRegionalReason = "GKEControlPlaneAutopilotRequiresRegional"
 
+	// GKEControlPlaneFleetRegisteredCondition condition reports on the successful reconciliation of GKE Fleet membership.
+	GKEControlPlaneFleetRegisteredCondition clusterv1beta1.ConditionType = "GKEControlPlaneFleetRegistered"
+	// GKEControlPlaneFleetRegistrationFailedReason used to report failures while reconciling GKE Fleet membership.
+	GKEControlPlaneFleetRegistrationFailedReason = "GKEControlPlaneFleetRegistrationFailed"
+
 	// GKEMachinePoolReadyCondition condition reports on the successful reconciliation of GKE node pool.
 	GKEMachinePoolReadyCondition clusterv1beta1.ConditionType = "GKEMachinePoolReady"
 	// GKEMachinePoolCreatingCondition condition reports on whether the GKE node pool is creating.
