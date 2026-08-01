@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/pkg/errors"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/fleet"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
@@ -56,6 +58,26 @@ type GCPManagedControlPlaneReconciler struct {
 	Recorder         record.EventRecorder
 	ReconcileTimeout time.Duration
 	WatchFilterValue string
+}
+
+type namedReconciler struct {
+	name       string
+	reconciler cloud.ReconcilerWithResult
+}
+
+func controlPlaneReconcilers(managedControlPlaneScope *scope.ManagedControlPlaneScope) []namedReconciler {
+	// The order here matters because on delete we want to make sure the fleet membership gets removed
+	// before the cluster gets deleted.
+	return []namedReconciler{
+		{
+			name:       "container_clusters",
+			reconciler: clusters.New(managedControlPlaneScope),
+		},
+		{
+			name:       "container_fleet",
+			reconciler: fleet.New(managedControlPlaneScope),
+		},
+	}
 }
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedcontrolplanes,verbs=get;list;watch;create;update;patch;delete
@@ -197,19 +219,15 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
-	reconcilers := map[string]cloud.ReconcilerWithResult{
-		"container_clusters": clusters.New(managedControlPlaneScope),
-	}
-
-	for name, rec := range reconcilers {
-		res, err := rec.Reconcile(ctx)
+	for _, rec := range controlPlaneReconcilers(managedControlPlaneScope) {
+		res, err := rec.reconciler.Reconcile(ctx)
 		if err != nil {
-			log.Error(err, "Reconcile error", "reconciler", name)
+			log.Error(err, "Reconcile error", "reconciler", rec.name)
 			r.Recorder.Eventf(managedControlPlaneScope.GCPManagedControlPlane, corev1.EventTypeWarning, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
 		if res.RequeueAfter > 0 {
-			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
+			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", rec.name, "after", res.RequeueAfter)
 			return res, nil
 		}
 	}
@@ -221,19 +239,18 @@ func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, 
 	log := log.FromContext(ctx).WithValues("controller", "gcpmanagedcontrolplane", "action", "delete")
 	log.Info("Deleting GCPManagedControlPlane")
 
-	reconcilers := map[string]cloud.ReconcilerWithResult{
-		"container_clusters": clusters.New(managedControlPlaneScope),
-	}
+	reconcilers := controlPlaneReconcilers(managedControlPlaneScope)
+	slices.Reverse(reconcilers)
 
-	for name, rec := range reconcilers {
-		res, err := rec.Delete(ctx)
+	for _, rec := range reconcilers {
+		res, err := rec.reconciler.Delete(ctx)
 		if err != nil {
-			log.Error(err, "Reconcile error", "reconciler", name)
+			log.Error(err, "Reconcile error", "reconciler", rec.name)
 			r.Recorder.Eventf(managedControlPlaneScope.GCPManagedControlPlane, corev1.EventTypeWarning, "GCPManagedControlPlaneReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
 		if res.RequeueAfter > 0 {
-			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", name, "after", res.RequeueAfter)
+			log.V(4).Info("Reconciler requested requeueAfter", "reconciler", rec.name, "after", res.RequeueAfter)
 			return res, nil
 		}
 	}
