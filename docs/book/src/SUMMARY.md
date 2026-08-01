@@ -19,6 +19,7 @@
     - [Additional Labels](./topics/additional-labels.md)
     - [Alias IP Ranges](./topics/alias-ip-ranges.md)
     - [Conformance](./topics/conformance.md)
+    - [Fleet Registration](./topics/fleet-registration.md)
     - [Gateway API](./topics/gateway-api.md)
     - [GPUs](./topics/gpus.md)
     - [Machine Locations](./topics/machine-locations.md)
