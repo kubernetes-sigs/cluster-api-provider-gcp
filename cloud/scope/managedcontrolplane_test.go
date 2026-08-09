@@ -19,6 +19,8 @@ package scope
 import (
 	"testing"
 
+	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 )
@@ -112,6 +114,58 @@ func TestManagedControlPlaneScope_ValidateLocation(t *testing.T) {
 			if gotReason != tt.wantReason {
 				t.Errorf("ValidateLocation() gotReason = %v, want %v", gotReason, tt.wantReason)
 			}
+		})
+	}
+}
+
+func TestManagedControlPlaneScope_FleetProject(t *testing.T) {
+	tests := []struct {
+		name         string
+		controlPlane *v1beta1.GCPManagedControlPlane
+		want         string
+	}{
+		{
+			name: "fleet unset defaults to cluster's own project",
+			controlPlane: &v1beta1.GCPManagedControlPlane{
+				Spec: v1beta1.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: v1beta1.GCPManagedControlPlaneClassSpec{
+						Project: "cluster-project",
+					},
+				},
+			},
+			want: "cluster-project",
+		},
+		{
+			name: "fleet set but project unset defaults to cluster's own project",
+			controlPlane: &v1beta1.GCPManagedControlPlane{
+				Spec: v1beta1.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: v1beta1.GCPManagedControlPlaneClassSpec{
+						Project: "cluster-project",
+						Fleet:   &v1beta1.Fleet{},
+					},
+				},
+			},
+			want: "cluster-project",
+		},
+		{
+			name: "fleet project set overrides cluster's own project",
+			controlPlane: &v1beta1.GCPManagedControlPlane{
+				Spec: v1beta1.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: v1beta1.GCPManagedControlPlaneClassSpec{
+						Project: "cluster-project",
+						Fleet:   &v1beta1.Fleet{Project: ptr.To("fleet-host-project")},
+					},
+				},
+			},
+			want: "fleet-host-project",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			s := &ManagedControlPlaneScope{GCPManagedControlPlane: tt.controlPlane}
+			g.Expect(s.FleetProject()).To(Equal(tt.want))
 		})
 	}
 }
