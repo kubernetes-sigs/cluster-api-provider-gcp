@@ -18,8 +18,11 @@ package clusters
 
 import (
 	"testing"
+	"time"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
+	"google.golang.org/protobuf/types/known/durationpb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -427,6 +430,95 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "no update needed when secret manager config already matches",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:  "test-project",
+						Location: "us-central1",
+						SecretManagerConfig: &infrav1exp.SecretManagerConfig{
+							Enabled: true,
+						},
+					},
+					ClusterName: "test-cluster",
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				SecretManagerConfig: &containerpb.SecretManagerConfig{
+					Enabled: ptr.To(true),
+				},
+				ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
+					IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+						AuthorizedNetworksConfig: &containerpb.MasterAuthorizedNetworksConfig{
+							Enabled:                     false,
+							CidrBlocks:                  []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{},
+							GcpPublicCidrsAccessEnabled: ptr.To(false),
+						},
+					},
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "update needed when secret manager config enabled differs",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:  "test-project",
+						Location: "us-central1",
+						SecretManagerConfig: &infrav1exp.SecretManagerConfig{
+							Enabled: true,
+						},
+					},
+					ClusterName: "test-cluster",
+				},
+			},
+			existingCluster: &containerpb.Cluster{},
+			wantNeedUpdate:  true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				if !req.GetUpdate().GetDesiredSecretManagerConfig().GetEnabled() {
+					t.Errorf("expected Secret Manager config to be enabled")
+				}
+			},
+		},
+		{
+			name: "update needed when secret manager rotation interval differs",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:  "test-project",
+						Location: "us-central1",
+						SecretManagerConfig: &infrav1exp.SecretManagerConfig{
+							Enabled: true,
+							RotationConfig: &infrav1exp.SecretManagerRotationConfig{
+								Enabled:          true,
+								RotationInterval: &metav1.Duration{Duration: 5 * time.Minute},
+							},
+						},
+					},
+					ClusterName: "test-cluster",
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				SecretManagerConfig: &containerpb.SecretManagerConfig{
+					Enabled: ptr.To(true),
+					RotationConfig: &containerpb.SecretManagerConfig_RotationConfig{
+						Enabled:          ptr.To(true),
+						RotationInterval: durationpb.New(2 * time.Minute),
+					},
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				gotInterval := req.GetUpdate().GetDesiredSecretManagerConfig().GetRotationConfig().GetRotationInterval().AsDuration()
+				if gotInterval != 5*time.Minute {
+					t.Errorf("expected rotation interval of 5m, got %v", gotInterval)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -610,6 +702,126 @@ func TestConvertToSdkMasterAuthorizedNetworksConfig(t *testing.T) {
 			}
 			if got.GetEnabled() != tt.want.GetEnabled() {
 				t.Errorf("Enabled = %v, want %v", got.GetEnabled(), tt.want.GetEnabled())
+			}
+		})
+	}
+}
+
+func TestCompareSecretManagerConfig(t *testing.T) {
+	tests := []struct {
+		name string
+		a    *containerpb.SecretManagerConfig
+		b    *containerpb.SecretManagerConfig
+		want bool
+	}{
+		{
+			name: "both nil",
+			a:    nil,
+			b:    nil,
+			want: true,
+		},
+		{
+			name: "both disabled",
+			a:    &containerpb.SecretManagerConfig{Enabled: ptr.To(false)},
+			b:    &containerpb.SecretManagerConfig{Enabled: ptr.To(false)},
+			want: true,
+		},
+		{
+			name: "different enabled",
+			a:    &containerpb.SecretManagerConfig{Enabled: ptr.To(true)},
+			b:    &containerpb.SecretManagerConfig{Enabled: ptr.To(false)},
+			want: false,
+		},
+		{
+			name: "same rotation config",
+			a: &containerpb.SecretManagerConfig{
+				Enabled: ptr.To(true),
+				RotationConfig: &containerpb.SecretManagerConfig_RotationConfig{
+					Enabled:          ptr.To(true),
+					RotationInterval: durationpb.New(2 * time.Minute),
+				},
+			},
+			b: &containerpb.SecretManagerConfig{
+				Enabled: ptr.To(true),
+				RotationConfig: &containerpb.SecretManagerConfig_RotationConfig{
+					Enabled:          ptr.To(true),
+					RotationInterval: durationpb.New(2 * time.Minute),
+				},
+			},
+			want: true,
+		},
+		{
+			name: "different rotation interval",
+			a: &containerpb.SecretManagerConfig{
+				Enabled: ptr.To(true),
+				RotationConfig: &containerpb.SecretManagerConfig_RotationConfig{
+					Enabled:          ptr.To(true),
+					RotationInterval: durationpb.New(2 * time.Minute),
+				},
+			},
+			b: &containerpb.SecretManagerConfig{
+				Enabled: ptr.To(true),
+				RotationConfig: &containerpb.SecretManagerConfig_RotationConfig{
+					Enabled:          ptr.To(true),
+					RotationInterval: durationpb.New(5 * time.Minute),
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := compareSecretManagerConfig(tt.a, tt.b)
+			if got != tt.want {
+				t.Errorf("compareSecretManagerConfig() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConvertToSdkSecretManagerConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *infrav1exp.SecretManagerConfig
+		want   *containerpb.SecretManagerConfig
+	}{
+		{
+			name:   "nil config returns disabled",
+			config: nil,
+			want:   &containerpb.SecretManagerConfig{Enabled: ptr.To(false)},
+		},
+		{
+			name: "enabled with no rotation config",
+			config: &infrav1exp.SecretManagerConfig{
+				Enabled: true,
+			},
+			want: &containerpb.SecretManagerConfig{Enabled: ptr.To(true)},
+		},
+		{
+			name: "enabled with rotation config",
+			config: &infrav1exp.SecretManagerConfig{
+				Enabled: true,
+				RotationConfig: &infrav1exp.SecretManagerRotationConfig{
+					Enabled:          true,
+					RotationInterval: &metav1.Duration{Duration: 5 * time.Minute},
+				},
+			},
+			want: &containerpb.SecretManagerConfig{
+				Enabled: ptr.To(true),
+				RotationConfig: &containerpb.SecretManagerConfig_RotationConfig{
+					Enabled:          ptr.To(true),
+					RotationInterval: durationpb.New(5 * time.Minute),
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertToSdkSecretManagerConfig(tt.config)
+			if !compareSecretManagerConfig(got, tt.want) {
+				t.Errorf("convertToSdkSecretManagerConfig() = %v, want %v", got, tt.want)
 			}
 		})
 	}
