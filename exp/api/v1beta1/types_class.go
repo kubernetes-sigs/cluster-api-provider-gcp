@@ -87,6 +87,12 @@ type GCPManagedControlPlaneClassSpec struct {
 	// MonitoringConfig represents configuration of the monitoring feature of the GKE cluster.
 	// +optional
 	MonitoringConfig *MonitoringConfig `json:"monitoringConfig,omitempty"`
+
+	// SecretManagerConfig configures the GKE Secret Manager add-on, which
+	// lets workloads mount secrets from Google Secret Manager via a CSI
+	// driver. This feature is disabled if this field is not specified.
+	// +optional
+	SecretManagerConfig *SecretManagerConfig `json:"secretManagerConfig,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.
