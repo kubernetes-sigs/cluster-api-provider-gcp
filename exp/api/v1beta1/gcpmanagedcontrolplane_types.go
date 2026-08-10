@@ -274,6 +274,34 @@ type MasterAuthorizedNetworksConfigCidrBlock struct {
 	CidrBlock string `json:"cidr_block,omitempty"`
 }
 
+// SecretManagerConfig configures the GKE Secret Manager add-on, which lets
+// workloads mount secrets from Google Secret Manager via a CSI driver.
+type SecretManagerConfig struct {
+	// Enabled indicates whether the Secret Manager add-on is enabled for this
+	// GKE cluster.
+	// +optional
+	Enabled bool `json:"enabled"`
+
+	// RotationConfig configures automatic rotation of secrets cached by the
+	// Secret Manager add-on.
+	// +optional
+	RotationConfig *SecretManagerRotationConfig `json:"rotationConfig,omitempty"`
+}
+
+// SecretManagerRotationConfig configures automatic rotation of secrets
+// cached by the Secret Manager add-on.
+type SecretManagerRotationConfig struct {
+	// Enabled indicates whether automatic rotation of cached secrets is
+	// enabled.
+	// +optional
+	Enabled bool `json:"enabled"`
+
+	// RotationInterval is how often cached secrets are refreshed from Secret
+	// Manager. GKE defaults to 2 minutes if unset.
+	// +optional
+	RotationInterval *metav1.Duration `json:"rotationInterval,omitempty"`
+}
+
 // LoggingService is GKE logging service configuration.
 type LoggingService string
 

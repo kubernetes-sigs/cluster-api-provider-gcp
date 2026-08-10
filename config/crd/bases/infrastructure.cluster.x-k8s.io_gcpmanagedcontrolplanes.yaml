@@ -273,6 +273,34 @@ spec:
                 - stable
                 - extended
                 type: string
+              secretManagerConfig:
+                description: |-
+                  SecretManagerConfig configures the GKE Secret Manager add-on, which
+                  lets workloads mount secrets from Google Secret Manager via a CSI
+                  driver. This feature is disabled if this field is not specified.
+                properties:
+                  enabled:
+                    description: |-
+                      Enabled indicates whether the Secret Manager add-on is enabled for this
+                      GKE cluster.
+                    type: boolean
+                  rotationConfig:
+                    description: |-
+                      RotationConfig configures automatic rotation of secrets cached by the
+                      Secret Manager add-on.
+                    properties:
+                      enabled:
+                        description: |-
+                          Enabled indicates whether automatic rotation of cached secrets is
+                          enabled.
+                        type: boolean
+                      rotationInterval:
+                        description: |-
+                          RotationInterval is how often cached secrets are refreshed from Secret
+                          Manager. GKE defaults to 2 minutes if unset.
+                        type: string
+                    type: object
+                type: object
               version:
                 description: |-
                   Version represents the control plane version of the GKE cluster.
