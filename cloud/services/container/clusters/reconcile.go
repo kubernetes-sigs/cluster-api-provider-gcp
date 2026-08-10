@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"k8s.io/utils/ptr"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
@@ -355,6 +356,8 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		}
 	}
 
+	cluster.SecretManagerConfig = convertToSdkSecretManagerConfig(s.scope.GCPManagedControlPlane.Spec.SecretManagerConfig)
+
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
 		Parent:  s.scope.ClusterLocation(),
@@ -504,6 +507,25 @@ func convertToSdkBinaryAuthorizationEvaluationMode(mode *infrav1exp.BinaryAuthor
 	}
 }
 
+// convertToSdkSecretManagerConfig converts the SecretManagerConfig defined in CRs to the SDK version.
+func convertToSdkSecretManagerConfig(config *infrav1exp.SecretManagerConfig) *containerpb.SecretManagerConfig {
+	// if config is nil, it means that the user wants to disable the feature.
+	if config == nil {
+		return &containerpb.SecretManagerConfig{Enabled: ptr.To(false)}
+	}
+
+	sdkConfig := &containerpb.SecretManagerConfig{Enabled: ptr.To(config.Enabled)}
+	if config.RotationConfig != nil {
+		sdkConfig.RotationConfig = &containerpb.SecretManagerConfig_RotationConfig{
+			Enabled: ptr.To(config.RotationConfig.Enabled),
+		}
+		if config.RotationConfig.RotationInterval != nil {
+			sdkConfig.RotationConfig.RotationInterval = durationpb.New(config.RotationConfig.RotationInterval.Duration)
+		}
+	}
+	return sdkConfig
+}
+
 func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
 	log.V(4).Info("Checking diff and preparing update.")
 
@@ -590,6 +612,16 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		}
 	}
 
+	// Secret Manager config
+	desiredSecretManagerConfig := convertToSdkSecretManagerConfig(s.scope.GCPManagedControlPlane.Spec.SecretManagerConfig)
+	existingSecretManagerConfig := existingCluster.GetSecretManagerConfig()
+	if !compareSecretManagerConfig(desiredSecretManagerConfig, existingSecretManagerConfig) {
+		needUpdate = true
+		clusterUpdate.DesiredSecretManagerConfig = desiredSecretManagerConfig
+		log.V(2).Info("Secret Manager config update required",
+			"current", existingSecretManagerConfig, "desired", desiredSecretManagerConfig)
+	}
+
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,
@@ -624,4 +656,15 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 		return false
 	}
 	return true
+}
+
+// compare if two SecretManagerConfig are equal.
+func compareSecretManagerConfig(a, b *containerpb.SecretManagerConfig) bool {
+	if a.GetEnabled() != b.GetEnabled() {
+		return false
+	}
+	if a.GetRotationConfig().GetEnabled() != b.GetRotationConfig().GetEnabled() {
+		return false
+	}
+	return a.GetRotationConfig().GetRotationInterval().AsDuration() == b.GetRotationConfig().GetRotationInterval().AsDuration()
 }
