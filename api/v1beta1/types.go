@@ -207,7 +207,14 @@ type FirewallRule struct {
 	// must be a lowercase letter or digit.
 	// If the firewall does not begin with the cluster name, then the cluster name
 	// will be prepended during the creation of the firewall rule.
+	// When the name is not provided, the name is generated from the infrastructure
+	// identifier of the cluster followed by a generated set of characters. The
+	// generated name is derived from the rule, so it is stable across reconciles, and
+	// is truncated so that it never exceeds 63 characters.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z]([-a-z0-9]*[a-z0-9])?$`
 	Name string `json:"name,omitempty"`
 	// Priority is the priority for this rule. This is an integer between `1` and
 	// `65535`, both inclusive. The default value is `1000`. Relative priorities

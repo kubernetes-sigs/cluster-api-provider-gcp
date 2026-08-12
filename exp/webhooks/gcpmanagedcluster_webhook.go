@@ -24,6 +24,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	firewallutil "sigs.k8s.io/cluster-api-provider-gcp/util/firewall"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -46,7 +47,18 @@ type GCPManagedCluster struct{}
 
 var _ admission.Defaulter[*expinfrav1.GCPManagedCluster] = &GCPManagedCluster{}
 
-func (*GCPManagedCluster) Default(_ context.Context, _ *expinfrav1.GCPManagedCluster) error {
+func (*GCPManagedCluster) Default(_ context.Context, r *expinfrav1.GCPManagedCluster) error {
+	gcpmanagedclusterlog.Info("default", "name", r.Name)
+
+	if firewallutil.SkipRuleNameDefaulting(r) {
+		return nil
+	}
+
+	if err := firewallutil.DefaultRuleNames(r.Spec.Network.Firewall.FirewallRules, firewallutil.RuleNamePrefix(r)); err != nil {
+		gcpmanagedclusterlog.Error(err, "failed to generate firewall rule names")
+		return err
+	}
+
 	return nil
 }
 

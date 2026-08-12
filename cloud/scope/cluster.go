@@ -297,7 +297,7 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 // ANCHOR: ClusterFirewallSpec
 
 // FirewallRulesSpec returns google compute firewall spec.
-func (s *ClusterScope) FirewallRulesSpec() []*compute.Firewall {
+func (s *ClusterScope) FirewallRulesSpec() ([]*compute.Firewall, error) {
 	return createFirewallRules(
 		s.Name(),
 		s.NetworkLink(),

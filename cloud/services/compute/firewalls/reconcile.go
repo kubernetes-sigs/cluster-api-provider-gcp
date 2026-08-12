@@ -33,7 +33,11 @@ func (s *Service) Reconcile(ctx context.Context) error {
 		return nil
 	}
 	log.Info("Reconciling firewall resources")
-	for _, spec := range s.scope.FirewallRulesSpec() {
+	specs, err := s.scope.FirewallRulesSpec()
+	if err != nil {
+		return err
+	}
+	for _, spec := range specs {
 		log.V(2).Info("Looking firewall", "name", spec.Name)
 		firewallKey := meta.GlobalKey(spec.Name)
 		if _, err := s.firewalls.Get(ctx, firewallKey); err != nil {
@@ -59,7 +63,11 @@ func (s *Service) Delete(ctx context.Context) error {
 		return nil
 	}
 	log.Info("Deleting firewall resources")
-	for _, spec := range s.scope.FirewallRulesSpec() {
+	specs, err := s.scope.FirewallRulesSpec()
+	if err != nil {
+		return err
+	}
+	for _, spec := range specs {
 		log.V(2).Info("Deleting firewall", "name", spec.Name)
 		firewallKey := meta.GlobalKey(spec.Name)
 		if err := s.firewalls.Delete(ctx, firewallKey); err != nil {

@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"google.golang.org/api/compute/v1"
-
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	firewallutil "sigs.k8s.io/cluster-api-provider-gcp/util/firewall"
 )
 
 // createFirewallRules
-func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesManagementPolicy, userSpecifiedRules []infrav1.FirewallRule) []*compute.Firewall {
+func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesManagementPolicy, userSpecifiedRules []infrav1.FirewallRule) ([]*compute.Firewall, error) {
 	firewallRules := []*compute.Firewall{}
 
 	// Only when the user explicitly states that it is unmanaged, the rules should be skipped.
@@ -59,6 +59,13 @@ func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesMa
 		}...)
 	}
 
+	// Rules are normally named by the defaulting webhook, but it leaves the spec of a
+	// ClusterClass owned cluster alone (see SkipRuleNameDefaulting), so those rules
+	// arrive here unnamed and are named below instead. The name is derived from the
+	// rule, so it matches the one the webhook would have written and is the same on
+	// every reconcile.
+	takenNames := firewallutil.TakenRuleNames(userSpecifiedRules)
+
 	// Add user defined firewall rules.
 	for _, rule := range userSpecifiedRules {
 		allowed := []*compute.FirewallAllowed{}
@@ -78,15 +85,21 @@ func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesMa
 		}
 
 		direction := strings.ToUpper(string(rule.Direction))
-		name := fmt.Sprintf("%s-%s", clusterName, strings.ToLower(direction))
-		if rule.Name != "" {
-			name = rule.Name
+		name := rule.Name
+		if name == "" {
+			generated, err := firewallutil.GenerateRuleName(clusterName, rule, takenNames)
+			if err != nil {
+				return nil, err
+			}
+			name = generated
+			takenNames.Insert(name)
+		} else {
 			if !strings.HasPrefix(name, clusterName) {
 				name = fmt.Sprintf("%s-%s", clusterName, name)
 			}
+			name = name[:min(len(name), firewallutil.MaxRuleNameLength)]
+			name = strings.TrimSuffix(name, "-")
 		}
-		name = name[:min(len(name), 63)]
-		name = strings.TrimSuffix(name, "-")
 
 		description := rule.Description
 		if description == "" {
@@ -109,5 +122,5 @@ func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesMa
 		})
 	}
 
-	return firewallRules
+	return firewallRules, nil
 }

@@ -335,6 +335,13 @@ spec:
                                 must be a lowercase letter or digit.
                                 If the firewall does not begin with the cluster name, then the cluster name
                                 will be prepended during the creation of the firewall rule.
+                                When the name is not provided, the name is generated from the infrastructure
+                                identifier of the cluster followed by a generated set of characters. The
+                                generated name is derived from the rule, so it is stable across reconciles, and
+                                is truncated so that it never exceeds 63 characters.
+                              maxLength: 63
+                              minLength: 1
+                              pattern: ^[a-z]([-a-z0-9]*[a-z0-9])?$
                               type: string
                             priority:
                               default: 1000
