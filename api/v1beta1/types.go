@@ -206,19 +206,19 @@ type FirewallRule struct {
 	// will be prepended during the creation of the firewall rule.
 	// +kubebuilder:validation:Optional
 	Name string `json:"name,omitempty"`
-	// Priority is the priority for this rule. This is an integer between `0` and
+	// Priority is the priority for this rule. This is an integer between `1` and
 	// `65535`, both inclusive. The default value is `1000`. Relative priorities
 	// determine which rule takes effect if multiple rules apply. Lower values
-	// indicate higher priority. For example, a rule with priority `0` has higher
-	// precedence than a rule with priority `1`. DENY rules take precedence over
+	// indicate higher priority. For example, a rule with priority `1` has higher
+	// precedence than a rule with priority `2`. DENY rules take precedence over
 	// ALLOW rules if they have equal priority. Note that VPC networks have implied
 	// rules with a priority of `65535`. To avoid conflicts with the implied rules,
 	// use a priority number less than `65535`.
 	// +kubebuilder:validation:Optional
-	// +default:value=1000
+	// +kubebuilder:default=1000
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
-	Priority int `json:"priority,omitempty"`
+	Priority int32 `json:"priority,omitempty"`
 	// SourceRanges: If source ranges are specified, the firewall rule applies only
 	// to traffic that has a source IP address in these ranges. These ranges must
 	// be expressed in CIDR format. One or both of sourceRanges and sourceTags may

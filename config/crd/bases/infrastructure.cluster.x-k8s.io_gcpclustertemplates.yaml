@@ -366,14 +366,15 @@ spec:
                                     priority:
                                       default: 1000
                                       description: |-
-                                        Priority is the priority for this rule. This is an integer between `0` and
+                                        Priority is the priority for this rule. This is an integer between `1` and
                                         `65535`, both inclusive. The default value is `1000`. Relative priorities
                                         determine which rule takes effect if multiple rules apply. Lower values
-                                        indicate higher priority. For example, a rule with priority `0` has higher
-                                        precedence than a rule with priority `1`. DENY rules take precedence over
+                                        indicate higher priority. For example, a rule with priority `1` has higher
+                                        precedence than a rule with priority `2`. DENY rules take precedence over
                                         ALLOW rules if they have equal priority. Note that VPC networks have implied
                                         rules with a priority of `65535`. To avoid conflicts with the implied rules,
                                         use a priority number less than `65535`.
+                                      format: int32
                                       maximum: 65535
                                       minimum: 1
                                       type: integer
