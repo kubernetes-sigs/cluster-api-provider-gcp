@@ -20,7 +20,10 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	firewallutil "sigs.k8s.io/cluster-api-provider-gcp/util/firewall"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 func TestGCPCluster_ValidateUpdate(t *testing.T) {
@@ -225,4 +228,66 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 			g.Expect(warn).To(BeNil())
 		})
 	}
+}
+
+func TestGCPCluster_Default(t *testing.T) {
+	g := NewWithT(t)
+
+	cluster := &infrav1.GCPCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "my-cluster"},
+		Spec: infrav1.GCPClusterSpec{
+			Network: infrav1.NetworkSpec{
+				Firewall: infrav1.FirewallSpec{
+					FirewallRules: []infrav1.FirewallRule{
+						{
+							Name:      "explicit-name",
+							Direction: infrav1.FirewallRuleDirectionIngress,
+						},
+						{
+							Direction: infrav1.FirewallRuleDirectionIngress,
+							Allowed: []infrav1.FirewallDescriptor{
+								{IPProtocol: infrav1.FirewallProtocolTCP, Ports: []string{"443"}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	g.Expect((&GCPCluster{}).Default(t.Context(), cluster)).To(Succeed())
+
+	rules := cluster.Spec.Network.Firewall.FirewallRules
+	g.Expect(rules[0].Name).To(Equal("explicit-name"))
+	g.Expect(rules[1].Name).To(HavePrefix("my-cluster-"))
+	g.Expect(len(rules[1].Name)).To(BeNumerically("<=", firewallutil.MaxRuleNameLength))
+
+	// Defaulting runs on every update, so an already defaulted rule has to keep the
+	// name it was given the first time.
+	generated := rules[1].Name
+	g.Expect((&GCPCluster{}).Default(t.Context(), cluster)).To(Succeed())
+	g.Expect(cluster.Spec.Network.Firewall.FirewallRules[1].Name).To(Equal(generated))
+}
+
+func TestGCPCluster_DefaultSkipsTopologyOwnedClusters(t *testing.T) {
+	g := NewWithT(t)
+
+	cluster := &infrav1.GCPCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "my-cluster",
+			Labels: map[string]string{clusterv1.ClusterTopologyOwnedLabel: ""},
+		},
+		Spec: infrav1.GCPClusterSpec{
+			Network: infrav1.NetworkSpec{
+				Firewall: infrav1.FirewallSpec{
+					FirewallRules: []infrav1.FirewallRule{
+						{Direction: infrav1.FirewallRuleDirectionIngress},
+					},
+				},
+			},
+		},
+	}
+
+	g.Expect((&GCPCluster{}).Default(t.Context(), cluster)).To(Succeed())
+	g.Expect(cluster.Spec.Network.Firewall.FirewallRules[0].Name).To(BeEmpty())
 }
