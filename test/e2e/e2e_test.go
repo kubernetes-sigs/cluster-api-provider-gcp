@@ -24,14 +24,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/patch"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Workload cluster creation", func() {
@@ -311,6 +315,53 @@ var _ = Describe("Workload cluster creation", func() {
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
+
+			gcpClusterKey := client.ObjectKey{Namespace: namespace.Name, Name: clusterName}
+			gcpCluster := &infrav1.GCPCluster{}
+			Expect(bootstrapClusterProxy.GetClient().Get(ctx, gcpClusterKey, gcpCluster)).To(Succeed())
+
+			By("Naming the rule that was provided without a name")
+			rules := gcpCluster.Spec.Network.Firewall.FirewallRules
+			Expect(rules).To(HaveLen(2), "the template provides one named and one unnamed rule")
+			generatedName := rules[1].Name
+			Expect(generatedName).To(HavePrefix(clusterName+"-"), "an omitted name is generated from the cluster name")
+			Expect(len(generatedName)).To(BeNumerically("<=", 63), "GCP rejects firewall rule names longer than 63 characters")
+
+			By("Recording every rule it created in the status")
+			recorded := gcpCluster.Status.Network.FirewallRules
+			// A generated name already carries the cluster name, so it is recorded as is.
+			Expect(recorded).To(HaveKey(generatedName))
+			// A user provided name has the cluster name prepended and is then
+			// truncated to fit, so it is recorded under that name instead.
+			providedName := clusterName + "-" + rules[0].Name
+			providedName = strings.TrimSuffix(providedName[:min(len(providedName), 63)], "-")
+			Expect(recorded).To(HaveKey(providedName))
+
+			By("Keeping the generated name stable across reconciles")
+			// A name that changed between reconciles would orphan the rule the
+			// previous reconcile created, so the rule has to keep the name it
+			// was first given rather than being regenerated.
+			Consistently(func() (string, error) {
+				cluster := &infrav1.GCPCluster{}
+				if err := bootstrapClusterProxy.GetClient().Get(ctx, gcpClusterKey, cluster); err != nil {
+					return "", err
+				}
+				return cluster.Spec.Network.Firewall.FirewallRules[1].Name, nil
+			}, "1m", "5s").Should(Equal(generatedName))
+
+			By("Deleting a rule that is removed from the spec")
+			patchHelper, err := patch.NewHelper(gcpCluster, bootstrapClusterProxy.GetClient())
+			Expect(err).NotTo(HaveOccurred())
+			gcpCluster.Spec.Network.Firewall.FirewallRules = rules[:1]
+			Expect(patchHelper.Patch(ctx, gcpCluster)).To(Succeed())
+
+			Eventually(func() (map[string]string, error) {
+				cluster := &infrav1.GCPCluster{}
+				if err := bootstrapClusterProxy.GetClient().Get(ctx, gcpClusterKey, cluster); err != nil {
+					return nil, err
+				}
+				return cluster.Status.Network.FirewallRules, nil
+			}, e2eConfig.GetIntervals(specName, "wait-cluster")...).ShouldNot(HaveKey(generatedName))
 		})
 	})
 })
