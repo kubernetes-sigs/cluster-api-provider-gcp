@@ -271,8 +271,7 @@ spec:
                                       description: |-
                                         Denied is the list of DENY rules specified by this firewall. Each rule
                                         specifies a protocol and port-range tuple that describes a denied
-                                        connection. When a conflict applies between the Denied and Allowed fields,
-                                        the Denied field will take precedent.
+                                        connection. A firewall rule must specify either allowed or denied, not both.
                                       items:
                                         description: FirewallDescriptor describes
                                           a GCP firewall rule.
@@ -453,6 +452,16 @@ spec:
                                       rules
                                     rule: self.direction != 'Ingress' || !has(self.destinationRanges)
                                       || size(self.destinationRanges) == 0
+                                  - message: allowed and denied cannot both be set
+                                      in the same rule
+                                    rule: '!(has(self.allowed) && size(self.allowed)
+                                      > 0 && has(self.denied) && size(self.denied)
+                                      > 0)'
+                                  - message: at least one of allowed or denied must
+                                      be set
+                                    rule: (has(self.allowed) && size(self.allowed)
+                                      > 0) || (has(self.denied) && size(self.denied)
+                                      > 0)
                                 maxItems: 50
                                 type: array
                             type: object
