@@ -155,6 +155,9 @@ type FirewallDescriptor struct {
 }
 
 // FirewallRule describes a GCP firewall rule.
+// +kubebuilder:validation:XValidation:rule="self.direction != 'Egress' || !has(self.sourceRanges) || size(self.sourceRanges) == 0",message="sourceRanges cannot be set for Egress rules"
+// +kubebuilder:validation:XValidation:rule="self.direction != 'Egress' || !has(self.sourceTags) || size(self.sourceTags) == 0",message="sourceTags cannot be set for Egress rules"
+// +kubebuilder:validation:XValidation:rule="self.direction != 'Ingress' || !has(self.destinationRanges) || size(self.destinationRanges) == 0",message="destinationRanges cannot be set for Ingress rules"
 type FirewallRule struct {
 	// Allowed is the list of ALLOW rules specified by this firewall. Each rule
 	// specifies a protocol and port-range tuple that describes a permitted

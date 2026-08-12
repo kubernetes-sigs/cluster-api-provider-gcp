@@ -403,6 +403,18 @@ spec:
                                       minItems: 0
                                       type: array
                                   type: object
+                                  x-kubernetes-validations:
+                                  - message: sourceRanges cannot be set for Egress
+                                      rules
+                                    rule: self.direction != 'Egress' || !has(self.sourceRanges)
+                                      || size(self.sourceRanges) == 0
+                                  - message: sourceTags cannot be set for Egress rules
+                                    rule: self.direction != 'Egress' || !has(self.sourceTags)
+                                      || size(self.sourceTags) == 0
+                                  - message: destinationRanges cannot be set for Ingress
+                                      rules
+                                    rule: self.direction != 'Ingress' || !has(self.destinationRanges)
+                                      || size(self.destinationRanges) == 0
                                 maxItems: 50
                                 type: array
                             type: object
