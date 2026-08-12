@@ -94,8 +94,8 @@ spec:
 | `description` | string | Optional | Description of the rule (max 2000 chars). Defaults to "Created by Cluster API GCP Provider". |
 | `direction` | string | Optional | Traffic direction: `Ingress` (default) or `Egress`. |
 | `priority` | integer | Optional | Rule priority (1-65535). Lower values = higher priority. Defaults to 1000 when omitted. |
-| `allowed` | []FirewallDescriptor | Optional | List of ALLOW rules (max 1024). |
-| `denied` | []FirewallDescriptor | Optional | List of DENY rules (max 1024). DENY rules take precedence over ALLOW rules if they have equal priority. |
+| `allowed` | []FirewallDescriptor | Optional | List of ALLOW rules (max 1024). Cannot be set together with `denied`. |
+| `denied` | []FirewallDescriptor | Optional | List of DENY rules (max 1024). Cannot be set together with `allowed`. |
 | `sourceRanges` | []string | Optional | Source IP ranges in CIDR format (max 1024). Supports IPv4 and IPv6. Not valid for Egress rules. |
 | `sourceTags` | []string | Optional | Source instance tags (max 30, 1-63 chars each). Only applies to traffic between instances in the same VPC. Not valid for Egress rules. |
 | `destinationRanges` | []string | Optional | Destination IP ranges in CIDR format (max 1024). Only valid for Egress rules. |
