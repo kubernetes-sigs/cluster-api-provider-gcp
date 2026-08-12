@@ -93,7 +93,7 @@ spec:
 | `name` | string | Optional | Rule name (1-63 chars, must match `[a-z]([-a-z0-9]*[a-z0-9])?`). If not prefixed with cluster name, it will be prepended automatically. When omitted, the name is the cluster name followed by a suffix derived from the rule, truncated to 63 characters. |
 | `description` | string | Optional | Description of the rule (max 2000 chars). Defaults to "Created by Cluster API GCP Provider". |
 | `direction` | string | Optional | Traffic direction: `Ingress` (default) or `Egress`. |
-| `priority` | integer | Optional | Rule priority (1-65535). Lower values = higher priority. Default: 1000. |
+| `priority` | integer | Optional | Rule priority (1-65535). Lower values = higher priority. Defaults to 1000 when omitted. |
 | `allowed` | []FirewallDescriptor | Optional | List of ALLOW rules (max 1024). |
 | `denied` | []FirewallDescriptor | Optional | List of DENY rules (max 1024). DENY rules take precedence over ALLOW rules if they have equal priority. |
 | `sourceRanges` | []string | Optional | Source IP ranges in CIDR format (max 1024). Supports IPv4 and IPv6. Not valid for Egress rules. |
