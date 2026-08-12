@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
@@ -48,6 +49,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+// clusterReconcilers returns the reconcilers in the order they must run: the network must exist
+// before the firewalls, and the subnets are needed by the internal load balancer. Deletion runs
+// them in reverse.
+func clusterReconcilers(clusterScope *scope.ClusterScope) []cloud.NamedReconciler {
+	return []cloud.NamedReconciler{
+		{Name: "networks", Reconciler: networks.New(clusterScope)},
+		{Name: "firewalls", Reconciler: firewalls.New(clusterScope)},
+		{Name: "subnets", Reconciler: subnets.New(clusterScope)},
+		{Name: "loadbalancers", Reconciler: loadbalancers.New(clusterScope)},
+	}
+}
 
 // GCPClusterReconciler reconciles a GCPCluster object.
 type GCPClusterReconciler struct {
@@ -201,17 +214,9 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 
 	clusterScope.SetFailureDomains(failureDomains)
 
-	reconcilers := []cloud.Reconciler{
-		networks.New(clusterScope),
-		firewalls.New(clusterScope),
-		// Reconcile subnets before loadbalancers since subnet is needed for internal LB
-		subnets.New(clusterScope),
-		loadbalancers.New(clusterScope),
-	}
-
-	for _, rec := range reconcilers {
-		if err := rec.Reconcile(ctx); err != nil {
-			log.Error(err, "Reconcile error")
+	for _, rec := range clusterReconcilers(clusterScope) {
+		if err := rec.Reconciler.Reconcile(ctx); err != nil {
+			log.Error(err, "Reconcile error", "reconciler", rec.Name)
 			r.Recorder.Eventf(clusterScope.GCPCluster, corev1.EventTypeWarning, "GCPClusterReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
@@ -234,16 +239,13 @@ func (r *GCPClusterReconciler) reconcileDelete(ctx context.Context, clusterScope
 	log := log.FromContext(ctx)
 	log.Info("Reconciling Delete GCPCluster")
 
-	reconcilers := []cloud.Reconciler{
-		loadbalancers.New(clusterScope),
-		subnets.New(clusterScope),
-		firewalls.New(clusterScope),
-		networks.New(clusterScope),
-	}
+	// Delete in reverse dependency order: everything else must be removed before the network.
+	reconcilers := clusterReconcilers(clusterScope)
+	slices.Reverse(reconcilers)
 
 	for _, rec := range reconcilers {
-		if err := rec.Delete(ctx); err != nil {
-			log.Error(err, "Reconcile error")
+		if err := rec.Reconciler.Delete(ctx); err != nil {
+			log.Error(err, "Reconcile error", "reconciler", rec.Name)
 			r.Recorder.Eventf(clusterScope.GCPCluster, corev1.EventTypeWarning, "GCPClusterReconcile", "Reconcile error - %v", err)
 			return err
 		}
