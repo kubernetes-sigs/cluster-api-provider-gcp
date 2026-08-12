@@ -94,17 +94,18 @@ func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesMa
 		}
 
 		firewallRules = append(firewallRules, &compute.Firewall{
-			Name:         name,
-			Description:  description,
-			Network:      networkLink,
-			Allowed:      allowed,
-			Denied:       denied,
-			Direction:    direction,
-			Priority:     int64(rule.Priority),
-			Disabled:     false,
-			SourceRanges: rule.SourceRanges,
-			TargetTags:   rule.TargetTags,
-			SourceTags:   rule.SourceTags,
+			Name:              name,
+			Description:       description,
+			Network:           networkLink,
+			Allowed:           allowed,
+			Denied:            denied,
+			Direction:         direction,
+			Priority:          int64(rule.Priority),
+			Disabled:          false,
+			SourceRanges:      rule.SourceRanges,
+			DestinationRanges: rule.DestinationRanges,
+			TargetTags:        rule.TargetTags,
+			SourceTags:        rule.SourceTags,
 		})
 	}
 
