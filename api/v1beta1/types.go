@@ -158,6 +158,8 @@ type FirewallDescriptor struct {
 // +kubebuilder:validation:XValidation:rule="self.direction != 'Egress' || !has(self.sourceRanges) || size(self.sourceRanges) == 0",message="sourceRanges cannot be set for Egress rules"
 // +kubebuilder:validation:XValidation:rule="self.direction != 'Egress' || !has(self.sourceTags) || size(self.sourceTags) == 0",message="sourceTags cannot be set for Egress rules"
 // +kubebuilder:validation:XValidation:rule="self.direction != 'Ingress' || !has(self.destinationRanges) || size(self.destinationRanges) == 0",message="destinationRanges cannot be set for Ingress rules"
+// +kubebuilder:validation:XValidation:rule="!(has(self.allowed) && size(self.allowed) > 0 && has(self.denied) && size(self.denied) > 0)",message="allowed and denied cannot both be set in the same rule"
+// +kubebuilder:validation:XValidation:rule="(has(self.allowed) && size(self.allowed) > 0) || (has(self.denied) && size(self.denied) > 0)",message="at least one of allowed or denied must be set"
 type FirewallRule struct {
 	// Allowed is the list of ALLOW rules specified by this firewall. Each rule
 	// specifies a protocol and port-range tuple that describes a permitted
@@ -167,8 +169,7 @@ type FirewallRule struct {
 	Allowed []FirewallDescriptor `json:"allowed,omitempty"`
 	// Denied is the list of DENY rules specified by this firewall. Each rule
 	// specifies a protocol and port-range tuple that describes a denied
-	// connection. When a conflict applies between the Denied and Allowed fields,
-	// the Denied field will take precedent.
+	// connection. A firewall rule must specify either allowed or denied, not both.
 	// +kubebuilder:validation:MinItems=0
 	// +kubebuilder:validation:MaxItems=1024
 	Denied []FirewallDescriptor `json:"denied,omitempty"`
