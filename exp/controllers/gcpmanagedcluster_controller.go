@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/firewalls"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/networks"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/subnets"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -48,6 +50,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+// clusterReconcilers returns the reconcilers in the order they must run: the network must exist
+// before the firewalls, and the subnets depend on the network. Deletion runs them in reverse.
+func clusterReconcilers(clusterScope *scope.ManagedClusterScope) []cloud.NamedReconciler {
+	return []cloud.NamedReconciler{
+		{Name: "networks", Reconciler: networks.New(clusterScope)},
+		{Name: "firewalls", Reconciler: firewalls.New(clusterScope)},
+		{Name: "subnets", Reconciler: subnets.New(clusterScope)},
+	}
+}
 
 // GCPManagedClusterReconciler reconciles a GCPManagedCluster object.
 type GCPManagedClusterReconciler struct {
@@ -198,15 +210,10 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 	}
 	clusterScope.SetFailureDomains(failureDomains)
 
-	reconcilers := map[string]cloud.Reconciler{
-		"networks": networks.New(clusterScope),
-		"subnets":  subnets.New(clusterScope),
-	}
-
-	for name, rec := range reconcilers {
-		log.V(4).Info("Calling reconciler", "reconciler", name)
-		if err := rec.Reconcile(ctx); err != nil {
-			log.Error(err, "Reconcile error", "reconciler", name)
+	for _, rec := range clusterReconcilers(clusterScope) {
+		log.V(4).Info("Calling reconciler", "reconciler", rec.Name)
+		if err := rec.Reconciler.Reconcile(ctx); err != nil {
+			log.Error(err, "Reconcile error", "reconciler", rec.Name)
 			r.Recorder.Eventf(clusterScope.GCPManagedCluster, corev1.EventTypeWarning, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
 			return err
 		}
@@ -251,15 +258,15 @@ func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clust
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
-	reconcilers := map[string]cloud.Reconciler{
-		"subnets":  subnets.New(clusterScope),
-		"networks": networks.New(clusterScope),
-	}
+	// Delete in reverse dependency order: subnets and firewalls must be
+	// removed before the network.
+	reconcilers := clusterReconcilers(clusterScope)
+	slices.Reverse(reconcilers)
 
-	for name, rec := range reconcilers {
-		log.V(4).Info("Calling reconciler delete", "reconciler", name)
-		if err := rec.Delete(ctx); err != nil {
-			log.Error(err, "Reconcile error", "reconciler", name)
+	for _, rec := range reconcilers {
+		log.V(4).Info("Calling reconciler delete", "reconciler", rec.Name)
+		if err := rec.Reconciler.Delete(ctx); err != nil {
+			log.Error(err, "Reconcile error", "reconciler", rec.Name)
 			r.Recorder.Eventf(clusterScope.GCPManagedCluster, corev1.EventTypeWarning, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}

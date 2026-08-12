@@ -23,6 +23,10 @@ Because the spec is the desired state, a rule that is deleted directly in GCP is
 
 The network a rule belongs to cannot be changed in place; it is not compared and is left untouched.
 
+### Upgrading from CAPG v1.13 and Earlier
+
+Rules that omitted `name` used to be named `<cluster-name>-ingress` or `<cluster-name>-egress`, one per direction no matter how many rules the spec held. They are now named after their contents, so the first reconcile after the upgrade creates each rule under its own name and deletes the rule left behind under the old one.
+
 ## Default Firewall Rules
 
 By default, the provider creates two firewall rules to enable cluster functionality:
