@@ -268,6 +268,35 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      secretSyncConfig:
+                        description: |-
+                          SecretSyncConfig configures the GKE Secret Manager sync feature, which
+                          synchronizes secrets from Google Secret Manager into native
+                          Kubernetes Secrets. This feature is disabled if this field is not
+                          specified.
+                        properties:
+                          enabled:
+                            description: |-
+                              Enabled indicates whether Secret Manager sync is enabled for this GKE
+                              cluster.
+                            type: boolean
+                          rotationConfig:
+                            description: |-
+                              RotationConfig configures automatic re-sync of secrets synced by
+                              Secret Manager sync.
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled indicates whether automatic re-sync of synced secrets is
+                                  enabled.
+                                type: boolean
+                              rotationInterval:
+                                description: |-
+                                  RotationInterval is how often synced secrets are checked for new
+                                  versions in Secret Manager. GKE defaults to 2 minutes if unset.
+                                type: string
+                            type: object
+                        type: object
                     required:
                     - location
                     - project

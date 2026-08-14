@@ -302,6 +302,35 @@ type SecretManagerRotationConfig struct {
 	RotationInterval *metav1.Duration `json:"rotationInterval,omitempty"`
 }
 
+// SecretSyncConfig configures the GKE Secret Manager sync feature, which
+// synchronizes secrets from Google Secret Manager into native Kubernetes
+// Secrets.
+type SecretSyncConfig struct {
+	// Enabled indicates whether Secret Manager sync is enabled for this GKE
+	// cluster.
+	// +optional
+	Enabled bool `json:"enabled"`
+
+	// RotationConfig configures automatic re-sync of secrets synced by
+	// Secret Manager sync.
+	// +optional
+	RotationConfig *SecretSyncRotationConfig `json:"rotationConfig,omitempty"`
+}
+
+// SecretSyncRotationConfig configures automatic re-sync of secrets synced
+// by Secret Manager sync.
+type SecretSyncRotationConfig struct {
+	// Enabled indicates whether automatic re-sync of synced secrets is
+	// enabled.
+	// +optional
+	Enabled bool `json:"enabled"`
+
+	// RotationInterval is how often synced secrets are checked for new
+	// versions in Secret Manager. GKE defaults to 2 minutes if unset.
+	// +optional
+	RotationInterval *metav1.Duration `json:"rotationInterval,omitempty"`
+}
+
 // LoggingService is GKE logging service configuration.
 type LoggingService string
 
