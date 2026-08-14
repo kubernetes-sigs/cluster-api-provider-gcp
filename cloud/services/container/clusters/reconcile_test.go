@@ -606,13 +606,13 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
 					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
-						Project:  "test-project",
-						Location: "us-central1",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterName: "test-cluster",
 						SecretManagerConfig: &infrav1exp.SecretManagerConfig{
 							Enabled: true,
 						},
 					},
-					ClusterName: "test-cluster",
 				},
 			},
 			existingCluster: &containerpb.Cluster{
@@ -636,13 +636,13 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
 					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
-						Project:  "test-project",
-						Location: "us-central1",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterName: "test-cluster",
 						SecretManagerConfig: &infrav1exp.SecretManagerConfig{
 							Enabled: true,
 						},
 					},
-					ClusterName: "test-cluster",
 				},
 			},
 			existingCluster: &containerpb.Cluster{},
@@ -659,8 +659,9 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
 					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
-						Project:  "test-project",
-						Location: "us-central1",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterName: "test-cluster",
 						SecretManagerConfig: &infrav1exp.SecretManagerConfig{
 							Enabled: true,
 							RotationConfig: &infrav1exp.SecretManagerRotationConfig{
@@ -669,7 +670,6 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 							},
 						},
 					},
-					ClusterName: "test-cluster",
 				},
 			},
 			existingCluster: &containerpb.Cluster{
