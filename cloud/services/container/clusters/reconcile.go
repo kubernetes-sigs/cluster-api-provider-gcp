@@ -357,6 +357,7 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	}
 
 	cluster.SecretManagerConfig = convertToSdkSecretManagerConfig(s.scope.GCPManagedControlPlane.Spec.SecretManagerConfig)
+	cluster.SecretSyncConfig = convertToSdkSecretSyncConfig(s.scope.GCPManagedControlPlane.Spec.SecretSyncConfig)
 
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
@@ -526,6 +527,25 @@ func convertToSdkSecretManagerConfig(config *infrav1exp.SecretManagerConfig) *co
 	return sdkConfig
 }
 
+// convertToSdkSecretSyncConfig converts the SecretSyncConfig defined in CRs to the SDK version.
+func convertToSdkSecretSyncConfig(config *infrav1exp.SecretSyncConfig) *containerpb.SecretSyncConfig {
+	// if config is nil, it means that the user wants to disable the feature.
+	if config == nil {
+		return &containerpb.SecretSyncConfig{Enabled: ptr.To(false)}
+	}
+
+	sdkConfig := &containerpb.SecretSyncConfig{Enabled: ptr.To(config.Enabled)}
+	if config.RotationConfig != nil {
+		sdkConfig.RotationConfig = &containerpb.SecretSyncConfig_SyncRotationConfig{
+			Enabled: ptr.To(config.RotationConfig.Enabled),
+		}
+		if config.RotationConfig.RotationInterval != nil {
+			sdkConfig.RotationConfig.RotationInterval = durationpb.New(config.RotationConfig.RotationInterval.Duration)
+		}
+	}
+	return sdkConfig
+}
+
 func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
 	log.V(4).Info("Checking diff and preparing update.")
 
@@ -622,6 +642,16 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			"current", existingSecretManagerConfig, "desired", desiredSecretManagerConfig)
 	}
 
+	// Secret Sync config
+	desiredSecretSyncConfig := convertToSdkSecretSyncConfig(s.scope.GCPManagedControlPlane.Spec.SecretSyncConfig)
+	existingSecretSyncConfig := existingCluster.GetSecretSyncConfig()
+	if !compareSecretSyncConfig(desiredSecretSyncConfig, existingSecretSyncConfig) {
+		needUpdate = true
+		clusterUpdate.DesiredSecretSyncConfig = desiredSecretSyncConfig
+		log.V(2).Info("Secret Sync config update required",
+			"current", existingSecretSyncConfig, "desired", desiredSecretSyncConfig)
+	}
+
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,
@@ -660,6 +690,17 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 
 // compare if two SecretManagerConfig are equal.
 func compareSecretManagerConfig(a, b *containerpb.SecretManagerConfig) bool {
+	if a.GetEnabled() != b.GetEnabled() {
+		return false
+	}
+	if a.GetRotationConfig().GetEnabled() != b.GetRotationConfig().GetEnabled() {
+		return false
+	}
+	return a.GetRotationConfig().GetRotationInterval().AsDuration() == b.GetRotationConfig().GetRotationInterval().AsDuration()
+}
+
+// compare if two SecretSyncConfig are equal.
+func compareSecretSyncConfig(a, b *containerpb.SecretSyncConfig) bool {
 	if a.GetEnabled() != b.GetEnabled() {
 		return false
 	}
