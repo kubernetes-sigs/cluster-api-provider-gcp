@@ -23,6 +23,7 @@
     - [Machine Locations](./topics/machine-locations.md)
     - [Preemptible VMs](./topics/preemptible-vms.md)
     - [Secret Manager](./topics/secret-manager.md)
+    - [Secret Sync](./topics/secret-sync.md)
 - [Developer Guide](./developers/index.md)
     - [Development](./developers/development.md)
     - [Try unreleased changes with Nightly Builds](./developers/nightlies.md)

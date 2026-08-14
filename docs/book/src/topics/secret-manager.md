@@ -2,6 +2,8 @@
 
 Configure GKE's [Secret Manager add-on](https://cloud.google.com/kubernetes-engine/docs/how-to/secret-manager-csi-driver), which lets workloads mount secrets from Google Secret Manager via a CSI driver, using the `secretManagerConfig` field on `GCPManagedControlPlane`.
 
+This is a distinct feature from [Secret Sync](./secret-sync.md) (`secretSyncConfig`), which synchronizes secrets into native Kubernetes Secrets instead of mounting them as volumes. The two features can be enabled independently or together.
+
 ```yaml
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPManagedControlPlane
