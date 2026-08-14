@@ -344,6 +344,46 @@ spec:
                         - message: 'rotationConfig requires enabled: true'
                           rule: '!has(self.rotationConfig) || (has(self.enabled) &&
                             self.enabled)'
+                      secretSyncConfig:
+                        description: |-
+                          SecretSyncConfig configures the GKE Secret Manager sync feature, which
+                          synchronizes secrets from Google Secret Manager into native
+                          Kubernetes Secrets. This feature is left alone if this field is not set and disabled
+                          only if `enabled: false` is set.
+                        properties:
+                          enabled:
+                            description: |-
+                              Enabled indicates whether Secret Manager sync is enabled for this GKE
+                              cluster.
+                            type: boolean
+                          rotationConfig:
+                            description: |-
+                              RotationConfig configures automatic re-sync of secrets synced by
+                              Secret Manager sync.
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled indicates whether automatic re-sync of synced secrets is
+                                  enabled.
+                                type: boolean
+                              rotationInterval:
+                                description: |-
+                                  RotationInterval is how often synced secrets are checked for new
+                                  versions in Secret Manager. GKE defaults to 2 minutes if unset.
+                                type: string
+                                x-kubernetes-validations:
+                                - message: rotationInterval must be at least 60s
+                                  rule: duration(self) >= duration('60s')
+                            type: object
+                            x-kubernetes-validations:
+                            - message: 'rotationInterval requires enabled: true'
+                              rule: '!has(self.rotationInterval) || (has(self.enabled)
+                                && self.enabled)'
+                        type: object
+                        x-kubernetes-validations:
+                        - message: 'rotationConfig requires enabled: true'
+                          rule: '!has(self.rotationConfig) || (has(self.enabled) &&
+                            self.enabled)'
                     required:
                     - location
                     - project

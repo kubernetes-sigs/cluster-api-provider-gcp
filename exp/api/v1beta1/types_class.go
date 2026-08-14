@@ -94,6 +94,13 @@ type GCPManagedControlPlaneClassSpec struct {
 	// only if `enabled: false` is set.
 	// +optional
 	SecretManagerConfig *SecretManagerConfig `json:"secretManagerConfig,omitempty"`
+
+	// SecretSyncConfig configures the GKE Secret Manager sync feature, which
+	// synchronizes secrets from Google Secret Manager into native
+	// Kubernetes Secrets. This feature is left alone if this field is not set and disabled
+	// only if `enabled: false` is set.
+	// +optional
+	SecretSyncConfig *SecretSyncConfig `json:"secretSyncConfig,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.
