@@ -16,6 +16,7 @@
     - [Reservation Affinity](./managed/reservation-affinity.md)
     - [Workload Identity](./managed/workload-identity.md)
     - [Secret Manager](./managed/secret-manager.md)
+    - [Secret Sync](./managed/secret-sync.md)
 - [ClusterClass](./clusterclass/index.md)
     - [Provisioning a Cluster](./clusterclass/provision.md)
     - [Enabling](./clusterclass/enabling.md)

@@ -34,3 +34,4 @@ And a new template is available in the templates folder for creating a managed w
 * [Creating a cluster](provision.md)
 * [Cluster Upgrades](upgrades.md)
 * [Secret Manager](secret-manager.md)
+* [Secret Sync](secret-sync.md)
