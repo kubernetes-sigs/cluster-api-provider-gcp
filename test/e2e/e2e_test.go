@@ -29,9 +29,11 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Workload cluster creation", func() {
@@ -103,6 +105,27 @@ var _ = Describe("Workload cluster creation", func() {
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
+
+			By("Verifying GCPMachineTemplate status is populated for scale-from-zero")
+			Expect(result.MachineDeployments).To(HaveLen(1))
+			md := result.MachineDeployments[0]
+			templateRef := md.Spec.Template.Spec.InfrastructureRef
+			template := &infrav1.GCPMachineTemplate{}
+
+			Eventually(func(g Gomega) {
+				err := bootstrapClusterProxy.GetClient().Get(ctx,
+					client.ObjectKey{Namespace: md.Namespace, Name: templateRef.Name},
+					template)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				g.Expect(template.Status.Capacity).NotTo(BeNil(), "Status.Capacity should be populated")
+				g.Expect(template.Status.Capacity.Cpu().IsZero()).To(BeFalse(), "CPU capacity should be set")
+				g.Expect(template.Status.Capacity.Memory().IsZero()).To(BeFalse(), "Memory capacity should be set")
+
+				g.Expect(template.Status.NodeInfo).NotTo(BeNil(), "Status.NodeInfo should be populated")
+				g.Expect(template.Status.NodeInfo.Architecture).To(BeElementOf(infrav1.ArchitectureAmd64, infrav1.ArchitectureArm64), "Architecture should be amd64 or arm64")
+				g.Expect(template.Status.NodeInfo.OperatingSystem).To(Equal(infrav1.OperatingSystemLinux), "OperatingSystem should be linux")
+			}, e2eConfig.GetIntervals(specName, "wait-worker-nodes")...).Should(Succeed())
 
 			By("Scaling worker node to 3")
 			Expect(result.MachineDeployments).To(HaveLen(1))

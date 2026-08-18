@@ -17,6 +17,7 @@
     - [Disabling](./clusterclass/disabling.md)
 - [General Topics](./topics/index.md)
     - [Alias IP Ranges](./topics/alias-ip-ranges.md)
+    - [Autoscaling](./topics/autoscaling.md)
     - [Conformance](./topics/conformance.md)
     - [Gateway API](./topics/gateway-api.md)
     - [GPUs](./topics/gpus.md)
