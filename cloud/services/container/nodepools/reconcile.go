@@ -47,7 +47,7 @@ import (
 // setReadyStatusFromConditions updates the GCPManagedMachinePool's ready status based on its conditions.
 func (s *Service) setReadyStatusFromConditions() {
 	machinePool := s.scope.GCPManagedMachinePool
-	if v1beta2conditions.IsTrue(machinePool, infrav1exp.ReadyCondition) || v1beta2conditions.IsTrue(machinePool, string(infrav1exp.GKEMachinePoolUpdatingCondition)) {
+	if v1beta2conditions.IsTrue(machinePool, infrav1exp.GCPManagedMachinePoolReadyCondition) || v1beta2conditions.IsTrue(machinePool, infrav1exp.GCPManagedMachinePoolGKEMachinePoolUpdatingCondition) {
 		s.scope.GCPManagedMachinePool.Status.Ready = true
 		return
 	}
@@ -66,11 +66,12 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	nodePool, err := s.describeNodePool(ctx, &log)
 	if err != nil {
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:    infrav1exp.ReadyCondition,
+			Type:    infrav1exp.GCPManagedMachinePoolReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
 			Message: fmt.Sprintf("reading node pool: %v", err),
 		})
+		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "reading node pool: %v", err)
 		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "reading node pool: %v", err)
 		return ctrl.Result{}, err
 	}
@@ -78,43 +79,45 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Info("Node pool not found, creating", "cluster", s.scope.Cluster.Name)
 		if err = s.createNodePool(ctx, &log); err != nil {
 			v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-				Type:    infrav1exp.ReadyCondition,
+				Type:    infrav1exp.GCPManagedMachinePoolReadyCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
 				Message: fmt.Sprintf("creating node pool: %v", err),
 			})
 			v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-				Type:    string(infrav1exp.GKEMachinePoolReadyCondition),
+				Type:    infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
 				Message: fmt.Sprintf("creating node pool: %v", err),
 			})
 			v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-				Type:    string(infrav1exp.GKEMachinePoolCreatingCondition),
+				Type:    infrav1exp.GCPManagedMachinePoolGKEMachinePoolCreatingCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
 				Message: fmt.Sprintf("creating node pool: %v", err),
 			})
+			v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "creating node pool: %v", err)
 			v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "creating node pool: %v", err)
 			v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolCreatingCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "creating node pool: %v", err)
 			return ctrl.Result{}, err
 		}
 		log.Info("Node pool provisioning in progress")
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   infrav1exp.ReadyCondition,
+			Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolCreatingReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolCreatingReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolCreatingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolCreatingCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolCreatingReason,
 		})
+		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolCreatingReason, clusterv1beta1.ConditionSeverityInfo, "")
 		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.GKEMachinePoolCreatingReason, clusterv1beta1.ConditionSeverityInfo, "")
 		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolCreatingCondition)
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
@@ -124,11 +127,12 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	instances, err := s.getInstances(ctx, nodePool)
 	if err != nil {
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:    infrav1exp.ReadyCondition,
+			Type:    infrav1exp.GCPManagedMachinePoolReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
 			Message: fmt.Sprintf("reading instances: %v", err),
 		})
+		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "reading instances: %v", err)
 		return ctrl.Result{}, err
 	}
 	providerIDList := []string{}
@@ -138,7 +142,12 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		if err != nil {
 			log.Error(err, "parsing instance url", "url", instance.GetInstance())
 			v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-				Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+				Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
+				Status: metav1.ConditionFalse,
+				Reason: infrav1exp.GKEMachinePoolErrorReason,
+			})
+			v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
+				Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
 				Status: metav1.ConditionFalse,
 				Reason: infrav1exp.GKEMachinePoolErrorReason,
 			})
@@ -156,20 +165,21 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		// node pool is creating
 		log.Info("Node pool provisioning in progress")
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   infrav1exp.ReadyCondition,
+			Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolCreatingReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolCreatingReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolCreatingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolCreatingCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolCreatingReason,
 		})
+		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolCreatingReason, clusterv1beta1.ConditionSeverityInfo, "")
 		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.GKEMachinePoolCreatingReason, clusterv1beta1.ConditionSeverityInfo, "")
 		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolCreatingCondition)
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
@@ -177,7 +187,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		// node pool is updating/reconciling
 		log.Info("Node pool reconciling in progress")
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolUpdatingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolUpdatingCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolUpdatingReason,
 		})
@@ -187,20 +197,21 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		// node pool is deleting
 		log.Info("Node pool stopping in progress")
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   infrav1exp.ReadyCondition,
+			Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolDeletingReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolDeletingReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolDeletingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolDeletingCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolDeletingReason,
 		})
+		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolDeletingReason, clusterv1beta1.ConditionSeverityInfo, "")
 		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.GKEMachinePoolDeletingReason, clusterv1beta1.ConditionSeverityInfo, "")
 		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolDeletingCondition)
 		return ctrl.Result{}, nil
@@ -212,7 +223,13 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		}
 		log.Error(errors.New("Node pool in error/degraded state"), msg, "name", s.scope.GCPManagedMachinePool.Name)
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:    string(infrav1exp.GKEMachinePoolReadyCondition),
+			Type:    infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1exp.GKEMachinePoolErrorReason,
+			Message: msg,
+		})
+		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1exp.GCPManagedMachinePoolReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  infrav1exp.GKEMachinePoolErrorReason,
 			Message: msg,
@@ -222,20 +239,21 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	case containerpb.NodePool_RUNNING:
 		// node pool is ready and running
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   infrav1exp.ReadyCondition,
+			Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolCreatedReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolCreatedReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolCreatingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolCreatingCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolCreatedReason,
 		})
+		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition)
 		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition)
 		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolCreatingCondition, infrav1exp.GKEMachinePoolCreatedReason, clusterv1beta1.ConditionSeverityInfo, "")
 		log.Info("Node pool running")
@@ -272,7 +290,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Info("Node pool size updating in progress")
 		s.scope.GCPManagedMachinePool.Status.Ready = true
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolUpdatingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolUpdatingCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolUpdatingReason,
 		})
@@ -288,7 +306,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		}
 		log.Info("Node pool auto scaling updating in progress")
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolUpdatingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolUpdatingCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolUpdatingReason,
 		})
@@ -305,7 +323,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		log.Info("Node pool config updating in progress")
 		s.scope.GCPManagedMachinePool.Status.Ready = true
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolUpdatingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolUpdatingCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolUpdatingReason,
 		})
@@ -314,7 +332,7 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	}
 
 	v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-		Type:   string(infrav1exp.GKEMachinePoolUpdatingCondition),
+		Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolUpdatingCondition,
 		Status: metav1.ConditionFalse,
 		Reason: infrav1exp.GKEMachinePoolUpdatedReason,
 	})
@@ -324,20 +342,21 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	log.Info("Node pool reconciled")
 	s.scope.GCPManagedMachinePool.Status.Ready = true
 	v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-		Type:   infrav1exp.ReadyCondition,
+		Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
 		Status: metav1.ConditionTrue,
 		Reason: infrav1exp.GKEMachinePoolCreatedReason,
 	})
 	v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-		Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+		Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
 		Status: metav1.ConditionTrue,
 		Reason: infrav1exp.GKEMachinePoolCreatedReason,
 	})
 	v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-		Type:   string(infrav1exp.GKEMachinePoolCreatingCondition),
+		Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolCreatingCondition,
 		Status: metav1.ConditionFalse,
 		Reason: infrav1exp.GKEMachinePoolCreatedReason,
 	})
+	v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition)
 	v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition)
 	v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolCreatingCondition, infrav1exp.GKEMachinePoolCreatedReason, clusterv1beta1.ConditionSeverityInfo, "")
 
@@ -358,7 +377,7 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 	if nodePool == nil {
 		log.Info("Node pool already deleted")
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolDeletingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolDeletingCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolDeletedReason,
 		})
@@ -376,12 +395,12 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 	case containerpb.NodePool_STOPPING:
 		log.Info("Node pool stopping in progress")
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
 			Status: metav1.ConditionFalse,
 			Reason: infrav1exp.GKEMachinePoolDeletingReason,
 		})
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:   string(infrav1exp.GKEMachinePoolDeletingCondition),
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolDeletingCondition,
 			Status: metav1.ConditionTrue,
 			Reason: infrav1exp.GKEMachinePoolDeletingReason,
 		})
@@ -394,7 +413,7 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 
 	if err = s.deleteNodePool(ctx); err != nil {
 		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-			Type:    string(infrav1exp.GKEMachinePoolDeletingCondition),
+			Type:    infrav1exp.GCPManagedMachinePoolGKEMachinePoolDeletingCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
 			Message: fmt.Sprintf("deleting node pool: %v", err),
@@ -404,20 +423,21 @@ func (s *Service) Delete(ctx context.Context) (ctrl.Result, error) {
 	}
 	log.Info("Node pool deleting in progress")
 	v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-		Type:   infrav1exp.ReadyCondition,
+		Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
 		Status: metav1.ConditionFalse,
 		Reason: infrav1exp.GKEMachinePoolDeletingReason,
 	})
 	v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-		Type:   string(infrav1exp.GKEMachinePoolReadyCondition),
+		Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
 		Status: metav1.ConditionFalse,
 		Reason: infrav1exp.GKEMachinePoolDeletingReason,
 	})
 	v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
-		Type:   string(infrav1exp.GKEMachinePoolDeletingCondition),
+		Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolDeletingCondition,
 		Status: metav1.ConditionTrue,
 		Reason: infrav1exp.GKEMachinePoolDeletingReason,
 	})
+	v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolDeletingReason, clusterv1beta1.ConditionSeverityInfo, "")
 	v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.GKEMachinePoolDeletingReason, clusterv1beta1.ConditionSeverityInfo, "")
 	v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolDeletingCondition)
 

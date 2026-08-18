@@ -135,7 +135,8 @@ func (s *ManagedControlPlaneScope) PatchObject(ctx context.Context) error {
 			string(infrav1exp.GKEControlPlaneCreatingCondition),
 			string(infrav1exp.GKEControlPlaneUpdatingCondition),
 			string(infrav1exp.GKEControlPlaneDeletingCondition),
-		}})
+		}},
+	)
 }
 
 // Close closes the current scope persisting the managed control plane configuration and status.
