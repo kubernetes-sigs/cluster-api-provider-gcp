@@ -97,7 +97,7 @@ const (
 // GCPManagedControlPlane v1beta2 condition types.
 const (
 	// GCPManagedControlPlaneReadyCondition reports on the overall readiness of the GCPManagedControlPlane.
-	GCPManagedControlPlaneReadyCondition = "Ready"
+	GCPManagedControlPlaneReadyCondition = ReadyCondition
 	// GCPManagedControlPlaneGKEControlPlaneReadyCondition reports on the readiness of the GKE control plane.
 	GCPManagedControlPlaneGKEControlPlaneReadyCondition = "GKEControlPlaneReady"
 	// GCPManagedControlPlaneGKEControlPlaneCreatingCondition reports on whether the GKE control plane is creating.
@@ -111,7 +111,7 @@ const (
 // GCPManagedMachinePool v1beta2 condition types.
 const (
 	// GCPManagedMachinePoolReadyCondition reports on the overall readiness of the GCPManagedMachinePool.
-	GCPManagedMachinePoolReadyCondition = "Ready"
+	GCPManagedMachinePoolReadyCondition = ReadyCondition
 	// GCPManagedMachinePoolGKEMachinePoolReadyCondition reports on the readiness of the GKE machine pool.
 	GCPManagedMachinePoolGKEMachinePoolReadyCondition = "GKEMachinePoolReady"
 	// GCPManagedMachinePoolGKEMachinePoolCreatingCondition reports on whether the GKE machine pool is creating.

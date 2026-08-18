@@ -174,21 +174,6 @@ type GCPMachinePoolStatus struct {
 
 	// Conditions defines current service state of the GCPMachinePool.
 	// +optional
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
-
-	// v1beta2 groups all the fields that will be added or modified in GCPMachinePool's status
-	// with the v1beta2 version of the Cluster API contract.
-	// This technically points to the same data as `conditions` because it already used `metav1` conditions.
-	// +optional
-	V1Beta2 *GCPMachinePoolV1Beta2Status `json:"v1beta2,omitempty"`
-}
-
-// GCPMachinePoolV1Beta2Status groups the fields that will be added or modified in GCPMachinePool's status
-// with the v1beta2 version of the Cluster API contract.
-type GCPMachinePoolV1Beta2Status struct {
-	// conditions represents the observations of a GCPMachinePool's current state.
-	// Known condition types are Ready.
-	// +optional
 	// +listType=map
 	// +listMapKey=type
 	// +kubebuilder:validation:MaxItems=32
@@ -242,6 +227,16 @@ func (r *GCPMachinePool) SetConditions(conditions []metav1.Condition) {
 // GetConditions gets conditions for a MachinePool.
 func (r *GCPMachinePool) GetConditions() []metav1.Condition {
 	return r.Status.Conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (r *GCPMachinePool) GetV1Beta2Conditions() []metav1.Condition {
+	return r.Status.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (r *GCPMachinePool) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	r.Status.Conditions = conditions
 }
 
 func init() {
