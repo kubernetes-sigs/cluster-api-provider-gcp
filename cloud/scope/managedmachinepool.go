@@ -142,7 +142,8 @@ func (s *ManagedMachinePoolScope) PatchObject(ctx context.Context) error {
 			string(infrav1exp.GKEMachinePoolCreatingCondition),
 			string(infrav1exp.GKEMachinePoolUpdatingCondition),
 			string(infrav1exp.GKEMachinePoolDeletingCondition),
-		}})
+		}},
+	)
 }
 
 // Close closes the current scope persisting the managed control plane configuration and status.

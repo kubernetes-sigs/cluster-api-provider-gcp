@@ -17,16 +17,34 @@ limitations under the License.
 package nodepools
 
 import (
+	"context"
+	"net"
 	"testing"
 
+	compute "cloud.google.com/go/compute/apiv1"
+	container "cloud.google.com/go/container/apiv1"
 	"cloud.google.com/go/container/apiv1/containerpb"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
+
+func init() {
+	_ = infrav1exp.AddToScheme(scheme.Scheme)
+}
 
 func newTestService(machinePool *infrav1exp.GCPManagedMachinePool, mp *clusterv1.MachinePool, controlPlane *infrav1exp.GCPManagedControlPlane) *Service {
 	s := new(scope.ManagedMachinePoolScope)
@@ -394,6 +412,150 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 			}
 			if tt.wantNeedUpdate && req != nil && req.GetNodeCount() != tt.wantNodeCount {
 				t.Errorf("checkDiffAndPrepareUpdateSize() NodeCount = %v, want %v", req.GetNodeCount(), tt.wantNodeCount)
+			}
+		})
+	}
+}
+
+type fakeClusterManager struct {
+	containerpb.UnimplementedClusterManagerServer
+	nodePool *containerpb.NodePool
+}
+
+func (f *fakeClusterManager) GetNodePool(_ context.Context, _ *containerpb.GetNodePoolRequest) (*containerpb.NodePool, error) {
+	return f.nodePool, nil
+}
+
+// newReconcileTestService returns a Service backed by a fake GKE API that always returns nodePool.
+// The machine pool starts as ready, so tests can check that a reconcile marks it as not ready.
+func newReconcileTestService(t *testing.T, nodePool *containerpb.NodePool) *Service {
+	t.Helper()
+	ctx := context.TODO()
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := grpc.NewServer()
+	containerpb.RegisterClusterManagerServer(server, &fakeClusterManager{nodePool: nodePool})
+	go func() { _ = server.Serve(lis) }()
+	t.Cleanup(server.Stop)
+
+	mcClient, err := container.NewClusterManagerClient(ctx,
+		option.WithEndpoint(lis.Addr().String()),
+		option.WithoutAuthentication(),
+		option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The compute clients are never called because the node pool has no instance groups.
+	migClient, err := compute.NewInstanceGroupManagersRESTClient(ctx, option.WithoutAuthentication())
+	if err != nil {
+		t.Fatal(err)
+	}
+	templatesClient, err := compute.NewInstanceTemplatesRESTClient(ctx, option.WithoutAuthentication())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gcpMachinePool := &infrav1exp.GCPManagedMachinePool{ObjectMeta: metav1.ObjectMeta{Name: "test-pool"}}
+	gcpMachinePool.Status.Ready = true
+	v1beta1conditions.MarkTrue(gcpMachinePool, clusterv1beta1.ReadyCondition)
+	v1beta2conditions.Set(gcpMachinePool, metav1.Condition{
+		Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
+		Status: metav1.ConditionTrue,
+		Reason: infrav1exp.GKEMachinePoolCreatedReason,
+	})
+
+	s, err := scope.NewManagedMachinePoolScope(ctx, scope.ManagedMachinePoolScopeParams{
+		Client:                      fake.NewClientBuilder().WithScheme(scheme.Scheme).Build(),
+		Cluster:                     &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "test-cluster"}},
+		MachinePool:                 defaultMachinePool(),
+		GCPManagedCluster:           &infrav1exp.GCPManagedCluster{},
+		GCPManagedControlPlane:      defaultControlPlane(),
+		GCPManagedMachinePool:       gcpMachinePool,
+		ManagedClusterClient:        mcClient,
+		InstanceGroupManagersClient: migClient,
+		InstanceTemplatesClient:     templatesClient,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close(ctx) })
+
+	return New(s)
+}
+
+func TestService_Reconcile(t *testing.T) {
+	tests := []struct {
+		name        string
+		nodePool    *containerpb.NodePool
+		wantErr     bool
+		wantReason  string
+		wantMessage string
+	}{
+		{
+			name: "node pool in error",
+			nodePool: &containerpb.NodePool{
+				Status:     containerpb.NodePool_ERROR,
+				Conditions: []*containerpb.StatusCondition{{Message: "quota exceeded"}},
+			},
+			wantReason:  infrav1exp.GKEMachinePoolErrorReason,
+			wantMessage: "quota exceeded",
+		},
+		{
+			name:       "node pool running with error",
+			nodePool:   &containerpb.NodePool{Status: containerpb.NodePool_RUNNING_WITH_ERROR},
+			wantReason: infrav1exp.GKEMachinePoolErrorReason,
+		},
+		{
+			name:       "node pool provisioning",
+			nodePool:   &containerpb.NodePool{Status: containerpb.NodePool_PROVISIONING},
+			wantReason: infrav1exp.GKEMachinePoolCreatingReason,
+		},
+		{
+			name:       "node pool stopping",
+			nodePool:   &containerpb.NodePool{Status: containerpb.NodePool_STOPPING},
+			wantReason: infrav1exp.GKEMachinePoolDeletingReason,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
+			svc := newReconcileTestService(t, tt.nodePool)
+			_, err := svc.Reconcile(ctx)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Service.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			machinePool := svc.scope.GCPManagedMachinePool
+			if machinePool.Status.Ready {
+				t.Errorf("status.ready = true, want false")
+			}
+
+			for _, conditionType := range []clusterv1beta1.ConditionType{clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolReadyCondition} {
+				c := v1beta1conditions.Get(machinePool, conditionType)
+				if c == nil {
+					t.Errorf("v1beta1 condition %s not set", conditionType)
+					continue
+				}
+				if c.Status != corev1.ConditionFalse || c.Reason != tt.wantReason || c.Message != tt.wantMessage {
+					t.Errorf("v1beta1 condition %s = %s/%s/%q, want False/%s/%q", conditionType, c.Status, c.Reason, c.Message, tt.wantReason, tt.wantMessage)
+				}
+			}
+
+			for _, conditionType := range []string{infrav1exp.GCPManagedMachinePoolReadyCondition, infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition} {
+				c := v1beta2conditions.Get(machinePool, conditionType)
+				if c == nil {
+					t.Errorf("v1beta2 condition %s not set", conditionType)
+					continue
+				}
+				if c.Status != metav1.ConditionFalse || c.Reason != tt.wantReason || c.Message != tt.wantMessage {
+					t.Errorf("v1beta2 condition %s = %s/%s/%q, want False/%s/%q", conditionType, c.Status, c.Reason, c.Message, tt.wantReason, tt.wantMessage)
+				}
 			}
 		})
 	}

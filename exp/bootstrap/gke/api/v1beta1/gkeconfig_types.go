@@ -93,6 +93,32 @@ type GKEConfigList struct {
 	Items           []GKEConfig `json:"items"`
 }
 
+// GetConditions returns the conditions for the GKEConfig.
+func (r *GKEConfig) GetConditions() clusterv1beta1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the conditions for the GKEConfig.
+func (r *GKEConfig) SetConditions(conditions clusterv1beta1.Conditions) {
+	r.Status.Conditions = conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (r *GKEConfig) GetV1Beta2Conditions() []metav1.Condition {
+	if r.Status.V1Beta2 == nil {
+		return nil
+	}
+	return r.Status.V1Beta2.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (r *GKEConfig) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	if r.Status.V1Beta2 == nil {
+		r.Status.V1Beta2 = &GKEConfigV1Beta2Status{}
+	}
+	r.Status.V1Beta2.Conditions = conditions
+}
+
 func init() {
 	objectTypes = append(objectTypes, &GKEConfig{}, &GKEConfigList{})
 }

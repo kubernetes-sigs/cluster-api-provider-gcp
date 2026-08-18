@@ -39,6 +39,8 @@ const (
 
 // GCPCluster v1beta2 reason strings.
 const (
+	// ClusterReadyReason used when the cluster infrastructure is ready.
+	ClusterReadyReason = "ClusterReady"
 	// NetworkReadyReason used when the network is ready.
 	NetworkReadyReason = "NetworkReady"
 	// NetworkReconciliationFailedReason used when network reconciliation has failed.
