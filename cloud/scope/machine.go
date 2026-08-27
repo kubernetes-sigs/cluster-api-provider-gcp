@@ -35,8 +35,11 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -68,7 +71,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 		return nil, errors.New("gcp machine is required when creating a MachineScope")
 	}
 
-	helper, err := patch.NewHelper(params.GCPMachine, params.Client)
+	helper, err := v1beta1patch.NewHelper(params.GCPMachine, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
@@ -85,7 +88,7 @@ func NewMachineScope(params MachineScopeParams) (*MachineScope, error) {
 // MachineScope defines a scope defined around a machine and its cluster.
 type MachineScope struct {
 	client        client.Client
-	patchHelper   *patch.Helper
+	patchHelper   *v1beta1patch.Helper
 	ClusterGetter cloud.ClusterGetter
 	Machine       *clusterv1.Machine
 	GCPMachine    *infrav1.GCPMachine
@@ -539,9 +542,30 @@ func GetBootstrapData(ctx context.Context, client client.Client, parent client.O
 	return string(value), nil
 }
 
+// ConditionSetter returns a v1beta1 condition setter for this scope.
+func (m *MachineScope) ConditionSetter() v1beta1conditions.Setter {
+	return m.GCPMachine
+}
+
+// V1Beta2ConditionSetter returns a v1beta2 condition setter for this scope.
+func (m *MachineScope) V1Beta2ConditionSetter() v1beta2conditions.Setter {
+	return m.GCPMachine
+}
+
 // PatchObject persists the cluster configuration and status.
 func (m *MachineScope) PatchObject(ctx context.Context) error {
-	return m.patchHelper.Patch(ctx, m.GCPMachine)
+	return m.patchHelper.Patch(
+		ctx,
+		m.GCPMachine,
+		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
+			infrav1.GCPMachineReadyCondition,
+			infrav1.GCPMachineInstanceReadyCondition,
+		}},
+		v1beta1patch.WithOwnedV1Beta2Conditions{Conditions: []string{
+			infrav1.GCPMachineReadyCondition,
+			infrav1.GCPMachineInstanceReadyCondition,
+		}},
+	)
 }
 
 // Close closes the current scope persisting the cluster configuration and status.

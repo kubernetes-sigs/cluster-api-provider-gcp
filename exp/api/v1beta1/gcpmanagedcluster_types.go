@@ -72,11 +72,27 @@ type GCPManagedClusterSpec struct {
 
 // GCPManagedClusterStatus defines the observed state of GCPManagedCluster.
 type GCPManagedClusterStatus struct {
+	// +optional
 	FailureDomains clusterv1beta1.FailureDomains `json:"failureDomains,omitempty"`
 	Network        infrav1.Network               `json:"network,omitempty"`
 	Ready          bool                          `json:"ready"`
-	// Conditions specifies the conditions for the managed control plane
+	// conditions specifies the conditions for the managed cluster
+	// +optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+
+	// v1beta2 groups all the fields that will be added or modified in GCPManagedCluster's status with the v1beta2 contract.
+	// +optional
+	V1Beta2 *GCPManagedClusterV1Beta2Status `json:"v1beta2,omitempty"`
+}
+
+// GCPManagedClusterV1Beta2Status groups the v1beta2 fields of GCPManagedClusterStatus.
+type GCPManagedClusterV1Beta2Status struct {
+	// conditions represents the observations of a GCPManagedCluster's current state.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	// +kubebuilder:validation:MaxItems=32
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -104,6 +120,32 @@ type GCPManagedClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []GCPManagedCluster `json:"items"`
+}
+
+// GetConditions returns the set of conditions for this object.
+func (r *GCPManagedCluster) GetConditions() clusterv1beta1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the status conditions for the GCPManagedCluster.
+func (r *GCPManagedCluster) SetConditions(conditions clusterv1beta1.Conditions) {
+	r.Status.Conditions = conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (r *GCPManagedCluster) GetV1Beta2Conditions() []metav1.Condition {
+	if r.Status.V1Beta2 == nil {
+		return nil
+	}
+	return r.Status.V1Beta2.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (r *GCPManagedCluster) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	if r.Status.V1Beta2 == nil {
+		r.Status.V1Beta2 = &GCPManagedClusterV1Beta2Status{}
+	}
+	r.Status.V1Beta2.Conditions = conditions
 }
 
 func init() {

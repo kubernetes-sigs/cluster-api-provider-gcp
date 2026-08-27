@@ -24,8 +24,8 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/firewalls"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/loadbalancers"
@@ -36,6 +36,8 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -198,21 +200,110 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 
 	clusterScope.SetFailureDomains(failureDomains)
 
-	reconcilers := []cloud.Reconciler{
-		networks.New(clusterScope),
-		firewalls.New(clusterScope),
-		// Reconcile subnets before loadbalancers since subnet is needed for internal LB
-		subnets.New(clusterScope),
-		loadbalancers.New(clusterScope),
+	if err := networks.New(clusterScope).Reconcile(ctx); err != nil {
+		log.Error(err, "Error reconciling network resources")
+		record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
+		v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterNetworkReadyCondition, infrav1.NetworkReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterReadyCondition, infrav1.NetworkReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPClusterNetworkReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.NetworkReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPClusterReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.NetworkReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		return ctrl.Result{}, err
 	}
+	v1beta1conditions.MarkTrue(clusterScope.ConditionSetter(), infrav1.GCPClusterNetworkReadyCondition)
+	v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+		Type:   infrav1.GCPClusterNetworkReadyCondition,
+		Status: metav1.ConditionTrue,
+		Reason: infrav1.NetworkReadyReason,
+	})
 
-	for _, r := range reconcilers {
-		if err := r.Reconcile(ctx); err != nil {
-			log.Error(err, "Reconcile error")
-			record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
-			return ctrl.Result{}, err
-		}
+	if err := firewalls.New(clusterScope).Reconcile(ctx); err != nil {
+		log.Error(err, "Error reconciling firewall resources")
+		record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
+		v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterFirewallRulesReadyCondition, infrav1.FirewallRulesReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterReadyCondition, infrav1.FirewallRulesReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPClusterFirewallRulesReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.FirewallRulesReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPClusterReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.FirewallRulesReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		return ctrl.Result{}, err
 	}
+	v1beta1conditions.MarkTrue(clusterScope.ConditionSetter(), infrav1.GCPClusterFirewallRulesReadyCondition)
+	v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+		Type:   infrav1.GCPClusterFirewallRulesReadyCondition,
+		Status: metav1.ConditionTrue,
+		Reason: infrav1.FirewallRulesReadyReason,
+	})
+
+	// Reconcile subnets before loadbalancers since subnet is needed for internal LB.
+	if err := subnets.New(clusterScope).Reconcile(ctx); err != nil {
+		log.Error(err, "Error reconciling subnet resources")
+		record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
+		v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterSubnetsReadyCondition, infrav1.SubnetsReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterReadyCondition, infrav1.SubnetsReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPClusterSubnetsReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.SubnetsReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPClusterReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.SubnetsReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		return ctrl.Result{}, err
+	}
+	v1beta1conditions.MarkTrue(clusterScope.ConditionSetter(), infrav1.GCPClusterSubnetsReadyCondition)
+	v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+		Type:   infrav1.GCPClusterSubnetsReadyCondition,
+		Status: metav1.ConditionTrue,
+		Reason: infrav1.SubnetsReadyReason,
+	})
+
+	if err := loadbalancers.New(clusterScope).Reconcile(ctx); err != nil {
+		log.Error(err, "Error reconciling load balancer resources")
+		record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
+		v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterLoadBalancerReadyCondition, infrav1.LoadBalancerReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterReadyCondition, infrav1.LoadBalancerReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPClusterLoadBalancerReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.LoadBalancerReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPClusterReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.LoadBalancerReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		return ctrl.Result{}, err
+	}
+	v1beta1conditions.MarkTrue(clusterScope.ConditionSetter(), infrav1.GCPClusterLoadBalancerReadyCondition)
+	v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+		Type:   infrav1.GCPClusterLoadBalancerReadyCondition,
+		Status: metav1.ConditionTrue,
+		Reason: infrav1.LoadBalancerReadyReason,
+	})
 
 	controlPlaneEndpoint := clusterScope.ControlPlaneEndpoint()
 	if controlPlaneEndpoint.Host == "" {
@@ -223,6 +314,12 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 
 	record.Eventf(clusterScope.GCPCluster, "GCPClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
 	clusterScope.SetReady()
+	v1beta1conditions.MarkTrue(clusterScope.ConditionSetter(), infrav1.GCPClusterReadyCondition)
+	v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+		Type:   infrav1.GCPClusterReadyCondition,
+		Status: metav1.ConditionTrue,
+		Reason: infrav1.ClusterReadyReason,
+	})
 	record.Event(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconciled")
 	return ctrl.Result{}, nil
 }
@@ -231,15 +328,15 @@ func (r *GCPClusterReconciler) reconcileDelete(ctx context.Context, clusterScope
 	log := log.FromContext(ctx)
 	log.Info("Reconciling Delete GCPCluster")
 
-	reconcilers := []cloud.Reconciler{
-		loadbalancers.New(clusterScope),
-		subnets.New(clusterScope),
-		firewalls.New(clusterScope),
-		networks.New(clusterScope),
+	deleteReconcilers := []func(context.Context) error{
+		loadbalancers.New(clusterScope).Delete,
+		subnets.New(clusterScope).Delete,
+		firewalls.New(clusterScope).Delete,
+		networks.New(clusterScope).Delete,
 	}
 
-	for _, r := range reconcilers {
-		if err := r.Delete(ctx); err != nil {
+	for _, deleteFunc := range deleteReconcilers {
+		if err := deleteFunc(ctx); err != nil {
 			log.Error(err, "Reconcile error")
 			record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
 			return err

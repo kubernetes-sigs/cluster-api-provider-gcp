@@ -23,13 +23,17 @@ import (
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/instances"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -227,6 +231,20 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	if err := instances.New(machineScope).Reconcile(ctx); err != nil {
 		log.Error(err, "Error reconciling instance resources")
 		record.Warnf(machineScope.GCPMachine, "GCPMachineReconcile", "Reconcile error - %v", err)
+		v1beta1conditions.MarkFalse(machineScope.ConditionSetter(), infrav1.GCPMachineInstanceReadyCondition, infrav1.InstanceReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta1conditions.MarkFalse(machineScope.ConditionSetter(), infrav1.GCPMachineReadyCondition, infrav1.InstanceReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+		v1beta2conditions.Set(machineScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPMachineInstanceReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.InstanceReconciliationFailedReason,
+			Message: err.Error(),
+		})
+		v1beta2conditions.Set(machineScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPMachineReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.InstanceReconciliationFailedReason,
+			Message: err.Error(),
+		})
 		return ctrl.Result{}, err
 	}
 
@@ -235,16 +253,42 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	case infrav1.InstanceStatusProvisioning, infrav1.InstanceStatusStaging:
 		log.Info("GCPMachine instance is pending", "instance-id", *machineScope.GetInstanceID())
 		record.Eventf(machineScope.GCPMachine, "GCPMachineReconcile", "GCPMachine instance is pending - instance-id: %s", *machineScope.GetInstanceID())
+		v1beta1conditions.MarkFalse(machineScope.ConditionSetter(), infrav1.GCPMachineInstanceReadyCondition, infrav1.InstanceNotReadyReason, clusterv1beta1.ConditionSeverityInfo, "instance is in %s state", instanceState)
+		v1beta2conditions.Set(machineScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPMachineInstanceReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.InstanceNotReadyReason,
+			Message: string(instanceState),
+		})
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	case infrav1.InstanceStatusRunning:
 		log.Info("GCPMachine instance is running", "instance-id", *machineScope.GetInstanceID())
 		record.Eventf(machineScope.GCPMachine, "GCPMachineReconcile", "GCPMachine instance is running - instance-id: %s", *machineScope.GetInstanceID())
 		record.Event(machineScope.GCPMachine, "GCPMachineReconcile", "Reconciled")
 		machineScope.SetReady()
+		v1beta1conditions.MarkTrue(machineScope.ConditionSetter(), infrav1.GCPMachineInstanceReadyCondition)
+		v1beta1conditions.MarkTrue(machineScope.ConditionSetter(), infrav1.GCPMachineReadyCondition)
+		v1beta2conditions.Set(machineScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:   infrav1.GCPMachineInstanceReadyCondition,
+			Status: metav1.ConditionTrue,
+			Reason: infrav1.InstanceReadyReason,
+		})
+		v1beta2conditions.Set(machineScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:   infrav1.GCPMachineReadyCondition,
+			Status: metav1.ConditionTrue,
+			Reason: infrav1.InstanceReadyReason,
+		})
 		return ctrl.Result{}, nil
 	default:
 		machineScope.SetFailureReason("UpdateError")
 		machineScope.SetFailureMessage(errors.Errorf("GCPMachine instance state %s is unexpected", instanceState))
+		v1beta1conditions.MarkFalse(machineScope.ConditionSetter(), infrav1.GCPMachineInstanceReadyCondition, infrav1.InstanceNotReadyReason, clusterv1beta1.ConditionSeverityWarning, "unexpected instance state: %s", instanceState)
+		v1beta2conditions.Set(machineScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1.GCPMachineInstanceReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.InstanceNotReadyReason,
+			Message: string(instanceState),
+		})
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 }

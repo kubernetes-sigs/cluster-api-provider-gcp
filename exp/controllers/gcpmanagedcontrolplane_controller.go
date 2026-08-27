@@ -206,9 +206,11 @@ func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, 
 		}
 	}
 
-	if managedControlPlaneScope.GCPManagedControlPlane != nil &&
-		v1beta1conditions.Get(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneDeletingCondition).Reason == infrav1exp.GKEControlPlaneDeletedReason {
-		controllerutil.RemoveFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
+	if managedControlPlaneScope.GCPManagedControlPlane != nil {
+		cond := v1beta1conditions.Get(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.GKEControlPlaneDeletingCondition)
+		if cond != nil && cond.Reason == infrav1exp.GKEControlPlaneDeletedReason {
+			controllerutil.RemoveFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
+		}
 	}
 
 	return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil

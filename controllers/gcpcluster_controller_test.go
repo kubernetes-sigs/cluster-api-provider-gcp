@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -39,7 +40,12 @@ var _ = Describe("GCPClusterReconciler", func() {
 				Client: k8sClient,
 			}
 
-			instance := &infrav1.GCPCluster{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+			instance := &infrav1.GCPCluster{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+				Spec: infrav1.GCPClusterSpec{
+					ControlPlaneEndpoint: clusterv1beta1.APIEndpoint{Host: "localhost"},
+				},
+			}
 
 			// Create the GCPCluster object and expect the Reconcile and Deployment to be created
 			Expect(k8sClient.Create(ctx, instance)).To(Succeed())

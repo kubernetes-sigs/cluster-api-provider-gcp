@@ -28,7 +28,9 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
-	"sigs.k8s.io/cluster-api/util/patch"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -65,7 +67,7 @@ func NewClusterScope(ctx context.Context, params ClusterScopeParams) (*ClusterSc
 		params.Compute = computeSvc
 	}
 
-	helper, err := patch.NewHelper(params.GCPCluster, params.Client)
+	helper, err := v1beta1patch.NewHelper(params.GCPCluster, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
@@ -82,7 +84,7 @@ func NewClusterScope(ctx context.Context, params ClusterScopeParams) (*ClusterSc
 // ClusterScope defines the basic context for an actuator to operate upon.
 type ClusterScope struct {
 	client      client.Client
-	patchHelper *patch.Helper
+	patchHelper *v1beta1patch.Helper
 
 	Cluster    *clusterv1.Cluster
 	GCPCluster *infrav1.GCPCluster
@@ -192,12 +194,13 @@ func (s *ClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags {
 func (s *ClusterScope) ControlPlaneEndpoint() clusterv1.APIEndpoint {
 	endpoint := clusterv1.APIEndpoint{
 		Host: s.GCPCluster.Spec.ControlPlaneEndpoint.Host,
-		Port: 443,
+		Port: APIServerPort,
 	}
 
 	if s.Cluster.Spec.ClusterNetwork.APIServerPort != 0 {
 		endpoint.Port = s.Cluster.Spec.ClusterNetwork.APIServerPort
 	}
+
 	return endpoint
 }
 
@@ -388,9 +391,36 @@ func (s *ClusterScope) TargetTCPProxySpec() *compute.TargetTcpProxy {
 
 // ANCHOR_END: ClusterControlPlaneSpec
 
+// ConditionSetter returns a v1beta1 condition setter for this scope.
+func (s *ClusterScope) ConditionSetter() v1beta1conditions.Setter {
+	return s.GCPCluster
+}
+
+// V1Beta2ConditionSetter returns a v1beta2 condition setter for this scope.
+func (s *ClusterScope) V1Beta2ConditionSetter() v1beta2conditions.Setter {
+	return s.GCPCluster
+}
+
 // PatchObject persists the cluster configuration and status.
 func (s *ClusterScope) PatchObject(ctx context.Context) error {
-	return s.patchHelper.Patch(ctx, s.GCPCluster)
+	return s.patchHelper.Patch(
+		ctx,
+		s.GCPCluster,
+		v1beta1patch.WithOwnedConditions{Conditions: []clusterv1beta1.ConditionType{
+			infrav1.GCPClusterReadyCondition,
+			infrav1.GCPClusterNetworkReadyCondition,
+			infrav1.GCPClusterSubnetsReadyCondition,
+			infrav1.GCPClusterFirewallRulesReadyCondition,
+			infrav1.GCPClusterLoadBalancerReadyCondition,
+		}},
+		v1beta1patch.WithOwnedV1Beta2Conditions{Conditions: []string{
+			infrav1.GCPClusterReadyCondition,
+			infrav1.GCPClusterNetworkReadyCondition,
+			infrav1.GCPClusterSubnetsReadyCondition,
+			infrav1.GCPClusterFirewallRulesReadyCondition,
+			infrav1.GCPClusterLoadBalancerReadyCondition,
+		}},
+	)
 }
 
 // Close closes the current scope persisting the cluster configuration and status.
