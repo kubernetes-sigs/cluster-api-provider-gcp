@@ -348,18 +348,26 @@ func (s *ClusterScope) ForwardingRuleSpec(lbname string) *compute.ForwardingRule
 
 // HealthCheckSpec returns google compute health-check spec.
 func (s *ClusterScope) HealthCheckSpec(lbname string) *compute.HealthCheck {
+	checkInterval, timeout, healthy, unhealthy := int64(5), int64(5), int64(1), int64(6)
+	if hc := s.GCPCluster.Spec.LoadBalancer.HealthCheck; hc != nil {
+		checkInterval = hc.CheckIntervalSec
+		timeout = hc.TimeoutSec
+		healthy = hc.HealthyThreshold
+		unhealthy = hc.UnhealthyThreshold
+	}
+
 	return &compute.HealthCheck{
 		Name: fmt.Sprintf("%s-%s", s.Name(), lbname),
 		Type: "HTTPS",
 		HttpsHealthCheck: &compute.HTTPSHealthCheck{
-			Port:              6443,
+			Port:              int64(ptr.Deref(s.GCPCluster.Spec.Network.LoadBalancerBackendPort, 6443)),
 			PortSpecification: "USE_FIXED_PORT",
 			RequestPath:       "/readyz",
 		},
-		CheckIntervalSec:   5,
-		TimeoutSec:         5,
-		HealthyThreshold:   1,
-		UnhealthyThreshold: 6,
+		CheckIntervalSec:   checkInterval,
+		TimeoutSec:         timeout,
+		HealthyThreshold:   healthy,
+		UnhealthyThreshold: unhealthy,
 	}
 }
 
