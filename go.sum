@@ -14,6 +14,8 @@ cloud.google.com/go/compute/metadata v0.9.0 h1:pDUj4QMoPejqq20dK0Pg2N4yG9zIkYGdB
 cloud.google.com/go/compute/metadata v0.9.0/go.mod h1:E0bWwX5wTnLPedCKqk3pJmVgCBSM6qQI1yTBdEb3C10=
 cloud.google.com/go/container v1.53.1 h1:B/RHfOeKaf3vWSjtJO6DgwToCjHKzfeXmWYLCaowVoI=
 cloud.google.com/go/container v1.53.1/go.mod h1:/ZI9J3uuAQh0O3/n9qxkdTVCDB6kuwxEpC9MvEWnf/Q=
+cloud.google.com/go/gkehub v0.22.0 h1:gHKPoWQuWpd9dXLoC58dxwBvSYTNc5/fdYYcs3JUn1s=
+cloud.google.com/go/gkehub v0.22.0/go.mod h1:WiXX1w9ZHwKZVUDwL//YQfjfWS7yE0I/ym3smZn9iwE=
 cloud.google.com/go/iam v1.13.0 h1:ufT3FPT5rFFXu6UtLkNoxaOaV5EuA1dsSkmemCSTo6U=
 cloud.google.com/go/iam v1.13.0/go.mod h1:gHXdDEiPDvqd1q1KwBDGQlgZY/BwY760zU2LhOZS5w0=
 cloud.google.com/go/longrunning v1.2.0 h1:WjYH3YHBGCxGJP9M4dWGHBfXr/cFIjMkNgWcJj7/iMM=

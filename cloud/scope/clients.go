@@ -25,6 +25,7 @@ import (
 
 	computerest "cloud.google.com/go/compute/apiv1"
 	container "cloud.google.com/go/container/apiv1"
+	gkehub "cloud.google.com/go/gkehub/apiv1beta1"
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
@@ -208,6 +209,24 @@ func newInstanceGroupManagerClient(ctx context.Context, credentialsRef *infrav1.
 	}
 
 	return instanceGroupManagersClient, nil
+}
+
+func newGkeHubMembershipClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*gkehub.GkeHubMembershipClient, error) {
+	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	if err != nil {
+		return nil, fmt.Errorf("getting default gcp client options: %w", err)
+	}
+
+	if endpoints != nil && endpoints.GkeHubServiceEndpoint != "" {
+		opts = append(opts, option.WithEndpoint(endpoints.GkeHubServiceEndpoint))
+	}
+
+	gkeHubMembershipClient, err := gkehub.NewGkeHubMembershipClient(ctx, opts...)
+	if err != nil {
+		return nil, errors.Errorf("failed to create gke hub membership client: %v", err)
+	}
+
+	return gkeHubMembershipClient, nil
 }
 
 func newTagBindingsClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, location string, endpoints *infrav1.ServiceEndpoints) (*resourcemanager.TagBindingsClient, error) {

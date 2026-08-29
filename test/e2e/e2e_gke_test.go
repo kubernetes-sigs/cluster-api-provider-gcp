@@ -25,13 +25,17 @@ import (
 	"os"
 	"path/filepath"
 
+	gkehub "cloud.google.com/go/gkehub/apiv1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"google.golang.org/api/option"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -193,6 +197,72 @@ var _ = Describe("GKE workload cluster creation", func() {
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-worker-machine-pools"),
 			}, result)
+		})
+	})
+
+	Context("Registering a GKE cluster into a fleet", func() {
+		It("Should register the cluster as a fleet Membership, then deregister it when fleet is unset", func() {
+			By("Initializes with fleet registration enabled")
+
+			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-gke-fleet",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](0),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-worker-machine-pools"),
+			}, result)
+
+			project := os.Getenv("GCP_PROJECT")
+			Expect(project).NotTo(BeEmpty(), "GCP_PROJECT must be set to verify fleet membership directly against GCP")
+			region := os.Getenv("GCP_REGION")
+			Expect(region).NotTo(BeEmpty(), "GCP_REGION must be set to verify fleet membership directly against GCP")
+			membershipName := fmt.Sprintf("projects/%s/locations/%s/memberships/%s", project, region, result.ControlPlane.Spec.ClusterName)
+
+			gkeHubClient, err := gkehub.NewGkeHubMembershipClient(ctx, option.WithCredentialsFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")))
+			Expect(err).NotTo(HaveOccurred(), "Failed to create GKE Hub membership client")
+			defer gkeHubClient.Close()
+
+			By("Confirming the fleet Membership was created directly against GCP")
+			Eventually(func() bool {
+				return membershipExists(ctx, gkeHubClient, membershipName)
+			}, e2eConfig.GetIntervals(specName, "wait-control-plane")...).Should(BeTrue(), "Expected fleet Membership %s to exist", membershipName)
+
+			By("Confirming GKEControlPlaneFleetRegisteredCondition is true")
+			Eventually(func(g Gomega) {
+				controlPlane := &infrav1exp.GCPManagedControlPlane{}
+				g.Expect(bootstrapClusterProxy.GetClient().Get(ctx, client.ObjectKeyFromObject(result.ControlPlane), controlPlane)).To(Succeed())
+				g.Expect(controlPlane.Status.FleetMembership).NotTo(BeNil())
+				g.Expect(controlPlane.Status.FleetMembership.Project).To(Equal(project))
+			}, e2eConfig.GetIntervals(specName, "wait-control-plane")...).Should(Succeed())
+
+			By("Unsetting spec.fleet while the cluster keeps running")
+			Eventually(func(g Gomega) {
+				controlPlane := &infrav1exp.GCPManagedControlPlane{}
+				g.Expect(bootstrapClusterProxy.GetClient().Get(ctx, client.ObjectKeyFromObject(result.ControlPlane), controlPlane)).To(Succeed())
+				controlPlane.Spec.Fleet = nil
+				g.Expect(bootstrapClusterProxy.GetClient().Update(ctx, controlPlane)).To(Succeed())
+			}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed())
+
+			By("Confirming the fleet Membership is deregistered without deleting the cluster")
+			Eventually(func() bool {
+				return membershipExists(ctx, gkeHubClient, membershipName)
+			}, e2eConfig.GetIntervals(specName, "wait-control-plane")...).Should(BeFalse(), "Expected fleet Membership %s to be deleted", membershipName)
+
+			Eventually(func(g Gomega) {
+				cluster := &corev1.Namespace{}
+				g.Expect(bootstrapClusterProxy.GetClient().Get(ctx, client.ObjectKey{Name: namespace.Name}, cluster)).To(Succeed(), "cluster's namespace should still exist, cluster should not have been deleted")
+			}, "10s", "1s").Should(Succeed())
 		})
 	})
 

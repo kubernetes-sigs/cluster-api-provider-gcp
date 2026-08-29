@@ -631,6 +631,12 @@ spec:
                             format: uri
                             pattern: ^https://
                             type: string
+                          gkeHub:
+                            description: GkeHubServiceEndpoint is the custom endpoint
+                              url for the GKE Hub (Fleet) Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
                           iam:
                             description: IAMServiceEndpoint is the custom endpoint
                               url for the IAM Service

@@ -83,6 +83,10 @@ type GCPManagedControlPlaneClassSpec struct {
 	// Value is ignored when enableAutopilot = true.
 	// +optional
 	MonitoringService *MonitoringService `json:"monitoringService,omitempty"`
+
+	// Fleet, if set, registers this GKE cluster as a Membership in a GKE Fleet.
+	// +optional
+	Fleet *Fleet `json:"fleet,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.

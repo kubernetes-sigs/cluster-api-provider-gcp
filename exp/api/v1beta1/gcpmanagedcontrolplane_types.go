@@ -206,6 +206,19 @@ type GCPManagedControlPlaneStatus struct {
 	// Version represents the version of the GKE control plane.
 	// +optional
 	Version *string `json:"version,omitempty"`
+
+	// FleetMembership records the GKE Fleet this cluster is currently registered
+	// into, if any. Used to deregister/re-register correctly if Spec.Fleet is
+	// unset or its Project is changed.
+	// +optional
+	FleetMembership *FleetMembershipStatus `json:"fleetMembership,omitempty"`
+}
+
+// FleetMembershipStatus records the GKE Fleet Membership a cluster is currently
+// registered into.
+type FleetMembershipStatus struct {
+	// Project is the project the Membership was created in.
+	Project string `json:"project"`
 }
 
 // +kubebuilder:object:root=true
@@ -272,6 +285,16 @@ type MasterAuthorizedNetworksConfigCidrBlock struct {
 	// cidr_block must be specified in CIDR notation.
 	// +kubebuilder:validation:Pattern=`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\/([0-9]|[1-2][0-9]|3[0-2]))?$|^([a-fA-F0-9:]+:+)+[a-fA-F0-9]+\/[0-9]{1,3}$`
 	CidrBlock string `json:"cidr_block,omitempty"`
+}
+
+// Fleet defines the GKE Fleet to register this cluster into. If set, the cluster
+// is registered as a Membership in the fleet; unsetting or changing it causes the
+// existing Membership to be deregistered.
+type Fleet struct {
+	// Project is the project hosting the fleet. If not set, defaults to the
+	// cluster's own project (Spec.Project).
+	// +optional
+	Project *string `json:"project,omitempty"`
 }
 
 // LoggingService is GKE logging service configuration.

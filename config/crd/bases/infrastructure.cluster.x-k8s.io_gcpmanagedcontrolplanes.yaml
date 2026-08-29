@@ -208,6 +208,16 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              fleet:
+                description: Fleet, if set, registers this GKE cluster as a Membership
+                  in a GKE Fleet.
+                properties:
+                  project:
+                    description: |-
+                      Project is the project hosting the fleet. If not set, defaults to the
+                      cluster's own project (Spec.Project).
+                    type: string
+                type: object
               location:
                 description: |-
                   Location represents the location (region or zone) in which the GKE cluster
@@ -346,6 +356,19 @@ spec:
 
                   Deprecated: This field will soon be removed and you are expected to use Version instead.
                 type: string
+              fleetMembership:
+                description: |-
+                  FleetMembership records the GKE Fleet this cluster is currently registered
+                  into, if any. Used to deregister/re-register correctly if Spec.Fleet is
+                  unset or its Project is changed.
+                properties:
+                  project:
+                    description: Project is the project the Membership was created
+                      in.
+                    type: string
+                required:
+                - project
+                type: object
               initialized:
                 description: |-
                   Initialized is true when the control plane is available for initial contact.
