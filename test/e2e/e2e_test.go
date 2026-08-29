@@ -289,6 +289,31 @@ var _ = Describe("Workload cluster creation", func() {
 		})
 	})
 
+	Context("Creating a control-plane cluster with a regional external load balancer", func() {
+		It("Should create a cluster with 1 control-plane and 1 worker node behind a regional external load balancer", func() {
+			clusterName := fmt.Sprintf("%s-regional-external-lb", clusterNamePrefix)
+			By("Creating a cluster with a regional external load balancer")
+			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-with-regional-external-lb",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](1),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+			}, result)
+		})
+	})
+
 	Context("Creating a cluster with firewall rules provided", func() {
 		It("Should create a cluster with the firewall rules provided", func() {
 			clusterName := fmt.Sprintf("%s-firewall-rules", clusterNamePrefix)

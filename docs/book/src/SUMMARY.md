@@ -20,6 +20,7 @@
     - [Conformance](./topics/conformance.md)
     - [Gateway API](./topics/gateway-api.md)
     - [GPUs](./topics/gpus.md)
+    - [Load Balancers](./topics/load-balancers.md)
     - [Machine Locations](./topics/machine-locations.md)
     - [Preemptible VMs](./topics/preemptible-vms.md)
 - [Developer Guide](./developers/index.md)
