@@ -310,6 +310,91 @@ func (m MonitoringService) String() string {
 	return string(m)
 }
 
+// MaintenancePolicy represents configuration options for the GKE cluster maintenance policy.
+// +kubebuilder:validation:XValidation:rule="!(has(self.dailyMaintenanceWindow) && has(self.recurringMaintenanceWindow))",message="only one of dailyMaintenanceWindow and recurringMaintenanceWindow may be set"
+type MaintenancePolicy struct {
+	// DailyMaintenanceWindow represents a daily maintenance time window for use with the GKE cluster.
+	// Only one of DailyMaintenanceWindow and RecurringMaintenanceWindow can be set.
+	// +optional
+	DailyMaintenanceWindow *DailyMaintenanceWindow `json:"dailyMaintenanceWindow,omitempty"`
+	// RecurringMaintenanceWindow represents a recurring maintenance time window for use with the GKE cluster.
+	// Only one of DailyMaintenanceWindow and RecurringMaintenanceWindow can be set.
+	// +optional
+	RecurringMaintenanceWindow *RecurringMaintenanceWindow `json:"recurringMaintenanceWindow,omitempty"`
+	// MaintenanceExclusions represents a map of maintenance exclusion names to a TimeWindow representing the exclusion period
+	// (consists of a start time, end time, and exclusion scope). Non-emergency maintenance should not occur in these windows.
+	// A maximum of 3 maintenance exclusions with "no-upgrades" is allowed. This limit is enforced by the
+	// validating webhook rather than a CRD-level constraint, since it requires counting entries by their
+	// (optional, defaulted) MaintenanceExclusionOption value.
+	// +kubebuilder:validation:MaxProperties=20
+	// +optional
+	MaintenanceExclusions map[string]*TimeWindow `json:"maintenanceExclusions,omitempty"`
+	// DisruptionBudget represents the upgrade disruption budget for the GKE cluster control plane.
+	// +optional
+	DisruptionBudget *DisruptionBudget `json:"disruptionBudget,omitempty"`
+}
+
+// DisruptionBudget represents the upgrade disruption budget for the GKE cluster control plane: the minimum
+// time GKE must wait between automatic control plane version upgrades.
+type DisruptionBudget struct {
+	// MinorVersionDisruptionInterval represents the minimum duration between two minor version
+	// upgrades of the control plane.
+	// +optional
+	MinorVersionDisruptionInterval *metav1.Duration `json:"minorVersionDisruptionInterval,omitempty"`
+	// PatchVersionDisruptionInterval represents the minimum duration between two patch version
+	// upgrades of the control plane.
+	// +optional
+	PatchVersionDisruptionInterval *metav1.Duration `json:"patchVersionDisruptionInterval,omitempty"`
+}
+
+// DailyMaintenanceWindow represents a time window specified for daily maintenance operations.
+type DailyMaintenanceWindow struct {
+	// StartTime represents the wall-clock time within the maintenance window to start the
+	// maintenance operations, in "HH:MM" format, where HH : [00-23] and MM : [00-59] GMT.
+	// This is a time-of-day value, not a full date-time, so it is not expressed as a
+	// richer time type.
+	StartTime string `json:"startTime,omitempty"`
+}
+
+// RecurringMaintenanceWindow represents an arbitrary window of time that recurs.
+type RecurringMaintenanceWindow struct {
+	// Window represents the time window of first recurrence.
+	// +optional
+	Window *TimeWindow `json:"window,omitempty"`
+	// Recurrence represents a RRULE (https://tools.ietf.org/html/rfc5545#section-3.8.5.3) for how
+	// the given window recurs. They go on for the span of time between the start and end time.
+	// For more detail see (https://pkg.go.dev/cloud.google.com/go/container/apiv1/containerpb#RecurringTimeWindow)
+	Recurrence string `json:"recurrence,omitempty"`
+}
+
+// TimeWindow represents an arbitrary window of time.
+// +kubebuilder:validation:XValidation:rule="self.startTime < self.endTime",message="endTime must be after startTime"
+type TimeWindow struct {
+	// StartTime represents the time that the window first starts.
+	StartTime metav1.Time `json:"startTime,omitempty"`
+	// EndTime represents the time that the window ends.
+	EndTime metav1.Time `json:"endTime,omitempty"`
+	// MaintenanceExclusionOption represents the maintenance exclusion scope for which
+	// upgrades are blocked by the exclusion.
+	// +optional
+	MaintenanceExclusionOption *MaintenanceExclusionOption `json:"maintenanceExclusionOption,omitempty"`
+}
+
+// MaintenanceExclusionOption represents the maintenance exclusion options for a TimeWindow.
+// +kubebuilder:validation:Enum=no-upgrades;no-minor-upgrades;no-minor-or-node-upgrades
+type MaintenanceExclusionOption string
+
+const (
+	// NoUpgrades excludes all upgrades, including patch upgrades and minor upgrades across
+	// control plane and nodes.
+	NoUpgrades MaintenanceExclusionOption = "no-upgrades"
+	// NoMinorUpgrades excludes all minor upgrades for the GKE cluster, only patches are allowed.
+	NoMinorUpgrades MaintenanceExclusionOption = "no-minor-upgrades"
+	// NoMinorOrNodeUpgrades excludes all minor upgrades for the cluster, and also excludes
+	// all node pool upgrades. Only control plane patches are allowed.
+	NoMinorOrNodeUpgrades MaintenanceExclusionOption = "no-minor-or-node-upgrades"
+)
+
 // GetConditions returns the control planes conditions.
 func (r *GCPManagedControlPlane) GetConditions() clusterv1beta1.Conditions {
 	return r.Status.Conditions
