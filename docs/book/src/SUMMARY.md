@@ -11,6 +11,7 @@
     - [Cluster Upgrades](./managed/upgrades.md)
     - [Enabling](./managed/enabling.md)
     - [Disabling](./managed/disabling.md)
+    - [Maintenance Policy](./managed/maintenance-policy.md)
 - [ClusterClass](./clusterclass/index.md)
     - [Provisioning a Cluster](./clusterclass/provision.md)
     - [Enabling](./clusterclass/enabling.md)
