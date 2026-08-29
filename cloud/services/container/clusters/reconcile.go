@@ -354,6 +354,10 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		}
 	}
 
+	if desiredMonitoringConfig := convertToSdkMonitoringConfig(s.scope.GCPManagedControlPlane.Spec.MonitoringConfig); desiredMonitoringConfig != nil {
+		cluster.MonitoringConfig = desiredMonitoringConfig
+	}
+
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
 		Parent:  s.scope.ClusterLocation(),
@@ -478,6 +482,19 @@ func convertToSdkMasterAuthorizedNetworksConfig(config *infrav1exp.MasterAuthori
 	}
 }
 
+// convertToSdkMonitoringConfig converts the MonitoringConfig defined in CRs to the SDK version.
+func convertToSdkMonitoringConfig(config *infrav1exp.MonitoringConfig) *containerpb.MonitoringConfig {
+	if config == nil || config.ManagedPrometheusConfig == nil || config.ManagedPrometheusConfig.Enabled == nil {
+		return nil
+	}
+
+	return &containerpb.MonitoringConfig{
+		ManagedPrometheusConfig: &containerpb.ManagedPrometheusConfig{
+			Enabled: *config.ManagedPrometheusConfig.Enabled,
+		},
+	}
+}
+
 // convertToSdkBinaryAuthorizationEvaluationMode converts the BinaryAuthorization string to the SDK int32 value.
 func convertToSdkBinaryAuthorizationEvaluationMode(mode *infrav1exp.BinaryAuthorization) containerpb.BinaryAuthorization_EvaluationMode {
 	if mode == nil {
@@ -534,6 +551,25 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			needUpdate = true
 			clusterUpdate.DesiredMonitoringService = specMonitoringService.String()
 			log.V(2).Info("MonitoringService config update required", "current", existingCluster.GetMonitoringService(), "desired", specMonitoringService.String())
+		}
+	}
+
+	// MonitoringConfig (managed Prometheus)
+	if specMonitoringConfig := s.scope.GCPManagedControlPlane.Spec.MonitoringConfig; specMonitoringConfig != nil &&
+		specMonitoringConfig.ManagedPrometheusConfig != nil && specMonitoringConfig.ManagedPrometheusConfig.Enabled != nil {
+		desiredEnabled := *specMonitoringConfig.ManagedPrometheusConfig.Enabled
+		existingMonitoringConfig := existingCluster.GetMonitoringConfig()
+		if existingMonitoringConfig.GetManagedPrometheusConfig().GetEnabled() != desiredEnabled {
+			needUpdate = true
+			clusterUpdate.DesiredMonitoringConfig = &containerpb.MonitoringConfig{
+				ComponentConfig:                     existingMonitoringConfig.GetComponentConfig(),
+				AdvancedDatapathObservabilityConfig: existingMonitoringConfig.GetAdvancedDatapathObservabilityConfig(),
+				ManagedPrometheusConfig: &containerpb.ManagedPrometheusConfig{
+					Enabled: desiredEnabled,
+				},
+			}
+			log.V(2).Info("MonitoringConfig managed Prometheus update required",
+				"current", existingMonitoringConfig.GetManagedPrometheusConfig().GetEnabled(), "desired", desiredEnabled)
 		}
 	}
 

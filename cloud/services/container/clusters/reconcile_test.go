@@ -317,6 +317,80 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "no update when managed prometheus already matches desired state",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:  "test-project",
+						Location: "us-central1",
+						MonitoringConfig: &infrav1exp.MonitoringConfig{
+							ManagedPrometheusConfig: &infrav1exp.ManagedPrometheusConfig{
+								Enabled: ptr.To(false),
+							},
+						},
+						ClusterName: "test-cluster",
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				MonitoringConfig: &containerpb.MonitoringConfig{
+					ManagedPrometheusConfig: &containerpb.ManagedPrometheusConfig{
+						Enabled: false,
+					},
+				},
+				ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
+					IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+						AuthorizedNetworksConfig: &containerpb.MasterAuthorizedNetworksConfig{
+							Enabled:                     false,
+							CidrBlocks:                  []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{},
+							GcpPublicCidrsAccessEnabled: ptr.To(false),
+						},
+					},
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "update needed to disable managed prometheus, other monitoring config preserved",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:  "test-project",
+						Location: "us-central1",
+						MonitoringConfig: &infrav1exp.MonitoringConfig{
+							ManagedPrometheusConfig: &infrav1exp.ManagedPrometheusConfig{
+								Enabled: ptr.To(false),
+							},
+						},
+						ClusterName: "test-cluster",
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				MonitoringConfig: &containerpb.MonitoringConfig{
+					ComponentConfig: &containerpb.MonitoringComponentConfig{
+						EnableComponents: []containerpb.MonitoringComponentConfig_Component{
+							containerpb.MonitoringComponentConfig_SYSTEM_COMPONENTS,
+						},
+					},
+					ManagedPrometheusConfig: &containerpb.ManagedPrometheusConfig{
+						Enabled: true,
+					},
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				desired := req.GetUpdate().GetDesiredMonitoringConfig()
+				if desired.GetManagedPrometheusConfig().GetEnabled() {
+					t.Error("expected managed prometheus to be disabled")
+				}
+				if len(desired.GetComponentConfig().GetEnableComponents()) != 1 {
+					t.Errorf("expected existing ComponentConfig to be preserved, got %v", desired.GetComponentConfig())
+				}
+			},
+		},
+		{
 			name: "authorized networks update with existing cluster having nil nested config",
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
@@ -536,6 +610,70 @@ func TestConvertToSdkMasterAuthorizedNetworksConfig(t *testing.T) {
 			}
 			if got.GetEnabled() != tt.want.GetEnabled() {
 				t.Errorf("Enabled = %v, want %v", got.GetEnabled(), tt.want.GetEnabled())
+			}
+		})
+	}
+}
+
+func TestConvertToSdkMonitoringConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *infrav1exp.MonitoringConfig
+		want   *containerpb.MonitoringConfig
+	}{
+		{
+			name:   "nil config",
+			config: nil,
+			want:   nil,
+		},
+		{
+			name:   "config without ManagedPrometheusConfig",
+			config: &infrav1exp.MonitoringConfig{},
+			want:   nil,
+		},
+		{
+			name: "ManagedPrometheusConfig with nil Enabled",
+			config: &infrav1exp.MonitoringConfig{
+				ManagedPrometheusConfig: &infrav1exp.ManagedPrometheusConfig{},
+			},
+			want: nil,
+		},
+		{
+			name: "managed prometheus disabled",
+			config: &infrav1exp.MonitoringConfig{
+				ManagedPrometheusConfig: &infrav1exp.ManagedPrometheusConfig{
+					Enabled: ptr.To(false),
+				},
+			},
+			want: &containerpb.MonitoringConfig{
+				ManagedPrometheusConfig: &containerpb.ManagedPrometheusConfig{
+					Enabled: false,
+				},
+			},
+		},
+		{
+			name: "managed prometheus enabled",
+			config: &infrav1exp.MonitoringConfig{
+				ManagedPrometheusConfig: &infrav1exp.ManagedPrometheusConfig{
+					Enabled: ptr.To(true),
+				},
+			},
+			want: &containerpb.MonitoringConfig{
+				ManagedPrometheusConfig: &containerpb.ManagedPrometheusConfig{
+					Enabled: true,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertToSdkMonitoringConfig(tt.config)
+			if got.GetManagedPrometheusConfig().GetEnabled() != tt.want.GetManagedPrometheusConfig().GetEnabled() {
+				t.Errorf("convertToSdkMonitoringConfig() = %v, want %v", got, tt.want)
+			}
+			if (got == nil) != (tt.want == nil) {
+				t.Errorf("convertToSdkMonitoringConfig() nilness = %v, want %v", got == nil, tt.want == nil)
 			}
 		})
 	}

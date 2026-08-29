@@ -35,6 +35,9 @@ spec:
   location: "${GCP_REGION}"
   version: "${KUBERNETES_VERSION}"
   releaseChannel: "regular"
+  monitoringConfig:
+    managedPrometheusConfig:
+      enabled: false
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachinePool
