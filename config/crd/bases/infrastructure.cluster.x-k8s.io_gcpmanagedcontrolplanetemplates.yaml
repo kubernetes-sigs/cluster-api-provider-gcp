@@ -192,6 +192,118 @@ spec:
                           For the GCPManagedControlPlaneTemplate, this field is used
                           only to fulfill the CAPI contract.
                         type: object
+                      maintenancePolicy:
+                        description: MaintenancePolicy represents configuration options
+                          for the GKE cluster maintenance policy.
+                        properties:
+                          dailyMaintenanceWindow:
+                            description: |-
+                              DailyMaintenanceWindow represents a daily maintenance time window for use with the GKE cluster.
+                              Only one of DailyMaintenanceWindow and RecurringMaintenanceWindow can be set.
+                            properties:
+                              startTime:
+                                description: |-
+                                  StartTime represents the wall-clock time within the maintenance window to start the
+                                  maintenance operations, in "HH:MM" format, where HH : [00-23] and MM : [00-59] GMT.
+                                  This is a time-of-day value, not a full date-time, so it is not expressed as a
+                                  richer time type.
+                                type: string
+                            type: object
+                          disruptionBudget:
+                            description: DisruptionBudget represents the upgrade disruption
+                              budget for the GKE cluster control plane.
+                            properties:
+                              minorVersionDisruptionInterval:
+                                description: |-
+                                  MinorVersionDisruptionInterval represents the minimum duration between two minor version
+                                  upgrades of the control plane.
+                                type: string
+                              patchVersionDisruptionInterval:
+                                description: |-
+                                  PatchVersionDisruptionInterval represents the minimum duration between two patch version
+                                  upgrades of the control plane.
+                                type: string
+                            type: object
+                          maintenanceExclusions:
+                            additionalProperties:
+                              description: TimeWindow represents an arbitrary window
+                                of time.
+                              properties:
+                                endTime:
+                                  description: EndTime represents the time that the
+                                    window ends.
+                                  format: date-time
+                                  type: string
+                                maintenanceExclusionOption:
+                                  description: |-
+                                    MaintenanceExclusionOption represents the maintenance exclusion scope for which
+                                    upgrades are blocked by the exclusion.
+                                  enum:
+                                  - no-upgrades
+                                  - no-minor-upgrades
+                                  - no-minor-or-node-upgrades
+                                  type: string
+                                startTime:
+                                  description: StartTime represents the time that
+                                    the window first starts.
+                                  format: date-time
+                                  type: string
+                              type: object
+                              x-kubernetes-validations:
+                              - message: endTime must be after startTime
+                                rule: self.startTime < self.endTime
+                            description: |-
+                              MaintenanceExclusions represents a map of maintenance exclusion names to a TimeWindow representing the exclusion period
+                              (consists of a start time, end time, and exclusion scope). Non-emergency maintenance should not occur in these windows.
+                              A maximum of 3 maintenance exclusions with "no-upgrades" is allowed. This limit is enforced by the
+                              validating webhook rather than a CRD-level constraint, since it requires counting entries by their
+                              (optional, defaulted) MaintenanceExclusionOption value.
+                            maxProperties: 20
+                            type: object
+                          recurringMaintenanceWindow:
+                            description: |-
+                              RecurringMaintenanceWindow represents a recurring maintenance time window for use with the GKE cluster.
+                              Only one of DailyMaintenanceWindow and RecurringMaintenanceWindow can be set.
+                            properties:
+                              recurrence:
+                                description: |-
+                                  Recurrence represents a RRULE (https://tools.ietf.org/html/rfc5545#section-3.8.5.3) for how
+                                  the given window recurs. They go on for the span of time between the start and end time.
+                                  For more detail see (https://pkg.go.dev/cloud.google.com/go/container/apiv1/containerpb#RecurringTimeWindow)
+                                type: string
+                              window:
+                                description: Window represents the time window of
+                                  first recurrence.
+                                properties:
+                                  endTime:
+                                    description: EndTime represents the time that
+                                      the window ends.
+                                    format: date-time
+                                    type: string
+                                  maintenanceExclusionOption:
+                                    description: |-
+                                      MaintenanceExclusionOption represents the maintenance exclusion scope for which
+                                      upgrades are blocked by the exclusion.
+                                    enum:
+                                    - no-upgrades
+                                    - no-minor-upgrades
+                                    - no-minor-or-node-upgrades
+                                    type: string
+                                  startTime:
+                                    description: StartTime represents the time that
+                                      the window first starts.
+                                    format: date-time
+                                    type: string
+                                type: object
+                                x-kubernetes-validations:
+                                - message: endTime must be after startTime
+                                  rule: self.startTime < self.endTime
+                            type: object
+                        type: object
+                        x-kubernetes-validations:
+                        - message: only one of dailyMaintenanceWindow and recurringMaintenanceWindow
+                            may be set
+                          rule: '!(has(self.dailyMaintenanceWindow) && has(self.recurringMaintenanceWindow))'
                       master_authorized_networks_config:
                         description: |-
                           MasterAuthorizedNetworksConfig represents configuration options for master authorized networks feature of the GKE cluster.

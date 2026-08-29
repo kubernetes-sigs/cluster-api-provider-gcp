@@ -83,6 +83,10 @@ type GCPManagedControlPlaneClassSpec struct {
 	// Value is ignored when enableAutopilot = true.
 	// +optional
 	MonitoringService *MonitoringService `json:"monitoringService,omitempty"`
+
+	// MaintenancePolicy represents configuration options for the GKE cluster maintenance policy.
+	// +optional
+	MaintenancePolicy *MaintenancePolicy `json:"maintenancePolicy,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.
