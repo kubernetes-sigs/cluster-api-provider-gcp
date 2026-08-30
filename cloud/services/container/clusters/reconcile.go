@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/ptr"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
@@ -325,6 +326,20 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 				Channel: convertToSdkGatewayAPIChannel(cn.GatewayAPIChannel),
 			}
 		}
+
+		if cn.DatapathProvider != nil {
+			if cluster.GetNetworkConfig() == nil {
+				cluster.NetworkConfig = &containerpb.NetworkConfig{}
+			}
+			cluster.NetworkConfig.DatapathProvider = convertToSdkDatapathProvider(cn.DatapathProvider)
+		}
+
+		if cn.DNSConfig != nil {
+			if cluster.GetNetworkConfig() == nil {
+				cluster.NetworkConfig = &containerpb.NetworkConfig{}
+			}
+			cluster.NetworkConfig.DnsConfig = convertToSdkDNSConfig(cn.DNSConfig)
+		}
 	}
 
 	if !s.scope.IsAutopilotCluster() {
@@ -451,6 +466,60 @@ func convertToSdkGatewayAPIChannel(channel *infrav1exp.GatewayAPIChannel) contai
 	default:
 		return containerpb.GatewayAPIConfig_CHANNEL_UNSPECIFIED
 	}
+}
+
+// convertToSdkDatapathProvider converts the DatapathProvider to the SDK enum value.
+func convertToSdkDatapathProvider(provider *infrav1exp.DatapathProvider) containerpb.DatapathProvider {
+	if provider == nil {
+		return containerpb.DatapathProvider_DATAPATH_PROVIDER_UNSPECIFIED
+	}
+	switch *provider {
+	case infrav1exp.LegacyDatapath:
+		return containerpb.DatapathProvider_LEGACY_DATAPATH
+	case infrav1exp.AdvancedDatapath:
+		return containerpb.DatapathProvider_ADVANCED_DATAPATH
+	default:
+		return containerpb.DatapathProvider_DATAPATH_PROVIDER_UNSPECIFIED
+	}
+}
+
+// convertToSdkDNSConfig converts the CAPG DNSConfig to a containerpb DNSConfig.
+func convertToSdkDNSConfig(config *infrav1exp.DNSConfig) *containerpb.DNSConfig {
+	if config == nil {
+		return nil
+	}
+
+	dnsConfig := &containerpb.DNSConfig{}
+
+	if config.ClusterDNS != nil {
+		switch *config.ClusterDNS {
+		case infrav1exp.CloudDNS:
+			dnsConfig.ClusterDns = containerpb.DNSConfig_CLOUD_DNS
+		case infrav1exp.KubeDNS:
+			dnsConfig.ClusterDns = containerpb.DNSConfig_KUBE_DNS
+		case infrav1exp.PlatformDefault:
+			dnsConfig.ClusterDns = containerpb.DNSConfig_PLATFORM_DEFAULT
+		default:
+			dnsConfig.ClusterDns = containerpb.DNSConfig_PROVIDER_UNSPECIFIED
+		}
+	}
+
+	if config.ClusterDNSScope != nil {
+		switch *config.ClusterDNSScope {
+		case infrav1exp.ClusterScope:
+			dnsConfig.ClusterDnsScope = containerpb.DNSConfig_CLUSTER_SCOPE
+		case infrav1exp.VPCScope:
+			dnsConfig.ClusterDnsScope = containerpb.DNSConfig_VPC_SCOPE
+		default:
+			dnsConfig.ClusterDnsScope = containerpb.DNSConfig_DNS_SCOPE_UNSPECIFIED
+		}
+	}
+
+	if config.ClusterDNSDomain != nil {
+		dnsConfig.ClusterDnsDomain = *config.ClusterDNSDomain
+	}
+
+	return dnsConfig
 }
 
 func convertToSdkMasterVersion(masterVersion string) string {
@@ -585,6 +654,20 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 				"current", existingCluster.GetNetworkConfig().GetGatewayApiConfig().GetChannel(),
 				"desired", desiredGatewayChannel)
 		}
+	}
+
+	// DNSConfig. DatapathProvider is deliberately not reconciled here: it's immutable once the cluster is
+	// created (enforced by the validating webhook), so there's never a legitimate diff to apply.
+	var desiredDNSConfig *infrav1exp.DNSConfig
+	if cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork; cn != nil {
+		desiredDNSConfig = cn.DNSConfig
+	}
+	desiredSdkDNSConfig := convertToSdkDNSConfig(desiredDNSConfig)
+	existingDNSConfig := existingCluster.GetNetworkConfig().GetDnsConfig()
+	if !proto.Equal(desiredSdkDNSConfig, existingDNSConfig) {
+		needUpdate = true
+		clusterUpdate.DesiredDnsConfig = desiredSdkDNSConfig
+		log.V(2).Info("DNSConfig update required", "current", existingDNSConfig, "desired", desiredSdkDNSConfig)
 	}
 
 	updateClusterRequest := containerpb.UpdateClusterRequest{
