@@ -70,6 +70,43 @@ spec:
                       clusterNetwork:
                         description: ClusterNetwork define the cluster network.
                         properties:
+                          datapathProvider:
+                            description: |-
+                              DatapathProvider represents the desired datapath provider for the GKE cluster.
+                              If unspecified, GKE uses the default IPTables-based kube-proxy implementation.
+                              This field is immutable once the cluster has been created, and is always
+                              "advanced" (Dataplane V2) for Autopilot clusters.
+                            enum:
+                            - legacy
+                            - advanced
+                            type: string
+                          dnsConfig:
+                            description: |-
+                              DNSConfig represents the cluster DNS configuration for the GKE cluster.
+                              Once set, it cannot be removed entirely, though its contents may be changed.
+                            properties:
+                              clusterDNS:
+                                description: |-
+                                  ClusterDNS represents which in-cluster DNS provider should be used.
+                                  If not specified, defaults to the GKE default DNS provider (kube-dns).
+                                enum:
+                                - platform
+                                - cloud-dns
+                                - kube-dns
+                                type: string
+                              clusterDNSDomain:
+                                description: ClusterDNSDomain is the suffix used for
+                                  all GKE cluster service records.
+                                type: string
+                              clusterDNSScope:
+                                description: |-
+                                  ClusterDNSScope represents the scope of access to the GKE cluster DNS records.
+                                  If not specified, defaults to cluster scope.
+                                enum:
+                                - cluster
+                                - vpc
+                                type: string
+                            type: object
                           gatewayAPIChannel:
                             description: |-
                               GatewayAPIChannel controls whether the GKE-managed Gateway API controller
