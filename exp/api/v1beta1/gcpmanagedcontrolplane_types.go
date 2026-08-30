@@ -100,11 +100,76 @@ type ClusterNetwork struct {
 	// is enabled on the cluster, and which release channel it runs on.
 	// +optional
 	GatewayAPIChannel *GatewayAPIChannel `json:"gatewayAPIChannel,omitempty"`
+
+	// DatapathProvider represents the desired datapath provider for the GKE cluster.
+	// If unspecified, GKE uses the default IPTables-based kube-proxy implementation.
+	// This field is immutable once the cluster has been created, and is always
+	// "advanced" (Dataplane V2) for Autopilot clusters.
+	// +optional
+	DatapathProvider *DatapathProvider `json:"datapathProvider,omitempty"`
+
+	// DNSConfig represents the cluster DNS configuration for the GKE cluster.
+	// Once set, it cannot be removed entirely, though its contents may be changed.
+	// +optional
+	DNSConfig *DNSConfig `json:"dnsConfig,omitempty"`
 }
 
 // GatewayAPIChannel is the release channel of the GKE Gateway API controller.
 // +kubebuilder:validation:Enum=disabled;standard
 type GatewayAPIChannel string
+
+// DatapathProvider represents the desired datapath provider for the GKE cluster. The provider
+// selects the implementation of the Kubernetes networking model for service resolution and
+// network policy enforcement.
+// +kubebuilder:validation:Enum=legacy;advanced
+type DatapathProvider string
+
+const (
+	// LegacyDatapath uses the IPTables-based implementation based on kube-proxy.
+	LegacyDatapath DatapathProvider = "legacy"
+	// AdvancedDatapath uses the eBPF-based GKE Dataplane V2. See the [GKE Dataplane V2
+	// documentation](https://cloud.google.com/kubernetes-engine/docs/how-to/dataplane-v2) for more.
+	AdvancedDatapath DatapathProvider = "advanced"
+)
+
+// DNSConfig represents the cluster DNS configuration for the GKE cluster.
+type DNSConfig struct {
+	// ClusterDNS represents which in-cluster DNS provider should be used.
+	// If not specified, defaults to the GKE default DNS provider (kube-dns).
+	// +optional
+	ClusterDNS *ClusterDNS `json:"clusterDNS,omitempty"`
+	// ClusterDNSScope represents the scope of access to the GKE cluster DNS records.
+	// If not specified, defaults to cluster scope.
+	// +optional
+	ClusterDNSScope *ClusterDNSScope `json:"clusterDNSScope,omitempty"`
+	// ClusterDNSDomain is the suffix used for all GKE cluster service records.
+	// +optional
+	ClusterDNSDomain *string `json:"clusterDNSDomain,omitempty"`
+}
+
+// ClusterDNS represents the in-cluster DNS provider.
+// +kubebuilder:validation:Enum=platform;cloud-dns;kube-dns
+type ClusterDNS string
+
+const (
+	// PlatformDefault uses the GKE default DNS provider for DNS resolution.
+	PlatformDefault ClusterDNS = "platform"
+	// CloudDNS uses Cloud DNS for DNS resolution.
+	CloudDNS ClusterDNS = "cloud-dns"
+	// KubeDNS uses kube-dns for DNS resolution.
+	KubeDNS ClusterDNS = "kube-dns"
+)
+
+// ClusterDNSScope represents the scope of access to GKE cluster DNS records.
+// +kubebuilder:validation:Enum=cluster;vpc
+type ClusterDNSScope string
+
+const (
+	// ClusterScope scopes DNS records to be accessible from within the cluster.
+	ClusterScope ClusterDNSScope = "cluster"
+	// VPCScope scopes DNS records to be accessible from within the VPC.
+	VPCScope ClusterDNSScope = "vpc"
+)
 
 const (
 	// GatewayAPIChannelDisabled disables the GKE-managed Gateway API controller.
