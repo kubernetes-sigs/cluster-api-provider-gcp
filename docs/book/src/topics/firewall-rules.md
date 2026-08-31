@@ -4,7 +4,7 @@ Cluster API Provider GCP (CAPG) allows you to configure GCP VPC firewall rules f
 
 ## Overview
 
-Firewall rules are configured through the `network.firewall` field in the `GCPCluster` or `GCPManagedCluster` spec. Both resource types share the same network specification, so firewall configuration works identically for self-managed and GKE clusters. The firewall configuration supports:
+Firewall rules are configured through the `network.firewall` field in the `GCPCluster` or `GCPManagedCluster` spec. The firewall configuration supports:
 
 - **Default rule management**: Control whether the provider creates default firewall rules
 - **Custom firewall rules**: Define additional firewall rules to meet your specific security requirements
@@ -53,6 +53,7 @@ spec:
 
 **Important Notes:**
 - CAPG allows switching from `Managed` to `Unmanaged` and vice versa. However, changing from `Managed` to `Unmanaged` after rules are created will not delete existing rules. Switching from `Unmanaged` to `Managed` will cause CAPG to create the default rules if they don't already exist
+- **GCPManagedCluster (GKE):** The `defaultRulesManagement` field is ignored. CAPG does not create default firewall rules for GKE clusters because the default rules target CAPI-specific instance tags (e.g. `<cluster>-control-plane`, `<cluster>-node`) that do not exist on GKE nodes. Only custom firewall rules defined in `firewallRules` are reconciled
 - When using a shared VPC (`HostProject`), CAPG will not create, modify, or delete any firewall rules (default or custom)
 
 ## Custom Firewall Rules
@@ -253,6 +254,8 @@ spec:
 
 ### Example 6: GKE Managed Cluster with Firewall Rules
 
+> **Note:** `defaultRulesManagement` is ignored for `GCPManagedCluster`. Only custom firewall rules in `firewallRules` are reconciled.
+
 ```yaml
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPManagedCluster
@@ -264,7 +267,6 @@ spec:
   network:
     name: gke-network
     firewall:
-      defaultRulesManagement: "Managed"
       firewallRules:
         - name: "allow-nodeport-range"
           description: "Allow NodePort traffic to GKE nodes"

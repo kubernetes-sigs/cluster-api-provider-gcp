@@ -28,6 +28,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/firewalls"
@@ -206,6 +207,13 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 		}
 	}
 	clusterScope.SetFailureDomains(failureDomains)
+
+	// The default firewall rules target CAPI-specific instance tags that do not exist on GKE
+	// nodes, so they are never created here. Surface that in the logs for anyone wondering why
+	// the default rules are missing.
+	if clusterScope.GCPManagedCluster.Spec.Network.Firewall.DefaultRulesManagement != infrav1.RulesManagementUnmanaged {
+		log.Info("Default firewall rules are not created for GCPManagedCluster: defaultRulesManagement is ignored because the default rules target CAPI instance tags that GKE nodes do not have, only custom firewallRules are reconciled")
+	}
 
 	for _, r := range clusterReconcilers(clusterScope) {
 		log.V(4).Info("Calling reconciler", "reconciler", r.Name)
