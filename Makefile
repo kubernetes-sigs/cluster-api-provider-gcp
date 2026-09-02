@@ -179,7 +179,7 @@ test: $(SETUP_ENVTEST) ## Run unit and integration tests
 	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" go test ./... $(TEST_ARGS)
 
 # Allow overriding the e2e configurations
-GINKGO_FOCUS ?= Workload cluster creation|GKE workload cluster
+GINKGO_FOCUS ?= Workload cluster creation|Autoscaling from zero|GKE workload cluster
 GINKGO_SKIP ?=
 GINKGO_NOCOLOR ?= false
 GINKGO_ARGS ?=

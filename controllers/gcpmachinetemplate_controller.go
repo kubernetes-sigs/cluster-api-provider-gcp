@@ -82,6 +82,10 @@ func (r *GCPMachineTemplateReconciler) SetupWithManager(ctx context.Context, mgr
 			&clusterv1.MachineSet{},
 			handler.EnqueueRequestsFromMapFunc(machineSetToGCPMachineTemplate),
 		).
+		Watches(
+			&clusterv1.Cluster{},
+			handler.EnqueueRequestsFromMapFunc(r.clusterToGCPMachineTemplates(ctx)),
+		).
 		Complete(r)
 }
 
@@ -99,6 +103,36 @@ func machineSetToGCPMachineTemplate(_ context.Context, object client.Object) []c
 		return nil
 	}
 	return []ctrl.Request{{NamespacedName: types.NamespacedName{Namespace: ms.Namespace, Name: ms.Spec.Template.Spec.InfrastructureRef.Name}}}
+}
+
+// clusterToGCPMachineTemplates returns a mapper function that enqueues reconcile requests
+// for all GCPMachineTemplates owned by a Cluster when its infrastructureRef changes.
+func (r *GCPMachineTemplateReconciler) clusterToGCPMachineTemplates(_ context.Context) handler.MapFunc {
+	clusterGK := clusterv1.GroupVersion.WithKind("Cluster").GroupKind()
+	return func(mapCtx context.Context, object client.Object) []ctrl.Request {
+		cluster, ok := object.(*clusterv1.Cluster)
+		if !ok {
+			return nil
+		}
+
+		templates := &infrav1.GCPMachineTemplateList{}
+		if err := r.List(mapCtx, templates, client.InNamespace(cluster.Namespace)); err != nil {
+			return nil
+		}
+
+		var requests []ctrl.Request
+		for _, template := range templates.Items {
+			if util.IsOwnedByObject(&template, cluster, clusterGK) {
+				requests = append(requests, ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: template.Namespace,
+						Name:      template.Name,
+					},
+				})
+			}
+		}
+		return requests
+	}
 }
 
 // Reconcile populates capacity information for GCPMachineTemplate.
@@ -197,11 +231,8 @@ func (r *GCPMachineTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	nodeInfo, err := machineTypeNodeInfo(ctx, clusterScope.Compute, clusterScope.Project(), machineType, template)
 	if err != nil {
-		logger.Info("Failed to determine nodeInfo from image, using defaults", "error", err)
-		// Use defaults: set only architecture from machine type, omit OS
-		nodeInfo = &infrav1.NodeInfo{
-			Architecture: getArchitectureFromMachineType(machineType),
-		}
+		logger.Info("Failed to determine nodeInfo from image, will retry", "error", err)
+		return ctrl.Result{RequeueAfter: machineTemplateCapacityRequeueAfter}, nil
 	}
 
 	original := template.DeepCopy()
