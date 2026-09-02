@@ -57,10 +57,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPManagedMachinePool
 metadata:
   name: ${CLUSTER_NAME}-mp-0
-spec:
-  scaling:
-    minCount: ${GKE_MACHINE_POOL_MIN}
-    maxCount: ${GKE_MACHINE_POOL_MAX}
+spec: {}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachinePool
@@ -84,9 +81,6 @@ kind: GCPManagedMachinePool
 metadata:
   name: ${CLUSTER_NAME}-critical-addons-only
 spec:
-  scaling:
-    minCount: ${GKE_MACHINE_POOL_MIN_CRITICAL_ADDONS_ONLY}
-    maxCount: ${GKE_MACHINE_POOL_MAX_CRITICAL_ADDONS_ONLY}
   kubernetesTaints:
     - effect: NoSchedule
       key: CriticalAddonsOnly

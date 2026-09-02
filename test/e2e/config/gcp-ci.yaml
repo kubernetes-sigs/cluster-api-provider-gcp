@@ -64,7 +64,6 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-prow-ci-version.yaml"
         targetName: "cluster-template-conformance-ci-artifacts.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-upgrades.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-md-remediation.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-kcp-remediation.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-topology.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-topology.yaml"
@@ -76,11 +75,17 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-external-and-internal-lb.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-gke-autopilot-cc.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-autopilot-topology.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
 
 variables:
   KUBERNETES_VERSION: "v1.35.5"
+  # GKE clusters resolve their own supported versions per release channel, so
+  # this is deliberately independent of KUBERNETES_VERSION above. clusterctl
+  # requires a real semantic version (rejects "latest"), so pin to the
+  # current default patch for GKE's "regular" channel; bump as GKE moves on.
+  KUBERNETES_VERSION_GKE: "${KUBERNETES_VERSION_GKE:-v1.35.7}"
   CCM_VERSION: "v35.1.3" # major version must match KUBERNETES_VERSION minor; tag must exist at https://github.com/kubernetes/cloud-provider-gcp/tags
   KUBERNETES_VERSION_MANAGEMENT: "v1.35.1" # latest patch of target k8s minor that is available as a kindest/node image: https://hub.docker.com/r/kindest/node/tags
   ETCD_VERSION_UPGRADE_TO: "3.6.6-0"
@@ -109,22 +114,25 @@ variables:
   IP_FAMILY: "IPv4"
   EXP_CAPG_GKE: "true"
   EXP_MACHINE_POOL: "true"
-  GKE_MACHINE_POOL_MIN: "1"
-  GKE_MACHINE_POOL_MAX: "2"
-  GKE_MACHINE_POOL_MIN_CRITICAL_ADDONS_ONLY: "0"
-  GKE_MACHINE_POOL_MAX_CRITICAL_ADDONS_ONLY: "1"
   CAPG_LOGLEVEL: "4"
   GCP_SSH_KEY: "${GCP_SSH_KEY:-}"
 
 intervals:
   default/wait-controllers: ["5m", "10s"]
-  default/wait-cluster: ["20m", "10s"]
+  # Neither 20m nor 25m was enough for GKE Autopilot's slower provisioning -
+  # it was still legitimately in progress (GKEControlPlaneCreating: True),
+  # not stuck, both times. Matching the other GKE-related intervals below
+  # (wait-private-cluster, wait-control-plane, wait-gpu-nodes) that already
+  # use 30m. All GKE creation specs share this key (same specName), so
+  # bumping it doesn't slow down the faster (non-autopilot) ones - Eventually
+  # returns as soon as it succeeds either way.
+  default/wait-cluster: ["30m", "10s"]
   default/wait-private-cluster: ["30m", "10s"]
   default/wait-control-plane: ["30m", "10s"]
   default/wait-control-plane-ha: ["30m", "10s"]
   default/wait-worker-nodes: ["25m", "10s"]
   default/wait-gpu-nodes: ["30m", "10s"]
-  default/wait-delete-cluster: ["30m", "10s"]
+  default/wait-delete-cluster: ["15m", "10s"]
   default/wait-control-plane-upgrade: ["15m", "10s"]
   default/wait-machine-deployment-upgrade: ["10m", "10s"]
   default/wait-machine-upgrade: ["60m", "10s"]
