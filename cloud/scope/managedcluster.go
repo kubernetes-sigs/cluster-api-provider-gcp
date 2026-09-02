@@ -120,7 +120,7 @@ func (s *ManagedClusterScope) Namespace() string {
 
 // NetworkName returns the cluster network unique identifier.
 func (s *ManagedClusterScope) NetworkName() string {
-	return ptr.Deref(s.GCPManagedCluster.Spec.Network.Name, "default")
+	return ptr.Deref(s.GCPManagedCluster.Spec.Network.Name, defaultNetworkName)
 }
 
 // NetworkProject returns the project name where network resources should exist.

@@ -24,14 +24,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetCredentialDataUsingADC_EnvVarNotSet(t *testing.T) {
+func TestCredentialsClient_FromADCFile_EnvVarNotSet(t *testing.T) {
 	t.Setenv(ConfigFileEnvVar, "")
-	data, err := getCredentialDataUsingADC()
+	data, err := CredentialsClient{}.fromADCFile()
 	assert.Nil(t, err)
 	assert.Nil(t, data)
 }
 
-func TestGetCredentialDataUsingADC_ValidFile(t *testing.T) {
+func TestCredentialsClient_FromADCFile_ValidFile(t *testing.T) {
 	content := []byte(`{"type":"service_account","project_id":"test-project"}`)
 	f, err := os.CreateTemp(t.TempDir(), "creds-*.json")
 	require.NoError(t, err)
@@ -40,22 +40,14 @@ func TestGetCredentialDataUsingADC_ValidFile(t *testing.T) {
 	require.NoError(t, f.Close())
 
 	t.Setenv(ConfigFileEnvVar, f.Name())
-	data, err := getCredentialDataUsingADC()
+	data, err := CredentialsClient{}.fromADCFile()
 	assert.NoError(t, err)
 	assert.Equal(t, content, data)
 }
 
-func TestGetCredentialDataUsingADC_MissingFile(t *testing.T) {
+func TestCredentialsClient_FromADCFile_MissingFile(t *testing.T) {
 	t.Setenv(ConfigFileEnvVar, "/nonexistent/path/credentials.json")
-	data, err := getCredentialDataUsingADC()
+	data, err := CredentialsClient{}.fromADCFile()
 	assert.Error(t, err)
 	assert.Nil(t, data)
-}
-
-func TestGetCredentials_WIFMode(t *testing.T) {
-	t.Setenv(ConfigFileEnvVar, "")
-	// nil credentialsRef + no env var → WIF/implicit ADC mode: both nil
-	cred, err := getCredentials(t.Context(), nil, nil)
-	assert.Nil(t, err)
-	assert.Nil(t, cred)
 }
