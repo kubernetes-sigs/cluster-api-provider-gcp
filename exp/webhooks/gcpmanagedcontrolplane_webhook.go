@@ -107,6 +107,13 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.G
 			r.Spec.ClusterNetwork.GatewayAPIChannel, "can't be set when autopilot is enabled"))
 	}
 
+	if r.Spec.EnableAutopilot && len(r.Spec.AddonsConfig) > 0 {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "AddonsConfig"),
+			r.Spec.AddonsConfig, "can't be set when autopilot is enabled"))
+	}
+
+	allErrs = append(allErrs, validateAddonsConfigKeys(r.Spec.AddonsConfig)...)
+
 	if r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck
 		if r.Spec.Version != nil {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
@@ -170,6 +177,13 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 			r.Spec.ClusterNetwork.GatewayAPIChannel, "can't be set when autopilot is enabled"))
 	}
 
+	if old.Spec.EnableAutopilot && len(r.Spec.AddonsConfig) > 0 {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "AddonsConfig"),
+			r.Spec.AddonsConfig, "can't be set when autopilot is enabled"))
+	}
+
+	allErrs = append(allErrs, validateAddonsConfigKeys(r.Spec.AddonsConfig)...)
+
 	if old.Spec.Version != nil && r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
 			r.Spec.LoggingService, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version"))
@@ -200,6 +214,38 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 
 func (*GCPManagedControlPlane) ValidateDelete(_ context.Context, _ *expinfrav1.GCPManagedControlPlane) (admission.Warnings, error) {
 	return nil, nil
+}
+
+// validateAddonsConfigKeys rejects any AddonsConfig key that isn't in expinfrav1.SupportedAddonsConfig,
+// so a typo (e.g. "dnsCacheConfg") fails fast with a clear error instead of silently being ignored by the
+// reconciler.
+func validateAddonsConfigKeys(config expinfrav1.AddonsConfig) field.ErrorList {
+	var allErrs field.ErrorList
+	if len(config) == 0 {
+		return allErrs
+	}
+
+	supported := make(map[string]struct{}, len(expinfrav1.SupportedAddonsConfig))
+	for _, d := range expinfrav1.SupportedAddonsConfig {
+		supported[d.Key] = struct{}{}
+	}
+
+	for key := range config {
+		if _, ok := supported[key]; !ok {
+			allErrs = append(allErrs, field.NotSupported(field.NewPath("spec", "AddonsConfig").Key(key), key, addonsConfigKeyNames()))
+		}
+	}
+	return allErrs
+}
+
+// addonsConfigKeyNames returns expinfrav1.SupportedAddonsConfig's keys, for use in a NotSupported error's
+// list of valid values.
+func addonsConfigKeyNames() []string {
+	names := make([]string, len(expinfrav1.SupportedAddonsConfig))
+	for i, d := range expinfrav1.SupportedAddonsConfig {
+		names[i] = d.Key
+	}
+	return names
 }
 
 func generateGKEName(resourceName, namespace string, maxLength int) (string, error) {

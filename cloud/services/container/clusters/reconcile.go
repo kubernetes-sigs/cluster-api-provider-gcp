@@ -355,6 +355,10 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		}
 	}
 
+	if len(s.scope.GCPManagedControlPlane.Spec.AddonsConfig) > 0 {
+		cluster.AddonsConfig = convertToSdkAddonsConfig(s.scope.GCPManagedControlPlane.Spec.AddonsConfig)
+	}
+
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
 		Parent:  s.scope.ClusterLocation(),
@@ -501,6 +505,152 @@ func convertToSdkBinaryAuthorizationEvaluationMode(mode *infrav1exp.BinaryAuthor
 	}
 }
 
+// addonDescriptor pairs a get/set function for one AddonsConfig add-on, keyed by the same string used in
+// infrav1exp.SupportedAddonsConfig. This hand-written map and that list are two separate sources of truth
+// by necessity — this package depends on containerpb (the GCP SDK), which the API package deliberately
+// does not — so TestAddonDescriptorsMatchSupportedAddonsConfig in reconcile_test.go cross-checks that their
+// key sets are identical. That test is what actually prevents drift: keeping this a plain hand-written map
+// (rather than deriving it via reflection from the API package's key list) trades a small amount of
+// duplication for avoiding reflection in a path that runs on every reconcile.
+type addonDescriptor struct {
+	get func(*containerpb.AddonsConfig) bool
+	set func(*containerpb.AddonsConfig, bool)
+}
+
+var addonDescriptors = map[string]addonDescriptor{
+	"dnsCacheConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetDnsCacheConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) { a.DnsCacheConfig = &containerpb.DnsCacheConfig{Enabled: v} },
+	},
+	"gcePersistentDiskCsiDriverConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetGcePersistentDiskCsiDriverConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.GcePersistentDiskCsiDriverConfig = &containerpb.GcePersistentDiskCsiDriverConfig{Enabled: v}
+		},
+	},
+	"gcpFilestoreCsiDriverConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetGcpFilestoreCsiDriverConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.GcpFilestoreCsiDriverConfig = &containerpb.GcpFilestoreCsiDriverConfig{Enabled: v}
+		},
+	},
+	"gkeBackupAgentConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetGkeBackupAgentConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.GkeBackupAgentConfig = &containerpb.GkeBackupAgentConfig{Enabled: v}
+		},
+	},
+	"configConnectorConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetConfigConnectorConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.ConfigConnectorConfig = &containerpb.ConfigConnectorConfig{Enabled: v}
+		},
+	},
+	"statefulHAConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetStatefulHaConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.StatefulHaConfig = &containerpb.StatefulHAConfig{Enabled: v}
+		},
+	},
+	"gcsFuseCsiDriverConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetGcsFuseCsiDriverConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.GcsFuseCsiDriverConfig = &containerpb.GcsFuseCsiDriverConfig{Enabled: v}
+		},
+	},
+	"parallelstoreCsiDriverConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetParallelstoreCsiDriverConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.ParallelstoreCsiDriverConfig = &containerpb.ParallelstoreCsiDriverConfig{Enabled: v}
+		},
+	},
+	"highScaleCheckpointingConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetHighScaleCheckpointingConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.HighScaleCheckpointingConfig = &containerpb.HighScaleCheckpointingConfig{Enabled: v}
+		},
+	},
+	"sliceControllerConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetSliceControllerConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.SliceControllerConfig = &containerpb.SliceControllerConfig{Enabled: v}
+		},
+	},
+	"agentSandboxConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetAgentSandboxConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.AgentSandboxConfig = &containerpb.AgentSandboxConfig{Enabled: v}
+		},
+	},
+	"nodeReadinessConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetNodeReadinessConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.NodeReadinessConfig = &containerpb.NodeReadinessConfig{Enabled: v}
+		},
+	},
+	"podSnapshotConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetPodSnapshotConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.PodSnapshotConfig = &containerpb.PodSnapshotConfig{Enabled: v}
+		},
+	},
+	"slurmOperatorConfig": {
+		get: func(a *containerpb.AddonsConfig) bool { return a.GetSlurmOperatorConfig().GetEnabled() },
+		set: func(a *containerpb.AddonsConfig, v bool) {
+			a.SlurmOperatorConfig = &containerpb.SlurmOperatorConfig{Enabled: v}
+		},
+	},
+}
+
+// convertToSdkAddonsConfig converts the CAPG AddonsConfig map to a containerpb AddonsConfig. Only keys
+// present in the map are set on the result, so add-ons the user didn't mention are left for GKE to default.
+// Keys not found in addonDescriptors are silently ignored here — the validating webhook is the enforcement
+// point for rejecting unrecognized keys, not this conversion step.
+func convertToSdkAddonsConfig(config infrav1exp.AddonsConfig) *containerpb.AddonsConfig {
+	if len(config) == 0 {
+		return nil
+	}
+
+	result := &containerpb.AddonsConfig{}
+	for key, enabled := range config {
+		if d, ok := addonDescriptors[key]; ok {
+			d.set(result, enabled)
+		}
+	}
+	return result
+}
+
+// diffAddonsConfig checks each AddonsConfig key the user has configured against the existing cluster's
+// state, independently, and returns only the keys that actually changed. The existing cluster always
+// reports every add-on's real Enabled state, while desired only has the keys the user configured, so a
+// whole-struct comparison would spuriously flag every unconfigured add-on as needing an update. GKE's
+// addon-update API treats an update request as a per-field merge (the same semantics
+// `gcloud container clusters update --update-addons` relies on), so omitting an add-on from the result
+// leaves it untouched rather than disabling it.
+func diffAddonsConfig(desired infrav1exp.AddonsConfig, existing *containerpb.AddonsConfig) (bool, *containerpb.AddonsConfig) {
+	if len(desired) == 0 {
+		return false, nil
+	}
+
+	needUpdate := false
+	result := &containerpb.AddonsConfig{}
+	for key, enabled := range desired {
+		d, ok := addonDescriptors[key]
+		if !ok {
+			continue
+		}
+		if enabled != d.get(existing) {
+			needUpdate = true
+			d.set(result, enabled)
+		}
+	}
+
+	if !needUpdate {
+		return false, nil
+	}
+	return true, result
+}
+
 func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
 	log.V(4).Info("Checking diff and preparing update.")
 
@@ -583,6 +733,13 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		log.V(2).Info("Gateway API channel update required",
 			"current", existingCluster.GetNetworkConfig().GetGatewayApiConfig().GetChannel(),
 			"desired", desiredGatewayChannel)
+	}
+
+	// AddonsConfig
+	if addonsNeedUpdate, desiredAddonsConfig := diffAddonsConfig(s.scope.GCPManagedControlPlane.Spec.AddonsConfig, existingCluster.GetAddonsConfig()); addonsNeedUpdate {
+		needUpdate = true
+		clusterUpdate.DesiredAddonsConfig = desiredAddonsConfig
+		log.V(2).Info("AddonsConfig update required", "current", existingCluster.GetAddonsConfig(), "desired", desiredAddonsConfig)
 	}
 
 	updateClusterRequest := containerpb.UpdateClusterRequest{

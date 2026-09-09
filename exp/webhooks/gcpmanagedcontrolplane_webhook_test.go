@@ -222,6 +222,41 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			},
 		},
 		{
+			name:        "autopilot enabled with AddonsConfig should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "",
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					AddonsConfig:    expinfrav1.AddonsConfig{"gcsFuseCsiDriverConfig": true},
+				},
+			},
+		},
+		{
+			name:        "AddonsConfig set without autopilot",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:  "",
+					AddonsConfig: expinfrav1.AddonsConfig{"gcsFuseCsiDriverConfig": true},
+				},
+			},
+		},
+		{
+			name:        "unrecognized AddonsConfig key should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:  "",
+					AddonsConfig: expinfrav1.AddonsConfig{"notARealAddon": true},
+				},
+			},
+		},
+		{
 			name:        "using deprecated ControlPlaneVersion should cause a warning",
 			expectError: false,
 			expectWarn:  true,
@@ -360,6 +395,49 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					ClusterName:     "default_cluster1",
 					EnableAutopilot: true,
+				},
+			},
+		},
+		{
+			name:        "request to set AddonsConfig on an autopilot cluster should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+					AddonsConfig:    expinfrav1.AddonsConfig{"gcsFuseCsiDriverConfig": true},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+				},
+			},
+		},
+		{
+			name:        "request to change AddonsConfig should not cause an error",
+			expectError: false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:  "default_cluster1",
+					AddonsConfig: expinfrav1.AddonsConfig{"gcsFuseCsiDriverConfig": false},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:  "default_cluster1",
+					AddonsConfig: expinfrav1.AddonsConfig{"gcsFuseCsiDriverConfig": true},
+				},
+			},
+		},
+		{
+			name:        "request to add an unrecognized AddonsConfig key should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:  "default_cluster1",
+					AddonsConfig: expinfrav1.AddonsConfig{"notARealAddon": true},
 				},
 			},
 		},

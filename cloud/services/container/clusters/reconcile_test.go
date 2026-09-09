@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -683,6 +684,170 @@ func TestConvertToSdkBinaryAuthorizationEvaluationMode(t *testing.T) {
 			got := convertToSdkBinaryAuthorizationEvaluationMode(tt.mode)
 			if got != tt.want {
 				t.Errorf("convertToSdkBinaryAuthorizationEvaluationMode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestAddonDescriptorsMatchSupportedAddonsConfig guards against exactly the drift risk the hand-written
+// addonDescriptors map and infrav1exp.SupportedAddonsConfig list are both vulnerable to: someone adding or
+// renaming a key in one without updating the other. This is the only thing keeping the two in sync, since
+// the correspondence isn't enforced by the type system (see the comment on addonDescriptors for why).
+func TestAddonDescriptorsMatchSupportedAddonsConfig(t *testing.T) {
+	apiKeys := make(map[string]bool, len(infrav1exp.SupportedAddonsConfig))
+	for _, d := range infrav1exp.SupportedAddonsConfig {
+		apiKeys[d.Key] = true
+	}
+
+	for key := range addonDescriptors {
+		if !apiKeys[key] {
+			t.Errorf("addonDescriptors has key %q not present in infrav1exp.SupportedAddonsConfig", key)
+		}
+	}
+	for key := range apiKeys {
+		if _, ok := addonDescriptors[key]; !ok {
+			t.Errorf("infrav1exp.SupportedAddonsConfig has key %q not present in addonDescriptors", key)
+		}
+	}
+}
+
+func TestConvertToSdkAddonsConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config infrav1exp.AddonsConfig
+		want   *containerpb.AddonsConfig
+	}{
+		{
+			name:   "nil config",
+			config: nil,
+			want:   nil,
+		},
+		{
+			name:   "empty config",
+			config: infrav1exp.AddonsConfig{},
+			want:   nil,
+		},
+		{
+			name:   "single key enabled",
+			config: infrav1exp.AddonsConfig{"gcsFuseCsiDriverConfig": true},
+			want: &containerpb.AddonsConfig{
+				GcsFuseCsiDriverConfig: &containerpb.GcsFuseCsiDriverConfig{Enabled: true},
+			},
+		},
+		{
+			name:   "single key disabled",
+			config: infrav1exp.AddonsConfig{"dnsCacheConfig": false},
+			want: &containerpb.AddonsConfig{
+				DnsCacheConfig: &containerpb.DnsCacheConfig{Enabled: false},
+			},
+		},
+		{
+			name: "multiple keys, unmentioned add-ons left nil",
+			config: infrav1exp.AddonsConfig{
+				"dnsCacheConfig":        true,
+				"statefulHAConfig":      true,
+				"configConnectorConfig": false,
+			},
+			want: &containerpb.AddonsConfig{
+				DnsCacheConfig:        &containerpb.DnsCacheConfig{Enabled: true},
+				StatefulHaConfig:      &containerpb.StatefulHAConfig{Enabled: true},
+				ConfigConnectorConfig: &containerpb.ConfigConnectorConfig{Enabled: false},
+			},
+		},
+		{
+			name:   "unrecognized key is ignored (webhook is the real enforcement point)",
+			config: infrav1exp.AddonsConfig{"notARealAddon": true},
+			want:   &containerpb.AddonsConfig{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertToSdkAddonsConfig(tt.config)
+			if !proto.Equal(got, tt.want) {
+				t.Errorf("convertToSdkAddonsConfig() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDiffAddonsConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		desired        infrav1exp.AddonsConfig
+		existing       *containerpb.AddonsConfig
+		wantNeedUpdate bool
+		wantResult     *containerpb.AddonsConfig
+	}{
+		{
+			name:           "nothing configured, nothing existing",
+			desired:        nil,
+			existing:       &containerpb.AddonsConfig{},
+			wantNeedUpdate: false,
+		},
+		{
+			name:    "no diff when configured value matches existing",
+			desired: infrav1exp.AddonsConfig{"gcsFuseCsiDriverConfig": true},
+			existing: &containerpb.AddonsConfig{
+				GcsFuseCsiDriverConfig: &containerpb.GcsFuseCsiDriverConfig{Enabled: true},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name:    "update needed for the one configured key that differs",
+			desired: infrav1exp.AddonsConfig{"gcsFuseCsiDriverConfig": true},
+			existing: &containerpb.AddonsConfig{
+				GcsFuseCsiDriverConfig: &containerpb.GcsFuseCsiDriverConfig{Enabled: false},
+			},
+			wantNeedUpdate: true,
+			wantResult: &containerpb.AddonsConfig{
+				GcsFuseCsiDriverConfig: &containerpb.GcsFuseCsiDriverConfig{Enabled: true},
+			},
+		},
+		{
+			// This is the behavior that matters most: an addon the user never mentioned, even though it
+			// differs from CAPG's (nonexistent) opinion of what it should be, must never show up in the
+			// result — only configured-and-changed keys should.
+			name: "unconfigured add-ons that differ from a hypothetical default are never included",
+			desired: infrav1exp.AddonsConfig{
+				"gcsFuseCsiDriverConfig": true,
+			},
+			existing: &containerpb.AddonsConfig{
+				GcsFuseCsiDriverConfig: &containerpb.GcsFuseCsiDriverConfig{Enabled: false},
+				DnsCacheConfig:         &containerpb.DnsCacheConfig{Enabled: true},
+				StatefulHaConfig:       &containerpb.StatefulHAConfig{Enabled: true},
+			},
+			wantNeedUpdate: true,
+			wantResult: &containerpb.AddonsConfig{
+				GcsFuseCsiDriverConfig: &containerpb.GcsFuseCsiDriverConfig{Enabled: true},
+			},
+		},
+		{
+			name: "multiple configured keys differ",
+			desired: infrav1exp.AddonsConfig{
+				"gcsFuseCsiDriverConfig": true,
+				"dnsCacheConfig":         false,
+			},
+			existing: &containerpb.AddonsConfig{
+				GcsFuseCsiDriverConfig: &containerpb.GcsFuseCsiDriverConfig{Enabled: false},
+				DnsCacheConfig:         &containerpb.DnsCacheConfig{Enabled: true},
+			},
+			wantNeedUpdate: true,
+			wantResult: &containerpb.AddonsConfig{
+				GcsFuseCsiDriverConfig: &containerpb.GcsFuseCsiDriverConfig{Enabled: true},
+				DnsCacheConfig:         &containerpb.DnsCacheConfig{Enabled: false},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotNeedUpdate, gotResult := diffAddonsConfig(tt.desired, tt.existing)
+			if gotNeedUpdate != tt.wantNeedUpdate {
+				t.Errorf("diffAddonsConfig() needUpdate = %v, want %v", gotNeedUpdate, tt.wantNeedUpdate)
+			}
+			if !proto.Equal(gotResult, tt.wantResult) {
+				t.Errorf("diffAddonsConfig() result = %v, want %v", gotResult, tt.wantResult)
 			}
 		})
 	}

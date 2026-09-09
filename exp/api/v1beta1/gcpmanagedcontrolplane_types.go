@@ -274,6 +274,46 @@ type MasterAuthorizedNetworksConfigCidrBlock struct {
 	CidrBlock string `json:"cidr_block,omitempty"`
 }
 
+// AddonsConfig maps GKE add-on names to whether they should be enabled. Leaving an add-on out of the map
+// leaves GKE's own default for it in place, rather than CAPG imposing its own default. See
+// SupportedAddonsConfig for the full list of recognized keys and what each one does; an unrecognized key
+// is rejected by the validating webhook.
+type AddonsConfig map[string]bool
+
+// AddonDescriptor documents one AddonsConfig key: the GKE add-on it controls and a short description.
+// Used both to validate user input and to generate documentation — a map's keys don't get individual
+// descriptions in the generated CRD schema the way named struct fields would, so this is where that
+// documentation lives instead.
+type AddonDescriptor struct {
+	Key         string
+	Description string
+}
+
+// SupportedAddonsConfig lists every AddonsConfig key CAPG understands. This is the single source of truth
+// for which add-ons are supported: the validating webhook rejects any other key, and
+// cloud/services/container/clusters/reconcile.go's addonDescriptors table is tested against this list so
+// the two can't silently drift apart. Every key here maps to a simple `{Enabled bool}` toggle in the GKE
+// API. Two GKE add-ons that would otherwise fit this list don't, because they carry extra configuration
+// beyond a plain Enabled flag — LustreCsiDriverConfig (a kernel-module-install option) and
+// RayOperatorConfig (logging/monitoring sub-configs) — and are deliberately left out; see the PR description
+// for a sketch of how they'd extend this model if ever needed.
+var SupportedAddonsConfig = []AddonDescriptor{
+	{Key: "dnsCacheConfig", Description: "NodeLocal DNSCache, a DNS cache running on cluster nodes."},
+	{Key: "gcePersistentDiskCsiDriverConfig", Description: "The Compute Engine persistent disk CSI driver."},
+	{Key: "gcpFilestoreCsiDriverConfig", Description: "The Filestore CSI driver."},
+	{Key: "gkeBackupAgentConfig", Description: "The Backup for GKE agent."},
+	{Key: "configConnectorConfig", Description: "Config Connector, a Kubernetes extension for managing hosted Google Cloud services through the Kubernetes API."},
+	{Key: "statefulHAConfig", Description: "The Stateful HA add-on."},
+	{Key: "gcsFuseCsiDriverConfig", Description: "The Cloud Storage FUSE CSI driver."},
+	{Key: "parallelstoreCsiDriverConfig", Description: "The Cloud Storage Parallelstore CSI driver."},
+	{Key: "highScaleCheckpointingConfig", Description: "The High Scale Checkpointing add-on."},
+	{Key: "sliceControllerConfig", Description: "The Slice Controller add-on."},
+	{Key: "agentSandboxConfig", Description: "The AgentSandbox add-on."},
+	{Key: "nodeReadinessConfig", Description: "The GKE Node Readiness Controller."},
+	{Key: "podSnapshotConfig", Description: "The Pod Snapshots feature."},
+	{Key: "slurmOperatorConfig", Description: "The Slurm Operator, which manages the compute pods for a Slurm cluster."},
+}
+
 // LoggingService is GKE logging service configuration.
 type LoggingService string
 

@@ -83,6 +83,13 @@ type GCPManagedControlPlaneClassSpec struct {
 	// Value is ignored when enableAutopilot = true.
 	// +optional
 	MonitoringService *MonitoringService `json:"monitoringService,omitempty"`
+
+	// AddonsConfig maps GKE add-on names to whether they should be enabled — see AddonsConfig's own
+	// doc for the full list of recognized keys. Any add-on left out of the map keeps GKE's own default
+	// in place. Cannot be set when enableAutopilot = true, since Autopilot clusters manage add-ons
+	// themselves.
+	// +optional
+	AddonsConfig AddonsConfig `json:"addonsConfig,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.
