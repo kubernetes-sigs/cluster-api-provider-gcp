@@ -23,6 +23,7 @@ import (
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
@@ -31,6 +32,43 @@ func newTestService(controlPlane *infrav1exp.GCPManagedControlPlane) *Service {
 	s := new(scope.ManagedControlPlaneScope)
 	s.GCPManagedControlPlane = controlPlane
 	return &Service{scope: s}
+}
+
+// TestNetworkName guards against a regression of
+// https://github.com/kubernetes-sigs/cluster-api-provider-gcp/issues/1187: createCluster used to
+// dereference Spec.Network.Name directly, which panicked whenever a GCPManagedCluster was created
+// without the network field set. Network is a non-pointer struct field, so omitting it from a
+// manifest leaves it as the zero-value NetworkSpec{} (Name == nil), which is what "network name
+// not set" below represents.
+func TestNetworkName(t *testing.T) {
+	tests := []struct {
+		name    string
+		network infrav1.NetworkSpec
+		want    string
+	}{
+		{
+			name:    "network name not set",
+			network: infrav1.NetworkSpec{},
+			want:    "",
+		},
+		{
+			name:    "network name set",
+			network: infrav1.NetworkSpec{Name: ptr.To("my-network")},
+			want:    "my-network",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := newTestService(&infrav1exp.GCPManagedControlPlane{})
+			svc.scope.GCPManagedCluster = &infrav1exp.GCPManagedCluster{
+				Spec: infrav1exp.GCPManagedClusterSpec{Network: tt.network},
+			}
+			if got := svc.networkName(); got != tt.want {
+				t.Errorf("networkName() = %q, want %q", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestCheckDiffAndPrepareUpdate(t *testing.T) {

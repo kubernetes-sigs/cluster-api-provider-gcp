@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
+	"k8s.io/utils/ptr"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
@@ -251,7 +252,7 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	cluster := &containerpb.Cluster{
 		Name:        s.scope.ClusterName(),
 		Description: s.scope.GCPManagedControlPlane.Spec.Description,
-		Network:     *s.scope.GCPManagedCluster.Spec.Network.Name,
+		Network:     s.networkName(),
 		Subnetwork:  s.getSubnetNameInClusterRegion(),
 		Autopilot: &containerpb.Autopilot{
 			Enabled: s.scope.GCPManagedControlPlane.Spec.EnableAutopilot,
@@ -378,6 +379,12 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	}
 
 	return nil
+}
+
+// networkName returns the configured network name. If unset, it returns an empty string,
+// leaving the GKE API to connect the cluster to the project's "default" network.
+func (s *Service) networkName() string {
+	return ptr.Deref(s.scope.GCPManagedCluster.Spec.Network.Name, "")
 }
 
 // getSubnetNameInClusterRegion returns the subnet which is in the same region as cluster. If not found it returns empty string.
