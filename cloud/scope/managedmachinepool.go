@@ -198,9 +198,6 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 	if nodePool.Spec.MachineType != nil {
 		sdkNodePool.Config.MachineType = *nodePool.Spec.MachineType
 	}
-	if nodePool.Spec.DiskSizeGb != nil {
-		sdkNodePool.Config.DiskSizeGb = *nodePool.Spec.DiskSizeGb
-	}
 	if nodePool.Spec.ImageType != nil {
 		sdkNodePool.Config.ImageType = *nodePool.Spec.ImageType
 	}
@@ -230,14 +227,13 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 	if nodePool.Spec.InstanceType != nil {
 		sdkNodePool.Config.MachineType = *nodePool.Spec.InstanceType
 	}
-	if nodePool.Spec.ImageType != nil {
-		sdkNodePool.Config.ImageType = *nodePool.Spec.ImageType
+	// DiskSizeGB is deprecated in favor of DiskSizeGb; apply it first so that
+	// DiskSizeGb - the canonical field - takes precedence when both are set.
+	if nodePool.Spec.DiskSizeGB != nil { //nolint:staticcheck // SA1019: deprecated field read intentionally for backward compatibility
+		sdkNodePool.Config.DiskSizeGb = int32(*nodePool.Spec.DiskSizeGB) //nolint:gosec,staticcheck // SA1019: deprecated field read intentionally for backward compatibility
 	}
-	if nodePool.Spec.DiskType != nil {
-		sdkNodePool.Config.DiskType = string(*nodePool.Spec.DiskType)
-	}
-	if nodePool.Spec.DiskSizeGB != nil {
-		sdkNodePool.Config.DiskSizeGb = int32(*nodePool.Spec.DiskSizeGB) //nolint:gosec
+	if nodePool.Spec.DiskSizeGb != nil {
+		sdkNodePool.Config.DiskSizeGb = *nodePool.Spec.DiskSizeGb
 	}
 	if len(nodePool.Spec.NodeNetwork.Tags) != 0 {
 		sdkNodePool.Config.Tags = nodePool.Spec.NodeNetwork.Tags

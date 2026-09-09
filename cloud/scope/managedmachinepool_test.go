@@ -164,5 +164,25 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 				},
 			}))
 		})
+
+		It("should let DiskSizeGb take precedence over DiskSizeGB when both are set", func() {
+			diskSizeGb := int32(64)
+			diskSizeGB := int64(128)
+			TestGCPMMP.Spec.DiskSizeGb = &diskSizeGb
+			TestGCPMMP.Spec.DiskSizeGB = &diskSizeGB //nolint:staticcheck // SA1019: exercising deprecated field for backward-compatibility test
+
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetConfig().GetDiskSizeGb()).To(Equal(diskSizeGb))
+		})
+
+		It("should fall back to DiskSizeGB when DiskSizeGb is unset", func() {
+			diskSizeGB := int64(128)
+			TestGCPMMP.Spec.DiskSizeGB = &diskSizeGB //nolint:staticcheck // SA1019: exercising deprecated field for backward-compatibility test
+
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetConfig().GetDiskSizeGb()).To(Equal(int32(diskSizeGB)))
+		})
 	})
 })
