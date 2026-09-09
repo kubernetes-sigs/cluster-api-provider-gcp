@@ -17,8 +17,10 @@ limitations under the License.
 package webhooks
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +31,23 @@ var (
 	vV1_32_5                  = "v1.32.5"
 	releaseChannel            = expinfrav1.Rapid
 	gatewayAPIChannelStandard = expinfrav1.GatewayAPIChannelStandard
+	noMinorUpgrades           = expinfrav1.NoMinorUpgrades
 )
+
+// maintenancePolicyWithExclusionOptions builds a MaintenancePolicy with one MaintenanceExclusions entry per
+// option given (a nil entry defaults to "no-upgrades"), each with a valid, distinct, end-after-start window.
+func maintenancePolicyWithExclusionOptions(options ...*expinfrav1.MaintenanceExclusionOption) *expinfrav1.MaintenancePolicy {
+	exclusions := map[string]*expinfrav1.TimeWindow{}
+	for i, option := range options {
+		start := time.Date(2024, 1, i+1, 0, 0, 0, 0, time.UTC)
+		exclusions[fmt.Sprintf("exclusion-%d", i)] = &expinfrav1.TimeWindow{
+			StartTime:                  metav1.NewTime(start),
+			EndTime:                    metav1.NewTime(start.Add(time.Hour)),
+			MaintenanceExclusionOption: option,
+		}
+	}
+	return &expinfrav1.MaintenancePolicy{MaintenanceExclusions: exclusions}
+}
 
 func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 	tests := []struct {
@@ -242,6 +260,77 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 				},
 				ControlPlaneVersion: &vV1_32_5,
 				Version:             &vV1_32_5,
+			},
+		},
+		{
+			name:        "3 no-upgrades maintenance exclusions is allowed",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:       "",
+					MaintenancePolicy: maintenancePolicyWithExclusionOptions(nil, nil, nil),
+				},
+			},
+		},
+		{
+			name:        "4 no-upgrades maintenance exclusions should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:       "",
+					MaintenancePolicy: maintenancePolicyWithExclusionOptions(nil, nil, nil, nil),
+				},
+			},
+		},
+		{
+			name:        "3 no-upgrades maintenance exclusions plus a non-no-upgrades exclusion is allowed",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:       "",
+					MaintenancePolicy: maintenancePolicyWithExclusionOptions(nil, nil, nil, &noMinorUpgrades),
+				},
+			},
+		},
+		{
+			name:        "valid recurrence rule",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "",
+					MaintenancePolicy: &expinfrav1.MaintenancePolicy{
+						RecurringMaintenanceWindow: &expinfrav1.RecurringMaintenanceWindow{
+							Window: &expinfrav1.TimeWindow{
+								StartTime: metav1.NewTime(time.Date(2024, 1, 6, 0, 0, 0, 0, time.UTC)),
+								EndTime:   metav1.NewTime(time.Date(2024, 1, 8, 0, 0, 0, 0, time.UTC)),
+							},
+							Recurrence: "FREQ=WEEKLY;BYDAY=SA,SU",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "malformed recurrence rule should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "",
+					MaintenancePolicy: &expinfrav1.MaintenancePolicy{
+						RecurringMaintenanceWindow: &expinfrav1.RecurringMaintenanceWindow{
+							Window: &expinfrav1.TimeWindow{
+								StartTime: metav1.NewTime(time.Date(2024, 1, 6, 0, 0, 0, 0, time.UTC)),
+								EndTime:   metav1.NewTime(time.Date(2024, 1, 8, 0, 0, 0, 0, time.UTC)),
+							},
+							Recurrence: "not a valid rrule",
+						},
+					},
+				},
 			},
 		},
 	}

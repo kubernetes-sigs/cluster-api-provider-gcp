@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	rrule "github.com/teambition/rrule-go"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -116,6 +117,8 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.G
 		}
 	}
 
+	allErrs = append(allErrs, validateMaintenancePolicy(r.Spec)...)
+
 	if len(allErrs) == 0 {
 		return allWarns, nil
 	}
@@ -191,6 +194,8 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 		}
 	}
 
+	allErrs = append(allErrs, validateMaintenancePolicy(r.Spec)...)
+
 	if len(allErrs) == 0 {
 		return nil, nil
 	}
@@ -200,6 +205,43 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 
 func (*GCPManagedControlPlane) ValidateDelete(_ context.Context, _ *expinfrav1.GCPManagedControlPlane) (admission.Warnings, error) {
 	return nil, nil
+}
+
+// validateMaintenancePolicy validates that GCPManagedControlPlaneSpec.MaintenancePolicy is correctly
+// configured. Mutual exclusivity of DailyMaintenanceWindow/RecurringMaintenanceWindow, and each TimeWindow's
+// end time being after its start time, are both enforced by CRD-level CEL rules (so an invalid object can't
+// be admitted in the first place) — this covers the checks CEL can't easily express: the RecurringMaintenanceWindow's
+// RRULE is well-formed, and at most 3 maintenance exclusions may use (or default to) "no-upgrades".
+func validateMaintenancePolicy(spec expinfrav1.GCPManagedControlPlaneSpec) field.ErrorList {
+	var allErrs field.ErrorList
+
+	mp := spec.MaintenancePolicy
+	if mp == nil {
+		return allErrs
+	}
+
+	if rmw := mp.RecurringMaintenanceWindow; rmw != nil {
+		if _, err := rrule.StrToROption(rmw.Recurrence); err != nil {
+			allErrs = append(allErrs,
+				field.Invalid(field.NewPath("spec", "MaintenancePolicy", "RecurringMaintenanceWindow", "Recurrence"), rmw.Recurrence,
+					fmt.Sprintf("invalid recurrence rule: %v", err)))
+		}
+	}
+
+	noUpgradesCount := 0
+	for _, window := range mp.MaintenanceExclusions {
+		// Nil values count as "no-upgrades" by default.
+		if window.MaintenanceExclusionOption == nil || *window.MaintenanceExclusionOption == expinfrav1.NoUpgrades {
+			noUpgradesCount++
+		}
+	}
+	if noUpgradesCount > 3 {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "MaintenancePolicy", "MaintenanceExclusions"), mp.MaintenanceExclusions,
+				"maximum of 3 `no-upgrades` maintenance exclusions allowed to be specified"))
+	}
+
+	return allErrs
 }
 
 func generateGKEName(resourceName, namespace string, maxLength int) (string, error) {

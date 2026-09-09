@@ -36,6 +36,10 @@ import (
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Reconcile reconcile GKE cluster.
@@ -148,6 +152,23 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 			return ctrl.Result{}, err
 		}
 		log.Info("Cluster updating in progress")
+		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition)
+		s.scope.GCPManagedControlPlane.Status.Initialized = true
+		s.scope.GCPManagedControlPlane.Status.Ready = true
+		return ctrl.Result{}, nil
+	}
+
+	// MaintenancePolicy updates go through their own SetMaintenancePolicy RPC rather than the batched
+	// UpdateCluster RPC above, so they're checked separately, and only once no batched update is pending
+	// (GKE only allows one mutating operation on a cluster at a time).
+	needMaintenancePolicyUpdate, updateMaintenancePolicyRequest := s.checkDiffAndPrepareUpdateMaintenancePolicy(cluster, &log)
+	if needMaintenancePolicyUpdate {
+		log.Info("MaintenancePolicy update required")
+		err = s.updateMaintenancePolicy(ctx, updateMaintenancePolicyRequest, &log)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		log.Info("Cluster MaintenancePolicy updating in progress")
 		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition)
 		s.scope.GCPManagedControlPlane.Status.Initialized = true
 		s.scope.GCPManagedControlPlane.Status.Ready = true
@@ -355,6 +376,10 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		}
 	}
 
+	if s.scope.GCPManagedControlPlane.Spec.MaintenancePolicy != nil {
+		cluster.MaintenancePolicy = convertToSdkMaintenancePolicy(s.scope.GCPManagedControlPlane.Spec.MaintenancePolicy)
+	}
+
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
 		Parent:  s.scope.ClusterLocation(),
@@ -483,6 +508,99 @@ func convertToSdkMasterAuthorizedNetworksConfig(config *infrav1exp.MasterAuthori
 		CidrBlocks:                  cidrBlocks,
 		GcpPublicCidrsAccessEnabled: config.GcpPublicCidrsAccessEnabled,
 	}
+}
+
+// convertToSdkMaintenancePolicy converts the MaintenancePolicy defined in CRs to the SDK version.
+func convertToSdkMaintenancePolicy(policy *infrav1exp.MaintenancePolicy) *containerpb.MaintenancePolicy {
+	if policy == nil {
+		return nil
+	}
+
+	maintenancePolicy := &containerpb.MaintenancePolicy{}
+
+	if policy.MaintenanceExclusions != nil {
+		exclusions := map[string]*containerpb.TimeWindow{}
+		for k, v := range policy.MaintenanceExclusions {
+			exclusions[k] = convertToSdkTimeWindow(v)
+		}
+		maintenancePolicy.Window = &containerpb.MaintenanceWindow{
+			MaintenanceExclusions: exclusions,
+		}
+	}
+
+	if policy.DailyMaintenanceWindow != nil {
+		dailyMaintenanceWindowPolicy := &containerpb.MaintenanceWindow_DailyMaintenanceWindow{
+			DailyMaintenanceWindow: &containerpb.DailyMaintenanceWindow{
+				StartTime: policy.DailyMaintenanceWindow.StartTime,
+			},
+		}
+		if maintenancePolicy.Window == nil {
+			maintenancePolicy.Window = &containerpb.MaintenanceWindow{
+				Policy: dailyMaintenanceWindowPolicy,
+			}
+		} else {
+			maintenancePolicy.Window.Policy = dailyMaintenanceWindowPolicy
+		}
+	}
+
+	if policy.RecurringMaintenanceWindow != nil {
+		recurringWindowPolicy := &containerpb.MaintenanceWindow_RecurringWindow{
+			RecurringWindow: &containerpb.RecurringTimeWindow{
+				Window:     convertToSdkTimeWindow(policy.RecurringMaintenanceWindow.Window),
+				Recurrence: policy.RecurringMaintenanceWindow.Recurrence,
+			},
+		}
+		if maintenancePolicy.Window == nil {
+			maintenancePolicy.Window = &containerpb.MaintenanceWindow{
+				Policy: recurringWindowPolicy,
+			}
+		} else {
+			maintenancePolicy.Window.Policy = recurringWindowPolicy
+		}
+	}
+
+	if policy.DisruptionBudget != nil {
+		maintenancePolicy.DisruptionBudget = &containerpb.DisruptionBudget{}
+		if policy.DisruptionBudget.MinorVersionDisruptionInterval != nil {
+			maintenancePolicy.DisruptionBudget.MinorVersionDisruptionInterval = durationpb.New(policy.DisruptionBudget.MinorVersionDisruptionInterval.Duration)
+		}
+		if policy.DisruptionBudget.PatchVersionDisruptionInterval != nil {
+			maintenancePolicy.DisruptionBudget.PatchVersionDisruptionInterval = durationpb.New(policy.DisruptionBudget.PatchVersionDisruptionInterval.Duration)
+		}
+	}
+
+	return maintenancePolicy
+}
+
+// convertToSdkTimeWindow converts the CAPG TimeWindow to a containerpb TimeWindow.
+func convertToSdkTimeWindow(window *infrav1exp.TimeWindow) *containerpb.TimeWindow {
+	if window == nil {
+		return nil
+	}
+
+	tw := &containerpb.TimeWindow{
+		StartTime: timestamppb.New(window.StartTime.Time),
+		EndTime:   timestamppb.New(window.EndTime.Time),
+	}
+
+	if window.MaintenanceExclusionOption != nil {
+		twOptions := &containerpb.TimeWindow_MaintenanceExclusionOptions{
+			MaintenanceExclusionOptions: &containerpb.MaintenanceExclusionOptions{},
+		}
+		switch *window.MaintenanceExclusionOption {
+		case infrav1exp.NoMinorUpgrades:
+			twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_MINOR_UPGRADES
+		case infrav1exp.NoMinorOrNodeUpgrades:
+			twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_MINOR_OR_NODE_UPGRADES
+		case infrav1exp.NoUpgrades:
+			twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_UPGRADES
+		default:
+			twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_UPGRADES
+		}
+		tw.Options = twOptions
+	}
+
+	return tw
 }
 
 // convertToSdkBinaryAuthorizationEvaluationMode converts the BinaryAuthorization string to the SDK int32 value.
@@ -621,4 +739,66 @@ func compareMasterAuthorizedNetworksConfig(a, b *containerpb.MasterAuthorizedNet
 		return false
 	}
 	return true
+}
+
+// compareMaintenancePolicy compares two MaintenancePolicy protos for equality, ignoring fields that don't
+// reflect user intent: resource_version (a concurrency token only ever known on the existing cluster's
+// policy, never set on the one built from spec) and the two disruption-budget fields that are output-only
+// observations from GKE this API doesn't accept as input. Comparison is done on clones so that clearing those
+// fields never mutates either input; an otherwise-empty DisruptionBudget is cleared entirely so that GKE
+// populating those observability fields on its own doesn't register as a user-requested change.
+func compareMaintenancePolicy(a, b *containerpb.MaintenancePolicy) bool {
+	normalize := func(policy *containerpb.MaintenancePolicy) *containerpb.MaintenancePolicy {
+		if policy == nil {
+			return nil
+		}
+		policy = proto.Clone(policy).(*containerpb.MaintenancePolicy) //nolint:forcetypeassert // Clone always returns the same concrete type it was given.
+		policy.ResourceVersion = ""
+		if db := policy.GetDisruptionBudget(); db != nil {
+			db.LastMinorVersionDisruptionTime = nil
+			db.LastDisruptionTime = nil
+			if proto.Equal(db, &containerpb.DisruptionBudget{}) {
+				policy.DisruptionBudget = nil
+			}
+		}
+		return policy
+	}
+
+	return proto.Equal(normalize(a), normalize(b))
+}
+
+// checkDiffAndPrepareUpdateMaintenancePolicy checks whether the cluster's MaintenancePolicy differs from the
+// desired spec. MaintenancePolicy updates go through the dedicated SetMaintenancePolicy RPC rather than the
+// batched UpdateCluster RPC used by checkDiffAndPrepareUpdate, so it is tracked and applied separately.
+func (s *Service) checkDiffAndPrepareUpdateMaintenancePolicy(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.SetMaintenancePolicyRequest) {
+	desiredMaintenancePolicy := convertToSdkMaintenancePolicy(s.scope.GCPManagedControlPlane.Spec.MaintenancePolicy)
+	existingMaintenancePolicy := existingCluster.GetMaintenancePolicy()
+
+	setMaintenancePolicyRequest := &containerpb.SetMaintenancePolicyRequest{
+		Name: s.scope.ClusterFullName(),
+	}
+
+	if compareMaintenancePolicy(desiredMaintenancePolicy, existingMaintenancePolicy) {
+		log.V(4).Info("MaintenancePolicy up to date")
+		return false, setMaintenancePolicyRequest
+	}
+
+	if desiredMaintenancePolicy == nil {
+		desiredMaintenancePolicy = &containerpb.MaintenancePolicy{}
+	}
+	desiredMaintenancePolicy.ResourceVersion = existingMaintenancePolicy.GetResourceVersion()
+	setMaintenancePolicyRequest.MaintenancePolicy = desiredMaintenancePolicy
+
+	log.V(2).Info("MaintenancePolicy update required", "current", existingMaintenancePolicy, "desired", desiredMaintenancePolicy)
+	return true, setMaintenancePolicyRequest
+}
+
+func (s *Service) updateMaintenancePolicy(ctx context.Context, req *containerpb.SetMaintenancePolicyRequest, log *logr.Logger) error {
+	_, err := s.scope.ManagedControlPlaneClient().SetMaintenancePolicy(ctx, req)
+	if err != nil {
+		log.Error(err, "Error updating GKE cluster MaintenancePolicy", "name", s.scope.ClusterName())
+		return err
+	}
+
+	return nil
 }
