@@ -78,12 +78,9 @@ func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesMa
 		}
 
 		direction := strings.ToUpper(string(rule.Direction))
-		name := fmt.Sprintf("%s-%s", clusterName, strings.ToLower(direction))
-		if rule.Name != "" {
-			name = rule.Name
-			if !strings.HasPrefix(name, clusterName) {
-				name = fmt.Sprintf("%s-%s", clusterName, name)
-			}
+		name := rule.Name
+		if !strings.HasPrefix(name, clusterName) {
+			name = fmt.Sprintf("%s-%s", clusterName, name)
 		}
 		name = name[:min(len(name), 63)]
 		name = strings.TrimSuffix(name, "-")
@@ -93,18 +90,27 @@ func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesMa
 			description = "Created by Cluster API GCP Provider"
 		}
 
+		var priority int64
+		if rule.Priority != nil {
+			priority = int64(*rule.Priority)
+		} else {
+			priority = 1000
+		}
+
 		firewallRules = append(firewallRules, &compute.Firewall{
-			Name:         name,
-			Description:  description,
-			Network:      networkLink,
-			Allowed:      allowed,
-			Denied:       denied,
-			Direction:    direction,
-			Priority:     int64(rule.Priority),
-			Disabled:     false,
-			SourceRanges: rule.SourceRanges,
-			TargetTags:   rule.TargetTags,
-			SourceTags:   rule.SourceTags,
+			Name:              name,
+			Description:       description,
+			Network:           networkLink,
+			Allowed:           allowed,
+			Denied:            denied,
+			Direction:         direction,
+			Priority:          priority,
+			Disabled:          false,
+			SourceRanges:      rule.SourceRanges,
+			DestinationRanges: rule.DestinationRanges,
+			TargetTags:        rule.TargetTags,
+			SourceTags:        rule.SourceTags,
+			ForceSendFields:   []string{"Priority"},
 		})
 	}
 

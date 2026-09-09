@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
@@ -27,8 +28,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/firewalls"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/networks"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/subnets"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -47,6 +50,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+// namedReconciler pairs a reconciler with the name used to identify it in logs.
+type namedReconciler struct {
+	name       string
+	reconciler cloud.Reconciler
+}
+
+// clusterReconcilers returns the reconcilers in the order they must run: the network must exist
+// before the firewalls, and the subnets depend on the network. Deletion runs them in reverse.
+func clusterReconcilers(clusterScope *scope.ManagedClusterScope) []namedReconciler {
+	return []namedReconciler{
+		{"networks", networks.New(clusterScope)},
+		{"firewalls", firewalls.New(clusterScope)},
+		{"subnets", subnets.New(clusterScope)},
+	}
+}
 
 // GCPManagedClusterReconciler reconciles a GCPManagedCluster object.
 type GCPManagedClusterReconciler struct {
@@ -195,15 +214,17 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 	}
 	clusterScope.SetFailureDomains(failureDomains)
 
-	reconcilers := map[string]cloud.Reconciler{
-		"networks": networks.New(clusterScope),
-		"subnets":  subnets.New(clusterScope),
+	// The default firewall rules target CAPI-specific instance tags that do not exist on GKE
+	// nodes, so they are never created here. Surface that in the logs for anyone wondering why
+	// the default rules are missing.
+	if clusterScope.GCPManagedCluster.Spec.Network.Firewall.DefaultRulesManagement != infrav1.RulesManagementUnmanaged {
+		log.Info("Default firewall rules are not created for GCPManagedCluster: defaultRulesManagement is ignored because the default rules target CAPI instance tags that GKE nodes do not have, only custom firewallRules are reconciled")
 	}
 
-	for name, r := range reconcilers {
-		log.V(4).Info("Calling reconciler", "reconciler", name)
-		if err := r.Reconcile(ctx); err != nil {
-			log.Error(err, "Reconcile error", "reconciler", name)
+	for _, r := range clusterReconcilers(clusterScope) {
+		log.V(4).Info("Calling reconciler", "reconciler", r.name)
+		if err := r.reconciler.Reconcile(ctx); err != nil {
+			log.Error(err, "Reconcile error", "reconciler", r.name)
 			record.Warnf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
 			return err
 		}
@@ -248,15 +269,15 @@ func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clust
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
-	reconcilers := map[string]cloud.Reconciler{
-		"subnets":  subnets.New(clusterScope),
-		"networks": networks.New(clusterScope),
-	}
+	// Delete in reverse dependency order: subnets and firewalls must be
+	// removed before the network.
+	reconcilers := clusterReconcilers(clusterScope)
+	slices.Reverse(reconcilers)
 
-	for name, r := range reconcilers {
-		log.V(4).Info("Calling reconciler delete", "reconciler", name)
-		if err := r.Delete(ctx); err != nil {
-			log.Error(err, "Reconcile error", "reconciler", name)
+	for _, r := range reconcilers {
+		log.V(4).Info("Calling reconciler delete", "reconciler", r.name)
+		if err := r.reconciler.Delete(ctx); err != nil {
+			log.Error(err, "Reconcile error", "reconciler", r.name)
 			record.Warnf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}

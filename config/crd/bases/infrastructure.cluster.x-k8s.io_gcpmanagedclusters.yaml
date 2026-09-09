@@ -245,8 +245,7 @@ spec:
                               description: |-
                                 Denied is the list of DENY rules specified by this firewall. Each rule
                                 specifies a protocol and port-range tuple that describes a denied
-                                connection. When a conflict applies between the Denied and Allowed fields,
-                                the Denied field will take precedent.
+                                connection. A firewall rule must specify either allowed or denied, not both.
                               items:
                                 description: FirewallDescriptor describes a GCP firewall
                                   rule.
@@ -335,6 +334,9 @@ spec:
                                 must be a lowercase letter or digit.
                                 If the firewall does not begin with the cluster name, then the cluster name
                                 will be prepended during the creation of the firewall rule.
+                              maxLength: 63
+                              minLength: 1
+                              pattern: ^[a-z]([-a-z0-9]*[a-z0-9])?$
                               type: string
                             priority:
                               default: 1000
@@ -347,8 +349,9 @@ spec:
                                 ALLOW rules if they have equal priority. Note that VPC networks have implied
                                 rules with a priority of `65535`. To avoid conflicts with the implied rules,
                                 use a priority number less than `65535`.
+                              format: int32
                               maximum: 65535
-                              minimum: 1
+                              minimum: 0
                               type: integer
                             sourceRanges:
                               description: |-
@@ -404,7 +407,26 @@ spec:
                               maxItems: 70
                               minItems: 0
                               type: array
+                          required:
+                          - name
                           type: object
+                          x-kubernetes-validations:
+                          - message: sourceRanges cannot be set for Egress rules
+                            rule: self.direction != 'Egress' || !has(self.sourceRanges)
+                              || size(self.sourceRanges) == 0
+                          - message: sourceTags cannot be set for Egress rules
+                            rule: self.direction != 'Egress' || !has(self.sourceTags)
+                              || size(self.sourceTags) == 0
+                          - message: destinationRanges cannot be set for Ingress rules
+                            rule: self.direction != 'Ingress' || !has(self.destinationRanges)
+                              || size(self.destinationRanges) == 0
+                          - message: allowed and denied cannot both be set in the
+                              same rule
+                            rule: '!(has(self.allowed) && size(self.allowed) > 0 &&
+                              has(self.denied) && size(self.denied) > 0)'
+                          - message: at least one of allowed or denied must be set
+                            rule: (has(self.allowed) && size(self.allowed) > 0) ||
+                              (has(self.denied) && size(self.denied) > 0)
                         maxItems: 50
                         type: array
                     type: object
