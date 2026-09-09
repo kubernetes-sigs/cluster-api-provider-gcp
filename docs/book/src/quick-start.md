@@ -24,7 +24,7 @@ Before installing CAPG, your Kubernetes cluster has to be transformed into a CAP
 
 To create and manage clusters, CAPG uses a GCP service account to authenticate with GCP's APIs. There are two supported authentication methods.
 
-First, [create a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) with `Editor` permissions. If you plan to use GKE the service account will also need the `iam.serviceAccountTokenCreator` role.
+First, [create a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) with `Editor` permissions.
 
 #### Service Account JSON Key
 
