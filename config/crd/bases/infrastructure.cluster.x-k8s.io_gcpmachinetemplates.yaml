@@ -520,6 +520,46 @@ spec:
             required:
             - template
             type: object
+          status:
+            description: GCPMachineTemplateStatus defines the observed state of a
+              GCPMachineTemplate.
+            properties:
+              capacity:
+                additionalProperties:
+                  anyOf:
+                  - type: integer
+                  - type: string
+                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                  x-kubernetes-int-or-string: true
+                description: |-
+                  Capacity defines the resource capacity for this machine.
+                  This value is used for autoscaling-from-zero operations as defined in:
+                  https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20210310-opt-in-autoscaling-from-zero.md
+                type: object
+              nodeInfo:
+                description: |-
+                  NodeInfo defines the node architecture and operating system.
+                  This value is used for autoscaling-from-zero operations as defined in:
+                  https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20210310-opt-in-autoscaling-from-zero.md
+                properties:
+                  architecture:
+                    description: Architecture defines the hardware architecture (e.g.,
+                      amd64, arm64).
+                    enum:
+                    - amd64
+                    - arm64
+                    type: string
+                  operatingSystem:
+                    description: OperatingSystem defines the operating system (e.g.,
+                      linux, windows).
+                    enum:
+                    - linux
+                    - windows
+                    type: string
+                type: object
+            type: object
         type: object
     served: true
     storage: true
+    subresources:
+      status: {}
