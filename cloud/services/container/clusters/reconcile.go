@@ -569,20 +569,22 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		log.V(4).Info("Master authorized networks config update check", "desired", desiredMasterAuthorizedNetworksConfig)
 	}
 
-	// Gateway API channel
-	var desiredGatewayAPIChannel *infrav1exp.GatewayAPIChannel
-	if cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork; cn != nil {
-		desiredGatewayAPIChannel = cn.GatewayAPIChannel
-	}
-	desiredGatewayChannel := convertToSdkGatewayAPIChannel(desiredGatewayAPIChannel)
-	if desiredGatewayChannel != existingCluster.GetNetworkConfig().GetGatewayApiConfig().GetChannel() {
-		needUpdate = true
-		clusterUpdate.DesiredGatewayApiConfig = &containerpb.GatewayAPIConfig{
-			Channel: desiredGatewayChannel,
+	// Gateway API channel. Only compare/apply when the user has explicitly
+	// configured it: GKE decides its own default (e.g. Autopilot clusters
+	// mandate STANDARD and reject anything else), so treating an unset
+	// spec as "desired: UNSPECIFIED" would permanently fight whatever GKE
+	// actually has.
+	if cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork; cn != nil && cn.GatewayAPIChannel != nil {
+		desiredGatewayChannel := convertToSdkGatewayAPIChannel(cn.GatewayAPIChannel)
+		if desiredGatewayChannel != existingCluster.GetNetworkConfig().GetGatewayApiConfig().GetChannel() {
+			needUpdate = true
+			clusterUpdate.DesiredGatewayApiConfig = &containerpb.GatewayAPIConfig{
+				Channel: desiredGatewayChannel,
+			}
+			log.V(2).Info("Gateway API channel update required",
+				"current", existingCluster.GetNetworkConfig().GetGatewayApiConfig().GetChannel(),
+				"desired", desiredGatewayChannel)
 		}
-		log.V(2).Info("Gateway API channel update required",
-			"current", existingCluster.GetNetworkConfig().GetGatewayApiConfig().GetChannel(),
-			"desired", desiredGatewayChannel)
 	}
 
 	updateClusterRequest := containerpb.UpdateClusterRequest{

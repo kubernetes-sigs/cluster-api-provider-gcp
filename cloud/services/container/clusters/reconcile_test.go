@@ -271,6 +271,42 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "no diff when gateway api channel is unset, regardless of what GKE actually has",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:        "test-project",
+						Location:       "us-central1",
+						ReleaseChannel: ptr.To(infrav1exp.Stable),
+						ClusterName:    "test-cluster",
+						// No ClusterNetwork/GatewayAPIChannel set - matches an
+						// Autopilot cluster, which GKE mandates onto the
+						// STANDARD channel regardless of what's requested.
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ReleaseChannel: &containerpb.ReleaseChannel{
+					Channel: containerpb.ReleaseChannel_STABLE,
+				},
+				NetworkConfig: &containerpb.NetworkConfig{
+					GatewayApiConfig: &containerpb.GatewayAPIConfig{
+						Channel: containerpb.GatewayAPIConfig_CHANNEL_STANDARD,
+					},
+				},
+				ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
+					IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+						AuthorizedNetworksConfig: &containerpb.MasterAuthorizedNetworksConfig{
+							Enabled:                     false,
+							CidrBlocks:                  []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{},
+							GcpPublicCidrsAccessEnabled: ptr.To(false),
+						},
+					},
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
 			name: "no diff when gateway api channel matches",
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
