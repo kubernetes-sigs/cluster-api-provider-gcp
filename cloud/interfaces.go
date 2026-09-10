@@ -87,6 +87,8 @@ type MachineGetter interface {
 	Project() string
 	Role() string
 	IsControlPlane() bool
+	IsFirstMachine() bool
+	IsAPIServerHealthy() bool
 	ControlPlaneGroupName() string
 	GetInstanceID() *string
 	GetProviderID() string
