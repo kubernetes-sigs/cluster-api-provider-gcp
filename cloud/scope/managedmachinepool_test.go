@@ -131,7 +131,7 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 			}
 			resourceLabels := infrav1.Labels{"test-key": "test-value"}
 
-			TestGCPMMP.Spec.MachineType = &machineType
+			TestGCPMMP.Spec.InstanceType = &machineType
 			TestGCPMMP.Spec.DiskSizeGb = &diskSizeGb
 			TestGCPMMP.Spec.ImageType = &imageType
 			TestGCPMMP.Spec.LocalSsdCount = &localSsdCount
@@ -163,6 +163,26 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 					MaxPodsPerNode: maxPodsPerNode,
 				},
 			}))
+		})
+
+		It("should prefer InstanceType over the deprecated MachineType when both are set", func() {
+			machineType := "n1-standard-1"
+			instanceType := "n1-standard-2"
+			TestGCPMMP.Spec.MachineType = &machineType //nolint:staticcheck // SA1019: deprecated field set intentionally to test precedence
+			TestGCPMMP.Spec.InstanceType = &instanceType
+
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(instanceType))
+		})
+
+		It("should use the deprecated MachineType when InstanceType is unset", func() {
+			machineType := "n1-standard-2"
+			TestGCPMMP.Spec.MachineType = &machineType //nolint:staticcheck // SA1019: deprecated field set intentionally to test backward compatibility
+
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(machineType))
 		})
 	})
 })
