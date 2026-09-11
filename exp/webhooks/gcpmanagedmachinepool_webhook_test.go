@@ -391,3 +391,22 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestGCPManagedMachinePoolValidatingWebhookCreateMachineTypeDeprecationWarning(t *testing.T) {
+	g := NewWithT(t)
+
+	machineType := "n1-standard-1"
+	mmp := &expinfrav1.GCPManagedMachinePool{
+		Spec: expinfrav1.GCPManagedMachinePoolSpec{
+			GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				MachineType:  &machineType,
+			},
+		},
+	}
+
+	warn, err := (&GCPManagedMachinePool{}).ValidateCreate(t.Context(), mmp)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(warn).To(ConsistOf(ContainSubstring("spec.machineType is deprecated")))
+}
