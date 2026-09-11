@@ -108,6 +108,11 @@ func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GC
 	gcpmanagedmachinepoollog.Info("Validating GCPManagedMachinePool create", "name", r.Name)
 
 	var allErrs field.ErrorList
+	var allWarns admission.Warnings
+
+	if r.Spec.InstanceType != nil { //nolint:staticcheck // SA1019: checked to emit a deprecation warning
+		allWarns = append(allWarns, "spec.instanceType is deprecated and will soon be removed: please use spec.machineType")
+	}
 
 	if err := validateNodePoolName(
 		r.Spec.NodePoolName,
@@ -148,10 +153,10 @@ func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GC
 	}
 
 	if len(allErrs) == 0 {
-		return nil, nil
+		return allWarns, nil
 	}
 
-	return nil, apierrors.NewInvalid(
+	return allWarns, apierrors.NewInvalid(
 		r.GroupVersionKind().GroupKind(),
 		r.Name,
 		allErrs,

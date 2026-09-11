@@ -94,6 +94,7 @@ type GCPManagedMachinePoolClassSpec struct {
 	// MachineType is the name of a Google Compute Engine [machine
 	// type](https://cloud.google.com/compute/docs/machine-types).
 	// If unspecified, the default machine type is `e2-medium`.
+	// If InstanceType is also set, MachineType takes precedence.
 	// +optional
 	MachineType *string `json:"machineType,omitempty"`
 	// DiskSizeGb is the size of the disk attached to each node, specified in GB.
@@ -114,6 +115,12 @@ type GCPManagedMachinePoolClassSpec struct {
 	// +optional
 	ImageType *string `json:"imageType,omitempty"`
 	// InstanceType is name of Compute Engine machine type.
+	//
+	// Deprecated: InstanceType duplicates MachineType (both configure the same
+	// underlying GKE node pool machine type) and is retained only for backward
+	// compatibility with existing resources that already set it. This field
+	// remains immutable and will not gain new functionality; use MachineType
+	// for new manifests. If both fields are set, MachineType takes precedence.
 	// +optional
 	InstanceType *string `json:"instanceType,omitempty"`
 	// DiskType is type of the disk attached to each node.
