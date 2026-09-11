@@ -164,5 +164,25 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 				},
 			}))
 		})
+
+		It("should prefer MachineType over the deprecated InstanceType when both are set", func() {
+			machineType := "n1-standard-1"
+			instanceType := "n1-standard-2"
+			TestGCPMMP.Spec.MachineType = &machineType
+			TestGCPMMP.Spec.InstanceType = &instanceType //nolint:staticcheck // SA1019: deprecated field set intentionally to test precedence
+
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(machineType))
+		})
+
+		It("should use the deprecated InstanceType when MachineType is unset", func() {
+			instanceType := "n1-standard-2"
+			TestGCPMMP.Spec.InstanceType = &instanceType //nolint:staticcheck // SA1019: deprecated field set intentionally to test backward compatibility
+
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(instanceType))
+		})
 	})
 })
