@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/fleet"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -167,6 +168,7 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 
 	reconcilers := map[string]cloud.ReconcilerWithResult{
 		"container_clusters": clusters.New(managedControlPlaneScope),
+		"container_fleet":    fleet.New(managedControlPlaneScope),
 	}
 
 	for name, r := range reconcilers {
@@ -191,6 +193,7 @@ func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, 
 
 	reconcilers := map[string]cloud.ReconcilerWithResult{
 		"container_clusters": clusters.New(managedControlPlaneScope),
+		"container_fleet":    fleet.New(managedControlPlaneScope),
 	}
 
 	for name, r := range reconcilers {

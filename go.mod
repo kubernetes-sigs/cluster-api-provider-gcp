@@ -7,6 +7,7 @@ toolchain go1.26.5
 require (
 	cloud.google.com/go/compute v1.66.0
 	cloud.google.com/go/container v1.53.1
+	cloud.google.com/go/gkehub v0.22.0
 	cloud.google.com/go/iam v1.13.0
 	cloud.google.com/go/resourcemanager v1.16.0
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.35.0
