@@ -221,6 +221,21 @@ spec:
                               Engine Public IP addresses.
                             type: boolean
                         type: object
+                      monitoringConfig:
+                        description: MonitoringConfig represents configuration of
+                          the monitoring feature of the GKE cluster.
+                        properties:
+                          managedPrometheusConfig:
+                            description: ManagedPrometheusConfig configures Google
+                              Cloud Managed Service for Prometheus for the cluster.
+                            properties:
+                              enabled:
+                                description: |-
+                                  Enabled controls whether Google Cloud Managed Service for Prometheus is enabled for the cluster.
+                                  GKE enables this by default; set to false to disable it.
+                                type: boolean
+                            type: object
+                        type: object
                       monitoringService:
                         description: |-
                           MonitoringService represents configuration of monitoring service feature of the GKE cluster.
