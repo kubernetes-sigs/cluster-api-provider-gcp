@@ -205,6 +205,11 @@ func (in *FirewallRule) DeepCopyInto(out *FirewallRule) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Priority != nil {
+		in, out := &in.Priority, &out.Priority
+		*out = new(int32)
+		**out = **in
+	}
 	if in.SourceRanges != nil {
 		in, out := &in.SourceRanges, &out.SourceRanges
 		*out = make([]string, len(*in))

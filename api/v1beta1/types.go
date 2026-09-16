@@ -155,6 +155,11 @@ type FirewallDescriptor struct {
 }
 
 // FirewallRule describes a GCP firewall rule.
+// +kubebuilder:validation:XValidation:rule="self.direction != 'Egress' || !has(self.sourceRanges) || size(self.sourceRanges) == 0",message="sourceRanges cannot be set for Egress rules"
+// +kubebuilder:validation:XValidation:rule="self.direction != 'Egress' || !has(self.sourceTags) || size(self.sourceTags) == 0",message="sourceTags cannot be set for Egress rules"
+// +kubebuilder:validation:XValidation:rule="self.direction != 'Ingress' || !has(self.destinationRanges) || size(self.destinationRanges) == 0",message="destinationRanges cannot be set for Ingress rules"
+// +kubebuilder:validation:XValidation:rule="!(has(self.allowed) && size(self.allowed) > 0 && has(self.denied) && size(self.denied) > 0)",message="allowed and denied cannot both be set in the same rule"
+// +kubebuilder:validation:XValidation:rule="(has(self.allowed) && size(self.allowed) > 0) || (has(self.denied) && size(self.denied) > 0)",message="at least one of allowed or denied must be set"
 type FirewallRule struct {
 	// Allowed is the list of ALLOW rules specified by this firewall. Each rule
 	// specifies a protocol and port-range tuple that describes a permitted
@@ -164,8 +169,7 @@ type FirewallRule struct {
 	Allowed []FirewallDescriptor `json:"allowed,omitempty"`
 	// Denied is the list of DENY rules specified by this firewall. Each rule
 	// specifies a protocol and port-range tuple that describes a denied
-	// connection. When a conflict applies between the Denied and Allowed fields,
-	// the Denied field will take precedent.
+	// connection. A firewall rule must specify either allowed or denied, not both.
 	// +kubebuilder:validation:MinItems=0
 	// +kubebuilder:validation:MaxItems=1024
 	Denied []FirewallDescriptor `json:"denied,omitempty"`
@@ -204,8 +208,11 @@ type FirewallRule struct {
 	// must be a lowercase letter or digit.
 	// If the firewall does not begin with the cluster name, then the cluster name
 	// will be prepended during the creation of the firewall rule.
-	// +kubebuilder:validation:Optional
-	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z]([-a-z0-9]*[a-z0-9])?$`
+	Name string `json:"name"`
 	// Priority is the priority for this rule. This is an integer between `0` and
 	// `65535`, both inclusive. The default value is `1000`. Relative priorities
 	// determine which rule takes effect if multiple rules apply. Lower values
@@ -216,9 +223,9 @@ type FirewallRule struct {
 	// use a priority number less than `65535`.
 	// +kubebuilder:validation:Optional
 	// +default:value=1000
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	Priority int `json:"priority,omitempty"`
+	Priority *int32 `json:"priority,omitempty"`
 	// SourceRanges: If source ranges are specified, the firewall rule applies only
 	// to traffic that has a source IP address in these ranges. These ranges must
 	// be expressed in CIDR format. One or both of sourceRanges and sourceTags may

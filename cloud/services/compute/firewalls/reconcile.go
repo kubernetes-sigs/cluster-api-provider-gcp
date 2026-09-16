@@ -18,6 +18,7 @@ package firewalls
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 
@@ -29,22 +30,33 @@ import (
 func (s *Service) Reconcile(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	if s.scope.SkipFirewallRulesManagement() {
-		log.V(2).Info("Ignore Reconciling firewall resources")
+		log.Info("Skipping firewall rule reconciliation: the cluster uses a shared VPC, so CAPG will not create, modify or delete any firewall rule",
+			"project", s.scope.Project(), "hostProject", s.scope.NetworkProject())
 		return nil
 	}
 	log.Info("Reconciling firewall resources")
 	for _, spec := range s.scope.FirewallRulesSpec() {
 		log.V(2).Info("Looking firewall", "name", spec.Name)
 		firewallKey := meta.GlobalKey(spec.Name)
-		if _, err := s.firewalls.Get(ctx, firewallKey); err != nil {
+		actual, err := s.firewalls.Get(ctx, firewallKey)
+		if err != nil {
 			if !gcperrors.IsNotFound(err) {
-				return err
+				log.Error(err, "Error looking up firewall rule", "name", spec.Name)
+				return fmt.Errorf("getting firewall rule %s: %w", spec.Name, err)
 			}
 
-			log.V(2).Info("Creating firewall", "name", spec.Name)
+			log.Info("Creating firewall rule", "name", spec.Name)
 			if err := s.firewalls.Insert(ctx, firewallKey, spec); err != nil {
-				return err
+				log.Error(err, "Error creating firewall rule", "name", spec.Name)
+				return fmt.Errorf("creating firewall rule %s: %w", spec.Name, err)
 			}
+
+			continue
+		}
+
+		if drifted := driftedFields(spec, actual); len(drifted) > 0 {
+			log.Info("Firewall rule exists but does not match its spec and is left unchanged: CAPG does not update firewall rules in place, apply the change directly in GCP",
+				"name", spec.Name, "fields", drifted)
 		}
 	}
 
@@ -55,7 +67,8 @@ func (s *Service) Reconcile(ctx context.Context) error {
 func (s *Service) Delete(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	if s.scope.SkipFirewallRulesManagement() {
-		log.V(2).Info("Ignore Deleting firewall resources")
+		log.Info("Skipping firewall rule deletion: the cluster uses a shared VPC, so CAPG will not create, modify or delete any firewall rule",
+			"project", s.scope.Project(), "hostProject", s.scope.NetworkProject())
 		return nil
 	}
 	log.Info("Deleting firewall resources")
@@ -64,8 +77,8 @@ func (s *Service) Delete(ctx context.Context) error {
 		firewallKey := meta.GlobalKey(spec.Name)
 		if err := s.firewalls.Delete(ctx, firewallKey); err != nil {
 			if !gcperrors.IsNotFound(err) {
-				log.Error(err, "Error deleting firewall", "name", spec.Name)
-				return err
+				log.Error(err, "Error deleting firewall rule", "name", spec.Name)
+				return fmt.Errorf("deleting firewall rule %s: %w", spec.Name, err)
 			}
 		}
 	}
