@@ -420,9 +420,12 @@ func (s *Service) deleteCluster(ctx context.Context, log *logr.Logger) error {
 	return nil
 }
 
+// convertToSdkReleaseChannel converts the ReleaseChannel to the SDK enum value.
+// UNSPECIFIED is deprecated by the GKE API but is still the zero value meaning "no
+// channel requested", so it is suppressed as deprecated values are elsewhere in this repo.
 func convertToSdkReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.ReleaseChannel_Channel {
 	if channel == nil {
-		return containerpb.ReleaseChannel_UNSPECIFIED
+		return containerpb.ReleaseChannel_UNSPECIFIED //nolint:staticcheck
 	}
 	switch *channel {
 	case infrav1exp.Rapid:
@@ -434,7 +437,7 @@ func convertToSdkReleaseChannel(channel *infrav1exp.ReleaseChannel) containerpb.
 	case infrav1exp.Extended:
 		return containerpb.ReleaseChannel_EXTENDED
 	default:
-		return containerpb.ReleaseChannel_UNSPECIFIED
+		return containerpb.ReleaseChannel_UNSPECIFIED //nolint:staticcheck
 	}
 }
 

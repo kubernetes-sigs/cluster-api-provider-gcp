@@ -624,7 +624,7 @@ func TestConvertToSdkReleaseChannel(t *testing.T) {
 		{
 			name:    "nil channel",
 			channel: nil,
-			want:    containerpb.ReleaseChannel_UNSPECIFIED,
+			want:    containerpb.ReleaseChannel_UNSPECIFIED, //nolint:staticcheck
 		},
 		{
 			name:    "rapid",
