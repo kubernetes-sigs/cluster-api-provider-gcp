@@ -136,6 +136,55 @@ spec:
                             maxLength: 16
                             pattern: (^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)
                             type: string
+                          healthCheck:
+                            description: |-
+                              HealthCheck defines health check configuration for the load balancer.
+                              This configuration applies to health checks for both the external and
+                              internal load balancers. The health check protocol (HTTPS), port (6443),
+                              and request path (/readyz) are not configurable as they are specific to
+                              the Kubernetes API server.
+                            properties:
+                              checkIntervalSec:
+                                description: CheckIntervalSec is the time interval
+                                  between health check probes, in seconds.
+                                format: int64
+                                maximum: 300
+                                minimum: 1
+                                type: integer
+                              healthyThreshold:
+                                description: |-
+                                  HealthyThreshold is the number of consecutive successful health checks
+                                  before an unhealthy instance is marked healthy.
+                                format: int64
+                                maximum: 10
+                                minimum: 1
+                                type: integer
+                              timeoutSec:
+                                description: |-
+                                  TimeoutSec is the maximum time to wait for a health check response, in seconds.
+                                  Must be less than or equal to checkIntervalSec.
+                                format: int64
+                                maximum: 300
+                                minimum: 1
+                                type: integer
+                              unhealthyThreshold:
+                                description: |-
+                                  UnhealthyThreshold is the number of consecutive failed health checks
+                                  before a healthy instance is marked unhealthy.
+                                format: int64
+                                maximum: 10
+                                minimum: 1
+                                type: integer
+                            required:
+                            - checkIntervalSec
+                            - healthyThreshold
+                            - timeoutSec
+                            - unhealthyThreshold
+                            type: object
+                            x-kubernetes-validations:
+                            - message: timeoutSec must be less than or equal to checkIntervalSec
+                              rule: '!has(self.timeoutSec) || !has(self.checkIntervalSec)
+                                || self.timeoutSec <= self.checkIntervalSec'
                           internalLoadBalancer:
                             description: InternalLoadBalancer is the configuration
                               for an Internal Passthrough Network Load Balancer.
