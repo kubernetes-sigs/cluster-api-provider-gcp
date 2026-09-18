@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	"github.com/pkg/errors"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -168,6 +169,33 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 	if old.Spec.EnableAutopilot && r.Spec.ClusterNetwork != nil && r.Spec.ClusterNetwork.GatewayAPIChannel != nil {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ClusterNetwork", "GatewayAPIChannel"),
 			r.Spec.ClusterNetwork.GatewayAPIChannel, "can't be set when autopilot is enabled"))
+	}
+
+	// UseIPAliases, Pod, and Service (the pod/service secondary IP ranges) can only be set at cluster
+	// creation time: GKE has no API to change a cluster's IP allocation mode or ranges afterward, so an
+	// update here would otherwise be silently accepted and silently ignored by the reconciler.
+	oldClusterNetwork := ptr.Deref(old.Spec.ClusterNetwork, expinfrav1.ClusterNetwork{})
+	newClusterNetwork := ptr.Deref(r.Spec.ClusterNetwork, expinfrav1.ClusterNetwork{})
+
+	if !cmp.Equal(oldClusterNetwork.UseIPAliases, newClusterNetwork.UseIPAliases) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "ClusterNetwork", "UseIPAliases"),
+				newClusterNetwork.UseIPAliases, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(oldClusterNetwork.Pod, newClusterNetwork.Pod) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "ClusterNetwork", "Pod"),
+				newClusterNetwork.Pod, "field is immutable"),
+		)
+	}
+
+	if !cmp.Equal(oldClusterNetwork.Service, newClusterNetwork.Service) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "ClusterNetwork", "Service"),
+				newClusterNetwork.Service, "field is immutable"),
+		)
 	}
 
 	if old.Spec.Version != nil && r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck

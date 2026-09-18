@@ -330,6 +330,90 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 			},
 		},
 		{
+			name:        "request to change UseIPAliases should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+					},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: false,
+					},
+				},
+			},
+		},
+		{
+			name:        "request to change Pod secondary range should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						Pod: &expinfrav1.ClusterNetworkPod{CidrBlock: "10.0.0.0/16"},
+					},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						Pod: &expinfrav1.ClusterNetworkPod{CidrBlock: "10.1.0.0/16"},
+					},
+				},
+			},
+		},
+		{
+			name:        "request to change Service secondary range should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						Service: &expinfrav1.ClusterNetworkService{CidrBlock: "10.2.0.0/20"},
+					},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						Service: &expinfrav1.ClusterNetworkService{CidrBlock: "10.3.0.0/20"},
+					},
+				},
+			},
+		},
+		{
+			name:        "keeping UseIPAliases, Pod, and Service unchanged should not cause an error",
+			expectError: false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod:          &expinfrav1.ClusterNetworkPod{CidrBlock: "10.0.0.0/16"},
+						Service:      &expinfrav1.ClusterNetworkService{CidrBlock: "10.2.0.0/20"},
+					},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases: true,
+						Pod:          &expinfrav1.ClusterNetworkPod{CidrBlock: "10.0.0.0/16"},
+						Service:      &expinfrav1.ClusterNetworkService{CidrBlock: "10.2.0.0/20"},
+					},
+				},
+			},
+		},
+		{
 			name:        "request to change gateway api channel should not cause an error",
 			expectError: false,
 			spec: expinfrav1.GCPManagedControlPlaneSpec{
