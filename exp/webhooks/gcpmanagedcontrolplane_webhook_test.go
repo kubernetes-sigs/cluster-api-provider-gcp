@@ -22,6 +22,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
@@ -222,6 +223,34 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			},
 		},
 		{
+			name:        "autopilot enabled with datapath provider should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "",
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DatapathProvider: ptr.To(expinfrav1.AdvancedDatapath),
+					},
+				},
+			},
+		},
+		{
+			name:        "datapath provider set without autopilot",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DatapathProvider: ptr.To(expinfrav1.AdvancedDatapath),
+					},
+				},
+			},
+		},
+		{
 			name:        "using deprecated ControlPlaneVersion should cause a warning",
 			expectError: false,
 			expectWarn:  true,
@@ -360,6 +389,109 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
 					ClusterName:     "default_cluster1",
 					EnableAutopilot: true,
+				},
+			},
+		},
+		{
+			name:        "request to set datapath provider on an autopilot cluster should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DatapathProvider: ptr.To(expinfrav1.AdvancedDatapath),
+					},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+				},
+			},
+		},
+		{
+			name:        "request to change datapath provider should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DatapathProvider: ptr.To(expinfrav1.AdvancedDatapath),
+					},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DatapathProvider: ptr.To(expinfrav1.LegacyDatapath),
+					},
+				},
+			},
+		},
+		{
+			name:        "request to keep datapath provider unchanged should not cause an error",
+			expectError: false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DatapathProvider: ptr.To(expinfrav1.AdvancedDatapath),
+					},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DatapathProvider: ptr.To(expinfrav1.AdvancedDatapath),
+					},
+				},
+			},
+		},
+		{
+			name:        "request to remove DNSConfig should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:    "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DNSConfig: &expinfrav1.DNSConfig{
+							ClusterDNS: ptr.To(expinfrav1.CloudDNS),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request to change DNSConfig contents should not cause an error",
+			expectError: false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DNSConfig: &expinfrav1.DNSConfig{
+							ClusterDNS: ptr.To(expinfrav1.KubeDNS),
+						},
+					},
+				},
+			},
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						DNSConfig: &expinfrav1.DNSConfig{
+							ClusterDNS: ptr.To(expinfrav1.CloudDNS),
+						},
+					},
 				},
 			},
 		},

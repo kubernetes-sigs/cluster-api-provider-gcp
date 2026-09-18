@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -427,6 +428,71 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "no diff when DNSConfig matches",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterName: "test-cluster",
+						ClusterNetwork: &infrav1exp.ClusterNetwork{
+							DNSConfig: &infrav1exp.DNSConfig{
+								ClusterDNS: ptr.To(infrav1exp.CloudDNS),
+							},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
+					IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+						AuthorizedNetworksConfig: &containerpb.MasterAuthorizedNetworksConfig{
+							Enabled:                     false,
+							CidrBlocks:                  []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{},
+							GcpPublicCidrsAccessEnabled: ptr.To(false),
+						},
+					},
+				},
+				NetworkConfig: &containerpb.NetworkConfig{
+					DnsConfig: &containerpb.DNSConfig{
+						ClusterDns: containerpb.DNSConfig_CLOUD_DNS,
+					},
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "update needed when DNSConfig differs",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterName: "test-cluster",
+						ClusterNetwork: &infrav1exp.ClusterNetwork{
+							DNSConfig: &infrav1exp.DNSConfig{
+								ClusterDNS: ptr.To(infrav1exp.CloudDNS),
+							},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				NetworkConfig: &containerpb.NetworkConfig{
+					DnsConfig: &containerpb.DNSConfig{
+						ClusterDns: containerpb.DNSConfig_KUBE_DNS,
+					},
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				if req.GetUpdate().GetDesiredDnsConfig().GetClusterDns() != containerpb.DNSConfig_CLOUD_DNS {
+					t.Errorf("expected DesiredDnsConfig CLOUD_DNS, got %v", req.GetUpdate().GetDesiredDnsConfig().GetClusterDns())
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -724,6 +790,67 @@ func TestConvertToSdkBinaryAuthorizationEvaluationMode(t *testing.T) {
 	}
 }
 
+func TestConvertToSdkDNSConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *infrav1exp.DNSConfig
+		want   *containerpb.DNSConfig
+	}{
+		{
+			name:   "nil config",
+			config: nil,
+			want:   nil,
+		},
+		{
+			name:   "empty config",
+			config: &infrav1exp.DNSConfig{},
+			want:   &containerpb.DNSConfig{},
+		},
+		{
+			name: "cloud dns, vpc scope, custom domain",
+			config: &infrav1exp.DNSConfig{
+				ClusterDNS:       ptr.To(infrav1exp.CloudDNS),
+				ClusterDNSScope:  ptr.To(infrav1exp.VPCScope),
+				ClusterDNSDomain: ptr.To("example.com"),
+			},
+			want: &containerpb.DNSConfig{
+				ClusterDns:       containerpb.DNSConfig_CLOUD_DNS,
+				ClusterDnsScope:  containerpb.DNSConfig_VPC_SCOPE,
+				ClusterDnsDomain: "example.com",
+			},
+		},
+		{
+			name: "kube dns, cluster scope",
+			config: &infrav1exp.DNSConfig{
+				ClusterDNS:      ptr.To(infrav1exp.KubeDNS),
+				ClusterDNSScope: ptr.To(infrav1exp.ClusterScope),
+			},
+			want: &containerpb.DNSConfig{
+				ClusterDns:      containerpb.DNSConfig_KUBE_DNS,
+				ClusterDnsScope: containerpb.DNSConfig_CLUSTER_SCOPE,
+			},
+		},
+		{
+			name: "platform default",
+			config: &infrav1exp.DNSConfig{
+				ClusterDNS: ptr.To(infrav1exp.PlatformDefault),
+			},
+			want: &containerpb.DNSConfig{
+				ClusterDns: containerpb.DNSConfig_PLATFORM_DEFAULT,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertToSdkDNSConfig(tt.config)
+			if !proto.Equal(got, tt.want) {
+				t.Errorf("convertToSdkDNSConfig() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestClusterNetworkNilPointerGuards(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -792,6 +919,35 @@ func TestClusterNetworkNilPointerGuards(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "no panic with datapath provider only and no private cluster or gateway",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				DatapathProvider: ptr.To(infrav1exp.AdvancedDatapath),
+			},
+		},
+		{
+			name: "no panic with dns config only and no private cluster or gateway",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				DNSConfig: &infrav1exp.DNSConfig{
+					ClusterDNS: ptr.To(infrav1exp.CloudDNS),
+				},
+			},
+		},
+		{
+			name: "no panic with datapath provider, dns config, private cluster and gateway combined",
+			clusterNetwork: &infrav1exp.ClusterNetwork{
+				DatapathProvider: ptr.To(infrav1exp.AdvancedDatapath),
+				DNSConfig: &infrav1exp.DNSConfig{
+					ClusterDNS: ptr.To(infrav1exp.CloudDNS),
+				},
+				GatewayAPIChannel: ptr.To(infrav1exp.GatewayAPIChannelStandard),
+				PrivateCluster: &infrav1exp.PrivateCluster{
+					EnablePrivateNodes:    true,
+					EnablePrivateEndpoint: true,
+					ControlPlaneCidrBlock: "172.16.0.0/28",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -847,6 +1003,20 @@ func TestClusterNetworkNilPointerGuards(t *testing.T) {
 				cluster.NetworkConfig.GatewayApiConfig = &containerpb.GatewayAPIConfig{
 					Channel: convertToSdkGatewayAPIChannel(cn.GatewayAPIChannel),
 				}
+			}
+
+			if cn.DatapathProvider != nil {
+				if cluster.GetNetworkConfig() == nil {
+					cluster.NetworkConfig = &containerpb.NetworkConfig{}
+				}
+				cluster.NetworkConfig.DatapathProvider = convertToSdkDatapathProvider(cn.DatapathProvider)
+			}
+
+			if cn.DNSConfig != nil {
+				if cluster.GetNetworkConfig() == nil {
+					cluster.NetworkConfig = &containerpb.NetworkConfig{}
+				}
+				cluster.NetworkConfig.DnsConfig = convertToSdkDNSConfig(cn.DNSConfig)
 			}
 
 			// Verify IP allocation policy when UseIPAliases is set
