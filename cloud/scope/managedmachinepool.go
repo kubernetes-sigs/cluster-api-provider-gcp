@@ -275,6 +275,9 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 	if ptr.Deref(nodePool.Spec.Spot, false) {
 		sdkNodePool.Config.Spot = true
 	}
+	if nodePool.Spec.NodeSecurity.WorkloadMetadataMode != nil {
+		sdkNodePool.Config.WorkloadMetadataConfig = infrav1exp.ConvertToSdkWorkloadMetadataMode(nodePool.Spec.NodeSecurity.WorkloadMetadataMode)
+	}
 	if machinePool.Spec.Template.Spec.Version != "" {
 		sdkNodePool.Version = strings.Replace(machinePool.Spec.Template.Spec.Version, "v", "", 1)
 	}
