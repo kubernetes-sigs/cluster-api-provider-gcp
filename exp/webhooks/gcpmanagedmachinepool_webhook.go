@@ -108,6 +108,11 @@ func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GC
 	gcpmanagedmachinepoollog.Info("Validating GCPManagedMachinePool create", "name", r.Name)
 
 	var allErrs field.ErrorList
+	var allWarns admission.Warnings
+
+	if r.Spec.MachineType != nil { //nolint:staticcheck // SA1019: checked to emit a deprecation warning
+		allWarns = append(allWarns, "spec.machineType is deprecated and will soon be removed: please use spec.instanceType")
+	}
 
 	if err := validateNodePoolName(
 		r.Spec.NodePoolName,
@@ -148,10 +153,10 @@ func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GC
 	}
 
 	if len(allErrs) == 0 {
-		return nil, nil
+		return allWarns, nil
 	}
 
-	return nil, apierrors.NewInvalid(
+	return allWarns, apierrors.NewInvalid(
 		r.GroupVersionKind().GroupKind(),
 		r.Name,
 		allErrs,
@@ -190,8 +195,8 @@ func (*GCPManagedMachinePool) ValidateUpdate(_ context.Context, old, r *expinfra
 
 	if err := webhookutils.ValidateImmutable(
 		field.NewPath("spec", "machineType"),
-		old.Spec.MachineType,
-		r.Spec.MachineType); err != nil {
+		old.Spec.MachineType,             //nolint:staticcheck // SA1019: deprecated field still validated for backward compatibility
+		r.Spec.MachineType); err != nil { //nolint:staticcheck // SA1019: deprecated field still validated for backward compatibility
 		allErrs = append(allErrs, err)
 	}
 
