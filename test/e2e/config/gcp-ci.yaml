@@ -82,10 +82,12 @@ providers:
 variables:
   KUBERNETES_VERSION: "v1.35.5"
   # GKE clusters resolve their own supported versions per release channel, so
-  # this is deliberately independent of KUBERNETES_VERSION above. clusterctl
-  # requires a real semantic version (rejects "latest"), so pin to the
-  # current default patch for GKE's "regular" channel; bump as GKE moves on.
-  KUBERNETES_VERSION_GKE: "${KUBERNETES_VERSION_GKE:-v1.35.7}"
+  # this is deliberately independent of KUBERNETES_VERSION above. Only the
+  # minor is pinned by hand; hack/resolve-gke-version.sh resolves the actual
+  # patch from GKE's "regular" channel at CI time (clusterctl requires a real
+  # semantic version and rejects "latest", so it can't be left unpinned).
+  KUBERNETES_MINOR_GKE: "1.35"
+  KUBERNETES_VERSION_GKE: "${KUBERNETES_VERSION_GKE}"
   CCM_VERSION: "v35.1.3" # major version must match KUBERNETES_VERSION minor; tag must exist at https://github.com/kubernetes/cloud-provider-gcp/tags
   KUBERNETES_VERSION_MANAGEMENT: "v1.35.1" # latest patch of target k8s minor that is available as a kindest/node image: https://hub.docker.com/r/kindest/node/tags
   ETCD_VERSION_UPGRADE_TO: "3.6.6-0"

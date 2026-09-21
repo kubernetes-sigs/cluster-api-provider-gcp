@@ -192,6 +192,7 @@ SKIP_CREATE_MGMT_CLUSTER ?= false
 
 .PHONY: test-e2e-run
 test-e2e-run: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end tests
+	source $(ROOT_DIR)/hack/resolve-gke-version.sh && \
 	$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
 	time $(GINKGO) -v --trace -poll-progress-after=$(GINKGO_POLL_PROGRESS_AFTER) -poll-progress-interval=$(GINKGO_POLL_PROGRESS_INTERVAL) \
 	--tags=e2e --focus="$(GINKGO_FOCUS)" -skip="$(GINKGO_SKIP)" --no-color=$(GINKGO_NOCOLOR) \
