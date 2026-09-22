@@ -120,6 +120,25 @@ docker manifest inspect kindest/node:vK8S_VERSION
 
 If it does not exist, try earlier patch versions until you find one that is published. Call it `K8S_MGMT_VERSION`.
 
+### 1k. GKE version
+
+GKE resolves cluster versions per release channel, independent of
+`K8S_VERSION` (see the comment already in `gcp-ci.yaml`). Default
+`KUBERNETES_MINOR_GKE` to the same value as the target k8s minor:
+
+```bash
+gcloud container get-server-config --region=us-central1 --format=json | \
+  jq -r '.channels[] | select(.channel=="REGULAR") | .validVersions[]' | \
+  grep '^K8S_MINOR\.' | sort -V | tail -5
+```
+
+If nothing matches (GKE hasn't caught up to this minor yet), pin
+`KUBERNETES_MINOR_GKE` to the latest minor GKE's regular channel actually
+offers instead, and call this out explicitly in the bump PR description —
+this is a deliberate, temporary divergence, not a bug. There's no patch to
+record here — `hack/resolve-gke-version.sh` resolves the current patch for
+whichever minor is pinned, live, on every CI run.
+
 ## Step 2: Review CAPI migration guide
 
 Read the upstream CAPI migration guide for the version jump being performed:
@@ -221,6 +240,7 @@ Update the GCP infrastructure provider dev version from `v1.OLD_CAPI_MINOR.99` t
 KUBERNETES_VERSION: "K8S_VERSION"
 CCM_VERSION: "CCM_VERSION" # major version must match KUBERNETES_VERSION minor; tag must exist at https://github.com/kubernetes/cloud-provider-gcp/tags
 KUBERNETES_VERSION_MANAGEMENT: "K8S_MGMT_VERSION" # latest patch of target k8s minor that is available as a kindest/node image: https://hub.docker.com/r/kindest/node/tags
+KUBERNETES_MINOR_GKE: "K8S_MINOR" # or the fallback minor chosen in 1k
 ETCD_VERSION_UPGRADE_TO: "ETCD_VERSION"
 COREDNS_VERSION_UPGRADE_TO: "COREDNS_VERSION"
 KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-PREV_MINOR-PATCH-nightly"
@@ -231,7 +251,14 @@ KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-K8S_VERSION}"
 
 Note: the nightly image names use dashes instead of dots in versions (e.g. `v1-35-5` not `v1.35.5`).
 
-The comments on `CCM_VERSION` and `KUBERNETES_VERSION_MANAGEMENT` should be preserved in the YAML — they help future maintainers verify these values.
+The comments on `CCM_VERSION`, `KUBERNETES_VERSION_MANAGEMENT`, and
+`KUBERNETES_MINOR_GKE`/`KUBERNETES_VERSION_GKE` should be preserved in the
+YAML — they help future maintainers verify these values. Do not add a
+default value to `KUBERNETES_VERSION_GKE` itself
+(`"${KUBERNETES_VERSION_GKE}"`) — it's fully derived by
+`hack/resolve-gke-version.sh` and never hand-edited; a hand-pinned fallback
+there would just recreate the same staleness problem this step exists to
+avoid.
 
 ## Step 9: Update CCM manifest
 

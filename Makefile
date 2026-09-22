@@ -179,8 +179,8 @@ test: $(SETUP_ENVTEST) ## Run unit and integration tests
 	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" go test ./... $(TEST_ARGS)
 
 # Allow overriding the e2e configurations
-GINKGO_FOCUS ?= Workload cluster creation
-GINKGO_SKIP ?= API Version Upgrade
+GINKGO_FOCUS ?= Workload cluster creation|GKE workload cluster
+GINKGO_SKIP ?=
 GINKGO_NOCOLOR ?= false
 GINKGO_ARGS ?=
 GINKGO_TIMEOUT ?= 2h
@@ -192,6 +192,7 @@ SKIP_CREATE_MGMT_CLUSTER ?= false
 
 .PHONY: test-e2e-run
 test-e2e-run: $(ENVSUBST) $(KUBECTL) $(GINKGO) e2e-image ## Run the end-to-end tests
+	source $(ROOT_DIR)/hack/resolve-gke-version.sh && \
 	$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
 	time $(GINKGO) -v --trace -poll-progress-after=$(GINKGO_POLL_PROGRESS_AFTER) -poll-progress-interval=$(GINKGO_POLL_PROGRESS_INTERVAL) \
 	--tags=e2e --focus="$(GINKGO_FOCUS)" -skip="$(GINKGO_SKIP)" --no-color=$(GINKGO_NOCOLOR) \
