@@ -47,14 +47,9 @@ export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
 GCP_B64ENCODED_CREDENTIALS=$(base64 "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
 export GCP_B64ENCODED_CREDENTIALS
-KUBERNETES_VERSION=$(go run github.com/mikefarah/yq/v4@v4.45.4 '.variables.KUBERNETES_VERSION' test/e2e/config/gcp-ci.yaml)
-export KUBERNETES_VERSION
-read -ra VERSION_PARTS <<< "$(echo "${KUBERNETES_VERSION#v}" | tr '.' ' ')"
-export KUBERNETES_MAJOR_VERSION="${VERSION_PARTS[0]}"
-export KUBERNETES_MINOR_VERSION="${VERSION_PARTS[1]}"
-export KUBERNETES_PATCH_VERSION="${VERSION_PARTS[2]}"
-# using prebuilt image from image-builder project the image is built everyday and the job is available here https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
-export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-${KUBERNETES_VERSION//[.+]/-}-nightly"
+# KUBERNETES_VERSION/IMAGE_ID (and, for other flavors, KUBERNETES_VERSION_GKE/
+# CCM_VERSION/etc.) are resolved in main(), after gcloud auth -- see
+# hack/resolve-e2e-versions.sh.
 
 init_image() {
   if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then
@@ -200,7 +195,11 @@ main() {
     if [[ "${arg}" == "--build-image-only" ]]; then
       BUILD_IMAGE_ONLY="1"
     fi
+    if [[ "${arg}" == --flavor=* ]]; then
+      E2E_FLAVOR="${arg#--flavor=}"
+    fi
   done
+  export E2E_FLAVOR="${E2E_FLAVOR:-all}"
 
   # If BOSKOS_HOST is set then acquire an GCP account from Boskos.
   if [[ -n "${BOSKOS_HOST:-}" ]]; then
@@ -252,6 +251,14 @@ GCP_REGION is not set.
 Please specify which the GCP region to use.
 EOF
     return 2
+  fi
+
+  source hack/resolve-e2e-versions.sh
+  if [[ -n "${KUBERNETES_VERSION:-}" ]]; then
+    read -ra VERSION_PARTS <<< "$(echo "${KUBERNETES_VERSION#v}" | tr '.' ' ')"
+    export KUBERNETES_MAJOR_VERSION="${VERSION_PARTS[0]}"
+    export KUBERNETES_MINOR_VERSION="${VERSION_PARTS[1]}"
+    export KUBERNETES_PATCH_VERSION="${VERSION_PARTS[2]}"
   fi
 
   SKIP_CLEANUP=${SKIP_CLEANUP:-""}
