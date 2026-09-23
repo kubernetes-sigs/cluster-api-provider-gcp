@@ -274,6 +274,21 @@ type MasterAuthorizedNetworksConfigCidrBlock struct {
 	CidrBlock string `json:"cidr_block,omitempty"`
 }
 
+// MonitoringConfig represents the monitoring configuration of the GKE cluster.
+type MonitoringConfig struct {
+	// ManagedPrometheusConfig configures Google Cloud Managed Service for Prometheus for the cluster.
+	// +optional
+	ManagedPrometheusConfig *ManagedPrometheusConfig `json:"managedPrometheusConfig,omitempty"`
+}
+
+// ManagedPrometheusConfig configures Google Cloud Managed Service for Prometheus.
+type ManagedPrometheusConfig struct {
+	// Enabled controls whether Google Cloud Managed Service for Prometheus is enabled for the cluster.
+	// GKE enables this by default; set to false to disable it.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
 // LoggingService is GKE logging service configuration.
 type LoggingService string
 
