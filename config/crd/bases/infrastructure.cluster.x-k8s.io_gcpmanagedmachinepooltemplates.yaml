@@ -64,6 +64,12 @@ spec:
                         description: |-
                           DiskSizeGB is size of the disk attached to each node,
                           specified in GB.
+
+                          Deprecated: DiskSizeGB duplicates DiskSizeGb (both configure the same
+                          underlying GKE node pool disk size) and is retained only for backward
+                          compatibility with existing resources that already set it. This field
+                          remains immutable and will not gain new functionality; use DiskSizeGb
+                          for new manifests. If both fields are set, DiskSizeGb takes precedence.
                         format: int64
                         minimum: 10
                         type: integer
@@ -71,6 +77,7 @@ spec:
                         description: |-
                           DiskSizeGb is the size of the disk attached to each node, specified in GB.
                           The smallest allowed disk size is 10GB. If unspecified, the default disk size is 100GB.
+                          If DiskSizeGB is also set, DiskSizeGb takes precedence.
                         format: int32
                         type: integer
                       diskType:

@@ -18,15 +18,12 @@ kind: GCPMachineTemplate
 metadata:
   name: capg-md-0
 spec:
-  region: us-west-1
   template:
-    osDisk:
-      diskSizeGB: 30
-      managedDisk:
-        storageAccountType: STANDARD
-      osType: Linux
-    vmSize: E2
-    preemptible: true
+    spec:
+      instanceType: n1-standard-2
+      rootDeviceSize: 30
+      rootDeviceType: pd-standard
+      preemptible: true
 ```
 
 ## Spot VMs
@@ -40,15 +37,12 @@ kind: GCPMachineTemplate
 metadata:
   name: capg-md-0
 spec:
-  region: us-west-1
   template:
-    osDisk:
-      diskSizeGB: 30
-      managedDisk:
-        storageAccountType: STANDARD
-      osType: Linux
-    vmSize: E2
-    provisioningModel: Spot
+    spec:
+      instanceType: n1-standard-2
+      rootDeviceSize: 30
+      rootDeviceType: pd-standard
+      provisioningModel: Spot
 ```
 
 NOTE: specifying `preemptible: true` and `provisioningModel: Spot` is equivalent to only `provisioningModel: Spot`. Spot takes priority. 
