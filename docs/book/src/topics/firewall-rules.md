@@ -27,6 +27,12 @@ The network a rule belongs to cannot be changed in place; it is not compared and
 
 Rules that omitted `name` used to be named `<cluster-name>-ingress` or `<cluster-name>-egress`, one per direction no matter how many rules the spec held. They are now named after their contents, so the first reconcile after the upgrade creates each rule under its own name and deletes the rule left behind under the old one.
 
+### Immutable Fields
+
+[GCP cannot modify](https://cloud.google.com/firewall/docs/using-firewalls#updating_firewall_rules) the name, the network, the direction of traffic or the action on match (`allowed` versus `denied`) of an existing firewall rule. Since CAPG updates a rule in place as long as it keeps its name, changing `direction` or switching between `allowed` and `denied` on a named rule is rejected by the webhook: the reconciler would otherwise retry an update GCP always refuses. To make one of those changes, **rename the rule**. The rule under the old name is deleted and the new one is created in its place.
+
+Rules that omit `name` are exempt, because their generated name is derived from their contents: changing the direction of an unnamed rule already changes its name, which replaces the rule instead of updating it.
+
 ## Default Firewall Rules
 
 By default, the provider creates two firewall rules to enable cluster functionality:

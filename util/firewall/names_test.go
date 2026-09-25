@@ -23,6 +23,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
@@ -304,5 +305,177 @@ func TestQualifyRuleNameLeavesGeneratedNamesAlone(t *testing.T) {
 		if got := QualifyRuleName(prefix, rule.Name); got != rule.Name {
 			t.Errorf("QualifyRuleName() renamed generated rule %d from %q to %q", i, rule.Name, got)
 		}
+	}
+}
+
+func TestValidateRulesAcceptsDistinctRules(t *testing.T) {
+	named := ingressRule("443")
+	named.Name = "https"
+	renamed := ingressRule("8443")
+	renamed.Name = "alt-https"
+
+	rules := []infrav1.FirewallRule{named, renamed, ingressRule("22"), ingressRule("80")}
+
+	if errs := ValidateRules(rules, field.NewPath("rules")); len(errs) != 0 {
+		t.Errorf("ValidateRules() = %v, want no errors", errs)
+	}
+}
+
+func TestValidateRulesRejectsDuplicateNames(t *testing.T) {
+	first := ingressRule("443")
+	first.Name = "https"
+	second := ingressRule("8443")
+	second.Name = "https"
+
+	errs := ValidateRules([]infrav1.FirewallRule{first, second}, field.NewPath("rules"))
+	if len(errs) != 1 {
+		t.Fatalf("ValidateRules() = %v, want exactly one error", errs)
+	}
+
+	if got, want := errs[0].Field, "rules[1].name"; got != want {
+		t.Errorf("ValidateRules() reported field %q, want %q", got, want)
+	}
+
+	if errs[0].Type != field.ErrorTypeDuplicate {
+		t.Errorf("ValidateRules() reported %v, want %v", errs[0].Type, field.ErrorTypeDuplicate)
+	}
+}
+
+func TestValidateRulesRejectsIdenticalUnnamedRules(t *testing.T) {
+	errs := ValidateRules([]infrav1.FirewallRule{ingressRule("443"), ingressRule("443")}, field.NewPath("rules"))
+	if len(errs) != 1 {
+		t.Fatalf("ValidateRules() = %v, want exactly one error", errs)
+	}
+
+	if got, want := errs[0].Field, "rules[1]"; got != want {
+		t.Errorf("ValidateRules() reported field %q, want %q", got, want)
+	}
+
+	if !strings.Contains(errs[0].Detail, "rules[0]") {
+		t.Errorf("ValidateRules() detail = %q, want it to name the rule that was duplicated", errs[0].Detail)
+	}
+}
+
+// TestValidateRulesAllowsIdenticalRulesWithDistinctNames guards the narrowness of the
+// content check: identical rules are redundant, but naming them makes them unambiguous
+// and specs that do so work today.
+func TestValidateRulesAllowsIdenticalRulesWithDistinctNames(t *testing.T) {
+	first := ingressRule("443")
+	first.Name = "https"
+	second := ingressRule("443")
+	second.Name = "https-too"
+
+	if errs := ValidateRules([]infrav1.FirewallRule{first, second}, field.NewPath("rules")); len(errs) != 0 {
+		t.Errorf("ValidateRules() = %v, want no errors", errs)
+	}
+}
+
+func TestValidateRuleUpdatesRejectsAChangedDirection(t *testing.T) {
+	before := ingressRule("443")
+	before.Name = "https"
+	after := before
+	after.Direction = infrav1.FirewallRuleDirectionEgress
+
+	errs := ValidateRuleUpdates([]infrav1.FirewallRule{before}, []infrav1.FirewallRule{after}, field.NewPath("rules"))
+	if len(errs) != 1 {
+		t.Fatalf("ValidateRuleUpdates() = %v, want exactly one error", errs)
+	}
+
+	if got, want := errs[0].Field, "rules[0].direction"; got != want {
+		t.Errorf("ValidateRuleUpdates() reported field %q, want %q", got, want)
+	}
+}
+
+func TestValidateRuleUpdatesRejectsAChangedAction(t *testing.T) {
+	before := ingressRule("443")
+	before.Name = "https"
+	after := before
+	after.Allowed, after.Denied = nil, before.Allowed
+
+	errs := ValidateRuleUpdates([]infrav1.FirewallRule{before}, []infrav1.FirewallRule{after}, field.NewPath("rules"))
+	if len(errs) != 1 {
+		t.Fatalf("ValidateRuleUpdates() = %v, want exactly one error", errs)
+	}
+
+	if got, want := errs[0].Field, "rules[0]"; got != want {
+		t.Errorf("ValidateRuleUpdates() reported field %q, want %q", got, want)
+	}
+}
+
+func TestValidateRuleUpdatesAcceptsMutableChanges(t *testing.T) {
+	before := ingressRule("443")
+	before.Name = "https"
+	after := before
+	after.Priority = 900
+	after.Description = "now documented"
+	after.SourceRanges = []string{"10.0.0.0/8"}
+
+	if errs := ValidateRuleUpdates([]infrav1.FirewallRule{before}, []infrav1.FirewallRule{after}, field.NewPath("rules")); len(errs) != 0 {
+		t.Errorf("ValidateRuleUpdates() = %v, want no errors", errs)
+	}
+}
+
+// TestValidateRuleUpdatesAcceptsARenamedRule covers the fix the error message asks for:
+// a rule under a new name is a new rule in GCP, so it is created rather than updated and
+// the immutable fields are free to change.
+func TestValidateRuleUpdatesAcceptsARenamedRule(t *testing.T) {
+	before := ingressRule("443")
+	before.Name = "https"
+	after := before
+	after.Name = "https-egress"
+	after.Direction = infrav1.FirewallRuleDirectionEgress
+
+	if errs := ValidateRuleUpdates([]infrav1.FirewallRule{before}, []infrav1.FirewallRule{after}, field.NewPath("rules")); len(errs) != 0 {
+		t.Errorf("ValidateRuleUpdates() = %v, want no errors", errs)
+	}
+}
+
+// TestValidateRuleUpdatesIgnoresUnnamedRules guards the exemption unnamed rules get:
+// their name is derived from their contents, so changing the direction already names
+// them differently and replaces the rule instead of updating it.
+func TestValidateRuleUpdatesIgnoresUnnamedRules(t *testing.T) {
+	before := ingressRule("443")
+	after := before
+	after.Direction = infrav1.FirewallRuleDirectionEgress
+
+	if errs := ValidateRuleUpdates([]infrav1.FirewallRule{before}, []infrav1.FirewallRule{after}, field.NewPath("rules")); len(errs) != 0 {
+		t.Errorf("ValidateRuleUpdates() = %v, want no errors", errs)
+	}
+}
+
+// TestValidateRuleUpdatesTreatsAnUnsetDirectionAsIngress keeps rules stored before the
+// direction was defaulted from looking like they changed direction.
+func TestValidateRuleUpdatesTreatsAnUnsetDirectionAsIngress(t *testing.T) {
+	before := ingressRule("443")
+	before.Name = "https"
+	before.Direction = ""
+	after := before
+	after.Direction = infrav1.FirewallRuleDirectionIngress
+
+	if errs := ValidateRuleUpdates([]infrav1.FirewallRule{before}, []infrav1.FirewallRule{after}, field.NewPath("rules")); len(errs) != 0 {
+		t.Errorf("ValidateRuleUpdates() = %v, want no errors", errs)
+	}
+}
+
+// TestValidateRulesRejectsWhatExhaustsTheNameGenerator ties the validation to the
+// failure it exists to prevent: enough identical unnamed rules that the generator runs
+// out of names to fall back on.
+func TestValidateRulesRejectsWhatExhaustsTheNameGenerator(t *testing.T) {
+	rules := make([]infrav1.FirewallRule, maxNameAttempts+1)
+	for i := range rules {
+		rules[i] = ingressRule("443")
+	}
+
+	if err := DefaultRuleNames(rules, "my-cluster"); err == nil {
+		t.Fatal("DefaultRuleNames() succeeded, want it to run out of names")
+	}
+
+	// DefaultRuleNames names the rules in place, so rebuild them before validating.
+	for i := range rules {
+		rules[i] = ingressRule("443")
+	}
+
+	if errs := ValidateRules(rules, field.NewPath("rules")); len(errs) == 0 {
+		t.Error("ValidateRules() = no errors, want the duplicates rejected")
 	}
 }

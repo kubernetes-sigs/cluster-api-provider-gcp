@@ -38,6 +38,10 @@ func driftedFields(spec, actual *compute.Firewall) []string {
 	if spec.Description != actual.Description {
 		drifted = append(drifted, "description")
 	}
+	// GCP cannot update the direction of an existing rule, and the webhooks reject a spec
+	// that asks for it, so the only rule that drifts here is one that already existed under
+	// a name the spec now claims. It is still reported, because the update GCP refuses is
+	// what tells the user that the rule they adopted is not the rule they described.
 	if !strings.EqualFold(spec.Direction, actual.Direction) {
 		drifted = append(drifted, "direction")
 	}
