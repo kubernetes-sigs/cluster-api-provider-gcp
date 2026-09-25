@@ -180,6 +180,25 @@ type NodePoolManagement struct {
 	AutoRepair bool `json:"autoRepair,omitempty"`
 }
 
+// NodePoolUpgradeSettings specifies how a node pool rolls out changes that require
+// replacing nodes, such as an InstanceType change. SURGE is GKE's default strategy
+// if Strategy is unset; MaxSurge and MaxUnavailable only apply to SURGE.
+// BlueGreenSettings is not yet supported.
+type NodePoolUpgradeSettings struct {
+	// Strategy is the upgrade strategy to use for the node pool.
+	// +kubebuilder:validation:Enum=SURGE;BLUE_GREEN
+	// +optional
+	Strategy *string `json:"strategy,omitempty"`
+	// MaxSurge is the number of extra nodes to add to the node pool during an
+	// upgrade. Only applies when Strategy is SURGE.
+	// +optional
+	MaxSurge *int32 `json:"maxSurge,omitempty"`
+	// MaxUnavailable is the number of nodes that can be simultaneously
+	// unavailable during an upgrade. Only applies when Strategy is SURGE.
+	// +optional
+	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
+}
+
 // ManagedNodePoolLocationPolicy specifies the location policy of the node pool when autoscaling is enabled.
 type ManagedNodePoolLocationPolicy string
 
