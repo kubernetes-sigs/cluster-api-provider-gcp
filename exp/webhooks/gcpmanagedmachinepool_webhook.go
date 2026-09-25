@@ -184,13 +184,6 @@ func (*GCPManagedMachinePool) ValidateUpdate(_ context.Context, old, r *expinfra
 	}
 
 	if err := webhookutils.ValidateImmutable(
-		field.NewPath("spec", "instanceType"),
-		old.Spec.InstanceType,
-		r.Spec.InstanceType); err != nil {
-		allErrs = append(allErrs, err)
-	}
-
-	if err := webhookutils.ValidateImmutable(
 		field.NewPath("spec", "nodePoolName"),
 		old.Spec.NodePoolName,
 		r.Spec.NodePoolName); err != nil {

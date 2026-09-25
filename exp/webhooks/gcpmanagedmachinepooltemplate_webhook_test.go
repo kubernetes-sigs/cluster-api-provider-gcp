@@ -101,6 +101,43 @@ func TestGCPManagedMachinePoolTemplateValidatingWebhookUpdate(t *testing.T) {
 			expectError: true,
 		},
 		{
+			name: "mutable field instanceType is mutated",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				InstanceType: new("n1-standard-4"),
+			},
+			expectError: false,
+		},
+		{
+			name: "mutable field upgradeSettings is mutated",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				UpgradeSettings: &expinfrav1.NodePoolUpgradeSettings{
+					Strategy:       new("SURGE"),
+					MaxSurge:       new(int32(1)),
+					MaxUnavailable: new(int32(0)),
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "immutable field machineType (deprecated) set after creation",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				MachineType:  new("n2-standard-4"),
+			},
+			expectError: true,
+		},
+		{
 			name: "changing workloadMetadataMode is accepted",
 			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 				NodePoolName: "nodepool1",
