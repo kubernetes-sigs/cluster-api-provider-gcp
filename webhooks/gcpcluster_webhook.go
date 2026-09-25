@@ -67,8 +67,16 @@ func (*GCPCluster) Default(_ context.Context, c *infrav1.GCPCluster) error {
 	return nil
 }
 
-func (*GCPCluster) ValidateCreate(_ context.Context, _ *infrav1.GCPCluster) (admission.Warnings, error) {
-	return nil, nil
+func (*GCPCluster) ValidateCreate(_ context.Context, c *infrav1.GCPCluster) (admission.Warnings, error) {
+	clusterlog.Info("validate create", "name", c.Name)
+
+	allErrs := firewallutil.ValidateRules(c.Spec.Network.Firewall.FirewallRules,
+		field.NewPath("spec", "Network", "Firewall", "FirewallRules"))
+	if len(allErrs) == 0 {
+		return nil, nil
+	}
+
+	return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
 func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster) (admission.Warnings, error) {
@@ -142,6 +150,15 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster)
 				)
 			}
 		}
+	}
+
+	// Rules that were admitted before this validation existed are grandfathered in: a
+	// cluster whose stored rules cannot be told apart stays updatable as long as the
+	// rules are left alone, so an unrelated change is not rejected over a field it does
+	// not touch. Modifying the rules at all opts the whole list back into validation.
+	if !reflect.DeepEqual(c.Spec.Network.Firewall.FirewallRules, old.Spec.Network.Firewall.FirewallRules) {
+		allErrs = append(allErrs, firewallutil.ValidateRules(c.Spec.Network.Firewall.FirewallRules,
+			field.NewPath("spec", "Network", "Firewall", "FirewallRules"))...)
 	}
 
 	if len(allErrs) == 0 {

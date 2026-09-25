@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/hash"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -109,11 +110,9 @@ func TakenRuleNames(rules []infrav1.FirewallRule) sets.Set[string] {
 // reconciles would orphan the rule created by the previous one. Names present in
 // taken are never returned.
 func GenerateRuleName(prefix string, rule infrav1.FirewallRule, taken sets.Set[string]) (string, error) {
-	// The name is what is being generated, so it cannot contribute to the hash.
-	rule.Name = ""
-	seed, err := json.Marshal(rule)
+	seed, err := ruleSeed(rule)
 	if err != nil {
-		return "", errors.Wrap(err, "marshalling firewall rule")
+		return "", err
 	}
 
 	prefix = truncatePrefix(prefix)
@@ -130,6 +129,64 @@ func GenerateRuleName(prefix string, rule infrav1.FirewallRule, taken sets.Set[s
 	}
 
 	return "", errors.Errorf("unable to generate an unused name for firewall rule with prefix %q", prefix)
+}
+
+// ruleSeed returns the bytes that identify a rule independently of its name. Two
+// rules with the same seed are given the same generated name.
+func ruleSeed(rule infrav1.FirewallRule) ([]byte, error) {
+	// The name is what is being generated, so it cannot contribute to the hash.
+	rule.Name = ""
+	seed, err := json.Marshal(rule)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling firewall rule")
+	}
+
+	return seed, nil
+}
+
+// ValidateRules reports the rules that cannot be told apart from an earlier rule.
+//
+// Two rules sharing a name describe a single rule in GCP, so the second silently
+// replaces the first. Two unnamed rules that are otherwise identical seed the name
+// generator identically, and it can only work around that collision maxNameAttempts
+// times before it runs out of names and fails the reconcile. Rejecting both at
+// admission keeps either from reaching the reconciler.
+func ValidateRules(rules []infrav1.FirewallRule, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	names := sets.New[string]()
+	// Only unnamed rules are compared by content, because they are the only ones the
+	// generator has to name. Identical rules that carry distinct names are redundant
+	// but unambiguous, and rejecting them would break specs that work today.
+	seeds := map[string]int{}
+
+	for i, rule := range rules {
+		if rule.Name != "" {
+			if names.Has(rule.Name) {
+				allErrs = append(allErrs, field.Duplicate(fldPath.Index(i).Child("name"), rule.Name))
+			}
+			names.Insert(rule.Name)
+
+			continue
+		}
+
+		seed, err := ruleSeed(rule)
+		if err != nil {
+			allErrs = append(allErrs, field.InternalError(fldPath.Index(i), err))
+
+			continue
+		}
+
+		if first, duplicate := seeds[string(seed)]; duplicate {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i), rule,
+				fmt.Sprintf("rule is identical to %s and would be given the same generated name; name one of them or remove it", fldPath.Index(first))))
+
+			continue
+		}
+		seeds[string(seed)] = i
+	}
+
+	return allErrs
 }
 
 // truncatePrefix shortens prefix so that a generated suffix still fits within
