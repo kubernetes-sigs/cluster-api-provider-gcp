@@ -291,3 +291,59 @@ func TestGCPCluster_DefaultSkipsTopologyOwnedClusters(t *testing.T) {
 	g.Expect((&GCPCluster{}).Default(t.Context(), cluster)).To(Succeed())
 	g.Expect(cluster.Spec.Network.Firewall.FirewallRules[0].Name).To(BeEmpty())
 }
+
+func TestGCPCluster_ValidateCreateRejectsDuplicateFirewallRules(t *testing.T) {
+	duplicated := infrav1.FirewallRule{
+		Direction: infrav1.FirewallRuleDirectionIngress,
+		Priority:  1000,
+		Allowed: []infrav1.FirewallDescriptor{
+			{IPProtocol: infrav1.FirewallProtocolTCP, Ports: []string{"443"}},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		rules   []infrav1.FirewallRule
+		wantErr bool
+	}{
+		{
+			name:    "distinct rules are accepted",
+			rules:   []infrav1.FirewallRule{duplicated, {Name: "ssh", Direction: infrav1.FirewallRuleDirectionIngress}},
+			wantErr: false,
+		},
+		{
+			name:    "two rules sharing a name are rejected",
+			rules:   []infrav1.FirewallRule{{Name: "ssh"}, {Name: "ssh"}},
+			wantErr: true,
+		},
+		{
+			name:    "two identical unnamed rules are rejected",
+			rules:   []infrav1.FirewallRule{duplicated, duplicated},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			cluster := &infrav1.GCPCluster{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-cluster"},
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Firewall: infrav1.FirewallSpec{FirewallRules: tt.rules},
+					},
+				},
+			}
+
+			_, err := (&GCPCluster{}).ValidateCreate(t.Context(), cluster)
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+
+				return
+			}
+
+			g.Expect(err).NotTo(HaveOccurred())
+		})
+	}
+}

@@ -67,8 +67,16 @@ func (*GCPCluster) Default(_ context.Context, c *infrav1.GCPCluster) error {
 	return nil
 }
 
-func (*GCPCluster) ValidateCreate(_ context.Context, _ *infrav1.GCPCluster) (admission.Warnings, error) {
-	return nil, nil
+func (*GCPCluster) ValidateCreate(_ context.Context, c *infrav1.GCPCluster) (admission.Warnings, error) {
+	clusterlog.Info("validate create", "name", c.Name)
+
+	allErrs := firewallutil.ValidateRules(c.Spec.Network.Firewall.FirewallRules,
+		field.NewPath("spec", "Network", "Firewall", "FirewallRules"))
+	if len(allErrs) == 0 {
+		return nil, nil
+	}
+
+	return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
 func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster) (admission.Warnings, error) {
@@ -143,6 +151,9 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster)
 			}
 		}
 	}
+
+	allErrs = append(allErrs, firewallutil.ValidateRules(c.Spec.Network.Firewall.FirewallRules,
+		field.NewPath("spec", "Network", "Firewall", "FirewallRules"))...)
 
 	if len(allErrs) == 0 {
 		return nil, nil
