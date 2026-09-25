@@ -205,6 +205,97 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "diff on instance type triggers update",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						InstanceType: ptr.To("n1-standard-4"),
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{
+					MachineType: "n1-standard-2",
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateNodePoolRequest) {
+				t.Helper()
+				if req.GetMachineType() != "n1-standard-4" {
+					t.Errorf("expected machine type n1-standard-4, got %v", req.GetMachineType())
+				}
+			},
+		},
+		{
+			name: "no diff on instance type when values match",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						InstanceType: ptr.To("n1-standard-4"),
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{
+					MachineType: "n1-standard-4",
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name:        "no update when instance type is unset",
+			machinePool: defaultGCPManagedMachinePool(),
+			mp:          defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{
+					MachineType: "n1-standard-4",
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "diff on upgrade settings triggers update",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						UpgradeSettings: &infrav1exp.NodePoolUpgradeSettings{
+							Strategy:       ptr.To("SURGE"),
+							MaxSurge:       ptr.To(int32(1)),
+							MaxUnavailable: ptr.To(int32(0)),
+						},
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateNodePoolRequest) {
+				t.Helper()
+				if req.GetUpgradeSettings().GetMaxSurge() != 1 {
+					t.Errorf("expected upgrade settings max surge 1, got %v", req.GetUpgradeSettings().GetMaxSurge())
+				}
+				if req.GetUpgradeSettings().GetStrategy() != containerpb.NodePoolUpdateStrategy_SURGE {
+					t.Errorf("expected upgrade settings strategy SURGE, got %v", req.GetUpgradeSettings().GetStrategy())
+				}
+			},
+		},
+		{
+			name:        "no update when upgrade settings unset",
+			machinePool: defaultGCPManagedMachinePool(),
+			mp:          defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{},
+				UpgradeSettings: &containerpb.NodePool_UpgradeSettings{
+					MaxSurge: 1,
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
 			name: "diff on network tags triggers update",
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
