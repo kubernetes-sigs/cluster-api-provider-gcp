@@ -204,5 +204,51 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 
 			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(machineType))
 		})
+
+		It("should leave UpgradeSettings unset on the SDK node pool when not specified", func() {
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetUpgradeSettings()).To(BeNil())
+		})
+
+		It("UpgradeSettings should take default values if nothing is set", func() {
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			strategy := containerpb.NodePoolUpdateStrategy_SURGE
+			Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+				MaxSurge:       1,
+				MaxUnavailable: 0,
+				Strategy:       &strategy,
+			}))
+		})
+		It("UpgradeSettings should respect maxSurge if it is set and default everything else", func() {
+			maxSurge := int32(100)
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				MaxSurge: &maxSurge,
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			strategy := containerpb.NodePoolUpdateStrategy_SURGE
+			Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+				MaxSurge:       maxSurge,
+				MaxUnavailable: 0,
+				Strategy:       &strategy,
+			}))
+		})
+		It("UpgradeSettings should respect maxUnavailable if it is set and default everything else", func() {
+			maxUnavailable := int32(100)
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				MaxUnavailable: &maxUnavailable,
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			strategy := containerpb.NodePoolUpdateStrategy_SURGE
+			Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+				MaxSurge:       1,
+				MaxUnavailable: maxUnavailable,
+				Strategy:       &strategy,
+			}))
+		})
 	})
 })
