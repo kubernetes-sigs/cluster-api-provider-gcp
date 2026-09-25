@@ -176,7 +176,16 @@ print_summary() {
 }
 
 case "${E2E_FLAVOR:-all}" in
-  all)       resolve_unmanaged_version && resolve_gke_version && resolve_upgrade_versions ;;
+  all)
+    resolve_unmanaged_version || return 1
+    case "${GINKGO_FOCUS:-}" in
+      *GKE*|"") resolve_gke_version || return 1 ;;
+      *)
+        echo "GINKGO_FOCUS (${GINKGO_FOCUS}) excludes GKE specs; skipping GKE version resolution."
+        ;;
+    esac
+    resolve_upgrade_versions || return 1
+    ;;
   gke)       resolve_gke_version ;;
   unmanaged) resolve_unmanaged_version ;;
   upgrade)   resolve_upgrade_versions ;;
