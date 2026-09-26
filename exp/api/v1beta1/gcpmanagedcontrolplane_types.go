@@ -21,8 +21,10 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"k8s.io/utils/strings/slices"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 )
 
 const (
@@ -318,6 +320,12 @@ func (r *GCPManagedControlPlane) GetConditions() clusterv1beta1.Conditions {
 // SetConditions sets the status conditions for the GCPManagedControlPlane.
 func (r *GCPManagedControlPlane) SetConditions(conditions clusterv1beta1.Conditions) {
 	r.Status.Conditions = conditions
+}
+
+// IsDeleted reports whether the GKE control plane has finished deleting.
+func (r *GCPManagedControlPlane) IsDeleted() bool {
+	condition := ptr.Deref(v1beta1conditions.Get(r, GKEControlPlaneDeletingCondition), clusterv1beta1.Condition{})
+	return condition.Reason == GKEControlPlaneDeletedReason
 }
 
 func init() {
