@@ -42,6 +42,16 @@ export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= $(basename $(patsubst v%,%,$(KU
 export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?=60s
 export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=60s
 
+# Keep the standalone cert manager pinned here; it is not a dependency of either Go module.
+CERT_MANAGER_VER := v1.16.3
+# Keep the standalone yq pinned here; it is not a dependency of either Go module.
+YQ_VER := v4.45.4
+# Keep the standalone kustomize CLI pinned here; it is not a dependency of either Go module.
+KUSTOMIZE_VER := v4.5.7
+# Keep release-notes pinned here: adding it to hack/tools/go.mod changes many shared dependencies.
+RELEASE_NOTES_VER := v0.11.0
+# Keep kpromo pinned here: adding it to hack/tools/go.mod pulls in a large dependency graph.
+KPROMO_VER := 5ab0dbc74b0228c22a93d240596dff77464aee8f
 # Calico version for e2e tests and dev workflows.
 # When updating, also update test/e2e/data/cni/calico/calico.yaml with the
 # manifest from the new release.
@@ -93,16 +103,6 @@ KIND_VER := $(call get_go_version,sigs.k8s.io/kind)
 KIND_BIN := kind
 KIND := $(TOOLS_BIN_DIR)/$(KIND_BIN)-$(KIND_VER)
 
-# Keep the standalone kustomize CLI pinned here; it is not a dependency of either Go module.
-KUSTOMIZE_VER := v4.5.7
-KUSTOMIZE_BIN := kustomize
-KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
-
-# Keep release-notes pinned here: adding it to hack/tools/go.mod changes many shared dependencies.
-RELEASE_NOTES_VER := v0.11.0
-RELEASE_NOTES_BIN := release-notes
-RELEASE_NOTES := $(TOOLS_BIN_DIR)/$(RELEASE_NOTES_BIN)-$(RELEASE_NOTES_VER)
-
 GINKGO_VER := $(call get_go_version,github.com/onsi/ginkgo/v2)
 GINKGO_BIN := ginkgo
 GINKGO := $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
@@ -123,17 +123,17 @@ GOTESTSUM_VER := $(call get_go_version,gotest.tools/gotestsum,$(TOOLS_DIR))
 GOTESTSUM_BIN := gotestsum
 GOTESTSUM := $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)
 
-# Keep kpromo pinned here: adding it to hack/tools/go.mod pulls in a large dependency graph.
-KPROMO_VER := 5ab0dbc74b0228c22a93d240596dff77464aee8f
-KPROMO_BIN := kpromo
-KPROMO :=  $(TOOLS_BIN_DIR)/$(KPROMO_BIN)-$(KPROMO_VER)
-
-YQ_VER := v4.45.4
 YQ_BIN := yq
 YQ :=  $(TOOLS_BIN_DIR)/$(YQ_BIN)-$(YQ_VER)
 
-# Other tools versions
-CERT_MANAGER_VER := v1.16.3
+KUSTOMIZE_BIN := kustomize
+KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
+
+RELEASE_NOTES_BIN := release-notes
+RELEASE_NOTES := $(TOOLS_BIN_DIR)/$(RELEASE_NOTES_BIN)-$(RELEASE_NOTES_VER)
+
+KPROMO_BIN := kpromo
+KPROMO :=  $(TOOLS_BIN_DIR)/$(KPROMO_BIN)-$(KPROMO_VER)
 
 # Define Docker related variables. Releases should modify and double check these vars.
 export GCP_PROJECT ?= $(shell gcloud config get-value project)
@@ -256,6 +256,7 @@ manager: ## Build manager binary.
 ## --------------------------------------
 ## Tooling Binaries
 ## --------------------------------------
+
 
 .PHONY: $(KPROMO_BIN)
 $(KPROMO_BIN): $(KPROMO) ## Build a local copy of kpromo
