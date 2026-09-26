@@ -21,6 +21,8 @@
 # Required input: GCP_PROJECT and GCP_REGION must be set in the caller's env.
 # Skipped if GINKGO_FOCUS is explicitly set and excludes GKE specs.
 
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
 if [ -z "${GCP_PROJECT:-}" ]; then echo "ERROR: GCP_PROJECT is not set" >&2; return 1; fi
 if [ -z "${GCP_REGION:-}" ]; then echo "ERROR: GCP_REGION is not set" >&2; return 1; fi
 
@@ -36,7 +38,7 @@ esac
 # script runs before the Makefile's envsubst step, so there's nothing in
 # the environment to read yet. Same approach ci-e2e.sh already uses for
 # KUBERNETES_VERSION.
-minor=$(go run github.com/mikefarah/yq/v4@v4.45.4 '.variables.KUBERNETES_MINOR_GKE' test/e2e/config/gcp-ci.yaml)
+minor=$("${REPO_ROOT}/hack/tools/bin/yq" '.variables.KUBERNETES_MINOR_GKE' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml")
 if [ -z "${minor}" ] || [ "${minor}" = "null" ]; then
   echo "ERROR: KUBERNETES_MINOR_GKE is not set in test/e2e/config/gcp-ci.yaml" >&2
   return 1

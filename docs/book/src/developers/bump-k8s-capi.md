@@ -43,18 +43,15 @@ Extract:
 - `sigs.k8s.io/controller-runtime` version → `CONTROLLER_RUNTIME_VER`
 - `k8s.io/api` version → `K8S_MODULE_VER` (e.g. `v0.35.4`)
 
-### 1d. CAPI tool versions
+### 1d. setup-envtest version
 
-Fetch CAPI's `Makefile` to align tool versions:
+Fetch CAPI's `Makefile` to align the setup-envtest CLI version:
 
 ```bash
-gh api "repos/kubernetes-sigs/cluster-api/contents/Makefile?ref=CAPI_VERSION" --jq '.content' | base64 -d | grep -E '^[A-Z_]+(VER|VERSION)\s*[:?]?='
+gh api "repos/kubernetes-sigs/cluster-api/contents/Makefile?ref=CAPI_VERSION" --jq '.content' | base64 -d | grep '^SETUP_ENVTEST_VER :='
 ```
 
-Extract:
-- `CONTROLLER_GEN_VER`
-- `CONVERSION_GEN_VER`
-- `SETUP_ENVTEST_VER`
+Call this `SETUP_ENVTEST_VER`. The controller-gen and conversion-gen versions are selected by `hack/tools/go.mod`, not copied from CAPI's `Makefile`.
 
 ### 1e. Kubernetes component versions
 
@@ -92,11 +89,7 @@ Pick the latest matching the target k8s minor. Call it `K8S_CLOUD_PROVIDER_VER`.
 
 ### 1h. kind version
 
-```bash
-gh api repos/kubernetes-sigs/kind/tags -q '.[].name' | grep -v alpha | grep -v beta | head -5
-```
-
-Pick the latest stable. Call it `KIND_VER`.
+Kind follows the version selected by the root `go.mod`; do not choose a separate Makefile pin. After updating dependencies in Step 3, check the selected version with `go list -m sigs.k8s.io/kind`.
 
 ### 1i. Previous Kubernetes minor latest patch
 
@@ -175,7 +168,7 @@ Then run:
 go mod tidy
 ```
 
-Indirect dependencies will be resolved automatically.
+Indirect dependencies, including Kind, will be resolved automatically.
 
 ## Step 4: Update hack/tools/go.mod
 
@@ -185,26 +178,26 @@ Update the `sigs.k8s.io/cluster-api/hack/tools` pseudo-version. To find the righ
 GOPROXY=https://proxy.golang.org go list -m -json "sigs.k8s.io/cluster-api/hack/tools@CAPI_VERSION"
 ```
 
-Then run:
+Update the setup-envtest tool pin to the version found in Step 1d, then run:
 
 ```bash
-cd hack/tools && go mod tidy
+cd hack/tools
+go get -tool sigs.k8s.io/controller-runtime/tools/setup-envtest@SETUP_ENVTEST_VER
+go mod tidy
 ```
 
-## Step 5: Update Makefile
+## Step 5: Verify derived tool versions
 
-Update these version variables:
+Do not manually edit `KUBEBUILDER_ENVTEST_KUBERNETES_VERSION`, `CONTROLLER_GEN_VER`, `CONVERSION_GEN_VER`, `KIND_VER`, `KUBECTL_VER`, or `SETUP_ENVTEST_VER` in the Makefile. They follow the root or tools module:
 
-```makefile
-KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= K8S_MINOR.0
-CONTROLLER_GEN_VER := <from CAPI Makefile>
-CONVERSION_GEN_VER := <from CAPI Makefile>
-KIND_VER := KIND_VER
-KUBECTL_VER := vK8S_MINOR.0
-SETUP_ENVTEST_VER := <from CAPI Makefile>
+```bash
+go list -m k8s.io/client-go sigs.k8s.io/kind github.com/onsi/ginkgo/v2
+(cd hack/tools && go list -m sigs.k8s.io/controller-tools k8s.io/code-generator sigs.k8s.io/controller-runtime/tools/setup-envtest)
 ```
 
-Do NOT update: `GOLANG_VERSION`, `GOLANGCI_LINT_VER`, `GINKGO_VER`, `KUSTOMIZE_VER`, `CERT_MANAGER_VER`, `CALICO_VERSION` — these are independent of the k8s/CAPI bump.
+The `k8s.io/client-go` version `v0.MINOR.PATCH` determines kubectl `v1.MINOR.PATCH` and the envtest `1.MINOR` selector. Verify the kubectl binary and a matching envtest release are available. The Ginkgo CLI follows the root `go.mod`; controller-gen, conversion-gen, and setup-envtest follow `hack/tools/go.mod`. Check that their selected versions are appropriate before regenerating files.
+
+Do NOT update the independent pins `GOLANG_VERSION`, `KUSTOMIZE_VER`, `CERT_MANAGER_VER`, or `CALICO_VERSION` as part of the k8s/CAPI bump. `GOLANGCI_LINT_VER` follows `.github/workflows/lint.yml` and is handled by the Go bump guide.
 
 ## Step 6: Update metadata.yaml
 
@@ -270,7 +263,7 @@ image: gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${CCM_VERS
 
 ## Step 10: Regenerate CRDs
 
-The controller-gen version change may produce updated CRD manifests:
+Changes to the derived controller-gen or conversion-gen versions may update generated files:
 
 ```bash
 make generate

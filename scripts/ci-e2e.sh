@@ -26,7 +26,8 @@ set -o pipefail
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
 KIND="${REPO_ROOT}/hack/tools/bin/kind"
-make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}"
+YQ="${REPO_ROOT}/hack/tools/bin/yq"
+make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}" "${YQ##*/}"
 
 # shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
@@ -47,7 +48,7 @@ export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
 GCP_B64ENCODED_CREDENTIALS=$(base64 "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
 export GCP_B64ENCODED_CREDENTIALS
-KUBERNETES_VERSION=$(go run github.com/mikefarah/yq/v4@v4.45.4 '.variables.KUBERNETES_VERSION' test/e2e/config/gcp-ci.yaml)
+KUBERNETES_VERSION=$("${YQ}" '.variables.KUBERNETES_VERSION' test/e2e/config/gcp-ci.yaml)
 export KUBERNETES_VERSION
 read -ra VERSION_PARTS <<< "$(echo "${KUBERNETES_VERSION#v}" | tr '.' ' ')"
 export KUBERNETES_MAJOR_VERSION="${VERSION_PARTS[0]}"
