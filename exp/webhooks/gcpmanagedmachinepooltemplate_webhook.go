@@ -64,6 +64,10 @@ func (*GCPManagedMachinePoolTemplate) ValidateCreate(_ context.Context, r *expin
 		allWarns = append(allWarns, "spec.template.spec.diskSizeGB is deprecated and will soon be removed: please use spec.template.spec.diskSizeGb")
 	}
 
+	if r.Spec.Template.Spec.MachineType != nil { //nolint:staticcheck // SA1019: checked to emit a deprecation warning
+		allWarns = append(allWarns, "spec.template.spec.machineType is deprecated and will soon be removed: please use spec.template.spec.instanceType")
+	}
+
 	if err := validateNodePoolName(
 		r.Spec.Template.Spec.NodePoolName,
 		field.NewPath("spec", "NodePoolName")); err != nil {
@@ -145,8 +149,8 @@ func (*GCPManagedMachinePoolTemplate) ValidateUpdate(_ context.Context, old, r *
 
 	if err := webhookutils.ValidateImmutable(
 		field.NewPath("spec", "template", "spec", "machineType"),
-		old.Spec.Template.Spec.MachineType,
-		r.Spec.Template.Spec.MachineType); err != nil {
+		old.Spec.Template.Spec.MachineType,             //nolint:staticcheck // SA1019: deprecated field still validated for backward compatibility
+		r.Spec.Template.Spec.MachineType); err != nil { //nolint:staticcheck // SA1019: deprecated field still validated for backward compatibility
 		allErrs = append(allErrs, err)
 	}
 
