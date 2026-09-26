@@ -86,7 +86,8 @@ ENVSUBST_VER := $(call get_go_version,github.com/a8m/envsubst,$(TOOLS_DIR))
 ENVSUBST_BIN := envsubst
 ENVSUBST := $(TOOLS_BIN_DIR)/$(ENVSUBST_BIN)
 
-GOLANGCI_LINT_VER := v2.12.2
+# Use the CI pin without adding golangci-lint's large dependency graph to hack/tools/go.mod.
+GOLANGCI_LINT_VER = $(shell $(YQ) '.jobs.golangci.steps[] | select(.name == "golangci-lint") | .with.version' .github/workflows/lint.yml)
 
 KIND_VER := $(call get_go_version,sigs.k8s.io/kind)
 KIND_BIN := kind
@@ -317,14 +318,14 @@ $(KIND_BIN): $(KIND) ## Building Kind from tools folder
 ## --------------------------------------
 
 .PHONY: lint
-lint: ## Lint codebase
+lint: $(YQ) ## Lint codebase
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VER} run -v $(GOLANGCI_LINT_EXTRA_ARGS)
 
 .PHONY: lint-fix
 lint-fix: ## Lint the codebase and run auto-fixers if supported by the linter
 	GOLANGCI_LINT_EXTRA_ARGS=--fix $(MAKE) lint
 
-lint-full: ## Run slower linters to detect possible issues
+lint-full: $(YQ) ## Run slower linters to detect possible issues
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VER} run -v --fast=false
 
 ## --------------------------------------
