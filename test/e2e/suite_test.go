@@ -46,6 +46,7 @@ const (
 	KubernetesVersion           = "KUBERNETES_VERSION"
 	KubernetesVersionManagement = "KUBERNETES_VERSION_MANAGEMENT"
 	KubernetesVersionGKE        = "KUBERNETES_VERSION_GKE"
+	ClusterAutoscalerVersion    = "CLUSTER_AUTOSCALER_VERSION"
 
 	CNIPath      = "CNI"
 	CNIResources = "CNI_RESOURCES"
