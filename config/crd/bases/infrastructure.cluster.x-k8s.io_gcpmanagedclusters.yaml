@@ -245,8 +245,7 @@ spec:
                               description: |-
                                 Denied is the list of DENY rules specified by this firewall. Each rule
                                 specifies a protocol and port-range tuple that describes a denied
-                                connection. When a conflict applies between the Denied and Allowed fields,
-                                the Denied field will take precedent.
+                                connection. A firewall rule must specify either allowed or denied, not both.
                               items:
                                 description: FirewallDescriptor describes a GCP firewall
                                   rule.
@@ -335,18 +334,26 @@ spec:
                                 must be a lowercase letter or digit.
                                 If the firewall does not begin with the cluster name, then the cluster name
                                 will be prepended during the creation of the firewall rule.
+                                When the name is not provided, the name is generated from the infrastructure
+                                identifier of the cluster followed by a generated set of characters. The
+                                generated name is derived from the rule, so it is stable across reconciles, and
+                                is truncated so that it never exceeds 63 characters.
+                              maxLength: 63
+                              minLength: 1
+                              pattern: ^[a-z]([-a-z0-9]*[a-z0-9])?$
                               type: string
                             priority:
                               default: 1000
                               description: |-
-                                Priority is the priority for this rule. This is an integer between `0` and
+                                Priority is the priority for this rule. This is an integer between `1` and
                                 `65535`, both inclusive. The default value is `1000`. Relative priorities
                                 determine which rule takes effect if multiple rules apply. Lower values
-                                indicate higher priority. For example, a rule with priority `0` has higher
-                                precedence than a rule with priority `1`. DENY rules take precedence over
+                                indicate higher priority. For example, a rule with priority `1` has higher
+                                precedence than a rule with priority `2`. DENY rules take precedence over
                                 ALLOW rules if they have equal priority. Note that VPC networks have implied
                                 rules with a priority of `65535`. To avoid conflicts with the implied rules,
                                 use a priority number less than `65535`.
+                              format: int32
                               maximum: 65535
                               minimum: 1
                               type: integer
@@ -405,6 +412,23 @@ spec:
                               minItems: 0
                               type: array
                           type: object
+                          x-kubernetes-validations:
+                          - message: sourceRanges cannot be set for Egress rules
+                            rule: self.direction != 'Egress' || !has(self.sourceRanges)
+                              || size(self.sourceRanges) == 0
+                          - message: sourceTags cannot be set for Egress rules
+                            rule: self.direction != 'Egress' || !has(self.sourceTags)
+                              || size(self.sourceTags) == 0
+                          - message: destinationRanges cannot be set for Ingress rules
+                            rule: self.direction != 'Ingress' || !has(self.destinationRanges)
+                              || size(self.destinationRanges) == 0
+                          - message: allowed and denied cannot both be set in the
+                              same rule
+                            rule: '!(has(self.allowed) && size(self.allowed) > 0 &&
+                              has(self.denied) && size(self.denied) > 0)'
+                          - message: at least one of allowed or denied must be set
+                            rule: (has(self.allowed) && size(self.allowed) > 0) ||
+                              (has(self.denied) && size(self.denied) > 0)
                         maxItems: 50
                         type: array
                     type: object
