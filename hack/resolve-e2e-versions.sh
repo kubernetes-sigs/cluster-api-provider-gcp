@@ -23,10 +23,12 @@
 # (all|gke|unmanaged|upgrade, set via scripts/ci-e2e.sh's --flavor arg;
 # defaults to "all").
 
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
 if [ -z "${GCP_PROJECT:-}" ]; then echo "ERROR: GCP_PROJECT is not set" >&2; return 1; fi
 if [ -z "${GCP_REGION:-}" ]; then echo "ERROR: GCP_REGION is not set" >&2; return 1; fi
 
-minor=$(go run github.com/mikefarah/yq/v4@v4.45.4 '.variables.KUBERNETES_MINOR' test/e2e/config/gcp-ci.yaml)
+minor=$("${REPO_ROOT}/hack/tools/bin/yq" '.variables.KUBERNETES_MINOR' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml")
 if [ -z "${minor}" ] || [ "${minor}" = "null" ]; then
   echo "ERROR: KUBERNETES_MINOR is not set in test/e2e/config/gcp-ci.yaml" >&2
   return 1
