@@ -66,6 +66,15 @@ spec:
           spec:
             description: GCPManagedControlPlaneSpec defines the desired state of GCPManagedControlPlane.
             properties:
+              addonsConfig:
+                additionalProperties:
+                  type: boolean
+                description: |-
+                  AddonsConfig maps GKE add-on names to whether they should be enabled — see AddonsConfig's own
+                  doc for the full list of recognized keys. Any add-on left out of the map keeps GKE's own default
+                  in place. Cannot be set when enableAutopilot = true, since Autopilot clusters manage add-ons
+                  themselves.
+                type: object
               binaryAuthorization:
                 description: |-
                   BinaryAuthorization represents the mode of operation of Binary Authorization for the GKE cluster.

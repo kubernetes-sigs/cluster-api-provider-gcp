@@ -184,6 +184,32 @@ var _ = Describe("GKE workload cluster creation", func() {
 		})
 	})
 
+	Context("Creating a GKE cluster with add-ons enabled", func() {
+		It("Should create a cluster with AddonsConfig set", func() {
+			clusterName := fmt.Sprintf("%s-addons", clusterNamePrefix)
+			By("Initializes with add-ons enabled")
+
+			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-gke-addons",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersionGKE),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](3),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-worker-machine-pools"),
+			}, result)
+		})
+	})
+
 	Context("Creating a GKE cluster with autopilot from a cluster class", func() {
 		It("Should create a cluster class and a cluster from it", func() {
 			clusterName := fmt.Sprintf("%s-cc", clusterNamePrefix)
