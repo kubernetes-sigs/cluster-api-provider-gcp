@@ -80,26 +80,30 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
 
 variables:
-  KUBERNETES_VERSION: "v1.35.5"
-  # GKE clusters resolve their own supported versions per release channel, so
-  # this is deliberately independent of KUBERNETES_VERSION above. Only the
-  # minor is pinned by hand; hack/resolve-gke-version.sh resolves the actual
-  # patch from GKE's "regular" channel at CI time (clusterctl requires a real
-  # semantic version and rejects "latest", so it can't be left unpinned).
-  KUBERNETES_MINOR_GKE: "1.35"
+  # The only hand-edited version input. Everything below derives from it at
+  # CI time via hack/resolve-e2e-versions.sh (sourced from Makefile's
+  # test-e2e-run recipe, and from scripts/ci-e2e.sh for IMAGE_ID) -- none of
+  # them should get a hand-pinned fallback here; that would just recreate
+  # the staleness problem this exists to avoid. See
+  # docs/book/src/developers/bump-k8s-capi.md for the bump process
+  KUBERNETES_MINOR: "1.35"
+  KUBERNETES_VERSION: "${KUBERNETES_VERSION}"
   KUBERNETES_VERSION_GKE: "${KUBERNETES_VERSION_GKE}"
-  CCM_VERSION: "v35.1.3" # major version must match KUBERNETES_VERSION minor; tag must exist at https://github.com/kubernetes/cloud-provider-gcp/tags
-  KUBERNETES_VERSION_MANAGEMENT: "v1.35.1" # latest patch of target k8s minor that is available as a kindest/node image: https://hub.docker.com/r/kindest/node/tags
-  ETCD_VERSION_UPGRADE_TO: "3.6.6-0"
-  COREDNS_VERSION_UPGRADE_TO: "v1.13.1"
-  # These images are built by the image-builder project's nightly job: # https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
-  # To update/add a new Kubernetes version, add/update the config files at:https://github.com/kubernetes-sigs/image-builder/tree/main/images/capi/packer/gce/ci/nightly
-  KUBERNETES_IMAGE_UPGRADE_FROM: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-34-8-nightly"
-  KUBERNETES_IMAGE_UPGRADE_TO: "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-v1-35-5-nightly"
+  CCM_VERSION: "${CCM_VERSION}"
+  KUBERNETES_VERSION_MANAGEMENT: "${KUBERNETES_VERSION_MANAGEMENT}"
+  ETCD_VERSION_UPGRADE_TO: "${ETCD_VERSION_UPGRADE_TO}"
+  COREDNS_VERSION_UPGRADE_TO: "${COREDNS_VERSION_UPGRADE_TO}"
+  # These images are built by the image-builder project's nightly job: https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
+  # A given patch only gets a nightly image if someone has added config for
+  # it at https://github.com/kubernetes-sigs/image-builder/tree/main/images/capi/packer/gce/ci/nightly --
+  # hack/resolve-e2e-versions.sh searches for the latest patch that has one,
+  # it can't conjure a new one into existence.
+  KUBERNETES_IMAGE_UPGRADE_FROM: "${KUBERNETES_IMAGE_UPGRADE_FROM}"
+  KUBERNETES_IMAGE_UPGRADE_TO: "${KUBERNETES_IMAGE_UPGRADE_TO}"
   CONTROL_PLANE_MACHINE_TEMPLATE_UPGRADE_TO: "cp-k8s-upgrade-and-conformance"
   WORKERS_MACHINE_TEMPLATE_UPGRADE_TO: "worker-k8s-upgrade-and-conformance"
-  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM:-v1.34.8}"
-  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO:-v1.35.5}"
+  KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM}"
+  KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO}"
   EXP_CLUSTER_RESOURCE_SET: "true"
   CLUSTER_TOPOLOGY: "true"
   # Cluster Addons

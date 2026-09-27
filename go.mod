@@ -173,3 +173,7 @@ require (
 	sigs.k8s.io/kind v0.31.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+
+// Remove this once cluster-api/test is bumped to a release that pulls kind >= v0.32.0
+// (e.g. v1.13.6 or v1.14.0+).
+replace sigs.k8s.io/kind => sigs.k8s.io/kind v0.33.0
