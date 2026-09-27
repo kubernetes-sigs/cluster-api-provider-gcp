@@ -23,7 +23,9 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/tools/record"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
@@ -37,7 +39,6 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/predicates"
-	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -51,6 +52,7 @@ import (
 // GCPClusterReconciler reconciles a GCPCluster object.
 type GCPClusterReconciler struct {
 	client.Client
+	Recorder         record.EventRecorder
 	ReconcileTimeout time.Duration
 	WatchFilterValue string
 }
@@ -99,6 +101,7 @@ func (r *GCPClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		return errors.Wrap(err, "failed adding a watch for ready clusters")
 	}
 
+	r.Recorder = mgr.GetEventRecorderFor("gcpcluster-controller")
 	return nil
 }
 
@@ -206,10 +209,10 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 		loadbalancers.New(clusterScope),
 	}
 
-	for _, r := range reconcilers {
-		if err := r.Reconcile(ctx); err != nil {
+	for _, rec := range reconcilers {
+		if err := rec.Reconcile(ctx); err != nil {
 			log.Error(err, "Reconcile error")
-			record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
+			r.Recorder.Eventf(clusterScope.GCPCluster, corev1.EventTypeWarning, "GCPClusterReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
 	}
@@ -217,13 +220,13 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 	controlPlaneEndpoint := clusterScope.ControlPlaneEndpoint()
 	if controlPlaneEndpoint.Host == "" {
 		log.Info("GCPCluster does not have control-plane endpoint yet. Reconciling")
-		record.Event(clusterScope.GCPCluster, "GCPClusterReconcile", "Waiting for control-plane endpoint")
+		r.Recorder.Event(clusterScope.GCPCluster, corev1.EventTypeNormal, "GCPClusterReconcile", "Waiting for control-plane endpoint")
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	record.Eventf(clusterScope.GCPCluster, "GCPClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
+	r.Recorder.Eventf(clusterScope.GCPCluster, corev1.EventTypeNormal, "GCPClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
 	clusterScope.SetReady()
-	record.Event(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconciled")
+	r.Recorder.Event(clusterScope.GCPCluster, corev1.EventTypeNormal, "GCPClusterReconcile", "Reconciled")
 	return ctrl.Result{}, nil
 }
 
@@ -238,15 +241,15 @@ func (r *GCPClusterReconciler) reconcileDelete(ctx context.Context, clusterScope
 		networks.New(clusterScope),
 	}
 
-	for _, r := range reconcilers {
-		if err := r.Delete(ctx); err != nil {
+	for _, rec := range reconcilers {
+		if err := rec.Delete(ctx); err != nil {
 			log.Error(err, "Reconcile error")
-			record.Warnf(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconcile error - %v", err)
+			r.Recorder.Eventf(clusterScope.GCPCluster, corev1.EventTypeWarning, "GCPClusterReconcile", "Reconcile error - %v", err)
 			return err
 		}
 	}
 
 	controllerutil.RemoveFinalizer(clusterScope.GCPCluster, infrav1.ClusterFinalizer)
-	record.Event(clusterScope.GCPCluster, "GCPClusterReconcile", "Reconciled")
+	r.Recorder.Event(clusterScope.GCPCluster, corev1.EventTypeNormal, "GCPClusterReconcile", "Reconciled")
 	return nil
 }
