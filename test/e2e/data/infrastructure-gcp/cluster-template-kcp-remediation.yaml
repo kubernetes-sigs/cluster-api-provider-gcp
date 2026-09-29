@@ -52,7 +52,7 @@ spec:
         extraArgs:
           cloud-provider: external
           allocate-node-cidrs: "false"
-      kubernetesVersion: "${KUBERNETES_VERSION_GKE}"
+      kubernetesVersion: "${KUBERNETES_VERSION}"
     files:
     - content: |
         [Global]
@@ -114,9 +114,16 @@ metadata:
 spec:
   clusterName: ${CLUSTER_NAME}
   maxUnhealthy: 100%
+  # Scoped to mhc-test:fail (not just cluster.x-k8s.io/control-plane) so this
+  # only ever acts on machines the test has deliberately labeled to fail -
+  # nodeStartupTimeout only needs to be longer than it takes those machines'
+  # (permanently blocked, by design) bootstrap to obviously never finish, not
+  # longer than a real control-plane machine's normal startup.
+  nodeStartupTimeout: 30s
   selector:
     matchLabels:
       cluster.x-k8s.io/control-plane: ""
+      mhc-test: "fail"
   unhealthyConditions:
   - status: "False"
     timeout: 10s

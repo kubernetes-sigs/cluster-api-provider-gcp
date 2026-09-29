@@ -124,7 +124,6 @@ variables:
   GCP_SSH_KEY: "${GCP_SSH_KEY:-}"
 
 intervals:
-  default/wait-controllers: ["5m", "10s"]
   # Neither 20m nor 25m was enough for GKE Autopilot's slower provisioning -
   # it was still legitimately in progress (GKEControlPlaneCreating: True),
   # not stuck, both times. Matching the other GKE-related intervals below
@@ -133,22 +132,30 @@ intervals:
   # bumping it doesn't slow down the faster (non-autopilot) ones - Eventually
   # returns as soon as it succeeds either way.
   default/wait-cluster: ["30m", "10s"]
-  default/wait-private-cluster: ["30m", "10s"]
   default/wait-control-plane: ["30m", "10s"]
   default/wait-control-plane-ha: ["30m", "10s"]
-  default/wait-worker-nodes: ["25m", "10s"]
-  default/wait-gpu-nodes: ["30m", "10s"]
-  default/wait-delete-cluster: ["15m", "10s"]
   default/wait-control-plane-upgrade: ["15m", "10s"]
-  default/wait-machine-deployment-upgrade: ["10m", "10s"]
-  default/wait-machine-upgrade: ["60m", "10s"]
-  default/wait-machine-pool-upgrade: ["60m", "10s"]
-  default/wait-machine-remediation: ["30m", "10s"]
-  default/wait-deployment: ["15m", "10s"]
+  default/wait-controllers: ["5m", "10s"]
   default/wait-daemonset: ["15m", "10s"]
+  default/wait-delete-cluster: ["15m", "10s"]
+  default/wait-deployment: ["15m", "10s"]
   default/wait-deployment-available: ["15m", "10s"]
+  default/wait-gpu-nodes: ["30m", "10s"]
   default/wait-job: ["5m", "10s"]
-  default/wait-service: ["15m", "10s"]
+  default/wait-machine-deployment-upgrade: ["10m", "10s"]
   default/wait-machine-pool-nodes: ["30m", "10s"]
+  default/wait-machine-pool-upgrade: ["60m", "10s"]
+  default/wait-machine-upgrade: ["60m", "10s"]
   default/wait-nsg-update: ["20m", "10s"]
+  default/wait-private-cluster: ["30m", "10s"]
+  default/wait-service: ["15m", "10s"]
+  default/wait-worker-nodes: ["25m", "10s"]
+  # kcp-remediation's own intervals (not default/wait-machine-remediation,
+  # which was for an older, single-interval version of this spec) - see
+  # sigs.k8s.io/cluster-api/test/e2e/kcp_remediations.go. Scaled up from
+  # CAPD's docker.yaml values since real GCE VMs take longer to boot than
+  # docker containers.
+  kcp-remediation/check-machines-stable: ["1m", "10s"]
+  kcp-remediation/wait-machine-provisioned: ["10m", "10s"]
+  kcp-remediation/wait-machines: ["10m", "10s"]
   node-drain/wait-machine-deleted: ["10m", "10s"]
