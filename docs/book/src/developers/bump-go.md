@@ -46,10 +46,10 @@ Call these `GCB_DIGEST`, `GCB_TAG_COMMENT`, and `CAPI_GOLANGCI_VER`.
 The golangci-lint version must be **built with the target Go version** or newer. Versions built with an older Go will refuse to lint. Test candidate versions:
 
 ```bash
-go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@<VERSION> version
+go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@<MINOR_VERSION> version
 ```
 
-Look for `built with goX.Y` in the output. Pick the latest stable version that reports the target Go minor or newer. Call this `GOLANGCI_VERSION` (e.g. `v2.12.2`) and `GOLANGCI_MINOR` (e.g. `v2.12`).
+Look for `built with goX.Y` in the output. Pick a stable minor release that resolves to a linter built with the target Go minor or newer. Call this `GOLANGCI_MINOR` (e.g. `v2.12`). Both CI and `make lint` use this minor-version selector, so its resolved patch version may change.
 
 ### 1e. Delve version
 
@@ -69,15 +69,16 @@ toolchain goFULL_VERSION
 ```makefile
 GOLANG_VERSION := FULL_VERSION
 GOLANG_DIRECTIVE_VERSION ?= X.Y.0
-GOLANGCI_LINT_VER := GOLANGCI_VERSION
 ```
+
+`GOLANGCI_LINT_VER` is read from `.github/workflows/lint.yml`; do not set it separately in the Makefile.
 
 ### Dockerfile
 
 Update the FROM line, replacing both the tag and the digest:
 
 ```dockerfile
-FROM golang:FULL_VERSION@sha256:GOLANG_DIGEST as builder
+FROM golang:FULL_VERSION@sha256:GOLANG_DIGEST AS builder
 ```
 
 ### Tiltfile
@@ -130,7 +131,7 @@ make test
 ```
 
 If `make lint` fails:
-- If the failure is `the Go language version used to build golangci-lint is lower than the targeted Go version`, the chosen `GOLANGCI_VERSION` is wrong. Go back to Step 1d.
+- If the failure is `the Go language version used to build golangci-lint is lower than the targeted Go version`, the chosen `GOLANGCI_MINOR` resolves to an incompatible linter. Go back to Step 1d.
 - If the failure shows new lint findings, fix them. These are pre-existing issues surfaced by the newer linter version, not caused by the Go bump itself. Common categories:
   - **goconst in test files**: add an exclusion in `.golangci.yml` (upstream cluster-api excludes goconst from `_test.go`)
   - **goconst in production code**: extract repeated string literals into package-level constants
@@ -151,7 +152,7 @@ Create **three separate commits** in this order:
 1. **Lint fixes** (if any): `fix(lint): resolve <linter-names> lint issues`
    - Only the source files with lint fixes
 2. **Linter bump** (if version changed): `chore(bump): bump golangci-lint from <old> to <new>`
-   - `.golangci.yml`, `Makefile` (GOLANGCI_LINT_VER only), `.github/workflows/lint.yml` (version only)
+   - `.github/workflows/lint.yml` (version only), and `.golangci.yml` if its configuration changes
 3. **Go version bump**: `chore(bump): bump Go to FULL_VERSION`
    - All remaining files: go.mod, hack/tools/go.mod, Makefile (GOLANG_VERSION + GOLANG_DIRECTIVE_VERSION), Dockerfile, Tiltfile, netlify.toml, cloudbuild*.yaml, .github/workflows/lint.yml (go-version only)
 

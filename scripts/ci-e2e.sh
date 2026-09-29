@@ -26,7 +26,8 @@ set -o pipefail
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
 KIND="${REPO_ROOT}/hack/tools/bin/kind"
-make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}"
+YQ="${REPO_ROOT}/hack/tools/bin/yq"
+make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}" "${YQ##*/}"
 
 # shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
