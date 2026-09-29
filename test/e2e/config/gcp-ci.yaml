@@ -86,7 +86,7 @@ variables:
   # them should get a hand-pinned fallback here; that would just recreate
   # the staleness problem this exists to avoid. See
   # docs/book/src/developers/bump-k8s-capi.md for the bump process
-  KUBERNETES_MINOR: "1.35"
+  KUBERNETES_MINOR: "1.36"
   KUBERNETES_VERSION: "${KUBERNETES_VERSION}"
   KUBERNETES_VERSION_GKE: "${KUBERNETES_VERSION_GKE}"
   CCM_VERSION: "${CCM_VERSION}"

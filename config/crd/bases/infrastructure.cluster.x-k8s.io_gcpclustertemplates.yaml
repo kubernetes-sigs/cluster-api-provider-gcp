@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: gcpclustertemplates.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
@@ -334,13 +334,6 @@ spec:
                                           or CIDR/Prefix
                                         rule: self.all(i, isIP(i) || isCIDR(i))
                                     direction:
-                                      allOf:
-                                      - enum:
-                                        - Ingress
-                                        - Egress
-                                      - enum:
-                                        - Ingress
-                                        - Egress
                                       default: Ingress
                                       description: |-
                                         Direction is the direction of traffic to which this firewall applies, either
@@ -350,6 +343,9 @@ spec:
                                         Possible values:
                                           "Egress" - Indicates that firewall should apply to outgoing traffic.
                                           "Ingress" - Indicates that firewall should apply to incoming traffic.
+                                      enum:
+                                      - Ingress
+                                      - Egress
                                       type: string
                                     name:
                                       description: |-
