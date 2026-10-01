@@ -1,0 +1,38 @@
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: GCPManagedCluster
+    name: "${CLUSTER_NAME}"
+  controlPlaneRef:
+    kind: GCPManagedControlPlane
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    name: "${CLUSTER_NAME}-control-plane"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedCluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  project: "${GCP_PROJECT}"
+  region: "${GCP_REGION}"
+  network:
+    name: "${GCP_NETWORK_NAME}"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedControlPlane
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  project: "${GCP_PROJECT}"
+  location: "${GCP_REGION}"
+  enableAutopilot: true
+  releaseChannel: "regular"
+  fleet: {}

@@ -7,6 +7,7 @@ toolchain go1.26.8
 require (
 	cloud.google.com/go/compute v1.70.0
 	cloud.google.com/go/container v1.55.0
+	cloud.google.com/go/gkehub v0.22.0
 	cloud.google.com/go/resourcemanager v1.17.0
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.35.0
 	github.com/go-logr/logr v1.4.4
