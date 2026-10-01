@@ -1,12 +1,11 @@
 [book]
 authors = ["The Cluster API Provider GCP Maintainers"]
 language = "en"
-multilingual = false
 src = "src"
 title = "Kubernetes Cluster API Provider GCP"
 
 [output.html]
-curly-quotes = true
+smart-punctuation = true
 git-repository-url = "https://sigs.k8s.io/cluster-api-provider-gcp"
 no-section-label = true
 
