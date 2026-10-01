@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
@@ -118,11 +119,26 @@ type GCPManagedMachinePoolStatus struct {
 	// Replicas is the most recently observed number of replicas.
 	// +optional
 	Replicas int32 `json:"replicas"`
-	// Conditions specifies the cpnditions for the managed machine pool
+	// Conditions specifies the conditions for the managed machine pool
+	// +optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
 	// InfrastructureMachineKind is the kind of the infrastructure resources behind MachinePool Machines.
 	// +optional
 	InfrastructureMachineKind string `json:"infrastructureMachineKind,omitempty"`
+
+	// v1beta2 groups all the fields that will be added or modified in GCPManagedMachinePool's status with the v1beta2 contract.
+	// +optional
+	V1Beta2 *GCPManagedMachinePoolV1Beta2Status `json:"v1beta2,omitempty"`
+}
+
+// GCPManagedMachinePoolV1Beta2Status groups the v1beta2 fields of GCPManagedMachinePoolStatus.
+type GCPManagedMachinePoolV1Beta2Status struct {
+	// conditions represents the observations of a GCPManagedMachinePool's current state.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	// +kubebuilder:validation:MaxItems=32
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -221,6 +237,22 @@ func (r *GCPManagedMachinePool) GetConditions() clusterv1beta1.Conditions {
 // SetConditions sets the status conditions for the GCPManagedMachinePool.
 func (r *GCPManagedMachinePool) SetConditions(conditions clusterv1beta1.Conditions) {
 	r.Status.Conditions = conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (r *GCPManagedMachinePool) GetV1Beta2Conditions() []metav1.Condition {
+	if r.Status.V1Beta2 == nil {
+		return nil
+	}
+	return r.Status.V1Beta2.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (r *GCPManagedMachinePool) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	if r.Status.V1Beta2 == nil {
+		r.Status.V1Beta2 = &GCPManagedMachinePoolV1Beta2Status{}
+	}
+	r.Status.V1Beta2.Conditions = conditions
 }
 
 func init() {

@@ -84,6 +84,27 @@ type GCPClusterStatus struct {
 
 	// Bastion Instance `json:"bastion,omitempty"`
 	Ready bool `json:"ready"`
+
+	// conditions defines current service state of the GCPCluster.
+	// +optional
+	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+
+	// v1beta2 groups all the fields that will be added or modified in GCPCluster's status
+	// with the v1beta2 version of the Cluster API contract.
+	// +optional
+	V1Beta2 *GCPClusterV1Beta2Status `json:"v1beta2,omitempty"`
+}
+
+// GCPClusterV1Beta2Status groups the fields that will be added or modified in GCPCluster's status
+// with the v1beta2 version of the Cluster API contract.
+type GCPClusterV1Beta2Status struct {
+	// conditions represents the observations of a GCPCluster's current state.
+	// Known condition types are Ready.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	// +kubebuilder:validation:MaxItems=32
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -111,6 +132,32 @@ type GCPClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []GCPCluster `json:"items"`
+}
+
+// GetConditions returns the set of conditions for this object.
+func (c *GCPCluster) GetConditions() clusterv1beta1.Conditions {
+	return c.Status.Conditions
+}
+
+// SetConditions sets the conditions on this object.
+func (c *GCPCluster) SetConditions(conditions clusterv1beta1.Conditions) {
+	c.Status.Conditions = conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (c *GCPCluster) GetV1Beta2Conditions() []metav1.Condition {
+	if c.Status.V1Beta2 == nil {
+		return nil
+	}
+	return c.Status.V1Beta2.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (c *GCPCluster) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	if c.Status.V1Beta2 == nil {
+		c.Status.V1Beta2 = &GCPClusterV1Beta2Status{}
+	}
+	c.Status.V1Beta2.Conditions = conditions
 }
 
 func init() {
