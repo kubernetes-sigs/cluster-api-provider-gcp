@@ -24,8 +24,10 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
@@ -38,7 +40,6 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/predicates"
-	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -51,6 +52,7 @@ import (
 // GCPManagedClusterReconciler reconciles a GCPManagedCluster object.
 type GCPManagedClusterReconciler struct {
 	client.Client
+	Recorder         record.EventRecorder
 	WatchFilterValue string
 	ReconcileTimeout time.Duration
 }
@@ -165,6 +167,7 @@ func (r *GCPManagedClusterReconciler) SetupWithManager(ctx context.Context, mgr 
 		return fmt.Errorf("adding watch for ready clusters: %v", err)
 	}
 
+	r.Recorder = mgr.GetEventRecorderFor("gcpmanagedcluster-controller")
 	return nil
 }
 
@@ -200,17 +203,17 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 		"subnets":  subnets.New(clusterScope),
 	}
 
-	for name, r := range reconcilers {
+	for name, rec := range reconcilers {
 		log.V(4).Info("Calling reconciler", "reconciler", name)
-		if err := r.Reconcile(ctx); err != nil {
+		if err := rec.Reconcile(ctx); err != nil {
 			log.Error(err, "Reconcile error", "reconciler", name)
-			record.Warnf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
+			r.Recorder.Eventf(clusterScope.GCPManagedCluster, corev1.EventTypeWarning, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
 			return err
 		}
 	}
 
 	clusterScope.SetReady()
-	record.Event(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Ready")
+	r.Recorder.Event(clusterScope.GCPManagedCluster, corev1.EventTypeNormal, "GCPManagedClusterReconcile", "Ready")
 
 	controlPlaneEndpoint := clusterScope.GCPManagedControlPlane.Spec.Endpoint
 	clusterScope.SetControlPlaneEndpoint(clusterv1.APIEndpoint{
@@ -220,9 +223,9 @@ func (r *GCPManagedClusterReconciler) reconcile(ctx context.Context, clusterScop
 
 	if controlPlaneEndpoint.IsZero() {
 		log.Info("GCPManagedControlplane does not have endpoint yet. Reconciling")
-		record.Event(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Waiting for control-plane endpoint")
+		r.Recorder.Event(clusterScope.GCPManagedCluster, corev1.EventTypeNormal, "GCPManagedClusterReconcile", "Waiting for control-plane endpoint")
 	} else {
-		record.Eventf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
+		r.Recorder.Eventf(clusterScope.GCPManagedCluster, corev1.EventTypeNormal, "GCPManagedClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
 	}
 
 	return nil
@@ -253,17 +256,17 @@ func (r *GCPManagedClusterReconciler) reconcileDelete(ctx context.Context, clust
 		"networks": networks.New(clusterScope),
 	}
 
-	for name, r := range reconcilers {
+	for name, rec := range reconcilers {
 		log.V(4).Info("Calling reconciler delete", "reconciler", name)
-		if err := r.Delete(ctx); err != nil {
+		if err := rec.Delete(ctx); err != nil {
 			log.Error(err, "Reconcile error", "reconciler", name)
-			record.Warnf(clusterScope.GCPManagedCluster, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
+			r.Recorder.Eventf(clusterScope.GCPManagedCluster, corev1.EventTypeWarning, "GCPManagedClusterReconcile", "Reconcile error - %v", err)
 			return ctrl.Result{}, err
 		}
 	}
 
 	controllerutil.RemoveFinalizer(clusterScope.GCPManagedCluster, infrav1exp.ClusterFinalizer)
-	record.Event(clusterScope.GCPManagedCluster, "GCPClusterReconcile", "Reconciled")
+	r.Recorder.Event(clusterScope.GCPManagedCluster, corev1.EventTypeNormal, "GCPClusterReconcile", "Reconciled")
 
 	return ctrl.Result{}, nil
 }
