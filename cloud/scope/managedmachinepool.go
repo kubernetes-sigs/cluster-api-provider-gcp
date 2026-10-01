@@ -211,9 +211,6 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 			ResourceLabels: NodePoolResourceLabels(nodePool.Spec.AdditionalLabels, clusterName),
 		},
 	}
-	if nodePool.Spec.MachineType != nil {
-		sdkNodePool.Config.MachineType = *nodePool.Spec.MachineType
-	}
 	if nodePool.Spec.ImageType != nil {
 		sdkNodePool.Config.ImageType = *nodePool.Spec.ImageType
 	}
@@ -239,6 +236,11 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 		sdkNodePool.MaxPodsConstraint = &containerpb.MaxPodsConstraint{
 			MaxPodsPerNode: *nodePool.Spec.MaxPodsPerNode,
 		}
+	}
+	// MachineType is deprecated in favor of InstanceType; apply it first so that
+	// InstanceType - the canonical field - takes precedence when both are set.
+	if nodePool.Spec.MachineType != nil { //nolint:staticcheck // SA1019: deprecated field read intentionally for backward compatibility
+		sdkNodePool.Config.MachineType = *nodePool.Spec.MachineType //nolint:staticcheck // SA1019: deprecated field read intentionally for backward compatibility
 	}
 	if nodePool.Spec.InstanceType != nil {
 		sdkNodePool.Config.MachineType = *nodePool.Spec.InstanceType
