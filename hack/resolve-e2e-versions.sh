@@ -116,6 +116,12 @@ resolve_management_version() {
   export KUBERNETES_VERSION_MANAGEMENT
 }
 
+resolve_cluster_autoscaler_version() {
+  # Autoscaler version matches k8s minor
+  CLUSTER_AUTOSCALER_VERSION="v${minor}.0"
+  export CLUSTER_AUTOSCALER_VERSION
+}
+
 resolve_gke_version() {
   local resolved
   resolved=$(gcloud container get-server-config \
@@ -167,9 +173,10 @@ print_summary() {
   echo "---- resolved e2e versions (flavor=${E2E_FLAVOR:-all}, KUBERNETES_MINOR=${minor}) ----"
   local v
   for v in KUBERNETES_VERSION IMAGE_ID KUBERNETES_VERSION_GKE CCM_VERSION \
-      KUBERNETES_VERSION_MANAGEMENT KUBERNETES_VERSION_UPGRADE_FROM \
-      KUBERNETES_VERSION_UPGRADE_TO KUBERNETES_IMAGE_UPGRADE_FROM \
-      KUBERNETES_IMAGE_UPGRADE_TO ETCD_VERSION_UPGRADE_TO COREDNS_VERSION_UPGRADE_TO; do
+      KUBERNETES_VERSION_MANAGEMENT CLUSTER_AUTOSCALER_VERSION \
+      KUBERNETES_VERSION_UPGRADE_FROM KUBERNETES_VERSION_UPGRADE_TO \
+      KUBERNETES_IMAGE_UPGRADE_FROM KUBERNETES_IMAGE_UPGRADE_TO \
+      ETCD_VERSION_UPGRADE_TO COREDNS_VERSION_UPGRADE_TO; do
     if [ -n "${!v:-}" ]; then
       printf '  %s=%s\n' "${v}" "${!v}"
     fi
@@ -195,5 +202,6 @@ case "${E2E_FLAVOR:-all}" in
 esac || return 1
 
 resolve_management_version || return 1
+resolve_cluster_autoscaler_version || return 1
 
 print_summary

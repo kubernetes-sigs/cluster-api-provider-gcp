@@ -104,8 +104,6 @@ Cluster-autoscaler requires:
    - Cluster-autoscaler needs access to both management cluster (for CAPI resources) and workload cluster (for pod scheduling)
    - See [kubeconfig configuration](https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/clusterapi/README.md#connecting-cluster-autoscaler-to-cluster-api-management-and-workload-clusters) for setup options
 
-For a complete reference implementation including RBAC manifests and deployment configuration, see [test/e2e/data/cluster-autoscaler/](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/tree/main/test/e2e/data/cluster-autoscaler).
-
 ### Configuration
 
 To enable scale-from-zero:

@@ -1,8 +1,7 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cluster-autoscaler
+  name: cluster-autoscaler-{{.ClusterName}}
   namespace: {{.Namespace}}
   labels:
     app: cluster-autoscaler
@@ -17,9 +16,12 @@ spec:
         app: cluster-autoscaler
     spec:
       serviceAccountName: cluster-autoscaler
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
       containers:
         - name: cluster-autoscaler
-          image: registry.k8s.io/autoscaling/cluster-autoscaler:{{ .ClusterAutoscalerVersion }}
+          image: "registry.k8s.io/autoscaling/cluster-autoscaler:{{ .ClusterAutoscalerVersion }}"
           command:
             - /cluster-autoscaler
             - --cloud-provider=clusterapi
@@ -34,6 +36,8 @@ spec:
             - --skip-nodes-with-system-pods=false
             - --skip-nodes-with-local-storage=false
             - --expander=random
+            - --kube-client-qps=20
+            - --kube-client-burst=30
             - --v=4
           env:
             - name: CAPI_GROUP
