@@ -22,6 +22,8 @@ import (
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
+//go:generate go run ./internal/docgen ../../../../docs/book/src/managed/_addons-table.md
+
 // The keys GCPManagedControlPlane's addonsConfig accepts. Each is the name GKE's own API gives the
 // add-on, which is what makes it enough on its own to find the add-on in a GKE AddonsConfig: see
 // resolve in gke.go. They are constants so that a reference from one add-on to another fails to compile
@@ -57,6 +59,9 @@ type Addon struct {
 	// Description says what the add-on does. A map's keys get no individual descriptions in a generated
 	// CRD schema the way named struct fields would, so this is where that documentation lives.
 	Description string
+	// DocsURL is GKE's own documentation for the add-on, which the generated documentation links to.
+	// Empty when GKE has none.
+	DocsURL string
 
 	// SpecConstraints and ClusterConstraints are the prerequisites GKE imposes before the add-on can be
 	// enabled, plus any project API the add-on cannot work without. Facts GKE states only in its
@@ -99,15 +104,18 @@ var Supported = []Addon{
 	{
 		Key:                KeyDNSCache,
 		Description:        "NodeLocal DNSCache, a DNS cache running on cluster nodes.",
+		DocsURL:            gkeDocs + "how-to/nodelocal-dns-cache",
 		ClusterConstraints: []ClusterConstraint{ExcludesNodeOS(corev1.Windows)},
 	},
 	{
 		Key:         KeyGCEPersistentDiskCSIDriver,
 		Description: "The Compute Engine persistent disk CSI driver.",
+		DocsURL:     gkeDocs + "how-to/persistent-volumes/gce-pd-csi-driver",
 	},
 	{
 		Key:         KeyGCPFilestoreCSIDriver,
 		Description: "The Filestore CSI driver.",
+		DocsURL:     gkeDocs + "how-to/persistent-volumes/filestore-csi-driver",
 		ClusterConstraints: []ClusterConstraint{
 			ExcludesNodeOS(corev1.Windows),
 			RequiresProjectAPI("file.googleapis.com"),
@@ -116,23 +124,28 @@ var Supported = []Addon{
 	{
 		Key:         KeyGKEBackupAgent,
 		Description: "The Backup for GKE agent.",
+		DocsURL:     gkeDocs + "add-on/backup-for-gke/concepts/backup-for-gke",
 	},
 	{
 		Key:             KeyConfigConnector,
 		Description:     "Config Connector, a Kubernetes extension for managing hosted Google Cloud services through the Kubernetes API.",
+		DocsURL:         "https://docs.cloud.google.com/config-connector/docs/overview",
 		SpecConstraints: []SpecConstraint{RequiresWorkloadIdentity, RequiresMonitoring},
 	},
 	{
 		Key:             KeyStatefulHA,
 		Description:     "The Stateful HA add-on.",
+		DocsURL:         gkeDocs + "how-to/stateful-ha",
 		SpecConstraints: []SpecConstraint{DependsOnAddon(KeyGCEPersistentDiskCSIDriver)},
 	},
 	{
 		Key:             KeyGCSFuseCSIDriver,
 		Description:     "The Cloud Storage FUSE CSI driver.",
+		DocsURL:         gkeDocs + "concepts/cloud-storage-fuse-csi-driver",
 		SpecConstraints: []SpecConstraint{RequiresWorkloadIdentity},
 	},
 	{
+		// No DocsURL: GKE's Parallelstore pages now redirect to Managed Lustre's.
 		Key:         KeyParallelstoreCSIDriver,
 		Description: "The Cloud Storage Parallelstore CSI driver.",
 		ClusterConstraints: []ClusterConstraint{
@@ -143,6 +156,7 @@ var Supported = []Addon{
 	{
 		Key:                KeyLustreCSIDriver,
 		Description:        "The Managed Lustre CSI driver.",
+		DocsURL:            gkeDocs + "concepts/managed-lustre",
 		SpecConstraints:    []SpecConstraint{MinimumVersion("1.33.2-gke.1111000")},
 		ClusterConstraints: []ClusterConstraint{RequiresProjectAPI("lustre.googleapis.com")},
 		Options: []Option{
@@ -158,10 +172,12 @@ var Supported = []Addon{
 	{
 		Key:         KeyRayOperator,
 		Description: "The Ray Operator, which manages Ray clusters.",
+		DocsURL:     gkeDocs + "add-on/ray-on-gke/concepts/overview",
 	},
 	{
 		Key:         KeyHighScaleCheckpointing,
 		Description: "The High Scale Checkpointing add-on.",
+		DocsURL:     gkeDocs + "how-to/machine-learning/training/multi-tier-checkpointing",
 		SpecConstraints: []SpecConstraint{
 			RequiresWorkloadIdentity,
 			DependsOnAddon(KeyGCSFuseCSIDriver),
@@ -171,6 +187,7 @@ var Supported = []Addon{
 	{
 		Key:         KeySliceController,
 		Description: "The Slice Controller add-on.",
+		DocsURL:     gkeDocs + "concepts/dynamic-slicing",
 		SpecConstraints: []SpecConstraint{
 			ReleaseChannelIn(infrav1exp.Rapid),
 			MinimumVersion("1.35.2-gke.1842000"),
@@ -179,6 +196,7 @@ var Supported = []Addon{
 	{
 		Key:             KeyAgentSandbox,
 		Description:     "The AgentSandbox add-on.",
+		DocsURL:         gkeDocs + "concepts/machine-learning/agent-sandbox",
 		SpecConstraints: []SpecConstraint{MinimumVersion("1.36.3-gke.1767000")},
 		ClusterConstraints: []ClusterConstraint{
 			RequiresNodePoolSandbox(sandboxTypeGVisor),
@@ -186,6 +204,7 @@ var Supported = []Addon{
 		},
 	},
 	{
+		// No DocsURL: GKE documents the Node Readiness Controller nowhere beyond its API field.
 		Key: KeyNodeReadiness,
 		// The Node Readiness Controller clears a taint the Compute Engine persistent disk CSI driver
 		// sets, so it does nothing useful without that add-on. That isn't a DependsOnAddon constraint
@@ -196,6 +215,7 @@ var Supported = []Addon{
 	{
 		Key:         KeyPodSnapshot,
 		Description: "The Pod Snapshots feature.",
+		DocsURL:     gkeDocs + "concepts/pod-snapshots",
 		SpecConstraints: []SpecConstraint{
 			RequiresWorkloadIdentity,
 			MinimumVersion("1.35.3-gke.1234000"),
@@ -205,9 +225,13 @@ var Supported = []Addon{
 	{
 		Key:             KeySlurmOperator,
 		Description:     "The Slurm Operator, which manages the compute pods for a Slurm cluster.",
+		DocsURL:         gkeDocs + "add-on/slurm-on-gke/concepts/overview",
 		SpecConstraints: []SpecConstraint{MinimumVersion("1.35.2-gke.1842000")},
 	},
 }
+
+// gkeDocs is the root most of Supported's DocsURLs share.
+const gkeDocs = "https://docs.cloud.google.com/kubernetes-engine/docs/"
 
 // supportedKeys is every key Supported recognizes, so that judging a cluster's add-on names doesn't
 // scan it.
