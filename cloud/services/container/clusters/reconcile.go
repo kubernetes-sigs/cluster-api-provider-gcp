@@ -140,6 +140,13 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 			}
 		}
 
+		if err = s.checkAddonPrerequisites(ctx, nil); err != nil {
+			log.Error(err, "add-on prerequisites not met")
+			s.markAddonPrerequisiteNotMet(err, clusterv1beta1.ReadyCondition,
+				infrav1exp.GKEControlPlaneReadyCondition, infrav1exp.GKEControlPlaneCreatingCondition)
+			return ctrl.Result{}, err
+		}
+
 		if err = s.createCluster(ctx, &log); err != nil {
 			log.Error(err, "failed creating cluster")
 			v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
@@ -295,6 +302,12 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		s.scope.GCPManagedControlPlane.Status.Initialized = true
 		s.scope.GCPManagedControlPlane.Status.Ready = true
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
+	}
+
+	if err := s.checkAddonPrerequisites(ctx, cluster); err != nil {
+		log.Error(err, "add-on prerequisites not met")
+		s.markAddonPrerequisiteNotMet(err, clusterv1beta1.ReadyCondition, infrav1exp.GKEControlPlaneReadyCondition)
+		return ctrl.Result{}, err
 	}
 
 	needUpdate, updateClusterRequest := s.checkDiffAndPrepareUpdate(cluster, &log)
@@ -579,6 +592,12 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 
 	cluster.SecretManagerConfig = convertToSdkSecretManagerConfig(s.scope.GCPManagedControlPlane.Spec.SecretManagerConfig)
 	cluster.SecretSyncConfig = convertToSdkSecretSyncConfig(s.scope.GCPManagedControlPlane.Spec.SecretSyncConfig)
+
+	if len(s.scope.GCPManagedControlPlane.Spec.AddonsConfig) > 0 {
+		addonsConfig := s.addonsConfig()
+		log.V(2).Info("Requesting add-ons", "addons", addonsConfig.EnabledKeys())
+		cluster.AddonsConfig = addonsConfig.ToGKE()
+	}
 
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
@@ -997,6 +1016,13 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			log.V(2).Info("Secret Sync config update required",
 				"current", existingSecretSyncConfig, "desired", desiredSecretSyncConfig)
 		}
+	}
+
+	// AddonsConfig
+	if addonsNeedUpdate, desiredAddonsConfig := s.addonsConfig().DiffGKE(existingCluster.GetAddonsConfig()); addonsNeedUpdate {
+		needUpdate = true
+		clusterUpdate.DesiredAddonsConfig = desiredAddonsConfig
+		log.V(2).Info("AddonsConfig update required", "current", existingCluster.GetAddonsConfig(), "desired", desiredAddonsConfig)
 	}
 
 	updateClusterRequest := containerpb.UpdateClusterRequest{
