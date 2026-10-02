@@ -26,10 +26,18 @@ Fixes #
 
 _Please confirm that if this PR changes any image versions, then that's the sole change this PR makes._
 
+**AI Usage**:
+
+<!-- Disclose substantive AI assistance used to create or revise code, tests,
+documentation, or technical analysis. Include the tools used, what they helped
+with, and how you reviewed or tested the result. Routine autocomplete and minor
+editor suggestions do not need to be disclosed. If none, write "None". -->
+
 **TODOs**:
 <!-- Put an "X" character inside the brackets of each completed task. Some may be optional depending on the PR. -->
 
 - [ ] squashed commits
+- [ ] commit messages, PR title, and release notes follow [Conventional Commits](https://www.conventionalcommits.org/)
 - [ ] includes documentation
 - [ ] adds unit tests
 
@@ -37,6 +45,10 @@ _Please confirm that if this PR changes any image versions, then that's the sole
 <!--  Write your release note:
 1. Enter your extended release note in the below block. If the PR requires additional action from users switching to the new release, include the string "action required".
 2. If no release note is required, just write "NONE".
+3. Format release notes using [Conventional Commits](https://www.conventionalcommits.org/).
+   Use `<type>[optional scope]: <description>`, e.g.,
+   `fix: handle missing GCPCluster during reconciliation` or
+   `feat(gke): add managed machine pool support`.
 -->
 ```release-note
 
