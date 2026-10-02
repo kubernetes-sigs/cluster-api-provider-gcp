@@ -14,6 +14,7 @@
     - [Network Configuration](./managed/network-config.md)
     - [Reservation Affinity](./managed/reservation-affinity.md)
     - [Workload Identity](./managed/workload-identity.md)
+    - [Add-ons](./managed/addons.md)
 - [ClusterClass](./clusterclass/index.md)
     - [Provisioning a Cluster](./clusterclass/provision.md)
     - [Enabling](./clusterclass/enabling.md)
