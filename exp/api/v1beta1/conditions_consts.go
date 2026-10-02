@@ -48,6 +48,8 @@ const (
 	GKEControlPlaneErrorReason = "GKEControlPlaneError"
 	// GKEControlPlaneReconciliationFailedReason used to report failures while reconciling GKE control plane.
 	GKEControlPlaneReconciliationFailedReason = "GKEControlPlaneReconciliationFailed"
+	// GKEControlPlaneAddonPrerequisiteNotMetReason used to report that an enabled add-on's prerequisites aren't met.
+	GKEControlPlaneAddonPrerequisiteNotMetReason = "GKEControlPlaneAddonPrerequisiteNotMet"
 	// GKEControlPlaneRequiresAtLeastOneNodePoolReason used to report that no node pool is specified for the GKE control plane.
 	GKEControlPlaneRequiresAtLeastOneNodePoolReason = "GKEControlPlaneRequiresAtLeastOneNodePool"
 
