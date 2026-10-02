@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
@@ -374,6 +375,11 @@ var (
 	// Balancer and will be created if no LoadBalancerType is defined.
 	External = LoadBalancerType("External")
 
+	// RegionalExternal creates a Regional External Proxy Load Balancer
+	// to manage traffic to backends in a single region. This is required for
+	// GCD (Google Cloud Distributed/Sovereign Cloud) environments.
+	RegionalExternal = LoadBalancerType("RegionalExternal")
+
 	// Internal creates a Regional Internal Passthrough Load
 	// Balancer to manage traffic to backends in the configured region.
 	Internal = LoadBalancerType("Internal")
@@ -381,6 +387,11 @@ var (
 	// InternalExternal creates both External and Internal Load Balancers to provide
 	// separate endpoints for managing both external and internal traffic.
 	InternalExternal = LoadBalancerType("InternalExternal")
+
+	// RegionalInternalExternal creates both RegionalExternal and Internal Load Balancers
+	// to provide separate endpoints for managing both external and internal traffic in
+	// GCD (Google Cloud Distributed/Sovereign Cloud) environments.
+	RegionalInternalExternal = LoadBalancerType("RegionalInternalExternal")
 )
 
 // LoadBalancerSpec contains configuration for one or more LoadBalancers.
@@ -395,12 +406,55 @@ type LoadBalancerSpec struct {
 
 	// LoadBalancerType defines the type of Load Balancer that should be created.
 	// If not set, a Global External Proxy Load Balancer will be created by default.
+	// +kubebuilder:validation:Enum=External;RegionalExternal;Internal;InternalExternal;RegionalInternalExternal
 	// +optional
 	LoadBalancerType *LoadBalancerType `json:"loadBalancerType,omitempty"`
+
+	// ExternalLoadBalancerConfig is the configuration (name, IP) applied to the
+	// external Load Balancer created by the controller. Its scope (global vs
+	// regional) is determined solely by LoadBalancerType; this field only carries
+	// naming and address settings and does not itself select a load balancer kind.
+	// Applies to all load balancer types that include an external component:
+	// External (global), InternalExternal (global external + regional internal),
+	// RegionalExternal (regional), and RegionalInternalExternal (regional
+	// external + regional internal). Ignored when LoadBalancerType is Internal.
+	// +optional
+	ExternalLoadBalancerConfig *ExternalLoadBalancer `json:"externalLoadBalancerConfig,omitempty"`
 
 	// InternalLoadBalancer is the configuration for an Internal Passthrough Network Load Balancer.
 	// +optional
 	InternalLoadBalancer *LoadBalancer `json:"internalLoadBalancer,omitempty"`
+}
+
+var validLoadBalancerTypes = map[LoadBalancerType]struct{}{
+	External:                 {},
+	RegionalExternal:         {},
+	Internal:                 {},
+	InternalExternal:         {},
+	RegionalInternalExternal: {},
+}
+
+// Validate returns admission warnings and a field.ErrorList for a LoadBalancerSpec.
+// The kubebuilder Enum marker on LoadBalancerType only enforces the CRD schema;
+// this runs the same check plus a semantic cross-field check that catches
+// configuration that is silently ignored by the reconciler.
+func (s *LoadBalancerSpec) Validate(fldPath *field.Path) (warnings []string, errs field.ErrorList) {
+	if s.LoadBalancerType != nil {
+		if _, ok := validLoadBalancerTypes[*s.LoadBalancerType]; !ok {
+			errs = append(errs, field.NotSupported(fldPath.Child("loadBalancerType"), *s.LoadBalancerType, []string{
+				string(External), string(RegionalExternal), string(Internal),
+				string(InternalExternal), string(RegionalInternalExternal),
+			}))
+		}
+	}
+
+	if s.ExternalLoadBalancerConfig != nil && s.LoadBalancerType != nil && *s.LoadBalancerType == Internal {
+		warnings = append(warnings,
+			fldPath.Child("externalLoadBalancerConfig").String()+
+				" is set but LoadBalancerType is Internal, which has no external component; the field will be ignored")
+	}
+
+	return warnings, errs
 }
 
 // SubnetSpec configures an GCP Subnet.
@@ -587,22 +641,25 @@ const (
 // LoadBalancer specifies the configuration of a LoadBalancer.
 type LoadBalancer struct {
 	// Name is the name of the Load Balancer. If not set a default name
-	// will be used. For an Internal Load Balancer service the default
-	// name is "api-internal".
+	// will be used. For an Internal Load Balancer the default name is "api-internal".
+	// For a Regional External Load Balancer the default name is "api-server".
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Pattern=`(^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)`
 	// +optional
 	Name *string `json:"name,omitempty"`
 
-	// Subnet is the name of the subnet to use for a regional Load Balancer. A subnet is
-	// required for the Load Balancer, if not defined the first configured subnet will be
-	// used.
+	// Subnet is the name of the subnet to use for a regional Load Balancer.
+	// For Internal Load Balancers, a subnet is required. If not defined,
+	// the first configured subnet will be used.
+	// For Regional External Load Balancers, this field is not applicable.
+	// +optional
 	Subnet *string `json:"subnet,omitempty"`
 
 	// InternalAccess defines the access for the Internal Passthrough Load Balancer.
 	// It determines whether the load balancer allows global access,
 	// or restricts traffic to clients within the same region as the load balancer.
 	// If unspecified, the value defaults to "Regional".
+	// This field only applies to Internal Load Balancers.
 	//
 	// Possible values:
 	//   "Regional" - Only clients in the same region as the load balancer can access it.
@@ -614,7 +671,32 @@ type LoadBalancer struct {
 
 	// IPAddress is the static IP address to use for the Load Balancer.
 	// If not set, a new static IP address will be allocated.
-	// If set, it must be a valid free IP address from the LoadBalancer Subnet.
+	// For Internal Load Balancers, this must be a valid IP address from the LoadBalancer Subnet.
+	// For Regional External Load Balancers, this must be a valid external IP address in the region.
+	// +optional
+	IPAddress *string `json:"ipAddress,omitempty"`
+}
+
+// ExternalLoadBalancer describes the settings that apply to the external
+// Load Balancer (both Global External and Regional External). It intentionally
+// exposes only the fields that are meaningful for an external LB, so that
+// Internal-only options such as subnet or internalAccess do not leak into the
+// CRD schema for external configuration.
+type ExternalLoadBalancer struct {
+	// Name is the name of the Load Balancer. If not set a default name will be
+	// used. For a Global External Load Balancer the default name is
+	// "api-server". For a Regional External Load Balancer the default name is
+	// also "api-server".
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Pattern=`(^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)`
+	// +optional
+	Name *string `json:"name,omitempty"`
+
+	// IPAddress is the static IP address to use for the external Load Balancer.
+	// If not set, a new static IP address will be allocated.
+	// For a Global External Load Balancer this must be a global external
+	// address; for a Regional External Load Balancer it must be a valid
+	// external IP address in the configured region.
 	// +optional
 	IPAddress *string `json:"ipAddress,omitempty"`
 }
