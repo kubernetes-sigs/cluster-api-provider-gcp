@@ -137,7 +137,7 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, errors.Errorf("failed to create scope: %+v", err)
 	}
 
-	// Always close the scope when exiting this function so we can persist any GCPMachine changes.
+	// Always close the scope when exiting this function so we can persist any GCPManagedControlPlane changes.
 	defer func() {
 		if err := managedControlPlaneScope.Close(ctx); err != nil && reterr == nil {
 			reterr = err
