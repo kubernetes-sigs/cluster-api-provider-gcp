@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"slices"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
@@ -31,16 +30,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/confidentialcompute"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-)
-
-// Confidential VM Technology support depends on the configured machine types.
-// reference: https://cloud.google.com/compute/confidential-vm/docs/os-and-machine-type#machine-type
-var (
-	confidentialMachineSeriesSupportingSev    = []string{"n2d", "c2d", "c3d"}
-	confidentialMachineSeriesSupportingSevsnp = []string{"n2d"}
-	confidentialMachineSeriesSupportingTdx    = []string{"c3"}
 )
 
 func (m *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -125,22 +117,13 @@ func validateConfidentialCompute(spec infrav1.GCPMachineSpec) error {
 			return fmt.Errorf("ConfidentialCompute require OnHostMaintenance to be set to %s, the current value is: %s", infrav1.HostMaintenancePolicyTerminate, infrav1.HostMaintenancePolicyMigrate)
 		}
 
-		machineSeries := strings.Split(spec.InstanceType, "-")[0]
-		switch *spec.ConfidentialCompute {
-		case infrav1.ConfidentialComputePolicyEnabled, infrav1.ConfidentialComputePolicySEV:
-			if !slices.Contains(confidentialMachineSeriesSupportingSev, machineSeries) {
-				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingSev, ", "), spec.InstanceType)
-			}
-		case infrav1.ConfidentialComputePolicySEVSNP:
-			if !slices.Contains(confidentialMachineSeriesSupportingSevsnp, machineSeries) {
-				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingSevsnp, ", "), spec.InstanceType)
-			}
-		case infrav1.ConfidentialComputePolicyTDX:
-			if !slices.Contains(confidentialMachineSeriesSupportingTdx, machineSeries) {
-				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingTdx, ", "), spec.InstanceType)
-			}
-		default:
+		matcher := confidentialcompute.NewMatcher()
+		match := matcher.Match(spec.ConfidentialCompute, spec.InstanceType)
+
+		if match == nil {
 			return fmt.Errorf("invalid ConfidentialCompute %s", *spec.ConfidentialCompute)
+		} else if !*match {
+			return errors.New(matcher.GetDisplayableSupportedMachines(spec.ConfidentialCompute, spec.InstanceType))
 		}
 	}
 	return nil

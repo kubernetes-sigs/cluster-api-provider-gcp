@@ -128,6 +128,27 @@ func ConvertToSdkAutoscaling(autoscaling *NodePoolAutoScaling) *containerpb.Node
 	return &sdkAutoscaling
 }
 
+// ConvertToSdkConfidentialNodes converts a node pool's ConfidentialCompute policy to a value that is
+// used by GCP SDK.
+func ConvertToSdkConfidentialNodes(policy *infrav1.ConfidentialComputePolicy) *containerpb.ConfidentialNodes {
+	if policy == nil {
+		return nil
+	}
+
+	confidentialNodes := &containerpb.ConfidentialNodes{
+		Enabled: *policy != infrav1.ConfidentialComputePolicyDisabled,
+	}
+	switch *policy {
+	case infrav1.ConfidentialComputePolicyEnabled, infrav1.ConfidentialComputePolicySEV:
+		confidentialNodes.ConfidentialInstanceType = containerpb.ConfidentialNodes_SEV
+	case infrav1.ConfidentialComputePolicySEVSNP:
+		confidentialNodes.ConfidentialInstanceType = containerpb.ConfidentialNodes_SEV_SNP
+	case infrav1.ConfidentialComputePolicyTDX:
+		confidentialNodes.ConfidentialInstanceType = containerpb.ConfidentialNodes_TDX
+	}
+	return confidentialNodes
+}
+
 // ConvertFromSdkNodeVersion converts GCP SDK node version to k8s version.
 func ConvertFromSdkNodeVersion(sdkNodeVersion string) string {
 	// For example, the node version returned from GCP SDK can be 1.27.2-gke.2100, we want to convert it to 1.27.2
