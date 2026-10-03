@@ -215,14 +215,28 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "immutable field instanceType set after creation",
+			name: "mutable field instanceType is mutated",
 			spec: expinfrav1.GCPManagedMachinePoolSpec{
 				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 					NodePoolName: "nodepool1",
 					InstanceType: ptr.To("n1-standard-4"),
 				},
 			},
-			expectError: true,
+			expectError: false,
+		},
+		{
+			name: "mutable field upgradeSettings is mutated",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					UpgradeSettings: &expinfrav1.NodePoolUpgradeSettings{
+						Strategy:       ptr.To("SURGE"),
+						MaxSurge:       ptr.To(int32(1)),
+						MaxUnavailable: ptr.To(int32(0)),
+					},
+				},
+			},
+			expectError: false,
 		},
 		{
 			name: "immutable field machineType set after creation",

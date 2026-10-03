@@ -26,13 +26,16 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	expv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
+	"sigs.k8s.io/cluster-api/util/patch"
 
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
@@ -239,6 +242,84 @@ func WaitForManagedClusterResourcesDeleted(ctx context.Context, input WaitForMan
 		g.Expect(input.Lister.List(ctx, list, client.InNamespace(input.Namespace))).To(Succeed())
 		g.Expect(list.Items).To(BeEmpty(), "GCPManagedCluster objects still present in namespace %q", input.Namespace)
 	}, intervals...).Should(Succeed())
+}
+
+// PatchMachinePoolInstanceTypeAndWaitInput is the input type for PatchMachinePoolInstanceTypeAndWait.
+type PatchMachinePoolInstanceTypeAndWaitInput struct {
+	ClusterProxy               framework.ClusterProxy
+	Cluster                    *clusterv1.Cluster
+	MachinePool                *expv1.MachinePool
+	InstanceType               string
+	UpgradeSettings            *infrav1exp.NodePoolUpgradeSettings
+	WaitForInstanceTypeRollout []interface{}
+}
+
+// PatchMachinePoolInstanceTypeAndWait patches spec.instanceType (and, if given, spec.upgradeSettings)
+// on the GCPManagedMachinePool backing the given MachinePool, then waits for GKE to complete the
+// resulting rolling node replacement by polling the workload cluster's Nodes for the node pool until
+// all of them report the new instance type.
+func PatchMachinePoolInstanceTypeAndWait(ctx context.Context, input PatchMachinePoolInstanceTypeAndWaitInput) {
+	Expect(ctx).NotTo(BeNil(), "ctx is required for PatchMachinePoolInstanceTypeAndWait")
+	Expect(input.ClusterProxy).ToNot(BeNil(), "Invalid argument. input.ClusterProxy can't be nil when calling PatchMachinePoolInstanceTypeAndWait")
+	Expect(input.Cluster).ToNot(BeNil(), "Invalid argument. input.Cluster can't be nil when calling PatchMachinePoolInstanceTypeAndWait")
+	Expect(input.MachinePool).ToNot(BeNil(), "Invalid argument. input.MachinePool can't be nil when calling PatchMachinePoolInstanceTypeAndWait")
+	Expect(input.InstanceType).ToNot(BeEmpty(), "Invalid argument. input.InstanceType can't be empty when calling PatchMachinePoolInstanceTypeAndWait")
+
+	mgmtClient := input.ClusterProxy.GetClient()
+
+	gcpMMP := &infrav1exp.GCPManagedMachinePool{}
+	key := client.ObjectKey{Namespace: input.MachinePool.Namespace, Name: input.MachinePool.Spec.Template.Spec.InfrastructureRef.Name}
+	Expect(mgmtClient.Get(ctx, key, gcpMMP)).To(Succeed(), "Failed to get GCPManagedMachinePool %s", klog.KRef(key.Namespace, key.Name))
+
+	nodePoolName := gcpMMP.Spec.NodePoolName
+	if nodePoolName == "" {
+		nodePoolName = gcpMMP.Name
+	}
+
+	workloadClient := input.ClusterProxy.GetWorkloadCluster(ctx, input.Cluster.Namespace, input.Cluster.Name).GetClient()
+
+	By(fmt.Sprintf("Verifying node pool %q isn't already on instance type %q", nodePoolName, input.InstanceType))
+	existingNodes := &corev1.NodeList{}
+	Expect(workloadClient.List(ctx, existingNodes, client.MatchingLabels{"cloud.google.com/gke-nodepool": nodePoolName})).To(Succeed())
+	Expect(existingNodes.Items).ToNot(BeEmpty(), "no nodes found for node pool %q", nodePoolName)
+	for _, node := range existingNodes.Items {
+		Expect(node.Labels["node.kubernetes.io/instance-type"]).ToNot(Equal(input.InstanceType),
+			"node %s is already on instance type %q; pick a different InstanceType for this test so the rollout is actually exercised", node.Name, input.InstanceType)
+	}
+
+	By(fmt.Sprintf("Patching GCPManagedMachinePool %s instanceType to %q", klog.KObj(gcpMMP), input.InstanceType))
+	patchHelper, err := patch.NewHelper(gcpMMP, mgmtClient)
+	Expect(err).ToNot(HaveOccurred())
+
+	gcpMMP.Spec.InstanceType = ptr.To(input.InstanceType)
+	if input.UpgradeSettings != nil {
+		gcpMMP.Spec.UpgradeSettings = input.UpgradeSettings
+	}
+	Eventually(func() error {
+		return patchHelper.Patch(ctx, gcpMMP)
+	}, retryableOperationTimeout, retryableOperationInterval).Should(Succeed(), "Failed to patch GCPManagedMachinePool %s", klog.KObj(gcpMMP))
+
+	By(fmt.Sprintf("Waiting for GKE to roll node pool %q to instance type %q", nodePoolName, input.InstanceType))
+	Eventually(func(g Gomega) {
+		nodeList := &corev1.NodeList{}
+		g.Expect(workloadClient.List(ctx, nodeList, client.MatchingLabels{"cloud.google.com/gke-nodepool": nodePoolName})).To(Succeed())
+		g.Expect(nodeList.Items).ToNot(BeEmpty(), "no nodes found for node pool %q", nodePoolName)
+		for _, node := range nodeList.Items {
+			g.Expect(node.Labels["node.kubernetes.io/instance-type"]).To(Equal(input.InstanceType), "node %s has not yet rolled to the new instance type", node.Name)
+		}
+	}, input.WaitForInstanceTypeRollout...).Should(Succeed())
+}
+
+// FindMachinePoolByName returns the MachinePool named name from pools, failing the spec immediately if
+// it isn't found.
+func FindMachinePoolByName(pools []*expv1.MachinePool, name string) *expv1.MachinePool {
+	for _, pool := range pools {
+		if pool.Name == name {
+			return pool
+		}
+	}
+	Fail(fmt.Sprintf("no machine pool named %q found among %d machine pools", name, len(pools)))
+	return nil
 }
 
 func setDefaults(input *ApplyManagedClusterTemplateAndWaitInput) {

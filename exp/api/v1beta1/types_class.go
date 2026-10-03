@@ -121,6 +121,9 @@ type GCPManagedMachinePoolClassSpec struct {
 	// +optional
 	ImageType *string `json:"imageType,omitempty"`
 	// InstanceType is name of Compute Engine machine type.
+	// This field is mutable: changing it drives a rolling node replacement via
+	// GKE's node pool upgrade strategy (see UpgradeSettings), not an in-place
+	// resize. It takes precedence over MachineType if both are set.
 	// +optional
 	InstanceType *string `json:"instanceType,omitempty"`
 	// DiskType is type of the disk attached to each node.
@@ -163,6 +166,10 @@ type GCPManagedMachinePoolClassSpec struct {
 	// Management specifies the node pool management options.
 	// +optional
 	Management *NodePoolManagement `json:"management,omitempty"`
+	// UpgradeSettings specifies the rollout strategy GKE uses when a change to
+	// this node pool requires replacing nodes, such as an InstanceType change.
+	// +optional
+	UpgradeSettings *NodePoolUpgradeSettings `json:"upgradeSettings,omitempty"`
 	// LinuxNodeConfig specifies the settings for Linux agent nodes.
 	// +optional
 	LinuxNodeConfig *LinuxNodeConfig `json:"linuxNodeConfig,omitempty"`

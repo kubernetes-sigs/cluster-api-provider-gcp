@@ -437,6 +437,19 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 		needUpdate = true
 		updateNodePoolRequest.ImageType = desiredNodePool.GetConfig().GetImageType()
 	}
+	// Node machine type — driven by spec.instanceType, the canonical field (spec.machineType
+	// is deprecated but resolves to the same underlying GKE field via ConvertToSdkNodePool).
+	if desiredNodePool.GetConfig().GetMachineType() != "" && desiredNodePool.GetConfig().GetMachineType() != existingNodePool.GetConfig().GetMachineType() {
+		needUpdate = true
+		updateNodePoolRequest.MachineType = desiredNodePool.GetConfig().GetMachineType()
+	}
+	// Node pool upgrade settings — controls how a machine type change (or any other change
+	// that requires replacing nodes) is rolled out.
+	if desiredUpgradeSettings := desiredNodePool.GetUpgradeSettings(); desiredUpgradeSettings != nil &&
+		!cmp.Equal(desiredUpgradeSettings, existingNodePool.GetUpgradeSettings(), cmpopts.IgnoreUnexported(containerpb.NodePool_UpgradeSettings{})) {
+		needUpdate = true
+		updateNodePoolRequest.UpgradeSettings = desiredUpgradeSettings
+	}
 	// Resource labels (AdditionalLabels) — GKE does not echo NodeConfig.ResourceLabels in
 	// GetNodePool responses, so we compare against the instance template's properties.labels
 	// instead (see fetchInstanceTemplateLabels). We use a subset check: all desired labels
