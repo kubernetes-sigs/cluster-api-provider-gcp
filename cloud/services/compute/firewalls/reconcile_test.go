@@ -24,6 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
@@ -231,6 +232,47 @@ var fakeGCPClusterWithFirewallRulesUnmanaged = &infrav1.GCPCluster{
 	},
 }
 
+// fakeGCPClusterWithStaleFirewallRule records a firewall rule in its status that the
+// spec no longer asks for, which is what a renamed or removed rule looks like.
+var fakeGCPClusterWithStaleFirewallRule = &infrav1.GCPCluster{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPClusterSpec{
+		Project: "my-proj",
+		Region:  "us-central1",
+		Network: infrav1.NetworkSpec{
+			Name: ptr.To("my-network"),
+			Firewall: infrav1.FirewallSpec{
+				FirewallRules: []infrav1.FirewallRule{
+					{
+						Name:        "my-cluster-kept-rule",
+						Description: "Custom Firewall Rule Description",
+						Allowed: []infrav1.FirewallDescriptor{
+							{
+								IPProtocol: "tcp",
+								Ports:      []string{"443"},
+							},
+						},
+						Direction: infrav1.FirewallRuleDirectionIngress,
+						Priority:  1000,
+					},
+				},
+				DefaultRulesManagement: infrav1.RulesManagementUnmanaged,
+			},
+		},
+	},
+	Status: infrav1.GCPClusterStatus{
+		Network: infrav1.Network{
+			FirewallRules: map[string]string{
+				"my-cluster-kept-rule":  "test",
+				"my-cluster-stale-rule": "test",
+			},
+		},
+	},
+}
+
 type testCase struct {
 	name          string
 	scope         func() Scope
@@ -304,7 +346,64 @@ func TestService_Reconcile(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The unmanaged scope only produces the single custom rule, which keeps the update
+	// assertions below unambiguous.
+	customRuleSpecs, err := clusterScopeCustomFirewallsUnmanaged.FirewallRulesSpec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	customRuleSpec := customRuleSpecs[0]
+	customRuleKey := *meta.GlobalKey(customRuleSpec.Name)
+
+	driftedCustomRule := *customRuleSpec
+	driftedCustomRule.Description = "changed outside of CAPG"
+
+	var driftedUpdates, matchingUpdates []*compute.Firewall
+
+	clusterScopeStaleRule, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client:     fakec,
+		Cluster:    fakeCluster,
+		GCPCluster: fakeGCPClusterWithStaleFirewallRule,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []testCase{
+		{
+			name:  "firewall rule recorded in the status but absent from the spec is deleted",
+			scope: func() Scope { return clusterScopeStaleRule },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					*meta.GlobalKey("my-cluster-kept-rule"):  {Obj: &compute.Firewall{Name: "my-cluster-kept-rule"}},
+					*meta.GlobalKey("my-cluster-stale-rule"): {Obj: &compute.Firewall{Name: "my-cluster-stale-rule"}},
+				},
+			},
+			assert: func(ctx context.Context, t testCase) error {
+				if _, err := t.mockFirewalls.Get(ctx, meta.GlobalKey("my-cluster-stale-rule")); err == nil {
+					return errors.New("stale firewall rule was not deleted")
+				}
+
+				recorded := fakeGCPClusterWithStaleFirewallRule.Status.Network.FirewallRules
+				if _, ok := recorded["my-cluster-stale-rule"]; ok {
+					return errors.New("stale firewall rule is still recorded in the status")
+				}
+
+				if _, err := t.mockFirewalls.Get(ctx, meta.GlobalKey("my-cluster-kept-rule")); err != nil {
+					return errors.New("firewall rule still in the spec was deleted")
+				}
+
+				if _, ok := recorded["my-cluster-kept-rule"]; !ok {
+					return errors.New("firewall rule still in the spec is no longer recorded in the status")
+				}
+
+				return nil
+			},
+		},
 		{
 			name:  "firewall rule does not exist successful create",
 			scope: func() Scope { return clusterScope },
@@ -408,6 +507,63 @@ func TestService_Reconcile(t *testing.T) {
 					*meta.GlobalKey("custom-fw-rule"): {},
 				},
 			},
+		},
+		{
+			name:  "firewall rule drifted from spec (should be updated in place)",
+			scope: func() Scope { return clusterScopeCustomFirewallsUnmanaged },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					customRuleKey: {Obj: &driftedCustomRule},
+				},
+				UpdateHook: func(_ context.Context, _ *meta.Key, obj *compute.Firewall, _ *cloud.MockFirewalls, _ ...cloud.Option) error {
+					driftedUpdates = append(driftedUpdates, obj)
+					return nil
+				},
+			},
+			assert: func(_ context.Context, _ testCase) error {
+				if len(driftedUpdates) != 1 {
+					return fmt.Errorf("expected 1 firewall rule update, got %d", len(driftedUpdates))
+				}
+				if diff := cmp.Diff(customRuleSpec, driftedUpdates[0]); diff != "" {
+					return fmt.Errorf("firewall rule was updated with an unexpected spec: %s", diff)
+				}
+				return nil
+			},
+		},
+		{
+			name:  "firewall rule matches spec (should not be updated)",
+			scope: func() Scope { return clusterScopeCustomFirewallsUnmanaged },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					customRuleKey: {Obj: customRuleSpec},
+				},
+				UpdateHook: func(_ context.Context, _ *meta.Key, obj *compute.Firewall, _ *cloud.MockFirewalls, _ ...cloud.Option) error {
+					matchingUpdates = append(matchingUpdates, obj)
+					return nil
+				},
+			},
+			assert: func(_ context.Context, _ testCase) error {
+				if len(matchingUpdates) != 0 {
+					return fmt.Errorf("expected no firewall rule update, got %d", len(matchingUpdates))
+				}
+				return nil
+			},
+		},
+		{
+			name:  "firewall rule update fails (should return an error)",
+			scope: func() Scope { return clusterScopeCustomFirewallsUnmanaged },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					customRuleKey: {Obj: &driftedCustomRule},
+				},
+				UpdateHook: func(_ context.Context, _ *meta.Key, _ *compute.Firewall, _ *cloud.MockFirewalls, _ ...cloud.Option) error {
+					return &googleapi.Error{Code: http.StatusBadRequest}
+				},
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
