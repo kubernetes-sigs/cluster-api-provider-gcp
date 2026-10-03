@@ -20,6 +20,7 @@
     - [Additional Labels](./topics/additional-labels.md)
     - [Alias IP Ranges](./topics/alias-ip-ranges.md)
     - [Autoscaling](./topics/autoscaling.md)
+    - [Confidential Computing](./topics/confidential-computing.md)
     - [Conformance](./topics/conformance.md)
     - [Gateway API](./topics/gateway-api.md)
     - [GPUs](./topics/gpus.md)

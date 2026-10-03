@@ -153,6 +153,58 @@ func TestGCPManagedMachinePoolValidatingWebhookCreate(t *testing.T) {
 			expectError: false,
 			expectWarn:  true,
 		},
+		{
+			name: "ConfidentialCompute with supported machine series",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					InstanceType: ptr.To("n2d-standard-4"),
+					NodeSecurity: expinfrav1.NodeSecurityConfig{
+						ConfidentialCompute: ptr.To(infrav1.ConfidentialComputePolicySEV),
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "ConfidentialCompute with unsupported machine series",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					InstanceType: ptr.To("e2-medium"),
+					NodeSecurity: expinfrav1.NodeSecurityConfig{
+						ConfidentialCompute: ptr.To(infrav1.ConfidentialComputePolicySEV),
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "ConfidentialCompute SEV_SNP requires n2d",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					InstanceType: ptr.To("c2d-standard-4"),
+					NodeSecurity: expinfrav1.NodeSecurityConfig{
+						ConfidentialCompute: ptr.To(infrav1.ConfidentialComputePolicySEVSNP),
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "ConfidentialCompute disabled ignores machine series",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					InstanceType: ptr.To("e2-medium"),
+					NodeSecurity: expinfrav1.NodeSecurityConfig{
+						ConfidentialCompute: ptr.To(infrav1.ConfidentialComputePolicyDisabled),
+					},
+				},
+			},
+			expectError: false,
+		},
 	}
 
 	for _, tc := range tests {

@@ -232,6 +232,11 @@ spec:
               nodeSecurity:
                 description: NodeSecurity specifies the node security options.
                 properties:
+                  confidentialCompute:
+                    description: |-
+                      ConfidentialCompute defines whether the nodes should have confidential compute enabled,
+                      and the confidential computing technology of choice. This field is immutable.
+                    type: string
                   enableIntegrityMonitoring:
                     description: |-
                       EnableIntegrityMonitoring defines whether the instance has

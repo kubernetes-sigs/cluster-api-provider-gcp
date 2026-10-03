@@ -204,5 +204,17 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 
 			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(machineType))
 		})
+
+		It("should convert ConfidentialCompute to SDK ConfidentialNodes", func() {
+			confidentialCompute := infrav1.ConfidentialComputePolicySEVSNP
+			TestGCPMMP.Spec.NodeSecurity.ConfidentialCompute = &confidentialCompute
+
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetConfig().GetConfidentialNodes()).To(Equal(&containerpb.ConfidentialNodes{
+				Enabled:                  true,
+				ConfidentialInstanceType: containerpb.ConfidentialNodes_SEV_SNP,
+			}))
+		})
 	})
 })
