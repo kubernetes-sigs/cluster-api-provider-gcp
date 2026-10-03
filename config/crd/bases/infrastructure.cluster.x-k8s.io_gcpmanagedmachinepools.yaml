@@ -21,7 +21,7 @@ spec:
   - additionalPrinterColumns:
     - jsonPath: .status.ready
       name: Ready
-      type: string
+      type: boolean
     - jsonPath: .status.replicas
       name: Replicas
       type: string

@@ -22,7 +22,7 @@ spec:
     - description: MachinePool ready status
       jsonPath: .status.ready
       name: Ready
-      type: string
+      type: boolean
     - description: Number of replicas
       jsonPath: .status.replicas
       name: Replicas

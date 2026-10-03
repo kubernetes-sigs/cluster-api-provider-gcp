@@ -24,7 +24,7 @@ spec:
     - description: Cluster infrastructure is ready for GCE instances
       jsonPath: .status.ready
       name: Ready
-      type: string
+      type: boolean
     - description: GCP network the cluster is using
       jsonPath: .spec.network.name
       name: Network

@@ -28,7 +28,7 @@ spec:
     - description: Machine ready status
       jsonPath: .status.ready
       name: Ready
-      type: string
+      type: boolean
     - description: GCE instance ID
       jsonPath: .spec.providerID
       name: InstanceID

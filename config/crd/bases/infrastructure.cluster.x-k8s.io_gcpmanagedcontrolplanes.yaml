@@ -26,7 +26,7 @@ spec:
     - description: Control plane is ready
       jsonPath: .status.ready
       name: Ready
-      type: string
+      type: boolean
     - description: The current Kubernetes version
       jsonPath: .status.currentVersion
       name: CurrentVersion
