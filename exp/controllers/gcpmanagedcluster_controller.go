@@ -125,7 +125,7 @@ func (r *GCPManagedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, errors.Errorf("failed to create scope: %+v", err)
 	}
 
-	// Always close the scope when exiting this function so we can persist any GCPMachine changes.
+	// Always close the scope when exiting this function so we can persist any GCPManagedCluster changes.
 	defer func() {
 		if err := clusterScope.Close(ctx); err != nil && reterr == nil {
 			reterr = err
