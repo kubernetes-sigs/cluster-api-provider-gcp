@@ -12,6 +12,7 @@
     - [Enabling](./managed/enabling.md)
     - [Disabling](./managed/disabling.md)
     - [Network Configuration](./managed/network-config.md)
+    - [Add-ons](./managed/addons.md)
 - [ClusterClass](./clusterclass/index.md)
     - [Provisioning a Cluster](./clusterclass/provision.md)
     - [Enabling](./clusterclass/enabling.md)
