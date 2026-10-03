@@ -709,6 +709,18 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		}
 	}
 
+	// BinaryAuthorization
+	desiredBinaryAuthorizationMode := convertToSdkBinaryAuthorizationEvaluationMode(s.scope.GCPManagedControlPlane.Spec.BinaryAuthorization)
+	if desiredBinaryAuthorizationMode != existingCluster.GetBinaryAuthorization().GetEvaluationMode() {
+		needUpdate = true
+		clusterUpdate.DesiredBinaryAuthorization = &containerpb.BinaryAuthorization{
+			EvaluationMode: desiredBinaryAuthorizationMode,
+		}
+		log.V(2).Info("BinaryAuthorization update required",
+			"current", existingCluster.GetBinaryAuthorization().GetEvaluationMode(),
+			"desired", desiredBinaryAuthorizationMode)
+	}
+
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,

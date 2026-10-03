@@ -524,6 +524,31 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "update needed when binary authorization differs",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName:         "test-cluster",
+						Project:             "test-project",
+						Location:            "us-central1",
+						BinaryAuthorization: ptr.To(infrav1exp.EvaluationModeProjectSingletonPolicyEnforce),
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				BinaryAuthorization: &containerpb.BinaryAuthorization{
+					EvaluationMode: containerpb.BinaryAuthorization_DISABLED,
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				if req.GetUpdate().GetDesiredBinaryAuthorization().GetEvaluationMode() != containerpb.BinaryAuthorization_PROJECT_SINGLETON_POLICY_ENFORCE {
+					t.Errorf("expected PROJECT_SINGLETON_POLICY_ENFORCE, got %v", req.GetUpdate().GetDesiredBinaryAuthorization().GetEvaluationMode())
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
