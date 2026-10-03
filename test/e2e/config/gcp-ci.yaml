@@ -151,4 +151,8 @@ intervals:
   default/wait-service: ["15m", "10s"]
   default/wait-machine-pool-nodes: ["30m", "10s"]
   default/wait-nsg-update: ["20m", "10s"]
+  # GKE deletion tears down node pools, then the control plane, then the
+  # cluster. 30m matches the other GKE intervals above.
+  delete-gke-workload-cluster/wait-delete-cluster: ["30m", "10s"]
+  gke/wait-delete-cluster: ["30m", "10s"]
   node-drain/wait-machine-deleted: ["10m", "10s"]
