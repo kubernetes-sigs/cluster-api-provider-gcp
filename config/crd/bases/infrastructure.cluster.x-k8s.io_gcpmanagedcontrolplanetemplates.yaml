@@ -211,6 +211,11 @@ spec:
                         description: EnableIdentityService indicates whether to enable
                           Identity Service component for this GKE cluster.
                         type: boolean
+                      enableVerticalPodAutoscaling:
+                        description: |-
+                          EnableVerticalPodAutoscaling indicates whether to enable Vertical Pod Autoscaling for this
+                          GKE cluster.
+                        type: boolean
                       location:
                         description: |-
                           Location represents the location (region or zone) in which the GKE cluster
