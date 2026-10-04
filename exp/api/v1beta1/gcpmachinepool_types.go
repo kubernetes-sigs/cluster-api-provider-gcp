@@ -181,7 +181,7 @@ type GCPMachinePoolStatus struct {
 // +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=gcpmachinepools,scope=Namespaced,categories=cluster-api,shortName=gcpmp
-// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="MachinePool ready status"
+// +kubebuilder:printcolumn:name="Ready",type="boolean",JSONPath=".status.ready",description="MachinePool ready status"
 // +kubebuilder:printcolumn:name="Replicas",type="integer",JSONPath=".status.replicas",description="Number of replicas"
 
 // GCPMachinePool is the Schema for the gcpmachinepools API.

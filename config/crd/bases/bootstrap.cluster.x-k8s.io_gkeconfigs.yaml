@@ -22,7 +22,7 @@ spec:
     - description: Bootstrap configuration is ready
       jsonPath: .status.ready
       name: Ready
-      type: string
+      type: boolean
     - description: Name of Secret containing bootstrap data
       jsonPath: .status.dataSecretName
       name: DataSecretName
