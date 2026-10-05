@@ -27,11 +27,18 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Workload cluster creation", func() {
@@ -84,6 +91,27 @@ var _ = Describe("Workload cluster creation", func() {
 	Context("Creating a single control-plane cluster", func() {
 		It("Should create a cluster with 1 worker node and can be scaled", func() {
 			clusterName := fmt.Sprintf("%s-single", clusterNamePrefix)
+
+			DeferCleanup(func() {
+				// Dump autoscaler logs on test failure
+				if CurrentSpecReport().Failed() {
+					pods, err := bootstrapClusterProxy.GetClientSet().CoreV1().Pods(namespace.Name).
+						List(ctx, metav1.ListOptions{LabelSelector: "app=cluster-autoscaler"})
+					if err != nil || len(pods.Items) == 0 {
+						fmt.Fprintf(GinkgoWriter, "Failed to find autoscaler pod for logs: %v\n", err)
+						return
+					}
+					autoscalerLogs, err := bootstrapClusterProxy.GetClientSet().CoreV1().Pods(namespace.Name).
+						GetLogs(pods.Items[0].Name, &corev1.PodLogOptions{TailLines: ptr.To[int64](200)}).
+						Do(ctx).Raw()
+					if err != nil {
+						fmt.Fprintf(GinkgoWriter, "Failed to get autoscaler logs on cleanup: %v\n", err)
+					} else {
+						fmt.Fprintf(GinkgoWriter, "\n===== AUTOSCALER LOGS (last 200 lines) =====\n%s\n", string(autoscalerLogs))
+					}
+				}
+			})
+
 			By("Initializes with 1 worker node")
 			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
@@ -104,6 +132,27 @@ var _ = Describe("Workload cluster creation", func() {
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
 
+			By("Verifying GCPMachineTemplate status is populated for scale-from-zero")
+			Expect(result.MachineDeployments).To(HaveLen(1))
+			md := result.MachineDeployments[0]
+			templateRef := md.Spec.Template.Spec.InfrastructureRef
+			template := &infrav1.GCPMachineTemplate{}
+
+			Eventually(func(g Gomega) {
+				err := bootstrapClusterProxy.GetClient().Get(ctx,
+					client.ObjectKey{Namespace: md.Namespace, Name: templateRef.Name},
+					template)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				g.Expect(template.Status.Capacity).NotTo(BeNil(), "Status.Capacity should be populated")
+				g.Expect(template.Status.Capacity.Cpu().IsZero()).To(BeFalse(), "CPU capacity should be set")
+				g.Expect(template.Status.Capacity.Memory().IsZero()).To(BeFalse(), "Memory capacity should be set")
+
+				g.Expect(template.Status.NodeInfo).NotTo(BeNil(), "Status.NodeInfo should be populated")
+				g.Expect(template.Status.NodeInfo.Architecture).To(BeElementOf(infrav1.ArchitectureAmd64, infrav1.ArchitectureArm64), "Architecture should be amd64 or arm64")
+				g.Expect(template.Status.NodeInfo.OperatingSystem).To(Equal(corev1.Linux), "OperatingSystem should be linux")
+			}, e2eConfig.GetIntervals(specName, "wait-worker-nodes")...).Should(Succeed())
+
 			By("Scaling worker node to 3")
 			Expect(result.MachineDeployments).To(HaveLen(1))
 			framework.ScaleAndWaitMachineDeployment(ctx, framework.ScaleAndWaitMachineDeploymentInput{
@@ -113,6 +162,155 @@ var _ = Describe("Workload cluster creation", func() {
 				Replicas:                  3,
 				WaitForMachineDeployments: e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			})
+
+			// Scale-from-zero validation using same MachineDeployment
+			By("Scaling MachineDeployment to 0 for scale-from-zero test")
+			mgmtClient := bootstrapClusterProxy.GetClient()
+			workloadCluster := bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace.Name, clusterName)
+
+			// Add autoscaler annotations to existing MachineDeployment
+			md = result.MachineDeployments[0]
+			Eventually(func(g Gomega) {
+				currentMD := &clusterv1.MachineDeployment{}
+				g.Expect(mgmtClient.Get(ctx, client.ObjectKey{
+					Namespace: md.Namespace,
+					Name:      md.Name,
+				}, currentMD)).To(Succeed())
+
+				// Add autoscaler annotations
+				if currentMD.Annotations == nil {
+					currentMD.Annotations = make(map[string]string)
+				}
+				currentMD.Annotations["cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size"] = "0"
+				currentMD.Annotations["cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size"] = "3"
+
+				g.Expect(mgmtClient.Update(ctx, currentMD)).To(Succeed())
+			}, "30s", "1s").Should(Succeed())
+
+			// Scale to 0
+			framework.ScaleAndWaitMachineDeployment(ctx, framework.ScaleAndWaitMachineDeploymentInput{
+				ClusterProxy:              bootstrapClusterProxy,
+				Cluster:                   result.Cluster,
+				MachineDeployment:         md,
+				Replicas:                  0,
+				WaitForMachineDeployments: e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+			})
+
+			By("Verifying GCPMachineTemplate Status remains populated at 0 replicas")
+			Eventually(func(g Gomega) {
+				templateRef := md.Spec.Template.Spec.InfrastructureRef
+				template := &infrav1.GCPMachineTemplate{}
+				err := mgmtClient.Get(ctx,
+					client.ObjectKey{Namespace: md.Namespace, Name: templateRef.Name},
+					template)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				g.Expect(template.Status.Capacity).NotTo(BeNil(), "Status.Capacity should be populated at 0 replicas")
+				g.Expect(template.Status.Capacity.Cpu().IsZero()).To(BeFalse(), "CPU capacity should be set")
+				g.Expect(template.Status.Capacity.Memory().IsZero()).To(BeFalse(), "Memory capacity should be set")
+
+				g.Expect(template.Status.NodeInfo).NotTo(BeNil(), "Status.NodeInfo should be populated")
+				g.Expect(template.Status.NodeInfo.Architecture).To(BeElementOf(infrav1.ArchitectureAmd64, infrav1.ArchitectureArm64))
+				g.Expect(template.Status.NodeInfo.OperatingSystem).To(Equal(corev1.Linux))
+			}, e2eConfig.GetIntervals(specName, "wait-worker-nodes")...).Should(Succeed())
+
+			By("Deploying cluster-autoscaler RBAC to management cluster")
+			Expect(deployClusterAutoscalerRBAC(ctx, mgmtClient, namespace.Name, clusterName)).To(Succeed())
+
+			By("Deploying cluster-autoscaler to management cluster")
+			Expect(deployClusterAutoscaler(ctx, mgmtClient, namespace.Name, clusterName, e2eConfig.MustGetVariable(ClusterAutoscalerVersion))).To(Succeed())
+
+			By("Waiting for cluster-autoscaler pod to be ready")
+			Eventually(func(g Gomega) {
+				pods, err := bootstrapClusterProxy.GetClientSet().CoreV1().Pods(namespace.Name).
+					List(ctx, metav1.ListOptions{LabelSelector: "app=cluster-autoscaler"})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(pods.Items).To(HaveLen(1))
+				g.Expect(pods.Items[0].Status.Phase).To(Equal(corev1.PodRunning))
+
+				hasReadyCondition := false
+				for _, cond := range pods.Items[0].Status.Conditions {
+					if cond.Type == corev1.PodReady {
+						hasReadyCondition = true
+						g.Expect(cond.Status).To(Equal(corev1.ConditionTrue))
+						break
+					}
+				}
+				g.Expect(hasReadyCondition).To(BeTrue(), "Pod Ready condition not found")
+			}, e2eConfig.GetIntervals(specName, "wait-deployment")...).Should(Succeed())
+
+			By("Creating trigger workload to force autoscaler scale-up")
+			triggerDeployment, err := createTriggerWorkload(ctx, workloadCluster.GetClient(), clusterName)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Verifying trigger pods are pending (no nodes available)")
+			Eventually(func(g Gomega) {
+				pods := &corev1.PodList{}
+				err := workloadCluster.GetClient().List(ctx, pods,
+					client.InNamespace("default"),
+					client.MatchingLabels{"app": "autoscale-trigger"})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(pods.Items).To(HaveLen(1))
+				g.Expect(pods.Items[0].Status.Phase).To(Equal(corev1.PodPending), "Pod should be pending with 0 nodes")
+			}, "10s", "1s").Should(Succeed())
+
+			By("Validating autoscaler scales MachineDeployment from 0 to 1")
+			Eventually(func(g Gomega) {
+				currentMD := &clusterv1.MachineDeployment{}
+				err := mgmtClient.Get(ctx, client.ObjectKey{Namespace: md.Namespace, Name: md.Name}, currentMD)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(*currentMD.Spec.Replicas).To(BeNumerically(">", 0), "Autoscaler should scale MD replicas > 0")
+			}, "5m", "5s").Should(Succeed())
+
+			By("Waiting for node to become ready")
+			Eventually(func(g Gomega) {
+				currentMD := &clusterv1.MachineDeployment{}
+				err := mgmtClient.Get(ctx, client.ObjectKey{Namespace: md.Namespace, Name: md.Name}, currentMD)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(currentMD.Status.ReadyReplicas).To(HaveValue(BeNumerically(">=", 1)), "MD should have ready replica")
+			}, e2eConfig.GetIntervals(specName, "wait-worker-nodes")...).Should(Succeed())
+
+			By("Verifying trigger pod becomes Running")
+			Eventually(func(g Gomega) {
+				pods := &corev1.PodList{}
+				err := workloadCluster.GetClient().List(ctx, pods,
+					client.InNamespace("default"),
+					client.MatchingLabels{"app": "autoscale-trigger"})
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(pods.Items).To(HaveLen(1))
+				g.Expect(pods.Items[0].Status.Phase).To(Equal(corev1.PodRunning))
+			}, e2eConfig.GetIntervals(specName, "wait-deployment")...).Should(Succeed())
+
+			By("Cleaning up autoscaler resources")
+			Expect(workloadCluster.GetClient().Delete(ctx, triggerDeployment)).To(Succeed())
+
+			autoscalerDep := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("cluster-autoscaler-%s", clusterName),
+					Namespace: namespace.Name,
+				},
+			}
+			Expect(mgmtClient.Delete(ctx, autoscalerDep)).To(Succeed())
+
+			clusterRole := &rbacv1.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("cluster-autoscaler-management-%s", clusterName),
+				},
+			}
+			Eventually(func(g Gomega) {
+				err := mgmtClient.Delete(ctx, clusterRole)
+				g.Expect(err == nil || apierrors.IsNotFound(err)).To(BeTrue())
+			}, "10s", "1s").Should(Succeed())
+
+			clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("cluster-autoscaler-management-%s", clusterName),
+				},
+			}
+			Eventually(func(g Gomega) {
+				err := mgmtClient.Delete(ctx, clusterRoleBinding)
+				g.Expect(err == nil || apierrors.IsNotFound(err)).To(BeTrue())
+			}, "10s", "1s").Should(Succeed())
 		})
 	})
 

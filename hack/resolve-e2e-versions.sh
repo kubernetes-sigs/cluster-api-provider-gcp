@@ -66,6 +66,10 @@ verify_ccm_image() {
   docker manifest inspect "gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null 2>&1
 }
 
+verify_cluster_autoscaler_image() {
+  docker manifest inspect "registry.k8s.io/autoscaling/cluster-autoscaler:${1}" >/dev/null 2>&1
+}
+
 verify_kindest_node() {
   docker manifest inspect "kindest/node:${1}" >/dev/null 2>&1
 }
@@ -114,6 +118,18 @@ resolve_management_version() {
   fi
   KUBERNETES_VERSION_MANAGEMENT="${resolved}"
   export KUBERNETES_VERSION_MANAGEMENT
+}
+
+resolve_cluster_autoscaler_version() {
+  local resolved escaped
+  escaped=${minor//./\\.}
+  resolved=$(git ls-remote --tags --refs https://github.com/kubernetes/autoscaler \
+      | awk -F/ '{print $3}' | grep -E "^cluster-autoscaler-${escaped}\.[0-9]+$" | sort -rV \
+      | sed 's/^cluster-autoscaler-/v/' \
+      | find_verified_version verify_cluster_autoscaler_image) \
+    || { echo "ERROR: no published cluster-autoscaler image found for k8s minor ${minor}" >&2; return 1; }
+  CLUSTER_AUTOSCALER_VERSION="${resolved}"
+  export CLUSTER_AUTOSCALER_VERSION
 }
 
 resolve_gke_version() {
@@ -167,9 +183,10 @@ print_summary() {
   echo "---- resolved e2e versions (flavor=${E2E_FLAVOR:-all}, KUBERNETES_MINOR=${minor}) ----"
   local v
   for v in KUBERNETES_VERSION IMAGE_ID KUBERNETES_VERSION_GKE CCM_VERSION \
-      KUBERNETES_VERSION_MANAGEMENT KUBERNETES_VERSION_UPGRADE_FROM \
-      KUBERNETES_VERSION_UPGRADE_TO KUBERNETES_IMAGE_UPGRADE_FROM \
-      KUBERNETES_IMAGE_UPGRADE_TO ETCD_VERSION_UPGRADE_TO COREDNS_VERSION_UPGRADE_TO; do
+      KUBERNETES_VERSION_MANAGEMENT CLUSTER_AUTOSCALER_VERSION \
+      KUBERNETES_VERSION_UPGRADE_FROM KUBERNETES_VERSION_UPGRADE_TO \
+      KUBERNETES_IMAGE_UPGRADE_FROM KUBERNETES_IMAGE_UPGRADE_TO \
+      ETCD_VERSION_UPGRADE_TO COREDNS_VERSION_UPGRADE_TO; do
     if [ -n "${!v:-}" ]; then
       printf '  %s=%s\n' "${v}" "${!v}"
     fi
@@ -195,5 +212,6 @@ case "${E2E_FLAVOR:-all}" in
 esac || return 1
 
 resolve_management_version || return 1
+resolve_cluster_autoscaler_version || return 1
 
 print_summary
