@@ -2,6 +2,8 @@
 
 This document provides an overview of our jobs running via Prow and Github actions.
 
+The [CAPG Prow job configuration](https://github.com/kubernetes/test-infra/tree/master/config/jobs/kubernetes-sigs/cluster-api-provider-gcp) defines the active presubmits. Check its main-branch presubmit file for job commands and environment variables such as `GINKGO_FOCUS`; those settings determine which E2E specs a job selects. See [Adding new E2E test](e2e.md#confirm-the-presubmit-runs-the-test) for how to verify that a new spec actually ran.
+
 ## Builds and tests running on the default branch
 
 <aside class="note">

@@ -44,11 +44,16 @@ If you're new to the project and want to help, but don't know where to start, we
 	- `/kind flake` for PRs related to a flaky test
 	- `/kind other` for PRs related to updating dependencies, minor changes or other
     ii.If the PR requires additional action from users switching to a new release, include the string "action required" in the PR release-notes.
-    iii.All code changes must be covered by unit tests and E2E tests. iv. All new features should come with user documentation.
+    iii. All code changes must be covered by unit tests and E2E tests.
+    iv. All new features should come with user documentation.
 4. Once the PR has been reviewed and is ready to be merged, commits should be [squashed](https://github.com/kubernetes/community/blob/master/contributors/guide/github-workflow.md#squash-commits).
     i. Ensure commit message(s) are meaningful and message history is readable.
 
 All changes must be code reviewed. Coding conventions and standards are explained in the official [developer docs](https://github.com/kubernetes/community/tree/master/contributors/devel). Expect reviewers to request that you avoid common [go style mistakes](https://github.com/golang/go/wiki/CodeReviewComments) in your PRs.
+
+For a feature that spans controllers, APIs, or cloud resources, describe the user-visible behavior and the proposed test coverage in the PR. Call out important failure and retry cases, known limits, and work you propose to handle in a follow-up. Ask reviewers to agree on the scope and the level of E2E coverage early, before building an extensive test scenario. The [E2E guide](docs/book/src/developers/e2e.md) explains how to check whether a presubmit job actually runs a new test.
+
+During review, maintainers should identify which requests are needed for this PR and which can be tracked as follow-ups. After a substantial review round, a brief summary of the remaining work helps the contributor and other reviewers share the same expectations.
 
 ## Backporting a Patch
 

@@ -45,3 +45,15 @@ Context("Creating a control-plane cluster with an internal load balancer", func(
 ```
 
 In this case, the flavor `ci-with-internal-lb` is a reference to the template `cluster-template-ci-with-internal-lb.yaml` which is available in `./test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml`.
+
+## Confirm the presubmit runs the test
+
+Adding a Ginkgo spec does not ensure that a CAPG presubmit executes it. The `test-e2e-run` target in the [Makefile](../../../../Makefile) passes `GINKGO_FOCUS` to Ginkgo's `--focus` flag. Prow jobs can set `GINKGO_FOCUS` themselves, overriding the Makefile default. For example, the unmanaged E2E presubmit currently focuses on `Workload cluster creation`; a separate `Autoscaling from zero` context would not match that focus.
+
+Before relying on a new E2E test as PR coverage:
+
+1. Find the relevant job in the [main-branch Prow presubmit configuration](https://github.com/kubernetes/test-infra/blob/master/config/jobs/kubernetes-sigs/cluster-api-provider-gcp/cluster-api-provider-gcp-presubmits-main.yaml), and check its `GINKGO_FOCUS` value. The [CI jobs guide](jobs.md) links to the job results.
+2. Check that the focus matches the full Ginkgo spec name, including its parent `Describe` and `Context` text. A passing job may have selected other specs while skipping the new one.
+3. After the presubmit runs, confirm that the new spec appears in its log or JUnit report. Name the job and the executed spec in the PR's testing notes.
+
+If the new spec is excluded, discuss whether it belongs in an existing scenario or whether the job focus needs an update in `kubernetes/test-infra`. Choose coverage that tests the intended behavior without adding unnecessary cluster provisioning to every PR run.
