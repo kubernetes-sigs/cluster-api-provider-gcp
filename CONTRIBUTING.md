@@ -2,10 +2,10 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Contributor License Agreements](#contributor-license-agreements)
 - [Finding Things That Need Help](#finding-things-that-need-help)
 - [Contributing a Patch](#contributing-a-patch)
+- [Proposal Process](#proposal-process)
 - [Backporting a Patch](#backporting-a-patch)
   - [Merge Approval](#merge-approval)
   - [Google Doc Viewing Permissions](#google-doc-viewing-permissions)
@@ -49,6 +49,15 @@ If you're new to the project and want to help, but don't know where to start, we
     i. Ensure commit message(s) are meaningful and message history is readable.
 
 All changes must be code reviewed. Coding conventions and standards are explained in the official [developer docs](https://github.com/kubernetes/community/tree/master/contributors/devel). Expect reviewers to request that you avoid common [go style mistakes](https://github.com/golang/go/wiki/CodeReviewComments) in your PRs.
+
+## Proposal Process
+
+Larger changes, such as new features, API changes or changes to how the project is built and released, should start as a proposal. CAPG follows the [Cluster API proposal process](https://github.com/kubernetes-sigs/cluster-api/blob/main/CONTRIBUTING.md#proposal-process-caep):
+
+- Proposals SHOULD be introduced at the [CAPG office hours](README.md#office-hours) or in [#cluster-api-gcp](https://kubernetes.slack.com/archives/C01D1RFEN9G) on Slack before a PR is opened.
+- Proposals are submitted as a PR to [docs/proposals](docs/proposals), named `YYYYMMDD-my-title.md` and based on the [Cluster API proposal template](https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/YYYYMMDD-template.md). Label the PR `/kind design`.
+- Proposals MUST be merged and in `implementable` state before the work they describe is merged.
+- Once implemented, proposals are moved to [docs/proposals/archived](docs/proposals/archived) with their status set to `implemented`.
 
 ## Backporting a Patch
 
