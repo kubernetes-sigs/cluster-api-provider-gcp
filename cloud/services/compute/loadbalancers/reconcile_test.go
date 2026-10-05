@@ -897,3 +897,145 @@ func TestService_createOrGetRegionalForwardingRule(t *testing.T) {
 		})
 	}
 }
+
+const (
+	exampleIPv4Addr = "192.0.2.1"
+	exampleIPv6Addr = "2001:db8::1"
+)
+
+func TestService_AddressPreferencePolicy(t *testing.T) {
+	tests := []struct {
+		name              string
+		stackType         infrav1.StackType
+		addressPreference infrav1.AddressPreferencePolicy
+		wantIPv4Host      bool
+		wantIPv6Host      bool
+	}{
+		{
+			name:              "IPv4Primary with IPv4Only stack type - should use IPv4 address",
+			stackType:         infrav1.IPv4OnlyStackType,
+			addressPreference: infrav1.IPv4Primary,
+			wantIPv4Host:      true,
+			wantIPv6Host:      false,
+		},
+		{
+			name:              "IPv4Primary with DualStack type - should use IPv4 address",
+			stackType:         infrav1.DualStackType,
+			addressPreference: infrav1.IPv4Primary,
+			wantIPv4Host:      true,
+			wantIPv6Host:      false,
+		},
+		{
+			name:              "IPv6Primary with DualStack type - should use IPv6 address",
+			stackType:         infrav1.DualStackType,
+			addressPreference: infrav1.IPv6Primary,
+			wantIPv4Host:      false,
+			wantIPv6Host:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.TODO()
+			clusterScope, err := getBaseClusterScope()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Set stack type and address preference policy
+			clusterScope.GCPCluster.Spec.Network.StackType = tt.stackType
+			clusterScope.GCPCluster.Spec.Network.AddressPreferencePolicy = tt.addressPreference
+
+			// Mock addresses with hooks to populate IP addresses
+			mockAddresses := &cloud.MockGlobalAddresses{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockGlobalAddressesObj{},
+				InsertHook: func(_ context.Context, _ *meta.Key, obj *compute.Address, _ *cloud.MockGlobalAddresses, _ ...cloud.Option) (bool, error) {
+					// Populate the Address field based on IpVersion
+					if obj.IpVersion == "IPV6" {
+						obj.Address = exampleIPv6Addr
+					} else {
+						obj.Address = exampleIPv4Addr
+					}
+					return false, nil
+				},
+			}
+
+			// Mock target TCP proxy
+			mockTargetTCPProxy := &cloud.MockTargetTcpProxies{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockTargetTcpProxiesObj{},
+			}
+
+			// Mock backend services
+			mockBackendServices := &cloud.MockBackendServices{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockBackendServicesObj{},
+			}
+
+			// Mock health checks
+			mockHealthChecks := &cloud.MockHealthChecks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockHealthChecksObj{},
+			}
+
+			// Mock instance groups
+			mockInstanceGroups := &cloud.MockInstanceGroups{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockInstanceGroupsObj{},
+			}
+
+			// Mock forwarding rules
+			mockForwardingRules := &cloud.MockGlobalForwardingRules{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockGlobalForwardingRulesObj{},
+			}
+
+			s := New(clusterScope)
+			s.addresses = mockAddresses
+			s.targettcpproxies = mockTargetTCPProxy
+			s.backendservices = mockBackendServices
+			s.healthchecks = mockHealthChecks
+			s.instancegroups = mockInstanceGroups
+			s.forwardingrules = mockForwardingRules
+
+			// Create instance groups
+			instancegroups, err := s.createOrGetInstanceGroups(ctx)
+			if err != nil {
+				t.Fatalf("createOrGetInstanceGroups() error = %v", err)
+			}
+
+			// Create external load balancer
+			err = s.createExternalLoadBalancer(ctx, infrav1.External, instancegroups)
+			if err != nil {
+				t.Fatalf("createExternalLoadBalancer() error = %v", err)
+			}
+
+			// Get the control plane endpoint
+			endpoint := clusterScope.ControlPlaneEndpoint()
+
+			// Verify the endpoint host based on expectations
+			if tt.wantIPv4Host && endpoint.Host != exampleIPv4Addr {
+				// For IPv4, we expect the address to be in IPv4 format (192.0.2.1)
+				t.Errorf("Expected IPv4 host to be %s, but got %s", exampleIPv4Addr, endpoint.Host)
+			}
+
+			if tt.wantIPv6Host && endpoint.Host != exampleIPv6Addr {
+				// For IPv6Primary with DualStack, the endpoint should be set to IPv6 address (2001:db8::1)
+				t.Errorf("Expected IPv6 host to be %s, but got %s", exampleIPv6Addr, endpoint.Host)
+			}
+
+			// Verify that IPv6 resources are created only for DualStack
+			if tt.stackType == infrav1.DualStackType {
+				if clusterScope.GCPCluster.Status.Network.APIServerIPv6Address == nil {
+					t.Errorf("Expected APIServerIPv6Address to be set for DualStack, but got nil")
+				}
+				if clusterScope.GCPCluster.Status.Network.APIServerIPv6ForwardingRule == nil {
+					t.Errorf("Expected APIServerIPv6ForwardingRule to be set for DualStack, but got nil")
+				}
+			} else if clusterScope.GCPCluster.Status.Network.APIServerIPv6Address != nil {
+				t.Errorf("Expected APIServerIPv6Address to be nil for IPv4Only stack, but got %v", clusterScope.GCPCluster.Status.Network.APIServerIPv6Address)
+			}
+		})
+	}
+}
