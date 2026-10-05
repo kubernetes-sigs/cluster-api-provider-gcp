@@ -346,6 +346,10 @@ generate: ## Generate code
 	$(MAKE) generate-go
 	$(MAKE) generate-manifests
 
+.PHONY: generate-doctoc
+generate-doctoc: ## Generate tables of contents for Markdown files with doctoc markers
+	TRACE=$(TRACE) ./hack/generate-doctoc.sh
+
 .PHONY: generate-go
 generate-go: $(CONTROLLER_GEN) $(CONVERSION_GEN) ## Runs Go related generate targets
 	$(CONTROLLER_GEN) \
@@ -622,7 +626,7 @@ format-tiltfile: ## Format the Tiltfile.
 	./hack/verify-starlark.sh fix
 
 .PHONY: verify
-verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile verify-conversions verify-go-directive
+verify: verify-boilerplate verify-modules verify-gen verify-shellcheck verify-tiltfile verify-conversions verify-go-directive verify-doctoc
 
 .PHONY: verify-boilerplate
 verify-boilerplate:
@@ -652,6 +656,13 @@ verify-gen: generate
 		echo "generated files are out of date, run make generate"; \
 		git diff HEAD; \
 		exit 1; \
+	fi
+
+.PHONY: verify-doctoc
+verify-doctoc: generate-doctoc
+	@if !(git diff --quiet HEAD); then \
+		git diff; \
+		echo "doctoc is out of date, run make generate-doctoc"; exit 1; \
 	fi
 
 .PHONY: verify-go-directive
