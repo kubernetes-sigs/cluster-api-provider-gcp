@@ -20,116 +20,79 @@ limitations under the License.
 package e2e
 
 import (
-	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
-	"text/template"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:embed data/scale-from-zero/rbac.yaml
-var clusterAutoscalerRBAC string
-
-//go:embed data/scale-from-zero/deployment.yaml.tmpl
-var clusterAutoscalerDeploymentTemplate string
-
-//go:embed data/scale-from-zero/autoscale-trigger-deployment.yaml.tmpl
-var autoscaleTriggerDeploymentTemplate string
-
-// renderTemplate executes a template with the given data and returns the rendered bytes.
-func renderTemplate(name, templateStr string, data interface{}) ([]byte, error) {
-	tmpl, err := template.New(name).Parse(templateStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
-	}
-
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("failed to execute template: %w", err)
-	}
-
-	return buf.Bytes(), nil
-}
-
-// decodeYAML decodes a single YAML document into a runtime.Object.
-func decodeYAML(data []byte) (runtime.Object, error) {
-	codecs := serializer.NewCodecFactory(scheme.Scheme)
-	decoder := codecs.UniversalDeserializer()
-	obj, _, err := decoder.Decode(data, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode YAML: %w", err)
-	}
-	return obj, nil
-}
-
-// decodeUnstructuredYAML decodes a single YAML document into an unstructured object.
-// Use for CRDs not registered in the standard k8s scheme.
-func decodeUnstructuredYAML(data []byte) (*unstructured.Unstructured, error) {
-	obj := &unstructured.Unstructured{}
-	dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-	_, _, err := dec.Decode(data, nil, obj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode unstructured YAML: %w", err)
-	}
-	return obj, nil
-}
-
-// decodeMultiYAML decodes multiple YAML documents separated by "---".
-func decodeMultiYAML(data []byte) ([]runtime.Object, error) {
-	codecs := serializer.NewCodecFactory(scheme.Scheme)
-	decoder := codecs.UniversalDeserializer()
-	objects := []runtime.Object{}
-
-	docs := bytes.Split(data, []byte("\n---\n"))
-	for _, doc := range docs {
-		if len(bytes.TrimSpace(doc)) == 0 {
-			continue
-		}
-
-		obj, _, err := decoder.Decode(doc, nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode YAML document: %w", err)
-		}
-		objects = append(objects, obj)
-	}
-
-	return objects, nil
-}
-
 // deployClusterAutoscalerRBAC deploys Cluster Autoscaler RBAC resources to the management cluster.
 func deployClusterAutoscalerRBAC(ctx context.Context, mgmtClient client.Client, namespace, clusterName string) error {
-	rendered, err := renderTemplate("cluster-autoscaler-rbac", clusterAutoscalerRBAC, map[string]string{
-		"Namespace":   namespace,
-		"ClusterName": clusterName,
-	})
-	if err != nil {
-		return err
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cluster-autoscaler",
+			Namespace: namespace,
+		},
 	}
 
-	objects, err := decodeMultiYAML(rendered)
-	if err != nil {
-		return err
+	clusterRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster-autoscaler-management-" + clusterName,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"cluster.x-k8s.io"},
+				Resources: []string{
+					"machinedeployments",
+					"machinedeployments/scale",
+					"machines",
+					"machinesets",
+					"machinesets/scale",
+					"machinepools",
+					"machinepools/scale",
+				},
+				Verbs: []string{"get", "list", "watch", "patch", "update"},
+			},
+			{
+				APIGroups: []string{"infrastructure.cluster.x-k8s.io"},
+				Resources: []string{
+					"gcpmachines",
+					"gcpmachinetemplates",
+				},
+				Verbs: []string{"get", "list", "watch"},
+			},
+		},
 	}
 
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cluster-autoscaler-management-" + clusterName,
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "cluster-autoscaler-management-" + clusterName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "cluster-autoscaler",
+				Namespace: namespace,
+			},
+		},
+	}
+
+	objects := []client.Object{sa, clusterRole, clusterRoleBinding}
 	for _, obj := range objects {
-		clientObj, ok := obj.(client.Object)
-		if !ok {
-			return fmt.Errorf("object is not a client.Object: %T", obj)
-		}
-
-		err := mgmtClient.Create(ctx, clientObj)
-		if err != nil && !apierrors.IsAlreadyExists(err) {
-			return fmt.Errorf("failed to create %s %s: %w",
-				obj.GetObjectKind().GroupVersionKind().Kind, clientObj.GetName(), err)
+		if err := mgmtClient.Create(ctx, obj); err != nil && !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("failed to create %T %s: %w", obj, obj.GetName(), err)
 		}
 	}
 
@@ -138,27 +101,123 @@ func deployClusterAutoscalerRBAC(ctx context.Context, mgmtClient client.Client, 
 
 // deployClusterAutoscaler deploys the Cluster Autoscaler deployment to the management cluster.
 func deployClusterAutoscaler(ctx context.Context, mgmtClient client.Client, namespace, clusterName, clusterAutoscalerVersion string) error {
-	rendered, err := renderTemplate("cluster-autoscaler", clusterAutoscalerDeploymentTemplate, map[string]string{
-		"Namespace":                namespace,
-		"ClusterName":              clusterName,
-		"ClusterAutoscalerVersion": clusterAutoscalerVersion,
-	})
-	if err != nil {
-		return err
+	replicas := int32(1)
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cluster-autoscaler-" + clusterName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app": "cluster-autoscaler",
+			},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "cluster-autoscaler",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "cluster-autoscaler",
+					},
+				},
+				Spec: corev1.PodSpec{
+					ServiceAccountName: "cluster-autoscaler",
+					Tolerations: []corev1.Toleration{
+						{
+							Effect: corev1.TaintEffectNoSchedule,
+							Key:    "node-role.kubernetes.io/control-plane",
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:  "cluster-autoscaler",
+							Image: "registry.k8s.io/autoscaling/cluster-autoscaler:" + clusterAutoscalerVersion,
+							Command: []string{
+								"/cluster-autoscaler",
+								"--cloud-provider=clusterapi",
+								"--node-group-auto-discovery=clusterapi:namespace=" + namespace + ",clusterName=" + clusterName,
+								"--kubeconfig=/etc/kubernetes/value",
+								"--clusterapi-cloud-config-authoritative",
+								"--scale-down-delay-after-add=1m",
+								"--scale-down-unneeded-time=2m",
+								"--scale-down-delay-after-delete=30s",
+								"--max-node-provision-time=10m",
+								"--balance-similar-node-groups",
+								"--skip-nodes-with-system-pods=false",
+								"--skip-nodes-with-local-storage=false",
+								"--expander=random",
+								"--kube-client-qps=20",
+								"--kube-client-burst=30",
+								"--v=4",
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "CAPI_GROUP",
+									Value: "cluster.x-k8s.io",
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "workload-kubeconfig",
+									MountPath: "/etc/kubernetes",
+									ReadOnly:  true,
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("500m"),
+									corev1.ResourceMemory: resource.MustParse("512Mi"),
+								},
+							},
+							LivenessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/health-check",
+										Port: intstr.FromInt(8085),
+									},
+								},
+								InitialDelaySeconds: 30,
+								PeriodSeconds:       10,
+								TimeoutSeconds:      5,
+								FailureThreshold:    3,
+							},
+							ReadinessProbe: &corev1.Probe{
+								ProbeHandler: corev1.ProbeHandler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path: "/health-check",
+										Port: intstr.FromInt(8085),
+									},
+								},
+								InitialDelaySeconds: 10,
+								PeriodSeconds:       10,
+								TimeoutSeconds:      5,
+								FailureThreshold:    3,
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "workload-kubeconfig",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: clusterName + "-kubeconfig",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
-	obj, err := decodeYAML(rendered)
-	if err != nil {
-		return err
-	}
-
-	deployment, ok := obj.(*appsv1.Deployment)
-	if !ok {
-		return fmt.Errorf("decoded object is not a Deployment")
-	}
-
-	err = mgmtClient.Create(ctx, deployment)
-	if err != nil && !apierrors.IsAlreadyExists(err) {
+	if err := mgmtClient.Create(ctx, deployment); err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create Cluster Autoscaler deployment %s: %w", deployment.Name, err)
 	}
 
@@ -168,25 +227,45 @@ func deployClusterAutoscaler(ctx context.Context, mgmtClient client.Client, name
 // createTriggerWorkload creates a Deployment in the workload cluster that requires
 // nodes with the autoscale-group=from-zero label to trigger autoscaler scale-up.
 func createTriggerWorkload(ctx context.Context, workloadClient client.Client, clusterName string) (client.Object, error) {
-	rendered, err := renderTemplate("trigger-deployment", autoscaleTriggerDeploymentTemplate, map[string]string{
-		"ClusterName": clusterName,
-	})
-	if err != nil {
-		return nil, err
+	replicas := int32(1)
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName + "-trigger",
+			Namespace: "default",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "autoscale-trigger",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "autoscale-trigger",
+					},
+				},
+				Spec: corev1.PodSpec{
+					SchedulerName: "default-scheduler",
+					Containers: []corev1.Container{
+						{
+							Name:  "pause",
+							Image: "registry.k8s.io/pause:3.10",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
-	obj, err := decodeYAML(rendered)
-	if err != nil {
-		return nil, err
-	}
-
-	deployment, ok := obj.(client.Object)
-	if !ok {
-		return nil, fmt.Errorf("decoded object is not a client.Object")
-	}
-
-	err = workloadClient.Create(ctx, deployment)
-	if err != nil {
+	if err := workloadClient.Create(ctx, deployment); err != nil {
 		return nil, fmt.Errorf("failed to create trigger deployment: %w", err)
 	}
 

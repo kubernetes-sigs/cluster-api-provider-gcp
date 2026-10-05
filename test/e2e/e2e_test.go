@@ -150,7 +150,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 				g.Expect(template.Status.NodeInfo).NotTo(BeNil(), "Status.NodeInfo should be populated")
 				g.Expect(template.Status.NodeInfo.Architecture).To(BeElementOf(infrav1.ArchitectureAmd64, infrav1.ArchitectureArm64), "Architecture should be amd64 or arm64")
-				g.Expect(template.Status.NodeInfo.OperatingSystem).To(Equal(infrav1.OperatingSystemLinux), "OperatingSystem should be linux")
+				g.Expect(template.Status.NodeInfo.OperatingSystem).To(Equal(corev1.Linux), "OperatingSystem should be linux")
 			}, e2eConfig.GetIntervals(specName, "wait-worker-nodes")...).Should(Succeed())
 
 			By("Scaling worker node to 3")
@@ -211,7 +211,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 				g.Expect(template.Status.NodeInfo).NotTo(BeNil(), "Status.NodeInfo should be populated")
 				g.Expect(template.Status.NodeInfo.Architecture).To(BeElementOf(infrav1.ArchitectureAmd64, infrav1.ArchitectureArm64))
-				g.Expect(template.Status.NodeInfo.OperatingSystem).To(Equal(infrav1.OperatingSystemLinux))
+				g.Expect(template.Status.NodeInfo.OperatingSystem).To(Equal(corev1.Linux))
 			}, e2eConfig.GetIntervals(specName, "wait-worker-nodes")...).Should(Succeed())
 
 			By("Deploying cluster-autoscaler RBAC to management cluster")

@@ -66,6 +66,10 @@ verify_ccm_image() {
   docker manifest inspect "gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null 2>&1
 }
 
+verify_cluster_autoscaler_image() {
+  docker manifest inspect "registry.k8s.io/autoscaling/cluster-autoscaler:${1}" >/dev/null 2>&1
+}
+
 verify_kindest_node() {
   docker manifest inspect "kindest/node:${1}" >/dev/null 2>&1
 }
@@ -117,8 +121,14 @@ resolve_management_version() {
 }
 
 resolve_cluster_autoscaler_version() {
-  # Autoscaler version matches k8s minor
-  CLUSTER_AUTOSCALER_VERSION="v${minor}.0"
+  local resolved escaped
+  escaped=${minor//./\\.}
+  resolved=$(git ls-remote --tags --refs https://github.com/kubernetes/autoscaler \
+      | awk -F/ '{print $3}' | grep -E "^cluster-autoscaler-${escaped}\.[0-9]+$" | sort -rV \
+      | sed 's/^cluster-autoscaler-/v/' \
+      | find_verified_version verify_cluster_autoscaler_image) \
+    || { echo "ERROR: no published cluster-autoscaler image found for k8s minor ${minor}" >&2; return 1; }
+  CLUSTER_AUTOSCALER_VERSION="${resolved}"
   export CLUSTER_AUTOSCALER_VERSION
 }
 

@@ -59,7 +59,7 @@ func TestGetMachineType(t *testing.T) {
 
 	service, err := compute.NewService(context.Background(), option.WithEndpoint(server.URL), option.WithoutAuthentication())
 	g.Expect(err).NotTo(gomega.HaveOccurred())
-	machineType, err := getMachineType(context.Background(), service, "test-project", "us-central1-a", "n2-standard-4")
+	machineType, err := getMachineTypeWithFallback(context.Background(), service, "test-project", []string{"us-central1-a"}, "n2-standard-4")
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	g.Expect(machineType.GuestCpus).To(gomega.Equal(int64(4)))
 	g.Expect(machineType.MemoryMb).To(gomega.Equal(int64(16384)))
@@ -307,4 +307,90 @@ func TestMachineTypeNodeInfoWithImages(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetMachineTypeWithFallback_FirstZoneSuccess(t *testing.T) {
+	g := gomega.NewWithT(t)
+
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		callCount++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"guestCpus":4,"memoryMb":16384}`))
+	}))
+	defer server.Close()
+
+	service, err := compute.NewService(context.Background(), option.WithEndpoint(server.URL), option.WithoutAuthentication())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	machineType, err := getMachineTypeWithFallback(context.Background(), service, "test-project",
+		[]string{"us-central1-a", "us-central1-b", "us-central1-c"}, "n2-standard-4")
+
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	g.Expect(machineType.GuestCpus).To(gomega.Equal(int64(4)))
+	g.Expect(callCount).To(gomega.Equal(1), "should only call first zone on success")
+}
+
+func TestGetMachineTypeWithFallback_FallbackToSecondZone(t *testing.T) {
+	g := gomega.NewWithT(t)
+
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if r.URL.Path == "/projects/test-project/zones/us-central1-a/machineTypes/n2-standard-4" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"guestCpus":4,"memoryMb":16384}`))
+	}))
+	defer server.Close()
+
+	service, err := compute.NewService(context.Background(), option.WithEndpoint(server.URL), option.WithoutAuthentication())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	machineType, err := getMachineTypeWithFallback(context.Background(), service, "test-project",
+		[]string{"us-central1-a", "us-central1-b"}, "n2-standard-4")
+
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	g.Expect(machineType.GuestCpus).To(gomega.Equal(int64(4)))
+	g.Expect(callCount).To(gomega.Equal(2), "should try two zones")
+}
+
+func TestGetMachineTypeWithFallback_AllZonesFail(t *testing.T) {
+	g := gomega.NewWithT(t)
+
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	service, err := compute.NewService(context.Background(), option.WithEndpoint(server.URL), option.WithoutAuthentication())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	zones := []string{"us-central1-a", "us-central1-b", "us-central1-c"}
+	_, err = getMachineTypeWithFallback(context.Background(), service, "test-project", zones, "n2-standard-4")
+
+	g.Expect(err).To(gomega.HaveOccurred())
+	g.Expect(err.Error()).To(gomega.ContainSubstring("any of 3 zones"))
+	g.Expect(callCount).To(gomega.Equal(3), "should try all zones")
+}
+
+func TestGetMachineTypeWithFallback_EmptyZonesList(t *testing.T) {
+	g := gomega.NewWithT(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		t.Fatal("should not make API call")
+	}))
+	defer server.Close()
+
+	service, err := compute.NewService(context.Background(), option.WithEndpoint(server.URL), option.WithoutAuthentication())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+
+	_, err = getMachineTypeWithFallback(context.Background(), service, "test-project", []string{}, "n2-standard-4")
+
+	g.Expect(err).To(gomega.HaveOccurred())
+	g.Expect(err.Error()).To(gomega.ContainSubstring("no zones provided"))
 }

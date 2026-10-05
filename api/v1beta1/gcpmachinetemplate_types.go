@@ -31,16 +31,6 @@ const (
 	ArchitectureArm64 Architecture = "arm64"
 )
 
-// OperatingSystem represents the operating system of the node.
-type OperatingSystem string
-
-const (
-	// OperatingSystemLinux represents the Linux operating system.
-	OperatingSystemLinux OperatingSystem = "linux"
-	// OperatingSystemWindows represents the Windows operating system.
-	OperatingSystemWindows OperatingSystem = "windows"
-)
-
 // NodeInfo defines the node information for this machine.
 type NodeInfo struct {
 	// Architecture defines the hardware architecture (e.g., amd64, arm64).
@@ -51,7 +41,7 @@ type NodeInfo struct {
 	// OperatingSystem defines the operating system (e.g., linux, windows).
 	// +kubebuilder:validation:Enum=linux;windows
 	// +optional
-	OperatingSystem OperatingSystem `json:"operatingSystem,omitempty"`
+	OperatingSystem corev1.OSName `json:"operatingSystem,omitempty"`
 }
 
 // GCPMachineTemplateStatus defines the observed state of a GCPMachineTemplate.

@@ -203,25 +203,13 @@ func (r *GCPMachineTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}()
 
-	// Get zone - prefer failure domains, fallback to region-a
-	// Machine type specs are identical across all zones in a region
-	var zone string
-	failureDomains := clusterScope.FailureDomains()
-	if len(failureDomains) > 0 {
-		sort.Strings(failureDomains)
-		zone = failureDomains[0]
-	} else {
-		// Fallback: use first zone in region when failure domains not discovered yet
-		// This mirrors CAPA approach which uses region-level API without zone dependency
-		if gcpCluster.Spec.Region == "" {
-			logger.Info("GCPCluster has no region specified")
-			return ctrl.Result{RequeueAfter: machineTemplateCapacityRequeueAfter}, nil
-		}
-		zone = gcpCluster.Spec.Region + "-a"
-		logger.Info("Using default zone from region as fallback", "region", gcpCluster.Spec.Region, "zone", zone)
+	zones, err := getZonesForMachineType(ctx, clusterScope, gcpCluster)
+	if err != nil {
+		logger.Info("Failed to determine zones, will retry", "error", err)
+		return ctrl.Result{RequeueAfter: machineTemplateCapacityRequeueAfter}, nil
 	}
 
-	machineType, err := getMachineType(ctx, clusterScope.Compute, clusterScope.Project(), zone, instanceType)
+	machineType, err := getMachineTypeWithFallback(ctx, clusterScope.Compute, clusterScope.Project(), zones, instanceType)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -244,16 +232,79 @@ func (r *GCPMachineTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, errors.Wrap(err, "failed to patch GCPMachineTemplate status")
 	}
 
-	logger.Info("Populated GCPMachineTemplate capacity and nodeInfo", "instanceType", instanceType, "zone", zone, "capacity", template.Status.Capacity, "nodeInfo", nodeInfo)
+	logger.Info("Populated GCPMachineTemplate capacity and nodeInfo", "instanceType", instanceType, "capacity", template.Status.Capacity, "nodeInfo", nodeInfo)
 	return ctrl.Result{}, nil
 }
 
-func getMachineType(ctx context.Context, computeService *compute.Service, project, zone, instanceType string) (*compute.MachineType, error) {
-	machineType, err := computeService.MachineTypes.Get(project, zone, instanceType).Context(ctx).Do()
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get machine type %q in zone %q", instanceType, zone)
+// getZonesForMachineType returns zones to try for machine type queries, in priority order.
+// Prefers cluster failure domains (where machines will actually run), falls back to discovering available zones in region.
+// Machine type specs (CPU/memory) are identical across all zones in a region.
+func getZonesForMachineType(ctx context.Context, clusterScope *scope.ClusterScope, gcpCluster *infrav1.GCPCluster) ([]string, error) {
+	logger := log.FromContext(ctx)
+
+	// Priority 1: Use cluster failure domains (where machines will actually run)
+	failureDomains := clusterScope.FailureDomains()
+	if len(failureDomains) > 0 {
+		sort.Strings(failureDomains)
+		return failureDomains, nil
 	}
-	return machineType, nil
+
+	// Priority 2: Discover available zones in region
+	if gcpCluster.Spec.Region == "" {
+		return nil, errors.New("GCPCluster has no region specified")
+	}
+
+	region := gcpCluster.Spec.Region
+	zoneList, err := clusterScope.Compute.Zones.List(clusterScope.Project()).Context(ctx).Do()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to list zones in project %q", clusterScope.Project())
+	}
+
+	var availableZones []string
+	for _, zone := range zoneList.Items {
+		// Filter: region match + zone is UP
+		if strings.HasPrefix(zone.Name, region+"-") && zone.Status == "UP" {
+			availableZones = append(availableZones, zone.Name)
+		}
+	}
+
+	if len(availableZones) == 0 {
+		return nil, errors.Errorf("no available zones found in region %q", region)
+	}
+
+	sort.Strings(availableZones)
+	logger.Info("Discovered zones for machine type query", "region", region, "zones", len(availableZones))
+	return availableZones, nil
+}
+
+// getMachineTypeWithFallback queries GCP for machine type specs, trying multiple zones.
+// GCP machine types have identical CPU/memory specs across all zones in a region.
+// This function tries zones in order to handle zone-specific availability or transient errors.
+func getMachineTypeWithFallback(ctx context.Context, computeService *compute.Service, project string, zones []string, instanceType string) (*compute.MachineType, error) {
+	logger := log.FromContext(ctx)
+
+	if len(zones) == 0 {
+		return nil, errors.New("no zones provided for machine type query")
+	}
+
+	var lastErr error
+	for i, zone := range zones {
+		logger.V(2).Info("Querying machine type", "instanceType", instanceType, "zone", zone, "attempt", i+1, "totalZones", len(zones))
+
+		machineType, err := computeService.MachineTypes.Get(project, zone, instanceType).Context(ctx).Do()
+		if err == nil {
+			logger.V(2).Info("Successfully retrieved machine type", "instanceType", instanceType, "zone", zone)
+			return machineType, nil
+		}
+
+		// Log and continue to next zone
+		logger.V(2).Info("Failed to get machine type in zone", "zone", zone, "error", err)
+		lastErr = err
+	}
+
+	// All zones failed
+	return nil, errors.Wrapf(lastErr, "failed to get machine type %q in any of %d zones (tried: %v)",
+		instanceType, len(zones), zones)
 }
 
 func machineTypeCapacity(machineType *compute.MachineType) (corev1.ResourceList, error) {
@@ -300,7 +351,7 @@ func getArchitectureFromMachineType(machineType *compute.MachineType) infrav1.Ar
 
 // getOperatingSystemFromImage determines OS by querying GCP Images API.
 // Mirrors AWS approach: query image metadata to detect Windows vs Linux.
-func getOperatingSystemFromImage(ctx context.Context, computeService *compute.Service, defaultProject string, template *infrav1.GCPMachineTemplate) (infrav1.OperatingSystem, error) {
+func getOperatingSystemFromImage(ctx context.Context, computeService *compute.Service, defaultProject string, template *infrav1.GCPMachineTemplate) (corev1.OSName, error) {
 	// Strategy 1: Explicit image reference (takes precedence)
 	if template.Spec.Template.Spec.Image != nil {
 		return queryImageOS(ctx, computeService, defaultProject, *template.Spec.Template.Spec.Image, false)
@@ -313,11 +364,11 @@ func getOperatingSystemFromImage(ctx context.Context, computeService *compute.Se
 
 	// Strategy 3: No image specified - default to Linux (safe assumption for CAPG)
 	// All current CAPG deployments use Linux, Windows support not yet implemented
-	return infrav1.OperatingSystemLinux, nil
+	return corev1.Linux, nil
 }
 
 // queryImageOS queries GCP Images API and checks guestOsFeatures for Windows.
-func queryImageOS(ctx context.Context, computeService *compute.Service, defaultProject, imageRef string, isFamily bool) (infrav1.OperatingSystem, error) {
+func queryImageOS(ctx context.Context, computeService *compute.Service, defaultProject, imageRef string, isFamily bool) (corev1.OSName, error) {
 	// Parse image reference to extract project and image/family name
 	project, name, err := parseImageReference(imageRef, defaultProject)
 	if err != nil {
@@ -344,12 +395,12 @@ func queryImageOS(ctx context.Context, computeService *compute.Service, defaultP
 	// GCP marks Windows images with "WINDOWS" feature in guestOsFeatures array
 	for _, feature := range image.GuestOsFeatures {
 		if feature.Type == "WINDOWS" {
-			return infrav1.OperatingSystemWindows, nil
+			return corev1.Windows, nil
 		}
 	}
 
 	// No WINDOWS feature = Linux
-	return infrav1.OperatingSystemLinux, nil
+	return corev1.Linux, nil
 }
 
 // parseImageReference parses GCP image reference into project and name.
