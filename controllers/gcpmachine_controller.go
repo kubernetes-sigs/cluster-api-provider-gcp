@@ -228,6 +228,14 @@ func (r *GCPMachineReconciler) reconcile(ctx context.Context, machineScope *scop
 	}
 
 	if err := instances.New(machineScope).Reconcile(ctx); err != nil {
+		if errors.Is(err, instances.ErrInstanceNotFound) {
+			machineScope.SetNotReady()
+			machineScope.SetFailureReason("InstanceNotFound")
+			machineScope.SetFailureMessage(err)
+			log.Error(err, "previously created instance has disappeared")
+			r.Recorder.Event(machineScope.GCPMachine, corev1.EventTypeWarning, "GCPMachineReconcile", "Previously created instance has disappeared, will not be recreated. Delete the Machine so it's MachineSet replaces it or use MachineHealthCheck so it gets recreated automatically")
+			return ctrl.Result{}, nil
+		}
 		log.Error(err, "Error reconciling instance resources")
 		r.Recorder.Eventf(machineScope.GCPMachine, corev1.EventTypeWarning, "GCPMachineReconcile", "Reconcile error - %v", err)
 		return ctrl.Result{}, err
