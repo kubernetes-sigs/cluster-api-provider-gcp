@@ -28,11 +28,10 @@ REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 if [ -z "${GCP_PROJECT:-}" ]; then echo "ERROR: GCP_PROJECT is not set" >&2; return 1; fi
 if [ -z "${GCP_REGION:-}" ]; then echo "ERROR: GCP_REGION is not set" >&2; return 1; fi
 
-minor=$("${REPO_ROOT}/hack/tools/bin/yq" '.variables.KUBERNETES_MINOR' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml")
-if [ -z "${minor}" ] || [ "${minor}" = "null" ]; then
-  echo "ERROR: KUBERNETES_MINOR is not set in test/e2e/config/gcp-ci.yaml" >&2
-  return 1
-fi
+minor=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.KUBERNETES_MINOR' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml") || return 1
+
+CAPG_UBUNTU_VERSION=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.CAPG_UBUNTU_VERSION' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml") || return 1
+export CAPG_UBUNTU_VERSION
 
 # k8s_tags_for_minor prints kubernetes/kubernetes release tags for a given
 # minor (e.g. "1.35"), newest first.
@@ -58,7 +57,7 @@ find_verified_version() {
 }
 
 verify_nightly_image() {
-  gcloud compute images describe "cluster-api-ubuntu-2204-${1//./-}-nightly" \
+  gcloud compute images describe "cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${1//./-}-nightly" \
     --project=k8s-staging-cluster-api-gcp >/dev/null 2>&1
 }
 
@@ -94,7 +93,7 @@ resolve_unmanaged_version() {
   resolved=$(resolve_version_for_minor "${minor}" verify_nightly_image \
     "no nightly image published for minor ${minor} -- add config at kubernetes-sigs/image-builder/images/capi/packer/gce/ci/nightly") || return 1
   KUBERNETES_VERSION="${resolved}"
-  IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-${resolved//./-}-nightly"
+  IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${resolved//./-}-nightly"
   export KUBERNETES_VERSION IMAGE_ID
 
   resolve_ccm_version || return 1
@@ -159,8 +158,8 @@ resolve_upgrade_versions() {
 
   KUBERNETES_VERSION_UPGRADE_TO="${to_v}"
   KUBERNETES_VERSION_UPGRADE_FROM="${from_v}"
-  KUBERNETES_IMAGE_UPGRADE_TO="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-${to_v//./-}-nightly"
-  KUBERNETES_IMAGE_UPGRADE_FROM="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-2204-${from_v//./-}-nightly"
+  KUBERNETES_IMAGE_UPGRADE_TO="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${to_v//./-}-nightly"
+  KUBERNETES_IMAGE_UPGRADE_FROM="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${from_v//./-}-nightly"
   export KUBERNETES_VERSION_UPGRADE_TO KUBERNETES_VERSION_UPGRADE_FROM
   export KUBERNETES_IMAGE_UPGRADE_TO KUBERNETES_IMAGE_UPGRADE_FROM
 
