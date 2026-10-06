@@ -82,7 +82,7 @@ type GCPClusterStatus struct {
 	FailureDomains clusterv1beta1.FailureDomains `json:"failureDomains,omitempty"`
 	Network        Network                       `json:"network,omitempty"`
 
-	// Bastion Instance `json:"bastion,omitempty"`
+	// Ready denotes that the cluster infrastructure is ready.
 	Ready bool `json:"ready"`
 }
 
