@@ -401,6 +401,42 @@ type LoadBalancerSpec struct {
 	// InternalLoadBalancer is the configuration for an Internal Passthrough Network Load Balancer.
 	// +optional
 	InternalLoadBalancer *LoadBalancer `json:"internalLoadBalancer,omitempty"`
+
+	// HealthCheck defines health check configuration for the load balancer.
+	// This configuration applies to health checks for both the external and
+	// internal load balancers. The health check protocol (HTTPS), port (6443),
+	// and request path (/readyz) are not configurable as they are specific to
+	// the Kubernetes API server.
+	// +optional
+	HealthCheck *LoadBalancerHealthCheck `json:"healthCheck,omitempty"`
+}
+
+// LoadBalancerHealthCheck defines the configuration for the health check
+// used by the API server load balancer(s).
+// +kubebuilder:validation:XValidation:rule="!has(self.timeoutSec) || !has(self.checkIntervalSec) || self.timeoutSec <= self.checkIntervalSec",message="timeoutSec must be less than or equal to checkIntervalSec"
+type LoadBalancerHealthCheck struct {
+	// CheckIntervalSec is the time interval between health check probes, in seconds.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=300
+	CheckIntervalSec int64 `json:"checkIntervalSec"`
+
+	// TimeoutSec is the maximum time to wait for a health check response, in seconds.
+	// Must be less than or equal to checkIntervalSec.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=300
+	TimeoutSec int64 `json:"timeoutSec"`
+
+	// HealthyThreshold is the number of consecutive successful health checks
+	// before an unhealthy instance is marked healthy.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10
+	HealthyThreshold int64 `json:"healthyThreshold"`
+
+	// UnhealthyThreshold is the number of consecutive failed health checks
+	// before a healthy instance is marked unhealthy.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10
+	UnhealthyThreshold int64 `json:"unhealthyThreshold"`
 }
 
 // SubnetSpec configures an GCP Subnet.
