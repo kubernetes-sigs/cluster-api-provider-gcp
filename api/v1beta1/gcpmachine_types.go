@@ -250,6 +250,16 @@ type GCPMachineSpec struct {
 	// InstanceType is the type of instance to create. Example: n1.standard-2
 	InstanceType string `json:"instanceType"`
 
+	// ResourcePolicies are full or partial URLs of existing regional resource policies
+	// to attach when creating the instance. For example:
+	// projects/my-project/regions/us-central1/resourcePolicies/my-placement-policy.
+	// Policies must be in the same region as the instance. CAPG does not create or
+	// delete these policies. Changing this field requires replacing the machine.
+	// +optional
+	// +listType=set
+	// +kubebuilder:validation:items:MinLength=1
+	ResourcePolicies []string `json:"resourcePolicies,omitempty"`
+
 	// Subnet is a reference to the subnetwork to use for this instance. If not specified,
 	// the first subnetwork retrieved from the Cluster Region and Network is picked.
 	// +optional

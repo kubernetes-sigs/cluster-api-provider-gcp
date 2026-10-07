@@ -372,6 +372,18 @@ spec:
                           - value
                           type: object
                         type: array
+                      resourcePolicies:
+                        description: |-
+                          ResourcePolicies are full or partial URLs of existing regional resource policies
+                          to attach when creating the instance. For example:
+                          projects/my-project/regions/us-central1/resourcePolicies/my-placement-policy.
+                          Policies must be in the same region as the instance. CAPG does not create or
+                          delete these policies. Changing this field requires replacing the machine.
+                        items:
+                          minLength: 1
+                          type: string
+                        type: array
+                        x-kubernetes-list-type: set
                       rootDeviceSize:
                         description: |-
                           RootDeviceSize is the size of the root volume in GB.
