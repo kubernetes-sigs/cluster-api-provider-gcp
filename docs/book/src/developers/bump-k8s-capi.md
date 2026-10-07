@@ -188,9 +188,7 @@ variable in this file (`KUBERNETES_VERSION`, `KUBERNETES_VERSION_GKE`,
 etcd/coredns/image variables) is already `"${VAR}"` with no default, and
 derives automatically at CI time via `hack/resolve-e2e-versions.sh` — don't
 add a hand-pinned fallback to any of them; that would just recreate the
-staleness problem this whole scheme exists to avoid. Preserve the comments
-above `KUBERNETES_MINOR` in the YAML — they explain why the rest of the
-block has no defaults.
+staleness problem this whole scheme exists to avoid.
 
 Optionally, run `hack/resolve-e2e-versions.sh` locally first (needs
 `gcloud`/`docker`/`git` access; `E2E_FLAVOR=all GCP_PROJECT=... GCP_REGION=...`)

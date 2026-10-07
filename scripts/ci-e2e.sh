@@ -55,7 +55,7 @@ export GCP_B64ENCODED_CREDENTIALS
 init_image() {
   if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then
     image=$(gcloud compute images list --project "$GCP_PROJECT" \
-      --no-standard-images --filter="family:capi-ubuntu-2204-k8s-v${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}" --format="table[no-heading](name)")
+      --no-standard-images --filter="family:capi-ubuntu-${CAPG_UBUNTU_VERSION}-k8s-v${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}" --format="table[no-heading](name)")
     if [[ -n "$image" ]]; then
       return
     fi
@@ -66,27 +66,29 @@ init_image() {
   "build_timestamp": "0",
   "kubernetes_series": "v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}",
   "kubernetes_semver": "${KUBERNETES_VERSION}",
-  "kubernetes_deb_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-00",
-  "kubernetes_rpm_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-0"
+  "kubernetes_deb_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-1.1",
+  "kubernetes_rpm_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
 }
 EOF
+
+  local build_target=build-gce-ubuntu-"${CAPG_UBUNTU_VERSION}"
 
   if [[ $EUID -ne 0 ]]; then
     (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
       GCP_PROJECT_ID=$GCP_PROJECT \
       GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
       PACKER_VAR_FILES=override.json \
-      make deps-gce build-gce-ubuntu-2004)
+      make deps-gce "${build_target}")
   else
     # assume we are running in the CI environment as root
     # Add a user for ansible to work properly
     groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
     chown -R packer:packer /home/prow/go/src/sigs.k8s.io/image-builder
     # use the packer user to run the build
-    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && PATH=$PATH:~packer/.local/bin:/home/prow/go/src/sigs.k8s.io/image-builder/images/capi/.local/bin GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make deps-gce build-gce-ubuntu-2204'"
+    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && PATH=$PATH:~packer/.local/bin:/home/prow/go/src/sigs.k8s.io/image-builder/images/capi/.local/bin GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make deps-gce $build_target'"
   fi
 
-  filter="name~cluster-api-ubuntu-2204-${KUBERNETES_VERSION//[.+]/-}"
+  filter="name~cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${KUBERNETES_VERSION//[.+]/-}"
   image_id=$(gcloud compute images list --project "$GCP_PROJECT" \
     --no-standard-images --filter="${filter}" --format="table[no-heading](name)")
   if [[ -z "$image_id" ]]; then

@@ -33,4 +33,6 @@
     - [Adding new E2E test](./developers/e2e.md)
     - [Releasing](./developers/releasing.md)
     - [Bumping Go](./developers/bump-go.md)
+    - [Bumping CAPI/Kubernetes](./developers/bump-k8s-capi.md)
+    - [Bumping Ubuntu Image](./developers/bump-ubuntu-image.md)
 - [Roadmap](./roadmap.md)
