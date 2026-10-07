@@ -417,9 +417,10 @@ func instanceGuestAcceleratorsSpec(guestAccelerators []infrav1.Accelerator) []*c
 // InstanceSpec returns instance spec.
 func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compute.Instance {
 	instance := &compute.Instance{
-		Name:        m.Name(),
-		Zone:        m.Zone(),
-		MachineType: path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
+		Name:             m.Name(),
+		Zone:             m.Zone(),
+		MachineType:      path.Join("zones", m.Zone(), "machineTypes", m.GCPMachine.Spec.InstanceType),
+		ResourcePolicies: m.GCPMachine.Spec.ResourcePolicies,
 		Tags: &compute.Tags{
 			Items: append(
 				m.GCPMachine.Spec.AdditionalNetworkTags,

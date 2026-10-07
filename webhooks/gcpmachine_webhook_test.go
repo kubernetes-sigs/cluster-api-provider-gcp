@@ -283,3 +283,31 @@ func TestGCPMachine_ValidateCreate(t *testing.T) {
 		})
 	}
 }
+
+func TestGCPMachine_ResourcePoliciesImmutable(t *testing.T) {
+	policy := "projects/test-project/regions/us-central1/resourcePolicies/spread"
+	for _, tt := range []struct {
+		name        string
+		oldPolicies []string
+		newPolicies []string
+		wantErr     bool
+	}{
+		{name: "unchanged", oldPolicies: []string{policy}, newPolicies: []string{policy}},
+		{name: "add", newPolicies: []string{policy}, wantErr: true},
+		{name: "remove", oldPolicies: []string{policy}, wantErr: true},
+		{name: "replace", oldPolicies: []string{policy}, newPolicies: []string{policy + "-other"}, wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			oldMachine := &infrav1.GCPMachine{Spec: infrav1.GCPMachineSpec{ResourcePolicies: tt.oldPolicies}}
+			newMachine := oldMachine.DeepCopy()
+			newMachine.Spec.ResourcePolicies = tt.newPolicies
+			_, err := (&GCPMachine{}).ValidateUpdate(t.Context(), oldMachine, newMachine)
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+		})
+	}
+}
