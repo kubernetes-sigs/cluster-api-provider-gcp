@@ -232,6 +232,11 @@ spec:
                 description: EnableIdentityService indicates whether to enable Identity
                   Service component for this GKE cluster.
                 type: boolean
+              enableVerticalPodAutoscaling:
+                description: |-
+                  EnableVerticalPodAutoscaling indicates whether to enable Vertical Pod Autoscaling for this
+                  GKE cluster.
+                type: boolean
               endpoint:
                 description: Endpoint represents the endpoint used to communicate
                   with the control plane.

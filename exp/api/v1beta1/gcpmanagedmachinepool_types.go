@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	capg "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
@@ -96,6 +97,10 @@ type NodeSecurityConfig struct {
 	// integrity monitoring enabled.
 	// +optional
 	EnableIntegrityMonitoring *bool `json:"enableIntegrityMonitoring,omitempty"`
+	// ConfidentialCompute defines whether the nodes should have confidential compute enabled,
+	// and the confidential computing technology of choice. This field is immutable.
+	// +optional
+	ConfidentialCompute *capg.ConfidentialComputePolicy `json:"confidentialCompute,omitempty"`
 }
 
 // ServiceAccountConfig encapsulates service account options.

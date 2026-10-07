@@ -377,6 +377,12 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		}
 	}
 
+	if evpa := s.scope.GCPManagedControlPlane.Spec.EnableVerticalPodAutoscaling; evpa != nil {
+		cluster.VerticalPodAutoscaling = &containerpb.VerticalPodAutoscaling{
+			Enabled: *evpa,
+		}
+	}
+
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
 		Parent:  s.scope.ClusterLocation(),
@@ -706,6 +712,31 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			needUpdate = true
 			clusterUpdate.DesiredDnsConfig = desiredSdkDNSConfig
 			log.V(2).Info("DNSConfig update required", "current", existingDNSConfig, "desired", desiredSdkDNSConfig)
+		}
+	}
+
+	// BinaryAuthorization
+	desiredBinaryAuthorizationMode := convertToSdkBinaryAuthorizationEvaluationMode(s.scope.GCPManagedControlPlane.Spec.BinaryAuthorization)
+	if desiredBinaryAuthorizationMode != existingCluster.GetBinaryAuthorization().GetEvaluationMode() {
+		needUpdate = true
+		clusterUpdate.DesiredBinaryAuthorization = &containerpb.BinaryAuthorization{
+			EvaluationMode: desiredBinaryAuthorizationMode,
+		}
+		log.V(2).Info("BinaryAuthorization update required",
+			"current", existingCluster.GetBinaryAuthorization().GetEvaluationMode(),
+			"desired", desiredBinaryAuthorizationMode)
+	}
+
+	// VerticalPodAutoscaling
+	if evpa := s.scope.GCPManagedControlPlane.Spec.EnableVerticalPodAutoscaling; evpa != nil {
+		if *evpa != existingCluster.GetVerticalPodAutoscaling().GetEnabled() {
+			needUpdate = true
+			clusterUpdate.DesiredVerticalPodAutoscaling = &containerpb.VerticalPodAutoscaling{
+				Enabled: *evpa,
+			}
+			log.V(2).Info("VerticalPodAutoscaling update required",
+				"current", existingCluster.GetVerticalPodAutoscaling().GetEnabled(),
+				"desired", *evpa)
 		}
 	}
 
