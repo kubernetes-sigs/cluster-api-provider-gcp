@@ -92,8 +92,11 @@ spec:
                         description: ImageType is image type to use for this nodepool.
                         type: string
                       instanceType:
-                        description: InstanceType is name of Compute Engine machine
-                          type.
+                        description: |-
+                          InstanceType is name of Compute Engine machine type.
+                          This field is mutable: changing it drives a rolling node replacement via
+                          GKE's node pool upgrade strategy (see UpgradeSettings), not an in-place
+                          resize. It takes precedence over MachineType if both are set.
                         type: string
                       kubernetesLabels:
                         additionalProperties:
@@ -306,6 +309,31 @@ spec:
                           Spot specifies whether to create nodes using Spot VM instances. Spot VMs can be reclaimed at
                           any time and are recommended over Preemptible VMs for new workloads. This field is immutable.
                         type: boolean
+                      upgradeSettings:
+                        description: |-
+                          UpgradeSettings specifies the rollout strategy GKE uses when a change to
+                          this node pool requires replacing nodes, such as an InstanceType change.
+                        properties:
+                          maxSurge:
+                            description: |-
+                              MaxSurge is the number of extra nodes to add to the node pool during an
+                              upgrade. Only applies when Strategy is SURGE.
+                            format: int32
+                            type: integer
+                          maxUnavailable:
+                            description: |-
+                              MaxUnavailable is the number of nodes that can be simultaneously
+                              unavailable during an upgrade. Only applies when Strategy is SURGE.
+                            format: int32
+                            type: integer
+                          strategy:
+                            description: Strategy is the upgrade strategy to use for
+                              the node pool.
+                            enum:
+                            - SURGE
+                            - BLUE_GREEN
+                            type: string
+                        type: object
                     type: object
                 required:
                 - spec

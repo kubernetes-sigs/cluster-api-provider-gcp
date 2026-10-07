@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
@@ -90,6 +91,34 @@ func TestGCPManagedMachinePoolTemplateValidatingWebhookUpdate(t *testing.T) {
 			classSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 				NodePoolName: "nodepool1",
 				DiskSizeGB:   &diskSizeGB,
+			},
+			expectError: true,
+		},
+		{
+			name: "mutable field instanceType is mutated",
+			classSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				InstanceType: ptr.To("n1-standard-4"),
+			},
+			expectError: false,
+		},
+		{
+			name: "mutable field upgradeSettings is mutated",
+			classSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				UpgradeSettings: &expinfrav1.NodePoolUpgradeSettings{
+					Strategy:       ptr.To("SURGE"),
+					MaxSurge:       ptr.To(int32(1)),
+					MaxUnavailable: ptr.To(int32(0)),
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "immutable field machineType (deprecated) set after creation",
+			classSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				MachineType:  ptr.To("n2-standard-4"),
 			},
 			expectError: true,
 		},
