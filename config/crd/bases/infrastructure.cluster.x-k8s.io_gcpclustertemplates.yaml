@@ -639,6 +639,12 @@ spec:
                             format: uri
                             pattern: ^https://
                             type: string
+                          serviceUsage:
+                            description: ServiceUsageServiceEndpoint is the custom
+                              endpoint url for the Service Usage Service
+                            format: uri
+                            pattern: ^https://
+                            type: string
                         type: object
                     required:
                     - project
