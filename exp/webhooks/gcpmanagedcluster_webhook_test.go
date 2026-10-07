@@ -113,3 +113,174 @@ func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 		})
 	}
 }
+
+// TestGCPManagedClusterValidatingWebhookUpdateRejectsImmutableFirewallRuleChanges covers
+// the fields GCP refuses to update on an existing rule. Admitting such a change would
+// leave the reconciler retrying an update that can never succeed.
+func TestGCPManagedClusterValidatingWebhookUpdateRejectsImmutableFirewallRuleChanges(t *testing.T) {
+	ssh := infrav1.FirewallRule{
+		Name:      "ssh",
+		Direction: infrav1.FirewallRuleDirectionIngress,
+		Priority:  1000,
+		Allowed: []infrav1.FirewallDescriptor{
+			{IPProtocol: infrav1.FirewallProtocolTCP, Ports: []string{"22"}},
+		},
+	}
+
+	egress := ssh
+	egress.Direction = infrav1.FirewallRuleDirectionEgress
+
+	denied := ssh
+	denied.Allowed, denied.Denied = nil, ssh.Allowed
+
+	reprioritised := ssh
+	reprioritised.Priority = 900
+
+	renamed := egress
+	renamed.Name = "ssh-egress"
+
+	tests := []struct {
+		name        string
+		oldRules    []infrav1.FirewallRule
+		newRules    []infrav1.FirewallRule
+		expectError bool
+	}{
+		{
+			name:        "a rule that changes direction under the same name is rejected",
+			oldRules:    []infrav1.FirewallRule{ssh},
+			newRules:    []infrav1.FirewallRule{egress},
+			expectError: true,
+		},
+		{
+			name:        "a rule that switches from allow to deny under the same name is rejected",
+			oldRules:    []infrav1.FirewallRule{ssh},
+			newRules:    []infrav1.FirewallRule{denied},
+			expectError: true,
+		},
+		{
+			name:        "a rule that changes direction under a new name is accepted",
+			oldRules:    []infrav1.FirewallRule{ssh},
+			newRules:    []infrav1.FirewallRule{renamed},
+			expectError: false,
+		},
+		{
+			name:        "a mutable change to a rule is accepted",
+			oldRules:    []infrav1.FirewallRule{ssh},
+			newRules:    []infrav1.FirewallRule{reprioritised},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			managedCluster := func(rules []infrav1.FirewallRule) *expinfrav1.GCPManagedCluster {
+				return &expinfrav1.GCPManagedCluster{
+					Spec: expinfrav1.GCPManagedClusterSpec{
+						Project: "old-project",
+						Region:  "us-west1",
+						CredentialsRef: &infrav1.ObjectReference{
+							Namespace: "default",
+							Name:      "credsref",
+						},
+						Network: infrav1.NetworkSpec{
+							Firewall: infrav1.FirewallSpec{FirewallRules: rules},
+						},
+					},
+				}
+			}
+
+			_, err := (&GCPManagedCluster{}).ValidateUpdate(t.Context(),
+				managedCluster(tc.oldRules), managedCluster(tc.newRules))
+
+			if tc.expectError {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+			}
+		})
+	}
+}
+
+// TestGCPManagedClusterValidatingWebhookUpdateRatchetsDuplicateFirewallRules covers the
+// clusters that stored indistinguishable rules before the duplicate check existed.
+// Rejecting those on every update would strand them, because an unrelated change would
+// be refused over rules the user never touched.
+func TestGCPManagedClusterValidatingWebhookUpdateRatchetsDuplicateFirewallRules(t *testing.T) {
+	duplicated := infrav1.FirewallRule{
+		Name:      "ssh",
+		Direction: infrav1.FirewallRuleDirectionIngress,
+		Priority:  1000,
+		Allowed: []infrav1.FirewallDescriptor{
+			{IPProtocol: infrav1.FirewallProtocolTCP, Ports: []string{"22"}},
+		},
+	}
+	valid := infrav1.FirewallRule{Name: "https", Direction: infrav1.FirewallRuleDirectionIngress}
+
+	tests := []struct {
+		name             string
+		oldRules         []infrav1.FirewallRule
+		newRules         []infrav1.FirewallRule
+		additionalLabels map[string]string
+		expectError      bool
+	}{
+		{
+			name:             "duplicates that are left alone do not block an unrelated change",
+			oldRules:         []infrav1.FirewallRule{duplicated, duplicated},
+			newRules:         []infrav1.FirewallRule{duplicated, duplicated},
+			additionalLabels: map[string]string{"testKey": "testVal"},
+			expectError:      false,
+		},
+		{
+			name:        "duplicates that survive an edit to the rules are rejected",
+			oldRules:    []infrav1.FirewallRule{duplicated, duplicated},
+			newRules:    []infrav1.FirewallRule{duplicated, duplicated, valid},
+			expectError: true,
+		},
+		{
+			name:        "an edit that resolves the duplicates is accepted",
+			oldRules:    []infrav1.FirewallRule{duplicated, duplicated},
+			newRules:    []infrav1.FirewallRule{duplicated, valid},
+			expectError: false,
+		},
+		{
+			name:        "duplicates introduced by the update are rejected",
+			oldRules:    []infrav1.FirewallRule{valid},
+			newRules:    []infrav1.FirewallRule{duplicated, duplicated},
+			expectError: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			managedCluster := func(labels map[string]string, rules []infrav1.FirewallRule) *expinfrav1.GCPManagedCluster {
+				return &expinfrav1.GCPManagedCluster{
+					Spec: expinfrav1.GCPManagedClusterSpec{
+						Project: "old-project",
+						Region:  "us-west1",
+						CredentialsRef: &infrav1.ObjectReference{
+							Namespace: "default",
+							Name:      "credsref",
+						},
+						AdditionalLabels: labels,
+						Network: infrav1.NetworkSpec{
+							Firewall: infrav1.FirewallSpec{FirewallRules: rules},
+						},
+					},
+				}
+			}
+
+			_, err := (&GCPManagedCluster{}).ValidateUpdate(t.Context(),
+				managedCluster(nil, tc.oldRules), managedCluster(tc.additionalLabels, tc.newRules))
+
+			if tc.expectError {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+			}
+		})
+	}
+}

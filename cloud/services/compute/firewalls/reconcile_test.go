@@ -24,6 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
@@ -231,6 +232,139 @@ var fakeGCPClusterWithFirewallRulesUnmanaged = &infrav1.GCPCluster{
 	},
 }
 
+// fakeGCPClusterWithStaleFirewallRule records a firewall rule in its status that the
+// spec no longer asks for, which is what a renamed or removed rule looks like.
+var fakeGCPClusterWithStaleFirewallRule = &infrav1.GCPCluster{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPClusterSpec{
+		Project: "my-proj",
+		Region:  "us-central1",
+		Network: infrav1.NetworkSpec{
+			Name: ptr.To("my-network"),
+			Firewall: infrav1.FirewallSpec{
+				FirewallRules: []infrav1.FirewallRule{
+					{
+						Name:        "my-cluster-kept-rule",
+						Description: "Custom Firewall Rule Description",
+						Allowed: []infrav1.FirewallDescriptor{
+							{
+								IPProtocol: "tcp",
+								Ports:      []string{"443"},
+							},
+						},
+						Direction: infrav1.FirewallRuleDirectionIngress,
+						Priority:  1000,
+					},
+				},
+				DefaultRulesManagement: infrav1.RulesManagementUnmanaged,
+			},
+		},
+	},
+	Status: infrav1.GCPClusterStatus{
+		Network: infrav1.Network{
+			FirewallRules: map[string]string{
+				"my-cluster-kept-rule":  "test",
+				"my-cluster-stale-rule": "test",
+			},
+		},
+	},
+}
+
+// fakeGCPClusterUpgraded records no firewall rule in its status, which is what a
+// cluster last reconciled by a version of CAPG that did not record them looks like.
+var fakeGCPClusterUpgraded = &infrav1.GCPCluster{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPClusterSpec{
+		Project: "my-proj",
+		Region:  "us-central1",
+		Network: infrav1.NetworkSpec{
+			Name: ptr.To("my-network"),
+			Firewall: infrav1.FirewallSpec{
+				FirewallRules: []infrav1.FirewallRule{
+					{
+						Name:        "my-cluster-renamed-rule",
+						Description: "Custom Firewall Rule Description",
+						Allowed: []infrav1.FirewallDescriptor{
+							{
+								IPProtocol: "tcp",
+								Ports:      []string{"443"},
+							},
+						},
+						Direction: infrav1.FirewallRuleDirectionIngress,
+						Priority:  1000,
+					},
+				},
+				DefaultRulesManagement: infrav1.RulesManagementUnmanaged,
+			},
+		},
+	},
+}
+
+// fakeGCPClusterUpgradedDelete is the same cluster as fakeGCPClusterUpgraded, kept apart
+// so that the status the reconcile test records in it does not reach the delete test.
+var fakeGCPClusterUpgradedDelete = &infrav1.GCPCluster{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPClusterSpec{
+		Project: "my-proj",
+		Region:  "us-central1",
+		Network: infrav1.NetworkSpec{
+			Name: ptr.To("my-network"),
+			Firewall: infrav1.FirewallSpec{
+				DefaultRulesManagement: infrav1.RulesManagementUnmanaged,
+			},
+		},
+	},
+}
+
+// fakeGCPClusterRecordedRule has already been reconciled by this version, which is what
+// a recorded rule means, so the names an earlier version used are not swept again.
+var fakeGCPClusterRecordedRule = &infrav1.GCPCluster{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "default",
+	},
+	Spec: infrav1.GCPClusterSpec{
+		Project: "my-proj",
+		Region:  "us-central1",
+		Network: infrav1.NetworkSpec{
+			Name: ptr.To("my-network"),
+			Firewall: infrav1.FirewallSpec{
+				FirewallRules: []infrav1.FirewallRule{
+					{
+						Name:        "my-cluster-renamed-rule",
+						Description: "Custom Firewall Rule Description",
+						Allowed: []infrav1.FirewallDescriptor{
+							{
+								IPProtocol: "tcp",
+								Ports:      []string{"443"},
+							},
+						},
+						Direction: infrav1.FirewallRuleDirectionIngress,
+						Priority:  1000,
+					},
+				},
+				DefaultRulesManagement: infrav1.RulesManagementUnmanaged,
+			},
+		},
+	},
+	Status: infrav1.GCPClusterStatus{
+		Network: infrav1.Network{
+			FirewallRules: map[string]string{
+				"my-cluster-renamed-rule": "test",
+			},
+		},
+	},
+}
+
 type testCase struct {
 	name          string
 	scope         func() Scope
@@ -304,7 +438,135 @@ func TestService_Reconcile(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The unmanaged scope only produces the single custom rule, which keeps the update
+	// assertions below unambiguous.
+	customRuleSpecs, err := clusterScopeCustomFirewallsUnmanaged.FirewallRulesSpec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	customRuleSpec := customRuleSpecs[0]
+	customRuleKey := *meta.GlobalKey(customRuleSpec.Name)
+
+	driftedCustomRule := *customRuleSpec
+	driftedCustomRule.Description = "changed outside of CAPG"
+
+	var driftedUpdates, matchingUpdates []*compute.Firewall
+
+	clusterScopeStaleRule, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client:     fakec,
+		Cluster:    fakeCluster,
+		GCPCluster: fakeGCPClusterWithStaleFirewallRule,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clusterScopeUpgraded, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client:     fakec,
+		Cluster:    fakeCluster,
+		GCPCluster: fakeGCPClusterUpgraded,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clusterScopeRecordedRule, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client:     fakec,
+		Cluster:    fakeCluster,
+		GCPCluster: fakeGCPClusterRecordedRule,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []testCase{
+		{
+			// An earlier version gave every unnamed rule of a direction the name
+			// <cluster>-<direction> and recorded nothing, so the rule it left behind is
+			// only reachable by that name. Left in the network, it also blocks the
+			// deletion of a network CAPG created.
+			name:  "firewall rule left behind by an earlier version is deleted",
+			scope: func() Scope { return clusterScopeUpgraded },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					*meta.GlobalKey("my-cluster-ingress"):      {Obj: &compute.Firewall{Name: "my-cluster-ingress"}},
+					*meta.GlobalKey("my-cluster-renamed-rule"): {Obj: &compute.Firewall{Name: "my-cluster-renamed-rule"}},
+				},
+			},
+			assert: func(ctx context.Context, t testCase) error {
+				if _, err := t.mockFirewalls.Get(ctx, meta.GlobalKey("my-cluster-ingress")); err == nil {
+					return errors.New("firewall rule left behind by an earlier version was not deleted")
+				}
+
+				if _, err := t.mockFirewalls.Get(ctx, meta.GlobalKey("my-cluster-renamed-rule")); err != nil {
+					return errors.New("firewall rule in the spec was deleted")
+				}
+
+				return nil
+			},
+		},
+		{
+			// The sweep is a migration, not an ownership claim on the name: once the
+			// status records a rule the cluster has been reconciled by this version, and
+			// a rule under the old name belongs to whoever created it.
+			name:  "firewall rule under a legacy name is left alone once a rule is recorded",
+			scope: func() Scope { return clusterScopeRecordedRule },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					*meta.GlobalKey("my-cluster-ingress"):      {Obj: &compute.Firewall{Name: "my-cluster-ingress"}},
+					*meta.GlobalKey("my-cluster-renamed-rule"): {Obj: &compute.Firewall{Name: "my-cluster-renamed-rule"}},
+				},
+			},
+			assert: func(ctx context.Context, t testCase) error {
+				if _, err := t.mockFirewalls.Get(ctx, meta.GlobalKey("my-cluster-ingress")); err != nil {
+					return errors.New("firewall rule under a legacy name was deleted")
+				}
+
+				return nil
+			},
+		},
+		{
+			name:  "firewall rule recorded in the status but absent from the spec is deleted",
+			scope: func() Scope { return clusterScopeStaleRule },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					*meta.GlobalKey("my-cluster-kept-rule"):  {Obj: &compute.Firewall{Name: "my-cluster-kept-rule"}},
+					*meta.GlobalKey("my-cluster-stale-rule"): {Obj: &compute.Firewall{Name: "my-cluster-stale-rule"}},
+				},
+			},
+			assert: func(ctx context.Context, t testCase) error {
+				if _, err := t.mockFirewalls.Get(ctx, meta.GlobalKey("my-cluster-stale-rule")); err == nil {
+					return errors.New("stale firewall rule was not deleted")
+				}
+
+				recorded := fakeGCPClusterWithStaleFirewallRule.Status.Network.FirewallRules
+				if _, ok := recorded["my-cluster-stale-rule"]; ok {
+					return errors.New("stale firewall rule is still recorded in the status")
+				}
+
+				if _, err := t.mockFirewalls.Get(ctx, meta.GlobalKey("my-cluster-kept-rule")); err != nil {
+					return errors.New("firewall rule still in the spec was deleted")
+				}
+
+				if _, ok := recorded["my-cluster-kept-rule"]; !ok {
+					return errors.New("firewall rule still in the spec is no longer recorded in the status")
+				}
+
+				return nil
+			},
+		},
 		{
 			name:  "firewall rule does not exist successful create",
 			scope: func() Scope { return clusterScope },
@@ -409,6 +671,63 @@ func TestService_Reconcile(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "firewall rule drifted from spec (should be updated in place)",
+			scope: func() Scope { return clusterScopeCustomFirewallsUnmanaged },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					customRuleKey: {Obj: &driftedCustomRule},
+				},
+				UpdateHook: func(_ context.Context, _ *meta.Key, obj *compute.Firewall, _ *cloud.MockFirewalls, _ ...cloud.Option) error {
+					driftedUpdates = append(driftedUpdates, obj)
+					return nil
+				},
+			},
+			assert: func(_ context.Context, _ testCase) error {
+				if len(driftedUpdates) != 1 {
+					return fmt.Errorf("expected 1 firewall rule update, got %d", len(driftedUpdates))
+				}
+				if diff := cmp.Diff(customRuleSpec, driftedUpdates[0]); diff != "" {
+					return fmt.Errorf("firewall rule was updated with an unexpected spec: %s", diff)
+				}
+				return nil
+			},
+		},
+		{
+			name:  "firewall rule matches spec (should not be updated)",
+			scope: func() Scope { return clusterScopeCustomFirewallsUnmanaged },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					customRuleKey: {Obj: customRuleSpec},
+				},
+				UpdateHook: func(_ context.Context, _ *meta.Key, obj *compute.Firewall, _ *cloud.MockFirewalls, _ ...cloud.Option) error {
+					matchingUpdates = append(matchingUpdates, obj)
+					return nil
+				},
+			},
+			assert: func(_ context.Context, _ testCase) error {
+				if len(matchingUpdates) != 0 {
+					return fmt.Errorf("expected no firewall rule update, got %d", len(matchingUpdates))
+				}
+				return nil
+			},
+		},
+		{
+			name:  "firewall rule update fails (should return an error)",
+			scope: func() Scope { return clusterScopeCustomFirewallsUnmanaged },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					customRuleKey: {Obj: &driftedCustomRule},
+				},
+				UpdateHook: func(_ context.Context, _ *meta.Key, _ *compute.Firewall, _ *cloud.MockFirewalls, _ ...cloud.Option) error {
+					return &googleapi.Error{Code: http.StatusBadRequest}
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -460,6 +779,18 @@ func TestService_Delete(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	clusterScopeUpgradedDelete, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client:     fakec,
+		Cluster:    fakeCluster,
+		GCPCluster: fakeGCPClusterUpgradedDelete,
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []testCase{
 		{
 			name:  "firewall rule does not exist, should do nothing",
@@ -492,6 +823,26 @@ func TestService_Delete(t *testing.T) {
 				},
 			},
 		},
+		{
+			// A cluster deleted before this version ever reconciled it records nothing,
+			// so the rule an earlier version left under its own naming scheme is only
+			// reachable by that name. Left behind, it blocks the deletion of the network.
+			name:  "firewall rule left behind by an earlier version is deleted with the cluster",
+			scope: func() Scope { return clusterScopeUpgradedDelete },
+			mockFirewalls: &cloud.MockFirewalls{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				Objects: map[meta.Key]*cloud.MockFirewallsObj{
+					*meta.GlobalKey("my-cluster-ingress"): {Obj: &compute.Firewall{Name: "my-cluster-ingress"}},
+				},
+			},
+			assert: func(ctx context.Context, t testCase) error {
+				if _, err := t.mockFirewalls.Get(ctx, meta.GlobalKey("my-cluster-ingress")); err == nil {
+					return errors.New("firewall rule left behind by an earlier version was not deleted")
+				}
+
+				return nil
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -502,6 +853,13 @@ func TestService_Delete(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service.Delete() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if tt.assert != nil {
+				err = tt.assert(ctx, tt)
+				if err != nil {
+					t.Errorf("firewall rule was not deleted as expected: %v", err)
+					return
+				}
 			}
 		})
 	}

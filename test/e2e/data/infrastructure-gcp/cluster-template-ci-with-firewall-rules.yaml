@@ -48,6 +48,19 @@ spec:
             - "209.85.204.0/22"
           targetTags:
             - "example-target-tag"
+        # Deliberately unnamed, so the generated name is exercised.
+        - allowed:
+            - IPProtocol: "TCP"
+              ports:
+                - "6081"
+          description: "Test firewall rule for CI without a name"
+          direction: "Ingress"
+          priority: 1000
+          sourceRanges:
+            - "35.191.0.0/16"
+            - "130.211.0.0/22"
+          targetTags:
+            - "example-target-tag"
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KubeadmControlPlane

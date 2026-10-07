@@ -21,6 +21,7 @@
     - [Alias IP Ranges](./topics/alias-ip-ranges.md)
     - [Autoscaling](./topics/autoscaling.md)
     - [Conformance](./topics/conformance.md)
+    - [Firewall Rules](./topics/firewall-rules.md)
     - [Gateway API](./topics/gateway-api.md)
     - [GPUs](./topics/gpus.md)
     - [Machine Locations](./topics/machine-locations.md)
