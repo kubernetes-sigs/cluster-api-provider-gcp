@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -37,6 +38,8 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/predicates"
 )
+
+const gkeConfigKind = "GKEConfig"
 
 // GKEConfigReconciler reconciles a GKEConfig object.
 type GKEConfigReconciler struct {
@@ -69,8 +72,11 @@ func (r *GKEConfigReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 	return nil
 }
 
-func (r *GKEConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {
-	log := ctrl.LoggerFrom(ctx)
+func (r *GKEConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+	ctx, end := telemetry.StartSpan(ctx, gkeConfigKind, req)
+	defer end(&reterr)
+
+	log := ctrl.LoggerFrom(ctx).WithValues("controller", gkeConfigKind)
 
 	config := &bootstrapv1exp.GKEConfig{}
 	if err := r.Get(ctx, req.NamespacedName, config); err != nil {
