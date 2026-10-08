@@ -33,6 +33,8 @@ minor=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.KUBERNETES_MINOR' "${REP
 CAPG_UBUNTU_VERSION=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.CAPG_UBUNTU_VERSION' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml") || return 1
 export CAPG_UBUNTU_VERSION
 
+capg_flatcar_version=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.CAPG_FLATCAR_VERSION' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml") || return 1
+
 # get_tag_list grabs a list of tags from a Git repo and prints them
 get_tag_list() {
   local repo=$1
@@ -113,6 +115,7 @@ resolve_unmanaged_version() {
   IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${resolved//./-}-nightly"
   export KUBERNETES_VERSION IMAGE_ID
 
+  resolve_flatcar_version || return 1
   resolve_ccm_version || return 1
 }
 
@@ -164,6 +167,17 @@ resolve_gke_version() {
   export KUBERNETES_VERSION_GKE
 }
 
+resolve_flatcar_version() {
+  local image_name
+  image_name="flatcar-lts-${capg_flatcar_version//./-}"
+  if gcloud compute images describe "${image_name}" --project kinvolk-public > /dev/null 2>&1; then
+    export FLATCAR_IMAGE_ID="projects/kinvolk-public/global/images/${image_name}"
+  else
+    echo "ERROR: Flatcar image ${image_name} could not be found (purged, or no access to kinvolk-public). Bump the CAPG_FLATCAR_VERSION in gcp-ci.yaml to resolve." >&2
+    return 1
+  fi
+}
+
 resolve_upgrade_versions() {
   local prev_major prev_minor to_v from_v constants
   resolve_ccm_version || return 1
@@ -204,7 +218,7 @@ print_summary() {
       KUBERNETES_VERSION_MANAGEMENT CLUSTER_AUTOSCALER_VERSION \
       KUBERNETES_VERSION_UPGRADE_FROM KUBERNETES_VERSION_UPGRADE_TO \
       KUBERNETES_IMAGE_UPGRADE_FROM KUBERNETES_IMAGE_UPGRADE_TO \
-      ETCD_VERSION_UPGRADE_TO COREDNS_VERSION_UPGRADE_TO; do
+      ETCD_VERSION_UPGRADE_TO COREDNS_VERSION_UPGRADE_TO FLATCAR_IMAGE_ID; do
     if [ -n "${!v:-}" ]; then
       printf '  %s=%s\n' "${v}" "${!v}"
     fi
