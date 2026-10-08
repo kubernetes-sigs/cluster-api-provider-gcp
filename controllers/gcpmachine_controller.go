@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/instances"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
@@ -45,6 +46,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+const gcpMachineKind = "GCPMachine"
 
 // GCPMachineReconciler reconciles a GCPMachine object.
 type GCPMachineReconciler struct {
@@ -68,7 +71,7 @@ func (r *GCPMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(mgr.GetScheme(), ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
 		Watches(
 			&clusterv1.Machine{},
-			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind("GCPMachine"))),
+			handler.EnqueueRequestsFromMapFunc(util.MachineToInfrastructureMapFunc(infrav1.GroupVersion.WithKind(gcpMachineKind))),
 		).
 		Watches(
 			&infrav1.GCPCluster{},
@@ -138,6 +141,9 @@ func (r *GCPMachineReconciler) GCPClusterToGCPMachines(ctx context.Context) hand
 }
 
 func (r *GCPMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+	ctx, end := telemetry.StartSpan(ctx, gcpMachineKind, req)
+	defer end(&reterr)
+
 	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
 	defer cancel()
 
