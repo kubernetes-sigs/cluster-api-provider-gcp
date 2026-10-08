@@ -102,25 +102,19 @@ spec:
       nodeRegistration:
         name: $${COREOS_GCE_HOSTNAME}
         kubeletExtraArgs:
-          cloud-provider: gce
-          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+          cloud-provider: external
     clusterConfiguration:
       apiServer:
         timeoutForControlPlane: 20m
-        extraArgs:
-          cloud-provider: gce
-          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
       controllerManager:
         extraArgs:
-          cloud-provider: gce
-          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+          cloud-provider: external
           allocate-node-cidrs: "false"
     joinConfiguration:
       nodeRegistration:
         name: $${COREOS_GCE_HOSTNAME}
         kubeletExtraArgs:
-          cloud-provider: gce
-          feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+          cloud-provider: external
     preKubeadmCommands:
       - export COREOS_GCE_HOSTNAME=$${COREOS_GCE_HOSTNAME%%.*}
       - envsubst < /etc/kubeadm.yml > /etc/kubeadm.yml.tmp
@@ -239,8 +233,7 @@ spec:
         nodeRegistration:
           name: $${COREOS_GCE_HOSTNAME}
           kubeletExtraArgs:
-            cloud-provider: gce
-            feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
+            cloud-provider: external
       preKubeadmCommands:
         - export COREOS_GCE_HOSTNAME=$${COREOS_GCE_HOSTNAME%%.*}
         - envsubst < /etc/kubeadm.yml > /etc/kubeadm.yml.tmp
