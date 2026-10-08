@@ -36,7 +36,7 @@ developer guides rather than updating versions ad hoc:
 
 - Go version bumps: `.claude/skills/bump-go/SKILL.md`
 - Kubernetes/CAPI version bumps: `.claude/skills/bump-k8s-capi/SKILL.md`
-- Ubuntu image bumps: `.claude/skills/bump-ubuntu-image/SKILL.md`
+- Node image (Ubuntu and Flatcar) bumps: `.claude/skills/bump-node-images/SKILL.md`
 
 ## Data Flow
 
