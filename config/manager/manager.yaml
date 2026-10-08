@@ -24,6 +24,7 @@ spec:
         - --feature-gates=GKE=${EXP_CAPG_GKE:=false},MachinePool=${EXP_MACHINE_POOL:=false}
         - "--diagnostics-address=${CAPG_DIAGNOSTICS_ADDRESS:=:8443}"
         - "--insecure-diagnostics=${CAPG_INSECURE_DIAGNOSTICS:=false}"
+        - "--enable-tracing=${CAPG_ENABLE_TRACING:=false}"
         - "--v=${CAPG_LOGLEVEL:=0}"
         image: controller:latest
         imagePullPolicy: IfNotPresent
