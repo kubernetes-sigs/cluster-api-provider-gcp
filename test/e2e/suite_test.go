@@ -43,7 +43,6 @@ import (
 )
 
 const (
-	FlatcarImageID              = "FLATCAR_IMAGE_ID"
 	KubernetesVersion           = "KUBERNETES_VERSION"
 	KubernetesVersionManagement = "KUBERNETES_VERSION_MANAGEMENT"
 	KubernetesVersionGKE        = "KUBERNETES_VERSION_GKE"
