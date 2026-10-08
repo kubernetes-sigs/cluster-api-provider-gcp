@@ -29,6 +29,7 @@
     - [Machine Locations](./topics/machine-locations.md)
     - [Monitoring](./topics/monitoring.md)
     - [Preemptible VMs](./topics/preemptible-vms.md)
+    - [Tracing](./topics/tracing.md)
 - [Developer Guide](./developers/index.md)
     - [Development](./developers/development.md)
     - [Try unreleased changes with Nightly Builds](./developers/nightlies.md)
@@ -39,4 +40,5 @@
     - [Bumping Go](./developers/bump-go.md)
     - [Bumping CAPI/Kubernetes](./developers/bump-k8s-capi.md)
     - [Bumping Ubuntu Image](./developers/bump-ubuntu-image.md)
+    - [Tracing](./developers/tracing.md)
 - [Roadmap](./roadmap.md)
