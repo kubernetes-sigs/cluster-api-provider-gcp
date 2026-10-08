@@ -43,6 +43,7 @@ import (
 	expwebhooks "sigs.k8s.io/cluster-api-provider-gcp/exp/webhooks"
 	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	"sigs.k8s.io/cluster-api-provider-gcp/version"
 	gcpwebhooks "sigs.k8s.io/cluster-api-provider-gcp/webhooks"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -74,21 +75,22 @@ func init() {
 
 var (
 	enableLeaderElection        bool
-	leaderElectionNamespace     string
-	watchNamespace              string
-	profilerAddress             string
-	healthAddr                  string
-	watchFilterValue            string
-	webhookCertDir              string
+	enableTracing               bool
 	gcpClusterConcurrency       int
 	gcpMachineConcurrency       int
 	gkeConfigConcurrency        int
-	webhookPort                 int
-	reconcileTimeout            time.Duration
-	syncPeriod                  time.Duration
+	healthAddr                  string
 	leaderElectionLeaseDuration time.Duration
+	leaderElectionNamespace     string
 	leaderElectionRenewDeadline time.Duration
 	leaderElectionRetryPeriod   time.Duration
+	profilerAddress             string
+	reconcileTimeout            time.Duration
+	syncPeriod                  time.Duration
+	watchFilterValue            string
+	watchNamespace              string
+	webhookCertDir              string
+	webhookPort                 int
 )
 
 // Add RBAC for the authorized diagnostics endpoint.
@@ -166,6 +168,14 @@ func main() {
 
 	// Setup the context that's going to be used in controllers and for the manager.
 	ctx := ctrl.SetupSignalHandler()
+	shutdown := func(_ context.Context) error { return nil }
+	if enableTracing {
+		shutdown, err = telemetry.Setup(ctx)
+		if err != nil {
+			setupLog.Error(err, "could not start telemetry")
+			os.Exit(1)
+		}
+	}
 
 	if err := setupReconcilers(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to setup reconcilers")
@@ -184,8 +194,14 @@ func main() {
 
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting manager", "version", version.Get().String(), "extended_info", version.Get())
-	if err := mgr.Start(ctx); err != nil {
-		setupLog.Error(err, "problem running manager")
+	startErr := mgr.Start(ctx)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := shutdown(shutdownCtx); err != nil {
+		setupLog.Error(err, "shutdown telemetry error")
+	}
+	cancel()
+	if startErr != nil {
+		setupLog.Error(startErr, "problem running manager")
 		os.Exit(1)
 	}
 }
@@ -333,6 +349,13 @@ func initFlags(fs *pflag.FlagSet) {
 		"leader-elect",
 		false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.",
+	)
+
+	fs.BoolVar(
+		&enableTracing,
+		"enable-tracing",
+		false,
+		"Enable tracing for the controller. Endpoints can be configured through the standard OTEL_EXPORTER_OTLP_* environment variables",
 	)
 
 	fs.DurationVar(
