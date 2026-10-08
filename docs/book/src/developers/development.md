@@ -124,6 +124,8 @@ $ cat <<EOF > tilt-settings.json
 EOF
 ```
 
+See the [Tracing section](./tracing.md) for more details of how to utilise tracing in CAPG.
+
 Set the following environment variables with the appropriate values for your environment:
 
 ```shell
