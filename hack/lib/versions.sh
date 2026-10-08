@@ -24,7 +24,9 @@ load_ci_pins() {
   minor=$("${HACK_DIR}/tools/bin/yq" -e '.variables.KUBERNETES_MINOR' "${TEST_DIR}/e2e/config/gcp-ci.yaml") || return 1
   CAPG_UBUNTU_VERSION=$("${HACK_DIR}/tools/bin/yq" -e '.variables.CAPG_UBUNTU_VERSION' "${TEST_DIR}/e2e/config/gcp-ci.yaml") || return 1
 
-  export CAPG_UBUNTU_VERSION
+  CAPG_FLATCAR_VERSION=$("${HACK_DIR}/tools/bin/yq" -e '.variables.CAPG_FLATCAR_VERSION' "${TEST_DIR}/e2e/config/gcp-ci.yaml") || return 1
+
+  export CAPG_UBUNTU_VERSION CAPG_FLATCAR_VERSION
 }
 
 # get_tag_list grabs a list of tags from a Git repo and prints them
@@ -99,4 +101,15 @@ resolve_node_image() {
 build_nightly_image_id() {
   local resolved=$1
   echo "projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${resolved//./-}-nightly"
+}
+
+resolve_flatcar_version() {
+  local image_name
+  image_name="flatcar-lts-${CAPG_FLATCAR_VERSION//./-}"
+  if gcloud compute images describe "${image_name}" --project kinvolk-public > /dev/null 2>&1; then
+    export FLATCAR_IMAGE_ID="projects/kinvolk-public/global/images/${image_name}"
+  else
+    echo "ERROR: Flatcar image ${image_name} could not be found (purged, or no access to kinvolk-public). Bump the CAPG_FLATCAR_VERSION in gcp-ci.yaml to resolve." >&2
+    return 1
+  fi
 }

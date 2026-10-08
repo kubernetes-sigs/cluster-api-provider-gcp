@@ -48,6 +48,7 @@ verify_kindest_node() {
 
 resolve_unmanaged_version() {
   resolve_node_image || return 1
+  resolve_flatcar_version || return 1
   resolve_ccm_version || return 1
 }
 
@@ -139,7 +140,7 @@ print_summary() {
       KUBERNETES_VERSION_MANAGEMENT CLUSTER_AUTOSCALER_VERSION \
       KUBERNETES_VERSION_UPGRADE_FROM KUBERNETES_VERSION_UPGRADE_TO \
       KUBERNETES_IMAGE_UPGRADE_FROM KUBERNETES_IMAGE_UPGRADE_TO \
-      ETCD_VERSION_UPGRADE_TO COREDNS_VERSION_UPGRADE_TO; do
+      ETCD_VERSION_UPGRADE_TO COREDNS_VERSION_UPGRADE_TO FLATCAR_IMAGE_ID; do
     if [ -n "${!v:-}" ]; then
       printf '  %s=%s\n' "${v}" "${!v}"
     fi
