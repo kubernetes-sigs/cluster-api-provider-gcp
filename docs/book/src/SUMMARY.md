@@ -36,5 +36,5 @@
     - [Releasing](./developers/releasing.md)
     - [Bumping Go](./developers/bump-go.md)
     - [Bumping CAPI/Kubernetes](./developers/bump-k8s-capi.md)
-    - [Bumping Ubuntu Image](./developers/bump-ubuntu-image.md)
+    - [Bumping Node Images](./developers/bump-node-images.md)
 - [Roadmap](./roadmap.md)
