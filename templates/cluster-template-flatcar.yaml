@@ -38,7 +38,16 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       name: "${CLUSTER_NAME}-control-plane"
   kubeadmConfigSpec:
-    files: []
+    files:
+      - content: |
+          [Global]
+
+          project-id = "${GCP_PROJECT}"
+          network-name = "${GCP_NETWORK_NAME}"
+          multizone = true
+        owner: root:root
+        path: /etc/kubernetes/cloud.config
+        permissions: "0744"
     format: ignition
     ignition:
       containerLinuxConfig:
@@ -49,41 +58,18 @@ spec:
                 hard: false
                 target: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
             files:
-              - path: /etc/sysupdate.kubernetes.d/kubernetes-${KUBERNETES_VERSION%.*}.conf
-                mode: 0644
-                contents:
-                  remote:
-                    url: https://github.com/flatcar/sysext-bakery/releases/download/latest/kubernetes-${KUBERNETES_VERSION%.*}.conf
-              - path: /etc/sysupdate.d/noop.conf
-                mode: 0644
-                contents:
-                  remote:
-                    url: https://github.com/flatcar/sysext-bakery/releases/download/latest/noop.conf
               - path: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
                 contents:
                   remote:
-                    url: https://github.com/flatcar/sysext-bakery/releases/download/latest/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+                    url: https://extensions.flatcar.org/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
           systemd:
             units:
-              - name: systemd-sysupdate.service
-                dropins:
-                  - name: kubernetes.conf
-                    contents: |
-                      [Service]
-                      ExecStartPre=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes"
-                      ExecStartPre=/usr/lib/systemd/systemd-sysupdate -C kubernetes update
-                      ExecStartPost=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes-new"
-                      ExecStartPost=/usr/bin/sh -c "if ! cmp --silent /tmp/kubernetes /tmp/kubernetes-new; then touch /run/reboot-required; fi"
               - name: update-engine.service
                 # Set this to 'false' if you want to enable Flatcar auto-update
                 mask: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
               - name: locksmithd.service
                 # NOTE: To coordinate the node reboot in this context, we recommend to use Kured.
                 mask: true
-              - name: systemd-sysupdate.timer
-                # Set this to 'true' if you want to enable the Kubernetes auto-update.
-                # NOTE: Only patches version will be pulled.
-                enabled: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
               - name: coreos-metadata-sshkeys@.service
                 enabled: true
               - name: kubeadm.service
@@ -180,41 +166,18 @@ spec:
                   hard: false
                   target: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
               files:
-                - path: /etc/sysupdate.kubernetes.d/kubernetes-${KUBERNETES_VERSION%.*}.conf
-                  mode: 0644
-                  contents:
-                    remote:
-                      url: https://github.com/flatcar/sysext-bakery/releases/download/latest/kubernetes-${KUBERNETES_VERSION%.*}.conf
-                - path: /etc/sysupdate.d/noop.conf
-                  mode: 0644
-                  contents:
-                    remote:
-                      url: https://github.com/flatcar/sysext-bakery/releases/download/latest/noop.conf
                 - path: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
                   contents:
                     remote:
-                      url: https://github.com/flatcar/sysext-bakery/releases/download/latest/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+                      url: https://extensions.flatcar.org/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
             systemd:
               units:
-                - name: systemd-sysupdate.service
-                  dropins:
-                    - name: kubernetes.conf
-                      contents: |
-                        [Service]
-                        ExecStartPre=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes"
-                        ExecStartPre=/usr/lib/systemd/systemd-sysupdate -C kubernetes update
-                        ExecStartPost=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes-new"
-                        ExecStartPost=/usr/bin/sh -c "if ! cmp --silent /tmp/kubernetes /tmp/kubernetes-new; then touch /run/reboot-required; fi"
                 - name: update-engine.service
                   # Set this to 'false' if you want to enable Flatcar auto-update
                   mask: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
                 - name: locksmithd.service
                   # NOTE: To coordinate the node reboot in this context, we recommend to use Kured.
                   mask: true
-                - name: systemd-sysupdate.timer
-                  # Set this to 'true' if you want to enable the Kubernetes auto-update.
-                  # NOTE: Only patches version will be pulled.
-                  enabled: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
                 - name: coreos-metadata-sshkeys@.service
                   enabled: true
                 - name: kubeadm.service
