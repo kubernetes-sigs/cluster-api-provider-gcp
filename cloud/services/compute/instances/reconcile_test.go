@@ -1104,3 +1104,29 @@ func TestService_createOrGetInstance(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateResourcePolicyRegions(t *testing.T) {
+	const policy = "projects/my-project/regions/us-central1/resourcePolicies/spread"
+	for _, tt := range []struct {
+		name     string
+		policies []string
+		zone     string
+		wantErr  bool
+	}{
+		{name: "omitted", zone: "us-central1-a"},
+		{name: "regional path", policies: []string{"regions/us-central1/resourcePolicies/spread"}, zone: "us-central1-a"},
+		{name: "partial path", policies: []string{policy}, zone: "us-central1-a"},
+		{name: "full URL", policies: []string{"https://www.googleapis.com/compute/v1/" + policy}, zone: "us-central1-b"},
+		{name: "different region", policies: []string{policy}, zone: "europe-west1-b", wantErr: true},
+		{name: "one mismatched policy", policies: []string{policy, strings.ReplaceAll(policy, "us-central1", "us-east1")}, zone: "us-central1-a", wantErr: true},
+		{name: "missing zone", policies: []string{policy}, wantErr: true},
+		{name: "missing region", policies: []string{"projects/my-project/resourcePolicies/spread"}, zone: "us-central1-a", wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateResourcePolicyRegions(tt.policies, tt.zone)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("validateResourcePolicyRegions() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

@@ -257,7 +257,6 @@ type GCPMachineSpec struct {
 	// delete these policies. Changing this field requires replacing the machine.
 	// +optional
 	// +listType=set
-	// +kubebuilder:validation:items:MinLength=1
 	ResourcePolicies []string `json:"resourcePolicies,omitempty"`
 
 	// Subnet is a reference to the subnetwork to use for this instance. If not specified,

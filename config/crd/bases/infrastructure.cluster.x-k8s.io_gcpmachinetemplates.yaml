@@ -380,7 +380,6 @@ spec:
                           Policies must be in the same region as the instance. CAPG does not create or
                           delete these policies. Changing this field requires replacing the machine.
                         items:
-                          minLength: 1
                           type: string
                         type: array
                         x-kubernetes-list-type: set
