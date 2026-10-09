@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -39,6 +40,8 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,6 +63,18 @@ func clusterReconcilers(clusterScope *scope.ClusterScope) []cloud.NamedReconcile
 		{Name: "subnets", Reconciler: subnets.New(clusterScope)},
 		{Name: "loadbalancers", Reconciler: loadbalancers.New(clusterScope)},
 	}
+}
+
+// clusterReconcilerConditions maps each entry of clusterReconcilers to the condition it reports on.
+var clusterReconcilerConditions = map[string]struct {
+	conditionType string
+	readyReason   string
+	failedReason  string
+}{
+	"networks":      {infrav1.GCPClusterNetworkReadyCondition, infrav1.NetworkReadyReason, infrav1.NetworkReconciliationFailedReason},
+	"firewalls":     {infrav1.GCPClusterFirewallRulesReadyCondition, infrav1.FirewallRulesReadyReason, infrav1.FirewallRulesReconciliationFailedReason},
+	"subnets":       {infrav1.GCPClusterSubnetsReadyCondition, infrav1.SubnetsReadyReason, infrav1.SubnetsReconciliationFailedReason},
+	"loadbalancers": {infrav1.GCPClusterLoadBalancerReadyCondition, infrav1.LoadBalancerReadyReason, infrav1.LoadBalancerReconciliationFailedReason},
 }
 
 // GCPClusterReconciler reconciles a GCPCluster object.
@@ -215,11 +230,32 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 	clusterScope.SetFailureDomains(failureDomains)
 
 	for _, rec := range clusterReconcilers(clusterScope) {
+		cond := clusterReconcilerConditions[rec.Name]
 		if err := rec.Reconciler.Reconcile(ctx); err != nil {
 			log.Error(err, "Reconcile error", "reconciler", rec.Name)
 			r.Recorder.Eventf(clusterScope.GCPCluster, corev1.EventTypeWarning, "GCPClusterReconcile", "Reconcile error - %v", err)
+			v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), clusterv1beta1.ConditionType(cond.conditionType), cond.failedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+			v1beta1conditions.MarkFalse(clusterScope.ConditionSetter(), infrav1.GCPClusterReadyCondition, cond.failedReason, clusterv1beta1.ConditionSeverityError, "%v", err)
+			v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+				Type:    cond.conditionType,
+				Status:  metav1.ConditionFalse,
+				Reason:  cond.failedReason,
+				Message: err.Error(),
+			})
+			v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+				Type:    infrav1.GCPClusterReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  cond.failedReason,
+				Message: err.Error(),
+			})
 			return ctrl.Result{}, err
 		}
+		v1beta1conditions.MarkTrue(clusterScope.ConditionSetter(), clusterv1beta1.ConditionType(cond.conditionType))
+		v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:   cond.conditionType,
+			Status: metav1.ConditionTrue,
+			Reason: cond.readyReason,
+		})
 	}
 
 	controlPlaneEndpoint := clusterScope.ControlPlaneEndpoint()
@@ -231,6 +267,12 @@ func (r *GCPClusterReconciler) reconcile(ctx context.Context, clusterScope *scop
 
 	r.Recorder.Eventf(clusterScope.GCPCluster, corev1.EventTypeNormal, "GCPClusterReconcile", "Got control-plane endpoint - %s", controlPlaneEndpoint.Host)
 	clusterScope.SetReady()
+	v1beta1conditions.MarkTrue(clusterScope.ConditionSetter(), infrav1.GCPClusterReadyCondition)
+	v1beta2conditions.Set(clusterScope.V1Beta2ConditionSetter(), metav1.Condition{
+		Type:   infrav1.GCPClusterReadyCondition,
+		Status: metav1.ConditionTrue,
+		Reason: infrav1.ClusterReadyReason,
+	})
 	r.Recorder.Event(clusterScope.GCPCluster, corev1.EventTypeNormal, "GCPClusterReconcile", "Reconciled")
 	return ctrl.Result{}, nil
 }
