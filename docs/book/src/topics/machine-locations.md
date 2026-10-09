@@ -45,3 +45,32 @@ spec:
 ```
 
 When combined like this, the above configuration effectively instructs CAPG to deploy the CAPI equivalent of a [zonal GKE cluster](https://cloud.google.com/kubernetes-engine/docs/concepts/types-of-clusters#availability).
+
+## Placement policies
+
+To attach an existing Compute Engine placement policy at instance creation, set
+`resourcePolicies` in the `GCPMachineTemplate` referenced by the worker
+`MachineDeployment` (or by the control plane):
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: workers-with-placement
+spec:
+  template:
+    spec:
+      instanceType: n2-standard-2
+      resourcePolicies:
+        - projects/my-project/regions/us-central1/resourcePolicies/my-spread-policy
+```
+
+The policy must already exist in the same region as the VM. Full resource URLs
+are also accepted. CAPG attaches the policy in the instance creation request;
+Google Cloud validates policy compatibility and chooses placement. CAPG does not
+create or delete the referenced policy, or set Kubernetes node placement labels.
+
+This is creation-time configuration. To change the policy, create a new machine
+template and roll out replacement machines; editing an existing `GCPMachine`
+spec is not supported. Omitting `resourcePolicies` preserves the existing
+behavior of creating an instance without an explicitly configured policy.

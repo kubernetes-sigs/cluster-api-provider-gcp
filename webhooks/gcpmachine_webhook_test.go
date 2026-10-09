@@ -283,3 +283,65 @@ func TestGCPMachine_ValidateCreate(t *testing.T) {
 		})
 	}
 }
+
+func TestGCPMachine_ResourcePoliciesImmutable(t *testing.T) {
+	policy := "projects/test-project/regions/us-central1/resourcePolicies/spread"
+	for _, tt := range []struct {
+		name        string
+		oldPolicies []string
+		newPolicies []string
+		wantErr     bool
+	}{
+		{name: "unchanged", oldPolicies: []string{policy}, newPolicies: []string{policy}},
+		{name: "add", newPolicies: []string{policy}, wantErr: true},
+		{name: "remove", oldPolicies: []string{policy}, wantErr: true},
+		{name: "replace", oldPolicies: []string{policy}, newPolicies: []string{policy + "-other"}, wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			oldMachine := &infrav1.GCPMachine{Spec: infrav1.GCPMachineSpec{ResourcePolicies: tt.oldPolicies}}
+			newMachine := oldMachine.DeepCopy()
+			newMachine.Spec.ResourcePolicies = tt.newPolicies
+			_, err := (&GCPMachine{}).ValidateUpdate(t.Context(), oldMachine, newMachine)
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+		})
+	}
+}
+
+func TestResourcePoliciesValidateCreate(t *testing.T) {
+	const policy = "projects/my-project/regions/us-central1/resourcePolicies/spread"
+	for _, tt := range []struct {
+		name     string
+		policies []string
+		wantErr  bool
+	}{
+		{name: "omitted"},
+		{name: "partial path", policies: []string{policy}},
+		{name: "full URL", policies: []string{"https://www.googleapis.com/compute/v1/" + policy}},
+		{name: "missing region", policies: []string{"projects/my-project/resourcePolicies/spread"}, wantErr: true},
+		{name: "invalid name", policies: []string{policy + "_invalid"}, wantErr: true},
+		{name: "wrong resource", policies: []string{"projects/my-project/regions/us-central1/subnetworks/spread"}, wantErr: true},
+		{name: "missing project", policies: []string{"projects//regions/us-central1/resourcePolicies/spread"}, wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			spec := infrav1.GCPMachineSpec{InstanceType: "n2-standard-2", ResourcePolicies: tt.policies}
+			_, machineErr := (&GCPMachine{}).ValidateCreate(t.Context(), &infrav1.GCPMachine{Spec: spec})
+			_, templateErr := (&GCPMachineTemplate{}).ValidateCreate(t.Context(), &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{Template: infrav1.GCPMachineTemplateResource{Spec: spec}},
+			})
+			for _, err := range []error{machineErr, templateErr} {
+				if tt.wantErr {
+					g.Expect(err).To(HaveOccurred())
+					g.Expect(err.Error()).To(ContainSubstring("resourcePolicies[0]"))
+				} else {
+					g.Expect(err).NotTo(HaveOccurred())
+				}
+			}
+		})
+	}
+}
