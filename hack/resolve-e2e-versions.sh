@@ -62,7 +62,7 @@ verify_nightly_image() {
 }
 
 verify_ccm_image() {
-  docker manifest inspect "gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null 2>&1
+  docker manifest inspect "registry.k8s.io/cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null 2>&1
 }
 
 verify_cluster_autoscaler_image() {
