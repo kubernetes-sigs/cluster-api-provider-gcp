@@ -91,6 +91,11 @@ check the version in the [Tiltfile](https://github.com/kubernetes-sigs/cluster-a
 If something on your machine is using port 30000, then change `debug.gcp.port` in your tilt-settings.json and connect
 to that port instead.
 
+### Tracing
+
+An additional useful tool for debugging can be utilising OTEL tracing, for more details on how to do this see our 
+[Tracing Guide](./tracing.md).
+
 ## Deploying a workload cluster
 
 When running locally it's possible to get CAPG to deploy whole workload clusters so changes can be tested end-to-end.
