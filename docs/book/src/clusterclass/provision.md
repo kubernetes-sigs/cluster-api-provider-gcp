@@ -61,7 +61,7 @@ Now that the class is available to be referenced by cluster objects, let's confi
 ```sh
 export CLUSTER_NAME=sample-cluster
 export CLUSTER_CLASS_NAME=sample-cc
-export KUBERNETES_VERSION=1.29.3
+export KUBERNETES_VERSION=1.36.5
 export CONTROL_PLANE_MACHINE_COUNT=1
 export WORKER_MACHINE_COUNT=1
 export GCP_REGION=us-east4
@@ -70,7 +70,7 @@ export GCP_NODE_MACHINE_TYPE=n1-standard-2
 export CNI_RESOURCES=./cni-resource
 ```
 
-You can take a look at CAPG's CNI requirements [here](./../self-managed/cni.md)
+You can take a look at CAPG's CNI requirements [here](./../self-managed/cni.md) and see further examples for how to configure CCM [here](./../self-managed/ccm.md)
 
 You can use `clusterctl` to create a cluster definition.
 
