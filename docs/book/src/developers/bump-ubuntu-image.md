@@ -6,7 +6,7 @@ This document describes how to bump the Ubuntu version of the VM images used by 
 
 The Ubuntu version lives in one place: `CAPG_UBUNTU_VERSION` in `../../../../test/e2e/config/gcp-ci.yaml`. Its value is the suffix of the image-builder target, so `"2204"` means `make build-gce-ubuntu-2204`.
 
-`../../../../hack/resolve-e2e-versions.sh`, `scripts/ci-e2e.sh` and `scripts/ci-conformance.sh` all read the pin, so none of them should be edited for a bump. Everything Kubernetes-related is bumped separately, see [Bumping Kubernetes and Cluster API](./bump-k8s-capi.md).
+`../../../../hack/resolve-e2e-versions.sh` and `scripts/ci-e2e.sh` both read the pin, so none of them should be edited for a bump. Everything Kubernetes-related is bumped separately, see [Bumping Kubernetes and Cluster API](./bump-k8s-capi.md).
 
 Let `UBUNTU_VERSION` be the target version (e.g. `2404`).
 

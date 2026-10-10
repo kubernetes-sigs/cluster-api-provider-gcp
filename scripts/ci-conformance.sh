@@ -26,8 +26,7 @@ set -o pipefail
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 KUBECTL="${REPO_ROOT}/hack/tools/bin/kubectl"
 KIND="${REPO_ROOT}/hack/tools/bin/kind"
-YQ="${REPO_ROOT}/hack/tools/bin/yq"
-make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}" "${YQ##*/}"
+make --directory="${REPO_ROOT}" "${KUBECTL##*/}" "${KIND##*/}"
 
 # shellcheck source=hack/ensure-go.sh
 source "${REPO_ROOT}/hack/ensure-go.sh"
@@ -45,75 +44,8 @@ export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
 GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS")
 export GCP_B64ENCODED_CREDENTIALS
-export KUBERNETES_MAJOR_VERSION="1"
-export KUBERNETES_MINOR_VERSION="27"
-export KUBERNETES_PATCH_VERSION="3"
-export KUBERNETES_VERSION="v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
-CAPG_UBUNTU_VERSION=$("${YQ}" -e '.variables.CAPG_UBUNTU_VERSION' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml")
-
-# using prebuilt image from image-builder project the image is built everyday and the job is available here https://prow.k8s.io/?job=periodic-image-builder-gcp-all-nightly
-export IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${KUBERNETES_VERSION//[.+]/-}-nightly"
-
-init_image() {
-  if [[ "${REUSE_OLD_IMAGES:-false}" == "true" ]]; then
-    image=$(gcloud compute images list --project "$GCP_PROJECT" \
-      --no-standard-images --filter="family:capi-ubuntu-${CAPG_UBUNTU_VERSION}-k8s-v${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}" --format="table[no-heading](name)")
-    if [[ -n "$image" ]]; then
-      return
-    fi
-  fi
-
-  if [[ "${USE_CI_ARTIFACTS:-false}" == "true" ]]; then
-    cat << EOF > "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi/override.json"
-{
-  "build_timestamp": "0",
-  "kubernetes_source_type": "http",
-  "kubernetes_cni_source_type": "http",
-  "kubernetes_http_source": "https://dl.k8s.io/ci",
-  "kubernetes_series": "v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}",
-  "kubernetes_semver": "${KUBERNETES_VERSION}"
-}
-EOF
-  else
-    cat << EOF > "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi/override.json"
-{
-  "build_timestamp": "0",
-  "kubernetes_series": "v${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}",
-  "kubernetes_semver": "${KUBERNETES_VERSION}",
-  "kubernetes_deb_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}-1.1",
-  "kubernetes_rpm_version": "${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}.${KUBERNETES_PATCH_VERSION}"
-}
-EOF
-  fi
-
-  local build_target=build-gce-ubuntu-${CAPG_UBUNTU_VERSION}
-
-  if [[ $EUID -ne 0 ]]; then
-    (cd "$(go env GOPATH)/src/sigs.k8s.io/image-builder/images/capi" && \
-      GCP_PROJECT_ID=$GCP_PROJECT \
-      GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
-      PACKER_VAR_FILES=override.json \
-      make deps-gce "${build_target}")
-  else
-    # assume we are running in the CI environment as root
-    # Add a user for ansible to work properly
-    groupadd -r packer && useradd -m -s /bin/bash -r -g packer packer
-    chown -R packer:packer /home/prow/go/src/sigs.k8s.io/image-builder
-    # use the packer user to run the build
-    su - packer -c "bash -c 'cd /home/prow/go/src/sigs.k8s.io/image-builder/images/capi && PATH=$PATH:~packer/.local/bin:/home/prow/go/src/sigs.k8s.io/image-builder/images/capi/.local/bin GCP_PROJECT_ID=$GCP_PROJECT GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS PACKER_VAR_FILES=override.json make deps-gce $build_target'"
-  fi
-
-  filter="name~cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${KUBERNETES_VERSION//[.+]/-}"
-  image_id=$(gcloud compute images list --project "$GCP_PROJECT" \
-    --no-standard-images --filter="${filter}" --format="table[no-heading](name)")
-  if [[ -z "$image_id" ]]; then
-    echo "unable to find image using : $filter $GCP_PROJECT ... bailing out!"
-    exit 1
-  fi
-
-  export IMAGE_ID="projects/${GCP_PROJECT}/global/images/${image_id}"
-}
-
+# This narrows what the version resolver resolves so that GKE versions etc. don't leak into the conformance suite
+export E2E_FLAVOR="${E2E_FLAVOR:-unmanaged}"
 
 # initialize a router and cloud NAT
 init_networks() {
@@ -139,7 +71,6 @@ init_networks() {
     --router-region="${GCP_REGION}" --router="${TEST_NAME}-myrouter" \
     --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips
 }
-
 
 cleanup() {
   # Force a cleanup of cluster api created resources using gcloud commands
@@ -179,13 +110,6 @@ cleanup() {
       --quiet "${GCP_NETWORK_NAME}" || true
   fi
 
-  if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
-    echo "Skipping GCP image deletion..."
-  else
-    # removing the image created
-    gcloud compute images delete "${image_id}" --project "${GCP_PROJECT}" --quiet || true
-  fi
-
   # stop boskos heartbeat
   [[ -z ${HEART_BEAT_PID:-} ]] || kill -9 "${HEART_BEAT_PID}" || true
 }
@@ -196,19 +120,15 @@ exit-handler() {
   cleanup
 }
 
-# setup gcp network, build image run the e2es
+# setup gcp network
 main() {
-  # skip the build image by default for CI
-  # locally if want to build the image pass the flag --init-image
-  SKIP_INIT_IMAGE="1"
-
   for arg in "$@"
   do
     if [[ "$arg" == "--verbose" ]]; then
       set -o xtrace
     fi
     if [[ "$arg" == "--init-image" ]]; then
-      unset SKIP_INIT_IMAGE
+      echo "--init-image is now deprecated and is being ignored"
     fi
   done
 
@@ -267,19 +187,6 @@ EOF
   SKIP_CLEANUP=${SKIP_CLEANUP:-""}
   if [[ -z "${SKIP_CLEANUP}" ]]; then
     trap exit-handler EXIT
-  fi
-
-  if [[ -n "${SKIP_INIT_IMAGE:-}" ]]; then
-    echo "Skipping GCP image initialization..."
-  else
-    if [[ "${USE_CI_ARTIFACTS:-false}" == "true" ]]; then
-      CI_VERSION=${CI_VERSION:-$(curl -sSL https://dl.k8s.io/ci/latest.txt)}
-      KUBERNETES_VERSION=${CI_VERSION}
-      KUBERNETES_MAJOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d '.' -f1 - | sed 's/v//')
-      KUBERNETES_MINOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d '.' -f2 -)
-    fi
-    echo "Will use K8s version $KUBERNETES_VERSION"
-    init_image
   fi
 
   # Initialize the necessary network requirements
