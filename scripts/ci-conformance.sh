@@ -40,6 +40,9 @@ mkdir -p "${ARTIFACTS}/logs/"
 : "${GOOGLE_APPLICATION_CREDENTIALS:?Environment variable empty or not defined.}"
 
 export GCP_REGION=${GCP_REGION:-"us-east4"}
+# Conformance tests don't need testing, and allows us to test that turning off tracing is
+# also ok
+export CAPG_ENABLE_TRACING="${CAPG_ENABLE_TRACING:-false}"
 export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
 GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS")

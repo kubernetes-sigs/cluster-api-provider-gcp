@@ -156,6 +156,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	By("Setting up the bootstrap cluster")
 	bootstrapClusterProvider, bootstrapClusterProxy = setupBootstrapCluster(e2eConfig, scheme, useExistingCluster)
 
+	if tracingEnabled() {
+		By("Install tracing infrastructure")
+		applyTracingInfrastructure(context.TODO(), bootstrapClusterProxy, e2eConfig, filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName()))
+	}
+
 	By("Initializing the bootstrap cluster")
 	initBootstrapCluster(bootstrapClusterProxy, e2eConfig, clusterctlConfigPath, artifactFolder)
 

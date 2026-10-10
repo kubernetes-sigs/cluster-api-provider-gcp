@@ -77,7 +77,6 @@ func TestSetup(t *testing.T) {
 	// Point the exporter at an address nothing is listening on: Setup must still succeed because the
 	// exporter connects lazily, and nothing is traced so there is nothing to flush on shutdown.
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:1")
-	t.Setenv("OTEL_EXPORTER_OTLP_INSECURE", "true")
 
 	shutdown, err := Setup(context.Background())
 	require.NoError(t, err)
