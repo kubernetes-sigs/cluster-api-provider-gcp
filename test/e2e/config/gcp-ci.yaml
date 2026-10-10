@@ -57,27 +57,33 @@ providers:
       - name: v1.14.99 # next; use manifest from source files
         value: "${PWD}/config/default"
     files:
+      # Provider basics: the metadata and the default flavor.
       - sourcePath: "${PWD}/metadata.yaml"
         targetName: "metadata.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci.yaml"
         targetName: "cluster-template.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-prow-ci-version.yaml"
-        targetName: "cluster-template-conformance-ci-artifacts.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-upgrades.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-kcp-remediation.yaml"
+      # Self-managed cluster variants.
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-flatcar.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-creds.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-external-and-internal-lb.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
+      # ClusterClass and topology; the topology template is also published as the "topology" flavor.
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-quick-start.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-topology.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-topology.yaml"
         targetName: "cluster-template-topology.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-quick-start.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-creds.yaml"
+      # Conformance, remediation and upgrade flows.
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-prow-ci-version.yaml"
+        targetName: "cluster-template-conformance-ci-artifacts.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-kcp-remediation.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-upgrades.yaml"
+      # GKE.
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-gke-autopilot-cc.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-autopilot.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-external-and-internal-lb.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-gke-autopilot-cc.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-autopilot-topology.yaml"
-      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
 
 variables:
   # Hand-Edited Version Inputs
@@ -85,6 +91,7 @@ variables:
   # Everything Kubernetes related derives from it at CI time via hack/resolve-e2e-versions.sh.
   KUBERNETES_MINOR: "1.36"
   CAPG_UBUNTU_VERSION: "2204"
+  CAPG_FLATCAR_VERSION: "4081.3.10"
 
   # Derived and other variables (maintain alphabetical order)
 
@@ -102,7 +109,10 @@ variables:
   ETCD_VERSION_UPGRADE_TO: "${ETCD_VERSION_UPGRADE_TO}"
   EXP_CAPG_GKE: "true"
   EXP_CLUSTER_RESOURCE_SET: "true"
+  # Required for Ignition based images (e.g Flatcar)
+  EXP_KUBEADM_BOOTSTRAP_FORMAT_IGNITION: "true"
   EXP_MACHINE_POOL: "true"
+  FLATCAR_IMAGE_ID: "${FLATCAR_IMAGE_ID}"
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
   GCP_SSH_KEY: "${GCP_SSH_KEY:-}"
