@@ -70,6 +70,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "${CAPG_OTEL_EXPORTER_OTLP_ENDPOINT:=https://localhost:4317}"
       terminationGracePeriodSeconds: 10
       serviceAccountName: manager
       tolerations:
