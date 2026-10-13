@@ -186,11 +186,17 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 func validateResourcePolicyRegions(policies []string, zone string) error {
 	for _, policy := range policies {
 		resource, err := cloud.ParseResourceURL(policy)
+		if err != nil {
+			return fmt.Errorf("failed to parse resource policy %q: %w", policy, err)
+		}
 		zoneRegion := ""
 		if i := strings.LastIndex(zone, "-"); i >= 0 {
 			zoneRegion = zone[:i]
 		}
-		if err != nil || resource.Key == nil || resource.Key.Region == "" || resource.Key.Region != zoneRegion {
+		if zoneRegion == "" {
+			return fmt.Errorf("cannot determine region from instance zone %q", zone)
+		}
+		if ptr.Deref(resource.Key, meta.Key{}).Region != zoneRegion {
 			return fmt.Errorf("resource policy %q must be in the same region as instance zone %q", policy, zone)
 		}
 	}
