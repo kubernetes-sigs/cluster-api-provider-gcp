@@ -204,6 +204,11 @@ func (m *MachineScope) SetReady() {
 	m.GCPMachine.Status.Ready = true
 }
 
+// SetNotReady sets the GCPMachine Ready Status to false (NotReady).
+func (m *MachineScope) SetNotReady() {
+	m.GCPMachine.Status.Ready = false
+}
+
 // SetFailureMessage sets the GCPMachine status failure message.
 func (m *MachineScope) SetFailureMessage(v error) {
 	m.GCPMachine.Status.FailureMessage = ptr.To[string](v.Error())

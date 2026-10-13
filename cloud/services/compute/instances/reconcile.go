@@ -37,6 +37,9 @@ import (
 
 const metadataKeyUserData = "user-data"
 
+// ErrInstanceNotFound is returned when a previously provisioned VM has disappeared
+var ErrInstanceNotFound = errors.New("instance has been removed after provisioning")
+
 // Reconcile reconcile machine instance.
 func (s *Service) Reconcile(ctx context.Context) error {
 	log := log.FromContext(ctx)
@@ -150,6 +153,11 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 		if !gcperrors.IsNotFound(err) {
 			log.Error(err, "Error looking for instance", "name", instanceName, "zone", s.scope.Zone())
 			return nil, err
+		}
+
+		// Check if GetProviderID is set. If it is then this VM was created previously and so shouldn't be recreated
+		if s.scope.GetProviderID() != "" {
+			return nil, ErrInstanceNotFound
 		}
 
 		log.V(2).Info("Creating an instance", "name", instanceName, "zone", s.scope.Zone())
