@@ -234,6 +234,13 @@ spec:
                 - AMDEncryptedVirtualizationNestedPaging
                 - IntelTrustedDomainExtensions
                 type: string
+              enableNestedVirtualization:
+                description: |-
+                  EnableNestedVirtualization specifies whether to enable nested virtualization or not
+                  (default is false). Nested virtualization allows VMs to run inside other VMs.
+                  Note: Requires at minimum "Intel Haswell" CPU platform.
+                  This field cannot be changed after instance creation.
+                type: boolean
               guestAccelerators:
                 description: |-
                   GuestAccelerators is a list of the type and count of accelerator cards
