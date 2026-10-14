@@ -34,7 +34,7 @@ const (
 )
 
 // DiskType is type of the disk attached to node.
-// +kubebuilder:validation:Enum=pd-standard;pd-ssd;pd-balanced
+// +kubebuilder:validation:Enum=pd-standard;pd-ssd;pd-balanced;hyperdisk-balanced
 type DiskType string
 
 const (
