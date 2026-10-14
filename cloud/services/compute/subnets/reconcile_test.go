@@ -19,17 +19,20 @@ package subnets
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
@@ -37,116 +40,112 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const (
+	clusterName                  = "my-cluster"
+	defaultSubnetName            = "workers"
+	gcpProject                   = "my-proj"
+	gcpRegion                    = "us-central1"
+	hostProject                  = "my-shared-vpc-project"
+	namespace                    = "default"
+	nonCapiControlledDescription = "non-CAPG subnet"
+	purpose                      = "INTERNAL_HTTPS_LOAD_BALANCER"
+)
+
 func init() {
 	_ = clusterv1.AddToScheme(scheme.Scheme)
 	_ = infrav1.AddToScheme(scheme.Scheme)
 }
 
-var fakeCluster = &clusterv1.Cluster{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "my-cluster",
-		Namespace: "default",
-	},
-	Spec: clusterv1.ClusterSpec{},
+type clusterSubnetTestConfig struct {
+	Name   string
+	Region string
 }
 
-var fakeGCPCluster = &infrav1.GCPCluster{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "my-cluster",
-		Namespace: "default",
-	},
-	Spec: infrav1.GCPClusterSpec{
-		Project: "my-proj",
-		Region:  "us-central1",
-		Network: infrav1.NetworkSpec{
-			Subnets: infrav1.Subnets{
-				infrav1.SubnetSpec{
-					Name:        "workers",
-					CidrBlock:   "10.0.0.1/28",
-					Region:      "us-central1",
-					Purpose:     ptr.To[string]("INTERNAL_HTTPS_LOAD_BALANCER"),
-					Description: ptr.To[string](infrav1.ClusterTagKey(fakeCluster.Name)),
-				},
+func createNewScopeForSubnets(config []clusterSubnetTestConfig, sharedVpc bool) (*scope.ClusterScope, error) {
+	subnets := make([]infrav1.SubnetSpec, 0, len(config))
+	for i, testConfig := range config {
+		subnet := infrav1.SubnetSpec{
+			Name:      testConfig.Name,
+			CidrBlock: generateCidrBlock(i),
+			Region:    testConfig.Region,
+			Purpose:   new(purpose),
+		}
+		subnets = append(subnets, subnet)
+	}
+
+	network := infrav1.NetworkSpec{
+		Subnets: subnets,
+	}
+	if sharedVpc {
+		network.HostProject = new(hostProject)
+	}
+
+	return scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
+		Client: fake.NewClientBuilder().WithScheme(scheme.Scheme).Build(),
+		Cluster: &clusterv1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      clusterName,
+				Namespace: namespace,
+			},
+			Spec: clusterv1.ClusterSpec{},
+		},
+		GCPCluster: &infrav1.GCPCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      clusterName,
+				Namespace: namespace,
+			},
+			Spec: infrav1.GCPClusterSpec{
+				Project: gcpProject,
+				Region:  gcpRegion,
+				Network: network,
 			},
 		},
-	},
+		GCPServices: scope.GCPServices{
+			Compute: &compute.Service{},
+		},
+	})
 }
 
-var fakeGCPClusterSharedVPC = &infrav1.GCPCluster{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "my-cluster",
-		Namespace: "default",
-	},
-	Spec: infrav1.GCPClusterSpec{
-		Project: "my-proj",
-		Region:  "us-central1",
-		Network: infrav1.NetworkSpec{
-			HostProject: ptr.To("my-shared-vpc-project"),
-			Subnets: infrav1.Subnets{
-				infrav1.SubnetSpec{
-					Name:      "workers",
-					CidrBlock: "10.0.0.1/28",
-					Region:    "us-central1",
-					Purpose:   ptr.To[string]("INTERNAL_HTTPS_LOAD_BALANCER"),
-				},
-			},
-		},
-	},
+func generateCidrBlock(index int) string {
+	return fmt.Sprintf("10.0.0.%d/28", index)
 }
 
 type testCase struct {
 	name            string
-	scope           func() Scope
+	sharedVpc       bool
+	clusterSubnets  []clusterSubnetTestConfig
 	mockSubnetworks *cloud.MockSubnetworks
 	wantErr         bool
 	assert          func(ctx context.Context, t testCase) error
 }
 
 func TestService_Reconcile(t *testing.T) {
-	fakec := fake.NewClientBuilder().
-		WithScheme(scheme.Scheme).
-		Build()
-
-	clusterScope, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
-		Client:     fakec,
-		Cluster:    fakeCluster,
-		GCPCluster: fakeGCPCluster,
-		GCPServices: scope.GCPServices{
-			Compute: &compute.Service{},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	clusterScopeSharedVpc, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
-		Client:     fakec,
-		Cluster:    fakeCluster,
-		GCPCluster: fakeGCPClusterSharedVPC,
-		GCPServices: scope.GCPServices{
-			Compute: &compute.Service{},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	tests := []testCase{
 		{
-			name:  "subnet already exist (should return existing subnet)",
-			scope: func() Scope { return clusterScope },
+			name: "subnet already exist (should return existing subnet)",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+			},
 			mockSubnetworks: &cloud.MockSubnetworks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
 				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
-					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): {},
+					*meta.RegionalKey(defaultSubnetName, gcpRegion): {},
 				},
 			},
 		},
 		{
-			name:  "error getting instance with non 404 error code (should return an error)",
-			scope: func() Scope { return clusterScope },
+			name: "error getting instance with non 404 error code (should return an error)",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+			},
 			mockSubnetworks: &cloud.MockSubnetworks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
 				Objects:       map[meta.Key]*cloud.MockSubnetworksObj{},
 				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockSubnetworks, _ ...cloud.Option) (bool, *compute.Subnetwork, error) {
 					return true, &compute.Subnetwork{}, &googleapi.Error{Code: http.StatusBadRequest}
@@ -155,22 +154,27 @@ func TestService_Reconcile(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:  "subnet does not exist (should create subnet)",
-			scope: func() Scope { return clusterScope },
+			name: "subnet does not exist (should create subnet)",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+			},
 			mockSubnetworks: &cloud.MockSubnetworks{
 				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
 				Objects:       map[meta.Key]*cloud.MockSubnetworksObj{},
 			},
 			assert: func(ctx context.Context, t testCase) error {
-				key := meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region)
+				key := meta.RegionalKey(defaultSubnetName, gcpRegion)
 				subnet, err := t.mockSubnetworks.Get(ctx, key)
 				if err != nil {
 					return err
 				}
 
-				if subnet.Name != fakeGCPCluster.Spec.Network.Subnets[0].Name ||
-					subnet.IpCidrRange != fakeGCPCluster.Spec.Network.Subnets[0].CidrBlock ||
-					subnet.Purpose != *fakeGCPCluster.Spec.Network.Subnets[0].Purpose {
+				if subnet.Name != t.clusterSubnets[0].Name ||
+					subnet.IpCidrRange != generateCidrBlock(0) ||
+					subnet.Purpose != purpose {
 					return errors.New("subnet was created but with wrong values")
 				}
 
@@ -178,36 +182,52 @@ func TestService_Reconcile(t *testing.T) {
 			},
 		},
 		{
-			name:  "subnet creation fails (should return an error)",
-			scope: func() Scope { return clusterScope },
+			name: "subnet creation fails (should return an error)",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+			},
 			mockSubnetworks: &cloud.MockSubnetworks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
 				Objects:       map[meta.Key]*cloud.MockSubnetworksObj{},
 				InsertError: map[meta.Key]error{
-					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): &googleapi.Error{Code: http.StatusBadRequest},
+					*meta.RegionalKey(defaultSubnetName, gcpRegion): &googleapi.Error{Code: http.StatusBadRequest},
 				},
 			},
 			wantErr: true,
 		},
 		{
-			name:  "subnet list error find issue shared vpc",
-			scope: func() Scope { return clusterScopeSharedVpc },
+			name: "subnet list error find issue shared vpc",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+			},
 			mockSubnetworks: &cloud.MockSubnetworks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
 				Objects:       map[meta.Key]*cloud.MockSubnetworksObj{},
 				GetHook: func(_ context.Context, _ *meta.Key, _ *cloud.MockSubnetworks, _ ...cloud.Option) (bool, *compute.Subnetwork, error) {
 					return true, &compute.Subnetwork{}, &googleapi.Error{Code: http.StatusBadRequest}
 				},
 			},
-			wantErr: true,
+			wantErr:   true,
+			sharedVpc: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			s := New(tt.scope())
+			testScope, err := createNewScopeForSubnets(tt.clusterSubnets, tt.sharedVpc)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			s := New(testScope)
 			s.subnets = tt.mockSubnetworks
-			err := s.Reconcile(ctx)
+			err = s.Reconcile(ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -224,93 +244,147 @@ func TestService_Reconcile(t *testing.T) {
 }
 
 func TestService_Delete(t *testing.T) {
-	fakec := fake.NewClientBuilder().
-		WithScheme(scheme.Scheme).
-		Build()
-
-	clusterScope, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
-		Client:     fakec,
-		Cluster:    fakeCluster,
-		GCPCluster: fakeGCPCluster,
-		GCPServices: scope.GCPServices{
-			Compute: &compute.Service{},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	clusterScopeSharedVpc, err := scope.NewClusterScope(context.TODO(), scope.ClusterScopeParams{
-		Client:     fakec,
-		Cluster:    fakeCluster,
-		GCPCluster: fakeGCPClusterSharedVPC,
-		GCPServices: scope.GCPServices{
-			Compute: &compute.Service{},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	tests := []testCase{
 		{
-			name:  "subnet does not exist, should do nothing",
-			scope: func() Scope { return clusterScope },
+			name: "subnet does not exist, should do nothing",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+			},
 			mockSubnetworks: &cloud.MockSubnetworks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
 				DeleteError: map[meta.Key]error{
-					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): &googleapi.Error{Code: http.StatusNotFound},
+					*meta.RegionalKey(defaultSubnetName, gcpRegion): &googleapi.Error{Code: http.StatusNotFound},
 				},
 			},
 		},
 		{
-			name:  "error deleting subnet, should return error",
-			scope: func() Scope { return clusterScope },
+			name: "error deleting subnet, should return error",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+			},
 			mockSubnetworks: &cloud.MockSubnetworks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
 				DeleteError: map[meta.Key]error{
-					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): &googleapi.Error{Code: http.StatusBadRequest},
+					*meta.RegionalKey(defaultSubnetName, gcpRegion): &googleapi.Error{Code: http.StatusBadRequest},
 				},
 				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
-					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): {Obj: compute.Subnetwork{Description: infrav1.ClusterTagKey(fakeCluster.Name)}},
+					*meta.RegionalKey(defaultSubnetName, gcpRegion): {Obj: compute.Subnetwork{Description: infrav1.ClusterTagKey(clusterName)}},
 				},
 			},
 			wantErr: true,
 		},
 		{
-			name:  "subnet not created by CAPI, should not try to delete it",
-			scope: func() Scope { return clusterScope },
+			name: "subnet not created by CAPI, should not try to delete it",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+			},
 			mockSubnetworks: &cloud.MockSubnetworks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
 				DeleteError: map[meta.Key]error{
-					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): &googleapi.Error{Code: http.StatusBadRequest},
+					*meta.RegionalKey(defaultSubnetName, gcpRegion): &googleapi.Error{Code: http.StatusBadRequest},
 				},
 				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
-					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): {Obj: compute.Subnetwork{Description: "my-custom-subnet-description"}},
+					*meta.RegionalKey(defaultSubnetName, gcpRegion): {Obj: compute.Subnetwork{Description: nonCapiControlledDescription}},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name:  "subnet deletion with shared vpc",
-			scope: func() Scope { return clusterScopeSharedVpc },
-			mockSubnetworks: &cloud.MockSubnetworks{
-				ProjectRouter: &cloud.SingleProjectRouter{ID: "my-proj"},
-				DeleteError: map[meta.Key]error{
-					*meta.RegionalKey(fakeGCPCluster.Spec.Network.Subnets[0].Name, fakeGCPCluster.Spec.Region): &googleapi.Error{Code: http.StatusNotFound},
+			name: "subnet deletion with shared vpc",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
 				},
+			},
+			mockSubnetworks: &cloud.MockSubnetworks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
+				DeleteError: map[meta.Key]error{
+					*meta.RegionalKey(defaultSubnetName, gcpRegion): &googleapi.Error{Code: http.StatusNotFound},
+				},
+			},
+			sharedVpc: true,
+		},
+		{
+			name: "should delete all CAPI owned subnets (continuing past external subnets)",
+			clusterSubnets: []clusterSubnetTestConfig{
+				{
+					Name:   defaultSubnetName,
+					Region: gcpRegion,
+				},
+				{
+					Name:   "my-new-subnet",
+					Region: "us-central2",
+				},
+				{
+					Name:   "my-new-subnet-1",
+					Region: "us-central2",
+				},
+				{
+					Name:   "my-new-subnet-2",
+					Region: "us-central2",
+				},
+			},
+			mockSubnetworks: &cloud.MockSubnetworks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: gcpProject},
+				Objects: map[meta.Key]*cloud.MockSubnetworksObj{
+					*meta.RegionalKey(defaultSubnetName, gcpRegion):     {Obj: compute.Subnetwork{Description: nonCapiControlledDescription}},
+					*meta.RegionalKey("my-new-subnet", "us-central2"):   {Obj: compute.Subnetwork{Description: infrav1.ClusterTagKey(clusterName)}},
+					*meta.RegionalKey("my-new-subnet-1", "us-central2"): {Obj: compute.Subnetwork{Description: nonCapiControlledDescription}},
+					*meta.RegionalKey("my-new-subnet-2", "us-central2"): {Obj: compute.Subnetwork{Description: infrav1.ClusterTagKey(clusterName)}},
+				},
+			},
+			assert: func(_ context.Context, t testCase) error {
+				desired := []meta.Key{
+					*meta.RegionalKey(defaultSubnetName, gcpRegion),
+					*meta.RegionalKey("my-new-subnet-1", "us-central2"),
+				}
+
+				actual := make([]meta.Key, 0, len(t.mockSubnetworks.Objects))
+				for key := range t.mockSubnetworks.Objects {
+					actual = append(actual, key)
+				}
+
+				if diff := cmp.Diff(desired, actual, cmpopts.SortSlices(func(a meta.Key, b meta.Key) int {
+					return strings.Compare(a.String(), b.String())
+				})); diff != "" {
+					return fmt.Errorf("unexpected diff (-want +got):\n%s", diff)
+				}
+
+				return nil
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			s := New(tt.scope())
+			testScope, err := createNewScopeForSubnets(tt.clusterSubnets, tt.sharedVpc)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			s := New(testScope)
 			s.subnets = tt.mockSubnetworks
-			err := s.Delete(ctx)
+			err = s.Delete(ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service.Delete() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if tt.assert != nil {
+				err = tt.assert(ctx, tt)
+				if err != nil {
+					t.Errorf("subnet was not deleted as expected: %v", err)
+					return
+				}
 			}
 		})
 	}

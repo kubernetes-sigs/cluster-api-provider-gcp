@@ -64,7 +64,7 @@ func (s *Service) Delete(ctx context.Context) error {
 		// If subnet description is not set by the Spec, or by our default value, then assume it was created externally.
 		if subnet.Description != infrav1.ClusterTagKey(s.scope.Name()) && (subnetSpec.Description == "" || subnet.Description != subnetSpec.Description) {
 			logger.V(2).Info("Skipping subnet deletion as it was created outside of Cluster API", "name", subnetSpec.Name)
-			return nil
+			continue
 		}
 
 		logger.V(2).Info("Deleting a subnet", "name", subnetSpec.Name)
