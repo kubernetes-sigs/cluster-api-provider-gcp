@@ -28,6 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1/addons"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/hash"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -113,6 +114,13 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.G
 			r.Spec.ClusterNetwork.DatapathProvider, "can't be set when autopilot is enabled: Autopilot clusters always use Dataplane V2"))
 	}
 
+	if r.Spec.EnableAutopilot && len(r.Spec.AddonsConfig) > 0 {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "AddonsConfig"),
+			r.Spec.AddonsConfig, "can't be set when autopilot is enabled"))
+	}
+
+	allErrs = append(allErrs, validateAddons(r)...)
+
 	if r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck
 		if r.Spec.Version != nil {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
@@ -197,6 +205,12 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 				newClusterNetwork.DNSConfig, "DNSConfig cannot be removed once set"),
 		)
 	}
+	if old.Spec.EnableAutopilot && len(r.Spec.AddonsConfig) > 0 {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "AddonsConfig"),
+			r.Spec.AddonsConfig, "can't be set when autopilot is enabled"))
+	}
+
+	allErrs = append(allErrs, validateAddons(r)...)
 
 	if old.Spec.Version != nil && r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
@@ -228,6 +242,29 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 
 func (*GCPManagedControlPlane) ValidateDelete(_ context.Context, _ *expinfrav1.GCPManagedControlPlane) (admission.Warnings, error) {
 	return nil, nil
+}
+
+// validateAddons reports what is wrong with the add-ons a control plane asks for: add-ons and options
+// CAPG doesn't recognize, and prerequisites GKE imposes that aren't met. Only prerequisites decidable
+// from the resource itself are checked here; those that depend on the live cluster, such as its node
+// pools or the project's enabled APIs, are checked during reconciliation instead.
+func validateAddons(r *expinfrav1.GCPManagedControlPlane) field.ErrorList {
+	config, errs := addons.Parse(r.Spec.AddonsConfig, field.NewPath("spec", "AddonsConfig"))
+
+	violations := addons.Validate(addons.Intent{ControlPlane: r, Config: config})
+	for _, violation := range violations {
+		errs = append(errs, field.Invalid(
+			field.NewPath("spec", "AddonsConfig").Key(violation.AddonKey), true, violation.Message))
+	}
+
+	if len(errs) > 0 {
+		gcpmanagedcontrolplanelog.V(2).Info("rejected add-on configuration",
+			"name", r.Name, "reasons", errs.ToAggregate().Error())
+	}
+	gcpmanagedcontrolplanelog.V(4).Info("validated add-ons", "name", r.Name,
+		"addons", config.EnabledKeys(), "rejected", len(errs))
+
+	return errs
 }
 
 func generateGKEName(resourceName, namespace string, maxLength int) (string, error) {

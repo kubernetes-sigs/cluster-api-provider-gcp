@@ -26,6 +26,7 @@ import (
 
 	container "cloud.google.com/go/container/apiv1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
+	serviceusage "cloud.google.com/go/serviceusage/apiv1"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -45,6 +46,7 @@ type ManagedControlPlaneScopeParams struct {
 	TokenClient            *TokenClient
 	ManagedClusterClient   *container.ClusterManagerClient
 	TagBindingsClient      *resourcemanager.TagBindingsClient
+	ServiceUsageClient     *serviceusage.Client
 	Client                 client.Client
 	Cluster                *clusterv1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
@@ -78,6 +80,13 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		}
 		params.TagBindingsClient = tagBindingsClient
 	}
+	if params.ServiceUsageClient == nil {
+		serviceUsageClient, err := newServiceUsageClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
+		if err != nil {
+			return nil, errors.Errorf("failed to create service usage client: %v", err)
+		}
+		params.ServiceUsageClient = serviceUsageClient
+	}
 	if params.TokenClient == nil {
 		tokenClient, err := NewTokenClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
 		if err != nil {
@@ -98,6 +107,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		GCPManagedControlPlane: params.GCPManagedControlPlane,
 		mcClient:               params.ManagedClusterClient,
 		tagBindingsClient:      params.TagBindingsClient,
+		serviceUsageClient:     params.ServiceUsageClient,
 		tokenClient:            *params.TokenClient,
 		patchHelper:            helper,
 	}, nil
@@ -113,6 +123,7 @@ type ManagedControlPlaneScope struct {
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	mcClient               *container.ClusterManagerClient
 	tagBindingsClient      *resourcemanager.TagBindingsClient
+	serviceUsageClient     *serviceusage.Client
 	tokenClient            TokenClient
 
 	AllMachinePools        []clusterv1.MachinePool
@@ -136,6 +147,7 @@ func (s *ManagedControlPlaneScope) PatchObject(ctx context.Context) error {
 func (s *ManagedControlPlaneScope) Close(ctx context.Context) error {
 	s.mcClient.Close()
 	s.tagBindingsClient.Close()
+	s.serviceUsageClient.Close()
 	return s.PatchObject(ctx)
 }
 
@@ -152,6 +164,11 @@ func (s *ManagedControlPlaneScope) Client() client.Client {
 // ManagedControlPlaneClient returns a client used to interact with GKE.
 func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.ClusterManagerClient {
 	return s.mcClient
+}
+
+// ServiceUsageClient returns a client used to ask which APIs are enabled on a project.
+func (s *ManagedControlPlaneScope) ServiceUsageClient() *serviceusage.Client {
+	return s.serviceUsageClient
 }
 
 // TagBindingsClient returns a client used to interact with resource manager tags.

@@ -341,6 +341,25 @@ type MasterAuthorizedNetworksConfigCidrBlock struct {
 	CidrBlock string `json:"cidr_block,omitempty"`
 }
 
+// AddonsConfig maps GKE add-on names to their configuration. Leaving an add-on out of the map leaves
+// GKE's own default for it in place, rather than CAPG imposing one. The recognized keys, what each add-on
+// does, and what GKE requires before each can be enabled are all described by the addons subpackage; an
+// unrecognized key is rejected by the validating webhook.
+type AddonsConfig map[string]AddonSettings
+
+// AddonSettings is one add-on's configuration.
+type AddonSettings struct {
+	// Enabled turns the add-on on or off.
+	Enabled bool `json:"enabled"`
+
+	// Options are the settings an add-on exposes beyond being switched on — the Ray operator's log and
+	// metric collection, for instance. Most add-ons have none. An add-on's options are documented
+	// alongside the add-on itself, and an option that doesn't belong to the add-on it is set on, or that
+	// is set while the add-on is disabled, is rejected by the validating webhook.
+	// +optional
+	Options map[string]bool `json:"options,omitempty"`
+}
+
 // LoggingService is GKE logging service configuration.
 type LoggingService string
 
