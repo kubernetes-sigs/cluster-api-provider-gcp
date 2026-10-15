@@ -105,3 +105,60 @@ func TestConvertToSdkWorkloadMetadataMode(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToSdkTaintConfigCoversEveryEnumVariant(t *testing.T) {
+	enumVariants := getEnumVariants(t, "gcpmanagedmachinepool_types.go", "ArchitectureTaintBehavior")
+	for _, variant := range enumVariants {
+		if ConvertToSdkTaintConfig(new(ArchitectureTaintBehavior(variant))) == nil {
+			t.Errorf("ConvertToSdkTaintConfig(%v) should not return nil as enum variants "+
+				"should match the SDK", variant)
+		}
+	}
+}
+
+func TestConvertToSdkTaintConfig(t *testing.T) {
+	tests := []struct {
+		name         string
+		behavior     *ArchitectureTaintBehavior
+		wantBehavior *containerpb.TaintConfig_ArchitectureTaintBehavior
+	}{
+		{
+			name:         "nil returns nil",
+			behavior:     nil,
+			wantBehavior: nil,
+		},
+		{
+			name:         "none maps to NONE",
+			behavior:     ptr.To(ArchitectureTaintBehaviorNone),
+			wantBehavior: ptr.To(containerpb.TaintConfig_NONE),
+		},
+		{
+			name:         "arm maps to ARM",
+			behavior:     ptr.To(ArchitectureTaintBehaviorARM),
+			wantBehavior: ptr.To(containerpb.TaintConfig_ARM),
+		},
+		{
+			name:         "unknown behavior returns nil",
+			behavior:     ptr.To(ArchitectureTaintBehavior("unknown")),
+			wantBehavior: nil,
+		},
+		{
+			name:         "unspecified is not reachable through the API",
+			behavior:     ptr.To(ArchitectureTaintBehavior("architecture_taint_behavior_unspecified")),
+			wantBehavior: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ConvertToSdkTaintConfig(tc.behavior)
+			if tc.wantBehavior == nil {
+				if got != nil {
+					t.Errorf("expected nil, got %v", got)
+				}
+			} else if got.GetArchitectureTaintBehavior() != *tc.wantBehavior {
+				t.Errorf("expected behavior %v, got %v", *tc.wantBehavior, got.GetArchitectureTaintBehavior())
+			}
+		})
+	}
+}

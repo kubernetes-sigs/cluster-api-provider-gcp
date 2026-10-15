@@ -37,6 +37,18 @@ const (
 // +kubebuilder:validation:Enum=pd-standard;pd-ssd;pd-balanced;hyperdisk-balanced
 type DiskType string
 
+// ArchitectureTaintBehavior controls whether GKE applies its default architecture taint to the
+// nodes of a node pool.
+// +kubebuilder:validation:Enum=none;arm
+type ArchitectureTaintBehavior string
+
+const (
+	// ArchitectureTaintBehaviorNone disables the default architecture taint on the node pool.
+	ArchitectureTaintBehaviorNone ArchitectureTaintBehavior = "none"
+	// ArchitectureTaintBehaviorARM taints every node in the node pool with the default ARM taint.
+	ArchitectureTaintBehaviorARM ArchitectureTaintBehavior = "arm"
+)
+
 const (
 	// Standard disk type.
 	Standard DiskType = "pd-standard"
