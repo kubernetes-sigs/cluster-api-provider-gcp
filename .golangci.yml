@@ -67,11 +67,23 @@ linters:
     depguard:
       rules:
         api:
+          list-mode: strict
           files:
             - "**/api/**/*.go"
-          deny:
-            - pkg: sigs.k8s.io/controller-runtime
-              desc: API packages must not depend on controller-runtime.
+          allow:
+            - $gostd
+            - cloud.google.com/go/container/apiv1/containerpb$
+            - github.com/onsi/gomega$
+            - k8s.io/api/core/v1$
+            - k8s.io/apimachinery/pkg/apis/meta/v1$
+            - k8s.io/apimachinery/pkg/runtime$
+            - k8s.io/apimachinery/pkg/runtime/schema$
+            - k8s.io/utils/ptr$
+            - sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1$
+            - sigs.k8s.io/cluster-api/api/core/v1beta1$
+            - sigs.k8s.io/cluster-api/api/core/v1beta2$
+            - sigs.k8s.io/cluster-api/util/conditions$
+            - sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions$
     importas:
       alias:
         - pkg: k8s.io/api/core/v1
