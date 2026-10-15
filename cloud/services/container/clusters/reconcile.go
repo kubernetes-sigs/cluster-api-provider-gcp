@@ -110,12 +110,6 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		s.scope.GCPManagedControlPlane.Status.Initialized = false
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
-	case containerpb.Cluster_RECONCILING:
-		log.Info("Cluster reconciling in progress")
-		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition)
-		s.scope.GCPManagedControlPlane.Status.Initialized = true
-		s.scope.GCPManagedControlPlane.Status.Ready = true
-		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	case containerpb.Cluster_STOPPING:
 		log.Info("Cluster stopping in progress")
 		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEControlPlaneDeletingReason, clusterv1beta1.ConditionSeverityInfo, "")
@@ -134,12 +128,34 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 		s.scope.GCPManagedControlPlane.Status.Ready = false
 		s.scope.GCPManagedControlPlane.Status.Initialized = false
 		return ctrl.Result{}, nil
-	case containerpb.Cluster_RUNNING:
-		log.Info("Cluster running")
+	case containerpb.Cluster_RUNNING, containerpb.Cluster_RECONCILING:
+		log.Info("Cluster reachable", "status", cluster.GetStatus())
 	default:
 		statusErr := NewErrUnexpectedClusterStatus(string(cluster.GetStatus()))
 		log.Error(statusErr, fmt.Sprintf("Unhandled cluster status %s", cluster.GetStatus()), "name", s.scope.ClusterName())
 		return ctrl.Result{}, statusErr
+	}
+
+	// The kubeconfig holds a short-lived token and is the management cluster's only access to
+	// the workload, so refresh it before any step below that can return early. An update that
+	// never succeeds would otherwise starve the refresh until the token expires.
+	err = s.reconcileKubeconfig(ctx, cluster, &log)
+	if err != nil {
+		log.Error(err, "Failed to reconcile CAPI kubeconfig")
+		return ctrl.Result{}, err
+	}
+	err = s.reconcileAdditionalKubeconfigs(ctx, cluster, &log)
+	if err != nil {
+		log.Error(err, "Failed to reconcile additional kubeconfig")
+		return ctrl.Result{}, err
+	}
+
+	if cluster.GetStatus() == containerpb.Cluster_RECONCILING {
+		log.Info("Cluster reconciling in progress")
+		v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition)
+		s.scope.GCPManagedControlPlane.Status.Initialized = true
+		s.scope.GCPManagedControlPlane.Status.Ready = true
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
 	}
 
 	needUpdate, updateClusterRequest := s.checkDiffAndPrepareUpdate(cluster, &log)
@@ -161,18 +177,6 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	}
 
 	v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEControlPlaneUpdatingCondition, infrav1exp.GKEControlPlaneUpdatedReason, clusterv1beta1.ConditionSeverityInfo, "")
-
-	// Reconcile kubeconfig
-	err = s.reconcileKubeconfig(ctx, cluster, &log)
-	if err != nil {
-		log.Error(err, "Failed to reconcile CAPI kubeconfig")
-		return ctrl.Result{}, err
-	}
-	err = s.reconcileAdditionalKubeconfigs(ctx, cluster, &log)
-	if err != nil {
-		log.Error(err, "Failed to reconcile additional kubeconfig")
-		return ctrl.Result{}, err
-	}
 
 	s.scope.SetEndpoint(cluster.GetEndpoint())
 	v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition)
