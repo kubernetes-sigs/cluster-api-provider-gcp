@@ -87,6 +87,7 @@ spec:
                         - pd-standard
                         - pd-ssd
                         - pd-balanced
+                        - hyperdisk-balanced
                         type: string
                       imageType:
                         description: ImageType is image type to use for this nodepool.
