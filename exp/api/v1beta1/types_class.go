@@ -83,6 +83,10 @@ type GCPManagedControlPlaneClassSpec struct {
 	// Value is ignored when enableAutopilot = true.
 	// +optional
 	MonitoringService *MonitoringService `json:"monitoringService,omitempty"`
+	// EnableVerticalPodAutoscaling indicates whether to enable Vertical Pod Autoscaling for this
+	// GKE cluster.
+	// +optional
+	EnableVerticalPodAutoscaling *bool `json:"enableVerticalPodAutoscaling,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.

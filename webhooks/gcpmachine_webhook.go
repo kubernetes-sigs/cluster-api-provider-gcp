@@ -32,14 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// Confidential VM Technology support depends on the configured machine types.
-// reference: https://cloud.google.com/compute/confidential-vm/docs/os-and-machine-type#machine-type
-var (
-	confidentialMachineSeriesSupportingSev    = []string{"n2d", "c2d", "c3d"}
-	confidentialMachineSeriesSupportingSevsnp = []string{"n2d"}
-	confidentialMachineSeriesSupportingTdx    = []string{"c3"}
-)
-
 func (m *GCPMachine) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, &infrav1.GCPMachine{}).
 		WithValidator(m).
@@ -119,22 +111,14 @@ func validateConfidentialCompute(spec infrav1.GCPMachineSpec) error {
 			return fmt.Errorf("ConfidentialCompute require OnHostMaintenance to be set to %s, the current value is: %s", infrav1.HostMaintenancePolicyTerminate, infrav1.HostMaintenancePolicyMigrate)
 		}
 
-		machineSeries := strings.Split(spec.InstanceType, "-")[0]
-		switch *spec.ConfidentialCompute {
-		case infrav1.ConfidentialComputePolicyEnabled, infrav1.ConfidentialComputePolicySEV:
-			if !slices.Contains(confidentialMachineSeriesSupportingSev, machineSeries) {
-				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingSev, ", "), spec.InstanceType)
-			}
-		case infrav1.ConfidentialComputePolicySEVSNP:
-			if !slices.Contains(confidentialMachineSeriesSupportingSevsnp, machineSeries) {
-				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingSevsnp, ", "), spec.InstanceType)
-			}
-		case infrav1.ConfidentialComputePolicyTDX:
-			if !slices.Contains(confidentialMachineSeriesSupportingTdx, machineSeries) {
-				return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(confidentialMachineSeriesSupportingTdx, ", "), spec.InstanceType)
-			}
-		default:
+		supportedSeries := infrav1.ConfidentialComputeSupportedMachineSeries(*spec.ConfidentialCompute)
+		if supportedSeries == nil {
 			return fmt.Errorf("invalid ConfidentialCompute %s", *spec.ConfidentialCompute)
+		}
+
+		machineSeries := strings.Split(spec.InstanceType, "-")[0]
+		if !slices.Contains(supportedSeries, machineSeries) {
+			return fmt.Errorf("ConfidentialCompute %s requires any of the following machine series: %s. %s was found instead", *spec.ConfidentialCompute, strings.Join(supportedSeries, ", "), spec.InstanceType)
 		}
 	}
 	return nil

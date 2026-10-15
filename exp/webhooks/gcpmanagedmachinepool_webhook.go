@@ -19,9 +19,12 @@ package webhooks
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	capg "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	webhookutils "sigs.k8s.io/cluster-api-provider-gcp/util/webhook"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -104,6 +107,39 @@ func validateScaling(scaling *expinfrav1.NodePoolAutoScaling, minField, maxField
 	return allErrs
 }
 
+// nodePoolMachineType returns the effective machine type for the node pool: InstanceType takes
+// precedence over the deprecated MachineType, mirroring ConvertToSdkNodePool.
+func nodePoolMachineType(spec expinfrav1.GCPManagedMachinePoolSpec) string {
+	machineType := ""
+	if spec.MachineType != nil { //nolint:staticcheck // SA1019: deprecated field read intentionally for backward compatibility
+		machineType = *spec.MachineType //nolint:staticcheck // SA1019: deprecated field read intentionally for backward compatibility
+	}
+	if spec.InstanceType != nil {
+		machineType = *spec.InstanceType
+	}
+	return machineType
+}
+
+func validateConfidentialCompute(spec expinfrav1.GCPManagedMachinePoolSpec, fldPath *field.Path) *field.Error {
+	confidentialCompute := spec.NodeSecurity.ConfidentialCompute
+	if confidentialCompute == nil || *confidentialCompute == capg.ConfidentialComputePolicyDisabled {
+		return nil
+	}
+
+	supportedSeries := capg.ConfidentialComputeSupportedMachineSeries(*confidentialCompute)
+	if supportedSeries == nil {
+		return field.Invalid(fldPath, *confidentialCompute, "invalid ConfidentialCompute value")
+	}
+
+	machineType := nodePoolMachineType(spec)
+	machineSeries := strings.Split(machineType, "-")[0]
+	if !slices.Contains(supportedSeries, machineSeries) {
+		return field.Invalid(fldPath, *confidentialCompute,
+			fmt.Sprintf("requires any of the following machine series: %s. %q was found instead", strings.Join(supportedSeries, ", "), machineType))
+	}
+	return nil
+}
+
 func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GCPManagedMachinePool) (admission.Warnings, error) {
 	gcpmanagedmachinepoollog.Info("Validating GCPManagedMachinePool create", "name", r.Name)
 
@@ -116,6 +152,10 @@ func (*GCPManagedMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GC
 
 	if r.Spec.MachineType != nil { //nolint:staticcheck // SA1019: checked to emit a deprecation warning
 		allWarns = append(allWarns, "spec.machineType is deprecated and will soon be removed: please use spec.instanceType")
+	}
+
+	if err := validateConfidentialCompute(r.Spec, field.NewPath("spec", "nodeSecurity", "confidentialCompute")); err != nil {
+		allErrs = append(allErrs, err)
 	}
 
 	if err := validateNodePoolName(

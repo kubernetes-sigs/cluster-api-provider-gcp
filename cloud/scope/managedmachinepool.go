@@ -278,6 +278,10 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 		}
 	}
 
+	if nodePool.Spec.NodeSecurity.ConfidentialCompute != nil {
+		sdkNodePool.Config.ConfidentialNodes = infrav1exp.ConvertToSdkConfidentialNodes(nodePool.Spec.NodeSecurity.ConfidentialCompute)
+	}
+
 	if ptr.Deref(nodePool.Spec.NodeSecurity.SandboxType, "") == "GVISOR" {
 		sdkNodePool.Config.SandboxConfig = &containerpb.SandboxConfig{
 			Type: containerpb.SandboxConfig_GVISOR,
