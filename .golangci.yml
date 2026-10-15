@@ -11,6 +11,7 @@ linters:
     - canonicalheader
     - copyloopvar
     - decorder
+    - depguard
     - dogsled
     - durationcheck
     - errcheck
@@ -63,6 +64,14 @@ linters:
     - whitespace
     - zerologlint
   settings:
+    depguard:
+      rules:
+        api:
+          files:
+            - "**/api/**/*.go"
+          deny:
+            - pkg: sigs.k8s.io/controller-runtime
+              desc: API packages must not depend on controller-runtime.
     importas:
       alias:
         - pkg: k8s.io/api/core/v1
