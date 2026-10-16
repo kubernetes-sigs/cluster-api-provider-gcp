@@ -101,7 +101,7 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.G
 
 	if r.Spec.EnableAutopilot && r.Spec.MonitoringService != nil {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "MonitoringService"),
-			r.Spec.LoggingService, "can't be set when autopilot is enabled"))
+			r.Spec.MonitoringService, "can't be set when autopilot is enabled"))
 	}
 
 	if r.Spec.EnableAutopilot && r.Spec.MonitoringConfig != nil && r.Spec.MonitoringConfig.ManagedPrometheusConfig != nil {
@@ -122,7 +122,7 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.G
 	if r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck
 		if r.Spec.Version != nil {
 			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
-				r.Spec.LoggingService, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version"))
+				r.Spec.ControlPlaneVersion, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version")) //nolint:staticcheck
 		} else {
 			allWarns = append(allWarns, "spec.ControlPlaneVersion is deprecated and will soon be removed: please use spec.Version")
 		}
@@ -232,7 +232,7 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 
 	if old.Spec.Version != nil && r.Spec.ControlPlaneVersion != nil { //nolint:staticcheck
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ControlPlaneVersion"),
-			r.Spec.LoggingService, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version"))
+			r.Spec.ControlPlaneVersion, "spec.ControlPlaneVersion and spec.Version cannot be set at the same time: please use spec.Version")) //nolint:staticcheck
 	}
 
 	if r.Spec.LoggingService != nil {
