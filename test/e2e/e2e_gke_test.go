@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
+
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
 const (
@@ -124,6 +126,21 @@ var _ = Describe("GKE workload cluster creation", func() {
 				Replicas:                  3,
 				MachinePools:              result.MachinePools,
 				WaitForMachinePoolToScale: e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
+			})
+
+			By("Changing the machine pool's instance type")
+			workerMachinePool := FindMachinePoolByName(result.MachinePools, fmt.Sprintf("%s-mp-0", clusterName))
+			PatchMachinePoolInstanceTypeAndWait(ctx, PatchMachinePoolInstanceTypeAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				Cluster:      result.Cluster,
+				MachinePool:  workerMachinePool,
+				InstanceType: "n1-standard-2",
+				UpgradeSettings: &infrav1exp.NodePoolUpgradeSettings{
+					Strategy:       ptr.To("SURGE"),
+					MaxSurge:       ptr.To(int32(1)),
+					MaxUnavailable: ptr.To(int32(0)),
+				},
+				WaitForInstanceTypeRollout: e2eConfig.GetIntervals(specName, "wait-machine-pool-upgrade"),
 			})
 		})
 	})

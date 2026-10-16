@@ -204,5 +204,11 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 
 			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(machineType))
 		})
+
+		It("should leave UpgradeSettings unset on the SDK node pool when not specified", func() {
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetUpgradeSettings()).To(BeNil())
+		})
 	})
 })

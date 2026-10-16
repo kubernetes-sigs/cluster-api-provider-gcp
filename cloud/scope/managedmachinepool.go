@@ -232,6 +232,18 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 			AutoUpgrade: nodePool.Spec.Management.AutoUpgrade,
 		}
 	}
+	if nodePool.Spec.UpgradeSettings != nil {
+		// containerpb.NodePoolUpdateStrategy_value's keys are exactly the strategy names
+		// accepted by the kubebuilder enum on Strategy ("SURGE", "BLUE_GREEN"); an unset
+		// Strategy looks up the zero value (NODE_POOL_UPDATE_STRATEGY_UNSPECIFIED), which
+		// GKE itself defaults to SURGE.
+		strategy := containerpb.NodePoolUpdateStrategy(containerpb.NodePoolUpdateStrategy_value[ptr.Deref(nodePool.Spec.UpgradeSettings.Strategy, "")])
+		sdkNodePool.UpgradeSettings = &containerpb.NodePool_UpgradeSettings{
+			MaxSurge:       ptr.Deref(nodePool.Spec.UpgradeSettings.MaxSurge, 0),
+			MaxUnavailable: ptr.Deref(nodePool.Spec.UpgradeSettings.MaxUnavailable, 0),
+			Strategy:       &strategy,
+		}
+	}
 	if nodePool.Spec.MaxPodsPerNode != nil {
 		sdkNodePool.MaxPodsConstraint = &containerpb.MaxPodsConstraint{
 			MaxPodsPerNode: *nodePool.Spec.MaxPodsPerNode,
