@@ -75,21 +75,64 @@ func TestGCPManagedMachinePoolTemplateValidatingWebhookCreate(t *testing.T) {
 func TestGCPManagedMachinePoolTemplateValidatingWebhookUpdate(t *testing.T) {
 	tests := []struct {
 		name        string
-		classSpec   expinfrav1.GCPManagedMachinePoolClassSpec
+		oldSpec     expinfrav1.GCPManagedMachinePoolClassSpec
+		newSpec     expinfrav1.GCPManagedMachinePoolClassSpec
 		expectError bool
 	}{
 		{
 			name: "node pool template is not mutated",
-			classSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 				NodePoolName: "nodepool1",
 			},
 			expectError: false,
 		},
 		{
 			name: "immutable field diskSizeGB (deprecated) is mutated",
-			classSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 				NodePoolName: "nodepool1",
 				DiskSizeGB:   &diskSizeGB,
+			},
+			expectError: true,
+		},
+		{
+			name: "changing workloadMetadataMode is accepted",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				NodeSecurity: expinfrav1.NodeSecurityConfig{
+					WorkloadMetadataMode: new(expinfrav1.WorkloadMetadataModeGKEMetadata),
+				},
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				NodeSecurity: expinfrav1.NodeSecurityConfig{
+					WorkloadMetadataMode: new(expinfrav1.WorkloadMetadataModeGCEMetadata),
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "changing frozen nodeSecurity field is rejected",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				NodeSecurity: expinfrav1.NodeSecurityConfig{
+					ServiceAccount: expinfrav1.ServiceAccountConfig{
+						Email: new("me@example.com"),
+					},
+				},
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: "nodepool1",
+				NodeSecurity: expinfrav1.NodeSecurityConfig{
+					ServiceAccount: expinfrav1.ServiceAccountConfig{
+						Email: new("somebody-else@example.com"),
+					},
+				},
 			},
 			expectError: true,
 		},
@@ -103,7 +146,7 @@ func TestGCPManagedMachinePoolTemplateValidatingWebhookUpdate(t *testing.T) {
 				Spec: expinfrav1.GCPManagedMachinePoolTemplateSpec{
 					Template: expinfrav1.GCPManagedMachinePoolTemplateResource{
 						Spec: expinfrav1.GCPManagedMachinePoolTemplateResourceSpec{
-							GCPManagedMachinePoolClassSpec: tc.classSpec,
+							GCPManagedMachinePoolClassSpec: tc.newSpec,
 						},
 					},
 				},
@@ -112,9 +155,7 @@ func TestGCPManagedMachinePoolTemplateValidatingWebhookUpdate(t *testing.T) {
 				Spec: expinfrav1.GCPManagedMachinePoolTemplateSpec{
 					Template: expinfrav1.GCPManagedMachinePoolTemplateResource{
 						Spec: expinfrav1.GCPManagedMachinePoolTemplateResourceSpec{
-							GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
-								NodePoolName: "nodepool1",
-							},
+							GCPManagedMachinePoolClassSpec: tc.oldSpec,
 						},
 					},
 				},

@@ -218,9 +218,30 @@ func (*GCPManagedMachinePoolTemplate) ValidateUpdate(_ context.Context, old, r *
 	}
 
 	if err := webhookutils.ValidateImmutable(
-		field.NewPath("spec", "template", "spec", "nodeSecurity"),
-		old.Spec.Template.Spec.NodeSecurity,
-		r.Spec.Template.Spec.NodeSecurity); err != nil {
+		field.NewPath("spec", "template", "spec", "nodeSecurity", "serviceAccount"),
+		old.Spec.Template.Spec.NodeSecurity.ServiceAccount,
+		r.Spec.Template.Spec.NodeSecurity.ServiceAccount); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "template", "spec", "nodeSecurity", "sandboxType"),
+		old.Spec.Template.Spec.NodeSecurity.SandboxType,
+		r.Spec.Template.Spec.NodeSecurity.SandboxType); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "template", "spec", "nodeSecurity", "enableSecureBoot"),
+		old.Spec.Template.Spec.NodeSecurity.EnableSecureBoot,
+		r.Spec.Template.Spec.NodeSecurity.EnableSecureBoot); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "template", "spec", "nodeSecurity", "enableIntegrityMonitoring"),
+		old.Spec.Template.Spec.NodeSecurity.EnableIntegrityMonitoring,
+		r.Spec.Template.Spec.NodeSecurity.EnableIntegrityMonitoring); err != nil {
 		allErrs = append(allErrs, err)
 	}
 

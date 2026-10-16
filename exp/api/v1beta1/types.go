@@ -127,6 +127,20 @@ func ConvertToSdkCgroupMode(cgroupMode ManagedNodePoolCgroupMode) containerpb.Li
 	return containerpb.LinuxNodeConfig_CGROUP_MODE_UNSPECIFIED
 }
 
+// ConvertToSdkWorkloadMetadataMode converts a WorkloadMetadataMode to the GCP SDK WorkloadMetadataConfig.
+// It utilises an SDK lookup, which therefore requires that CAPG's string values are exactly the same
+// as the SDK enum ones. This is enforced by a test in types_test.go
+func ConvertToSdkWorkloadMetadataMode(mode *WorkloadMetadataMode) *containerpb.WorkloadMetadataConfig {
+	if mode == nil {
+		return nil
+	}
+	index := containerpb.WorkloadMetadataConfig_Mode_value[string(*mode)]
+	if index == 0 {
+		return nil
+	}
+	return &containerpb.WorkloadMetadataConfig{Mode: containerpb.WorkloadMetadataConfig_Mode(index)}
+}
+
 // ConvertToSdkLinuxNodeConfig converts GCP SDK node version to k8s version.
 func ConvertToSdkLinuxNodeConfig(linuxNodeConfig *LinuxNodeConfig) *containerpb.LinuxNodeConfig {
 	sdkLinuxNodeConfig := containerpb.LinuxNodeConfig{}

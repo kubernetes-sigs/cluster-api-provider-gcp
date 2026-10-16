@@ -36,6 +36,18 @@ func newTestService(machinePool *infrav1exp.GCPManagedMachinePool, mp *clusterv1
 	return &Service{scope: s}
 }
 
+func newTestNodePoolService(machinePool *infrav1exp.GCPManagedMachinePool, controlPlane *infrav1exp.GCPManagedControlPlane) *Service {
+	s := new(scope.ManagedMachinePoolScope)
+	s.GCPManagedMachinePool = machinePool
+	s.GCPManagedControlPlane = controlPlane
+	s.MachinePool = &clusterv1.MachinePool{
+		Spec: clusterv1.MachinePoolSpec{
+			Replicas: ptr.To(int32(1)),
+		},
+	}
+	return &Service{scope: s}
+}
+
 func defaultControlPlane() *infrav1exp.GCPManagedControlPlane {
 	return &infrav1exp.GCPManagedControlPlane{
 		Spec: infrav1exp.GCPManagedControlPlaneSpec{
@@ -262,6 +274,96 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			}
 			if tt.validateUpdateFunc != nil {
 				tt.validateUpdateFunc(t, req)
+			}
+		})
+	}
+}
+
+func TestCheckDiffAndPrepareUpdateConfig_WorkloadMetadataMode(t *testing.T) {
+	controlPlane := &infrav1exp.GCPManagedControlPlane{
+		Spec: infrav1exp.GCPManagedControlPlaneSpec{
+			GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+				Project:     "test-project",
+				Location:    "us-central1-a",
+				ClusterName: "test-cluster",
+			},
+		},
+	}
+
+	tests := []struct {
+		name                 string
+		workloadMetadataMode *infrav1exp.WorkloadMetadataMode
+		existingNodePool     *containerpb.NodePool
+		wantMetadataMode     *containerpb.WorkloadMetadataConfig_Mode
+	}{
+		{
+			name:                 "nil mode does not trigger update even when existing has GKE_METADATA",
+			workloadMetadataMode: nil,
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{
+					WorkloadMetadataConfig: &containerpb.WorkloadMetadataConfig{
+						Mode: containerpb.WorkloadMetadataConfig_GKE_METADATA,
+					},
+				},
+			},
+			wantMetadataMode: nil,
+		},
+		{
+			name:                 "GKE_METADATA mode triggers update when existing is unset",
+			workloadMetadataMode: ptr.To(infrav1exp.WorkloadMetadataModeGKEMetadata),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{},
+			},
+			wantMetadataMode: ptr.To(containerpb.WorkloadMetadataConfig_GKE_METADATA),
+		},
+		{
+			name:                 "GCE_METADATA mode triggers update when existing has GKE_METADATA",
+			workloadMetadataMode: ptr.To(infrav1exp.WorkloadMetadataModeGCEMetadata),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{
+					WorkloadMetadataConfig: &containerpb.WorkloadMetadataConfig{
+						Mode: containerpb.WorkloadMetadataConfig_GKE_METADATA,
+					},
+				},
+			},
+			wantMetadataMode: ptr.To(containerpb.WorkloadMetadataConfig_GCE_METADATA),
+		},
+		{
+			name:                 "no update when desired GKE_METADATA matches existing",
+			workloadMetadataMode: ptr.To(infrav1exp.WorkloadMetadataModeGKEMetadata),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{
+					WorkloadMetadataConfig: &containerpb.WorkloadMetadataConfig{
+						Mode: containerpb.WorkloadMetadataConfig_GKE_METADATA,
+					},
+				},
+			},
+			wantMetadataMode: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			machinePool := &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						NodePoolName: "test-pool",
+						NodeSecurity: infrav1exp.NodeSecurityConfig{
+							WorkloadMetadataMode: tt.workloadMetadataMode,
+						},
+					},
+				},
+			}
+
+			svc := newTestNodePoolService(machinePool, controlPlane)
+			_, updateReq := svc.checkDiffAndPrepareUpdateConfig(tt.existingNodePool, nil)
+
+			if tt.wantMetadataMode == nil {
+				if updateReq.GetWorkloadMetadataConfig() != nil {
+					t.Errorf("expected nil WorkloadMetadataConfig, got %v", updateReq.GetWorkloadMetadataConfig())
+				}
+			} else if mode := updateReq.GetWorkloadMetadataConfig().GetMode(); mode != *tt.wantMetadataMode {
+				t.Errorf("expected WorkloadMetadataConfig.Mode %v, got %v", *tt.wantMetadataMode, mode)
 			}
 		})
 	}
