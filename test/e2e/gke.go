@@ -24,8 +24,13 @@ import (
 	"fmt"
 	"time"
 
+	gkehub "cloud.google.com/go/gkehub/apiv1beta1"
+	"cloud.google.com/go/gkehub/apiv1beta1/gkehubpb"
+	"github.com/googleapis/gax-go/v2/apierror"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -239,6 +244,23 @@ func WaitForManagedClusterResourcesDeleted(ctx context.Context, input WaitForMan
 		g.Expect(input.Lister.List(ctx, list, client.InNamespace(input.Namespace))).To(Succeed())
 		g.Expect(list.Items).To(BeEmpty(), "GCPManagedCluster objects still present in namespace %q", input.Namespace)
 	}, intervals...).Should(Succeed())
+}
+
+// membershipExists checks directly against the GKE Hub API whether the fleet
+// Membership identified by name currently exists.
+func membershipExists(ctx context.Context, gkeHubClient *gkehub.GkeHubMembershipClient, name string) bool {
+	_, err := gkeHubClient.GetMembership(ctx, &gkehubpb.GetMembershipRequest{Name: name})
+	if err == nil {
+		return true
+	}
+
+	var apiErr *apierror.APIError
+	if errors.As(err, &apiErr) && apiErr.GRPCStatus().Code() == codes.NotFound {
+		return false
+	}
+
+	Expect(err).NotTo(HaveOccurred(), "unexpected error getting fleet membership %s", name)
+	return false
 }
 
 func setDefaults(input *ApplyManagedClusterTemplateAndWaitInput) {
