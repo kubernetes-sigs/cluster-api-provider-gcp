@@ -127,9 +127,6 @@ main() {
     if [[ "$arg" == "--verbose" ]]; then
       set -o xtrace
     fi
-    if [[ "$arg" == "--init-image" ]]; then
-      echo "--init-image is now deprecated and is being ignored"
-    fi
   done
 
   # If BOSKOS_HOST is set then acquire an GCP account from Boskos.
