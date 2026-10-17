@@ -33,13 +33,30 @@ minor=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.KUBERNETES_MINOR' "${REP
 CAPG_UBUNTU_VERSION=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.CAPG_UBUNTU_VERSION' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml") || return 1
 export CAPG_UBUNTU_VERSION
 
+# get_tag_list grabs a list of tags from a Git repo and prints them
+get_tag_list() {
+  local repo=$1
+
+  local tags
+  tags=$(git ls-remote --tags --refs "$repo") || return 1
+  if [ -z "$tags" ]; then
+    echo "ERROR: Tag list from $repo was empty" >&2
+    return 1
+  fi
+  echo "$tags"
+}
+
 # k8s_tags_for_minor prints kubernetes/kubernetes release tags for a given
 # minor (e.g. "1.35"), newest first.
 k8s_tags_for_minor() {
-  local m=$1 escaped
+  local m=$1 escaped filtered
   escaped=${m//./\\.}
-  git ls-remote --tags --refs https://github.com/kubernetes/kubernetes \
-    | awk -F/ '{print $3}' | grep -E "^v${escaped}\.[0-9]+$" | sort -rV
+  filtered=$(get_tag_list "https://github.com/kubernetes/kubernetes" | awk -F/ '{print $3}' | grep -E "^v${escaped}\.[0-9]+$" | sort -rV)
+  if [ -z "$filtered" ]; then
+    echo "ERROR: After filtering to $m no versions remain" >&2
+    return 1
+  fi
+  echo "$filtered"
 }
 
 # find_verified_version prints the first candidate (from stdin, newest
@@ -58,19 +75,19 @@ find_verified_version() {
 
 verify_nightly_image() {
   gcloud compute images describe "cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${1//./-}-nightly" \
-    --project=k8s-staging-cluster-api-gcp >/dev/null 2>&1
+    --project=k8s-staging-cluster-api-gcp >/dev/null
 }
 
 verify_ccm_image() {
-  docker manifest inspect "gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null 2>&1
+  docker manifest inspect "gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null
 }
 
 verify_cluster_autoscaler_image() {
-  docker manifest inspect "registry.k8s.io/autoscaling/cluster-autoscaler:${1}" >/dev/null 2>&1
+  docker manifest inspect "registry.k8s.io/autoscaling/cluster-autoscaler:${1}" >/dev/null
 }
 
 verify_kindest_node() {
-  docker manifest inspect "kindest/node:${1}" >/dev/null 2>&1
+  docker manifest inspect "kindest/node:${1}" >/dev/null
 }
 
 # resolve_version_for_minor finds the latest release of the given minor
@@ -101,7 +118,7 @@ resolve_unmanaged_version() {
 
 resolve_ccm_version() {
   local major=${minor#*.} resolved
-  resolved=$(git ls-remote --tags --refs https://github.com/kubernetes/cloud-provider-gcp \
+  resolved=$(get_tag_list "https://github.com/kubernetes/cloud-provider-gcp" \
       | awk -F/ '{print $3}' | grep -E "^v${major}\." | sort -rV \
       | find_verified_version verify_ccm_image) \
     || { echo "ERROR: no published cloud-controller-manager image found for k8s minor ${minor} (CCM major v${major})" >&2; return 1; }
@@ -122,7 +139,7 @@ resolve_management_version() {
 resolve_cluster_autoscaler_version() {
   local resolved escaped
   escaped=${minor//./\\.}
-  resolved=$(git ls-remote --tags --refs https://github.com/kubernetes/autoscaler \
+  resolved=$(get_tag_list https://github.com/kubernetes/autoscaler \
       | awk -F/ '{print $3}' | grep -E "^cluster-autoscaler-${escaped}\.[0-9]+$" | sort -rV \
       | sed 's/^cluster-autoscaler-/v/' \
       | find_verified_version verify_cluster_autoscaler_image) \
@@ -132,11 +149,13 @@ resolve_cluster_autoscaler_version() {
 }
 
 resolve_gke_version() {
+  local server_config_json
+  local extracted_versions
   local resolved
-  resolved=$(gcloud container get-server-config \
-      --project="${GCP_PROJECT}" --region="${GCP_REGION}" --format=json \
-    | jq -r '.channels[] | select(.channel=="REGULAR") | .validVersions[]' \
-    | grep -E "^${minor//./\\.}\." | sort -V | tail -1)
+
+  server_config_json=$(gcloud container get-server-config --project="${GCP_PROJECT}" --region="${GCP_REGION}" --format=json) || return 1
+  extracted_versions=$(echo "$server_config_json" | jq -r '.channels[] | select(.channel=="REGULAR") | .validVersions[]') || return 1
+  resolved=$(echo "$extracted_versions" | grep -E "^${minor//./\\.}\." | sort -V | tail -1)
   if [ -z "${resolved}" ]; then
     echo "ERROR: GKE's regular channel has no valid version for minor ${minor} -- don't bump KUBERNETES_MINOR past what GKE supports" >&2
     return 1
