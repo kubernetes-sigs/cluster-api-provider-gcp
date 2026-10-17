@@ -319,6 +319,12 @@ var _ = Describe("Workload cluster creation", func() {
 	Context("Creating a highly available control-plane cluster", func() {
 		It("Should create a cluster with 3 control-plane and 2 worker nodes", func() {
 			clusterName := fmt.Sprintf("%s-ha", clusterNamePrefix)
+
+			By("Creating a spread placement policy for the workers")
+			project, region := os.Getenv("GCP_PROJECT"), os.Getenv("GCP_REGION")
+			Expect(project).NotTo(BeEmpty())
+			Expect(region).NotTo(BeEmpty())
+			policyPath := createSpreadPolicy(ctx, project, region, clusterName+"-spread", skipCleanup)
 			By("Creating a high available cluster")
 			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
@@ -333,11 +339,25 @@ var _ = Describe("Workload cluster creation", func() {
 					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
 					ControlPlaneMachineCount: ptr.To[int64](3),
 					WorkerMachineCount:       ptr.To[int64](2),
+					ClusterctlVariables: map[string]string{
+						"GCP_NODE_MACHINE_TYPE": "n2-standard-2",
+						"GCP_RESOURCE_POLICIES": fmt.Sprintf("[%q]", policyPath),
+					},
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
+
+			By("Verifying both worker VMs have the policy and an availability domain")
+			machines := framework.GetMachinesByMachineDeployments(ctx, framework.GetMachinesByMachineDeploymentsInput{
+				Lister:            bootstrapClusterProxy.GetClient(),
+				ClusterName:       clusterName,
+				Namespace:         namespace.Name,
+				MachineDeployment: *result.MachineDeployments[0],
+			})
+			Expect(machines).To(HaveLen(2))
+			verifySpreadPolicy(ctx, machines, policyPath)
 		})
 	})
 

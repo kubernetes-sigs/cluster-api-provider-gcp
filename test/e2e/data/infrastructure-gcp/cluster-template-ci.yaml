@@ -116,6 +116,7 @@ spec:
   template:
     spec:
       instanceType: "${GCP_NODE_MACHINE_TYPE}"
+      resourcePolicies: ${GCP_RESOURCE_POLICIES:=[]}
       image: "${IMAGE_ID}"
       publicIP: true
       additionalMetadata:
