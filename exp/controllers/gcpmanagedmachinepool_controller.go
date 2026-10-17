@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/nodepools"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -263,7 +264,18 @@ func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctr
 
 	if !gcpManagedControlPlane.Status.Ready {
 		log.Info("Control plane is not ready yet")
+		v1beta2conditions.Set(gcpManagedMachinePool, metav1.Condition{
+			Type:   infrav1exp.GCPManagedMachinePoolReadyCondition,
+			Status: metav1.ConditionFalse,
+			Reason: infrav1exp.WaitingForGKEControlPlaneReason,
+		})
+		v1beta2conditions.Set(gcpManagedMachinePool, metav1.Condition{
+			Type:   infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
+			Status: metav1.ConditionFalse,
+			Reason: infrav1exp.WaitingForGKEControlPlaneReason,
+		})
 		v1beta1conditions.MarkFalse(gcpManagedMachinePool, infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.WaitingForGKEControlPlaneReason, clusterv1beta1.ConditionSeverityInfo, "")
+
 		return ctrl.Result{}, nil
 	}
 

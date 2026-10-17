@@ -19,6 +19,7 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
 const (
@@ -452,6 +453,27 @@ type GCPMachineStatus struct {
 	// controller's output.
 	// +optional
 	FailureMessage *string `json:"failureMessage,omitempty"`
+
+	// conditions defines current service state of the GCPMachine.
+	// +optional
+	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+
+	// v1beta2 groups all the fields that will be added or modified in GCPMachine's status
+	// with the v1beta2 version of the Cluster API contract.
+	// +optional
+	V1Beta2 *GCPMachineV1Beta2Status `json:"v1beta2,omitempty"`
+}
+
+// GCPMachineV1Beta2Status groups the fields that will be added or modified in GCPMachine's status
+// with the v1beta2 version of the Cluster API contract.
+type GCPMachineV1Beta2Status struct {
+	// conditions represents the observations of a GCPMachine's current state.
+	// Known condition types are Ready.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	// +kubebuilder:validation:MaxItems=32
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -480,6 +502,32 @@ type GCPMachineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []GCPMachine `json:"items"`
+}
+
+// GetConditions returns the set of conditions for this object.
+func (m *GCPMachine) GetConditions() clusterv1beta1.Conditions {
+	return m.Status.Conditions
+}
+
+// SetConditions sets the conditions on this object.
+func (m *GCPMachine) SetConditions(conditions clusterv1beta1.Conditions) {
+	m.Status.Conditions = conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (m *GCPMachine) GetV1Beta2Conditions() []metav1.Condition {
+	if m.Status.V1Beta2 == nil {
+		return nil
+	}
+	return m.Status.V1Beta2.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (m *GCPMachine) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	if m.Status.V1Beta2 == nil {
+		m.Status.V1Beta2 = &GCPMachineV1Beta2Status{}
+	}
+	m.Status.V1Beta2.Conditions = conditions
 }
 
 func init() {

@@ -65,6 +65,23 @@ type GKEConfigStatus struct {
 	// Conditions defines current service state of the GKEConfig.
 	// +optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+
+	// v1beta2 groups all the fields that will be added or modified in GKEConfig's status
+	// with the v1beta2 version of the Cluster API contract.
+	// +optional
+	V1Beta2 *GKEConfigV1Beta2Status `json:"v1beta2,omitempty"`
+}
+
+// GKEConfigV1Beta2Status groups the fields that will be added or modified in GKEConfig's status
+// with the v1beta2 version of the Cluster API contract.
+type GKEConfigV1Beta2Status struct {
+	// conditions represents the observations of a GKEConfig's current state.
+	// Known condition types are Ready.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	// +kubebuilder:validation:MaxItems=32
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -74,6 +91,32 @@ type GKEConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []GKEConfig `json:"items"`
+}
+
+// GetConditions returns the conditions for the GKEConfig.
+func (r *GKEConfig) GetConditions() clusterv1beta1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the conditions for the GKEConfig.
+func (r *GKEConfig) SetConditions(conditions clusterv1beta1.Conditions) {
+	r.Status.Conditions = conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (r *GKEConfig) GetV1Beta2Conditions() []metav1.Condition {
+	if r.Status.V1Beta2 == nil {
+		return nil
+	}
+	return r.Status.V1Beta2.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (r *GKEConfig) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	if r.Status.V1Beta2 == nil {
+		r.Status.V1Beta2 = &GKEConfigV1Beta2Status{}
+	}
+	r.Status.V1Beta2.Conditions = conditions
 }
 
 func init() {
