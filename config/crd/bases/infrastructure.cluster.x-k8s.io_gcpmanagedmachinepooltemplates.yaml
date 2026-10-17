@@ -60,6 +60,15 @@ spec:
                           AdditionalLabels is an optional set of tags to add to GCP resources managed by the GCP provider, in addition to the
                           ones added by default.
                         type: object
+                      architectureTaintBehavior:
+                        description: |-
+                          ArchitectureTaintBehavior controls GKE's default architecture taint on the nodes of this
+                          node pool. GKE taints ARM64 nodes kubernetes.io/arch=arm64:NoSchedule unless this is set
+                          to none. Left unset, GKE keeps its own default, which applies the taint.
+                        enum:
+                        - none
+                        - arm
+                        type: string
                       diskSizeGB:
                         description: |-
                           DiskSizeGB is size of the disk attached to each node,

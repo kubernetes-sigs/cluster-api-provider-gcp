@@ -160,6 +160,11 @@ type GCPManagedMachinePoolClassSpec struct {
 	// KubernetesTaints specifies the taints to apply to the nodes of the node pool.
 	// +optional
 	KubernetesTaints Taints `json:"kubernetesTaints,omitempty"`
+	// ArchitectureTaintBehavior controls GKE's default architecture taint on the nodes of this
+	// node pool. GKE taints ARM64 nodes kubernetes.io/arch=arm64:NoSchedule unless this is set
+	// to none. Left unset, GKE keeps its own default, which applies the taint.
+	// +optional
+	ArchitectureTaintBehavior *ArchitectureTaintBehavior `json:"architectureTaintBehavior,omitempty"`
 	// AdditionalLabels is an optional set of tags to add to GCP resources managed by the GCP provider, in addition to the
 	// ones added by default.
 	// +optional
