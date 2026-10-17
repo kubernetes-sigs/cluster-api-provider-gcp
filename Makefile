@@ -336,6 +336,9 @@ lint-full: $(YQ) ## Run slower linters to detect possible issues
 ## Generate
 ## --------------------------------------
 
+
+CCM_TEMPLATES := templates/cluster-template.yaml templates/cluster-template-topology.yaml
+
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
 	go mod tidy
@@ -345,6 +348,7 @@ modules: ## Runs go mod to ensure proper vendoring.
 generate: ## Generate code
 	$(MAKE) generate-go
 	$(MAKE) generate-manifests
+	$(MAKE) generate-templates
 
 .PHONY: generate-go
 generate-go: $(CONTROLLER_GEN) $(CONVERSION_GEN) ## Runs Go related generate targets
@@ -375,6 +379,10 @@ generate-manifests: $(CONTROLLER_GEN) ## Generate manifests e.g. CRD, RBAC etc.
 		paths=./$(EXP_DIR)/bootstrap/gke/controllers/... \
 		output:rbac:dir=$(RBAC_ROOT) \
 		rbac:roleName=manager-role
+
+.PHONY: generate-templates
+generate-templates: $(YQ)
+	YQ=$(YQ) ./hack/generate-templates.sh $(CCM_TEMPLATES)
 
 ## --------------------------------------
 ## Docker

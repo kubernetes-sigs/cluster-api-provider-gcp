@@ -41,11 +41,11 @@ spec:
       serviceAccountName: cloud-controller-manager
       containers:
       - name: cloud-controller-manager
-        image: gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${CCM_VERSION}
+        image: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager:${CCM_VERSION:=v36.4.9}
         imagePullPolicy: IfNotPresent
         command:
         - /cloud-controller-manager
-        - --cluster-cidr=192.168.0.0/16
+        - --cluster-cidr=${POD_CIDR:=192.168.0.0/16}
         - --cloud-provider=gce
         - --leader-elect=true
         - --use-service-account-credentials
@@ -146,6 +146,7 @@ rules:
   resources:
   - endpoints
   - serviceaccounts
+  - services
   verbs:
   - create
   - get
@@ -168,6 +169,7 @@ rules:
   - ""
   resources:
   - nodes/status
+  - services/status
   verbs:
   - patch
   - update
