@@ -134,6 +134,11 @@ var _ = Describe("Workload cluster creation", func() {
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			}, result)
 
+			By("Verifying traces reached the collector")
+			if tracingEnabled() {
+				assertTracesReceived(ctx, bootstrapClusterProxy, clusterName)
+			}
+
 			By("Verifying GCPMachineTemplate status is populated for scale-from-zero")
 			Expect(result.MachineDeployments).To(HaveLen(1))
 			md := result.MachineDeployments[0]

@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/networks"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/compute/subnets"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
@@ -49,6 +50,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+const gcpClusterKind = "GCPCluster"
 
 // clusterReconcilers returns the reconcilers in the order they must run: the network must exist
 // before the firewalls, and the subnets are needed by the internal load balancer. Deletion runs
@@ -76,7 +79,7 @@ type GCPClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 func (r *GCPClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
-	log := log.FromContext(ctx).WithValues("controller", "GCPCluster")
+	log := log.FromContext(ctx).WithValues("controller", gcpClusterKind)
 
 	c, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
@@ -88,7 +91,7 @@ func (r *GCPClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		return errors.Wrap(err, "error creating controller")
 	}
 
-	clusterToInfraFn := util.ClusterToInfrastructureMapFunc(ctx, infrav1.GroupVersion.WithKind("GCPCluster"), mgr.GetClient(), &infrav1.GCPCluster{})
+	clusterToInfraFn := util.ClusterToInfrastructureMapFunc(ctx, infrav1.GroupVersion.WithKind(gcpClusterKind), mgr.GetClient(), &infrav1.GCPCluster{})
 	if err = c.Watch(
 		source.Kind[client.Object](mgr.GetCache(), &clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(func(mapCtx context.Context, o client.Object) []reconcile.Request {
@@ -119,6 +122,9 @@ func (r *GCPClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 }
 
 func (r *GCPClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+	ctx, end := telemetry.StartSpan(ctx, gcpClusterKind, req)
+	defer end(&reterr)
+
 	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
 	defer cancel()
 

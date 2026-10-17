@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -52,6 +53,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const gcpMachinePoolKind = "GCPMachinePool"
+
 // GCPMachinePoolReconciler reconciles a GCPMachinePool object.
 type GCPMachinePoolReconciler struct {
 	Client           client.Client
@@ -67,6 +70,9 @@ type GCPMachinePoolReconciler struct {
 
 // Reconcile is the reconciliation loop for GCPMachinePool.
 func (r *GCPMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+	ctx, end := telemetry.StartSpan(ctx, gcpMachinePoolKind, req)
+	defer end(&reterr)
+
 	log := log.FromContext(ctx)
 
 	// Fetch the GCPMachinePool .
@@ -152,7 +158,7 @@ func (r *GCPMachinePoolReconciler) SetupWithManager(ctx context.Context, mgr ctr
 		For(&expinfrav1.GCPMachinePool{}).
 		Watches(
 			&clusterv1.MachinePool{},
-			handler.EnqueueRequestsFromMapFunc(machinePoolToInfrastructureMapFunc(expinfrav1.GroupVersion.WithKind("GCPMachinePool"))),
+			handler.EnqueueRequestsFromMapFunc(machinePoolToInfrastructureMapFunc(expinfrav1.GroupVersion.WithKind(gcpMachinePoolKind))),
 		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(mgr.GetScheme(), log.FromContext(ctx), r.WatchFilterValue)).
 		WithEventFilter(
@@ -160,7 +166,7 @@ func (r *GCPMachinePoolReconciler) SetupWithManager(ctx context.Context, mgr ctr
 				// Avoid reconciling if the event triggering the reconciliation is related to incremental status updates
 				// for GCPMachinePool resources only
 				UpdateFunc: func(e event.UpdateEvent) bool {
-					if e.ObjectOld.GetObjectKind().GroupVersionKind().Kind != "GCPMachinePool" {
+					if e.ObjectOld.GetObjectKind().GroupVersionKind().Kind != gcpMachinePoolKind {
 						return true
 					}
 

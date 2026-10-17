@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/nodepools"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/telemetry"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -53,6 +54,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+const gcpManagedMachinePoolKind = "GCPManagedMachinePool"
 
 // GCPManagedMachinePoolReconciler reconciles a GCPManagedMachinePool object.
 type GCPManagedMachinePoolReconciler struct {
@@ -150,7 +153,7 @@ func managedControlPlaneToManagedMachinePoolMapFunc(c client.Client, gvk schema.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GCPManagedMachinePoolReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager, options controller.Options) error {
-	log := log.FromContext(ctx).WithValues("controller", "GCPManagedMachinePool")
+	log := log.FromContext(ctx).WithValues("controller", gcpManagedMachinePoolKind)
 
 	gvk, err := apiutil.GVKForObject(new(infrav1exp.GCPManagedMachinePool), mgr.GetScheme())
 	if err != nil {
@@ -202,6 +205,9 @@ func (r *GCPManagedMachinePoolReconciler) SetupWithManager(ctx context.Context, 
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 
 func (r *GCPManagedMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+	ctx, end := telemetry.StartSpan(ctx, gcpManagedMachinePoolKind, req)
+	defer end(&reterr)
+
 	ctx, cancel := context.WithTimeout(ctx, reconciler.DefaultedLoopTimeout(r.ReconcileTimeout))
 	defer cancel()
 

@@ -120,11 +120,18 @@ COPY manager .
 
 # Build CAPG and add feature gates
 def capg():
-    # Apply the kustomized yaml for this provider
-    substitutions = settings.get("kustomize_substitutions", {})
+    # Enable tracing if settings enables it and store the flag
+    enable_tracing = settings.get("enable_tracing", False)
+
+    substitutions = dict(settings.get("kustomize_substitutions", {}))
+    if enable_tracing:
+        k8s_yaml("hack/observability/otel-collector.yaml")
+        substitutions["CAPG_ENABLE_TRACING"] = "true"
+        substitutions["CAPG_OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://otel-collector.observability.svc.cluster.local:4317"
+
+    # Apply the mutated version to the environment
     os.environ.update(substitutions)
 
-    # yaml = str(kustomizesub("./hack/observability")) # build an observable kind deployment by default
     yaml = str(kustomizesub("./config/default"))
 
     # add extra_args if they are defined
