@@ -238,6 +238,50 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			},
 		},
 		{
+			name:        "autopilot enabled with managed prometheus enabled should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "",
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					MonitoringConfig: &expinfrav1.MonitoringConfig{ManagedPrometheusConfig: &expinfrav1.ManagedPrometheusConfig{
+						Enabled: new(true),
+					}},
+				},
+			},
+		},
+		{
+			name:        "autopilot enabled with managed prometheus disabled should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "",
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					MonitoringConfig: &expinfrav1.MonitoringConfig{ManagedPrometheusConfig: &expinfrav1.ManagedPrometheusConfig{
+						Enabled: new(false),
+					}},
+				},
+			},
+		},
+		{
+			name:        "managed prometheus can be set on non-autopilot clusters",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:    "",
+					ReleaseChannel: &releaseChannel,
+					MonitoringConfig: &expinfrav1.MonitoringConfig{ManagedPrometheusConfig: &expinfrav1.ManagedPrometheusConfig{
+						Enabled: new(true),
+					}},
+				},
+			},
+		},
+		{
 			name:        "datapath provider set without autopilot",
 			expectError: false,
 			expectWarn:  false,
@@ -537,6 +581,39 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 						},
 						GatewayAPIChannel: &gatewayAPIChannelStandard,
 					},
+				},
+			},
+		},
+		{
+			name:        "request to add managed prometheus value to an autopilot cluster should cause an error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot:  true,
+					ClusterName:      "default_cluster1",
+					MonitoringConfig: &expinfrav1.MonitoringConfig{ManagedPrometheusConfig: &expinfrav1.ManagedPrometheusConfig{Enabled: new(true)}},
+				},
+			},
+		},
+		{
+			name:        "request to change managed prometheus value should not cause an error",
+			expectError: false,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:      "default_cluster1",
+					MonitoringConfig: &expinfrav1.MonitoringConfig{ManagedPrometheusConfig: &expinfrav1.ManagedPrometheusConfig{Enabled: new(false)}},
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:      "default_cluster1",
+					MonitoringConfig: &expinfrav1.MonitoringConfig{ManagedPrometheusConfig: &expinfrav1.ManagedPrometheusConfig{Enabled: new(true)}},
 				},
 			},
 		},

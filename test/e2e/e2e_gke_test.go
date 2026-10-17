@@ -108,6 +108,9 @@ var _ = Describe("GKE workload cluster creation", func() {
 				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
 			}, result)
 
+			By("Verifying managed Prometheus is disabled on the GKE cluster")
+			VerifyManagedPrometheusEnabled(ctx, result.ControlPlane, false)
+
 			By("Scaling the machine pool up")
 			framework.ScaleMachinePoolAndWait(ctx, framework.ScaleMachinePoolAndWaitInput{
 				ClusterProxy:              bootstrapClusterProxy,
