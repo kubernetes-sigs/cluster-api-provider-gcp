@@ -560,4 +560,39 @@ var _ = Describe("Workload cluster creation", func() {
 			}, e2eConfig.GetIntervals(specName, "wait-cluster")...).ShouldNot(HaveKey(generatedName))
 		})
 	})
+
+	Context("Creating a single Flatcar control-plane cluster", func() {
+		It("Should create a cluster with 1 Flatcar worker node and can be scaled", func() {
+			clusterName := fmt.Sprintf("%s-flatcar", clusterNamePrefix)
+			By("Initializes with 1 Flatcar worker node")
+			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-flatcar",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](1),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+			}, result)
+
+			By("Scaling Flatcar worker node to 3")
+			Expect(result.MachineDeployments).To(HaveLen(1))
+			framework.ScaleAndWaitMachineDeployment(ctx, framework.ScaleAndWaitMachineDeploymentInput{
+				ClusterProxy:              bootstrapClusterProxy,
+				Cluster:                   result.Cluster,
+				MachineDeployment:         result.MachineDeployments[0],
+				Replicas:                  3,
+				WaitForMachineDeployments: e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+			})
+		})
+	})
 })
