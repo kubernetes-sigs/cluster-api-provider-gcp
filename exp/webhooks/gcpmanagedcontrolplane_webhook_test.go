@@ -954,6 +954,57 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "request to set AddonsConfig when autopilot is enabled should error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ClusterName:     "default_cluster1",
+					AddonsConfig:    expinfrav1.AddonsConfig{"dnsCacheConfig": {Enabled: true}},
+				},
+			},
+		},
+		{
+			name:        "request to set MonitoringService when autopilot is enabled should error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot:   true,
+					ClusterName:       "default_cluster1",
+					MonitoringService: (*expinfrav1.MonitoringService)(new("monitoring.googleapis.com/kubernetes")),
+				},
+			},
+		},
+		{
+			name:        "request to set LoggingService when autopilot is enabled should error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ClusterName:     "default_cluster1",
+					LoggingService:  (*expinfrav1.LoggingService)(new("logging.googleapis.com/kubernetes")),
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
