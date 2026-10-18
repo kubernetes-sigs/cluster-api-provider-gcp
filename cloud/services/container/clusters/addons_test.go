@@ -23,8 +23,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/cluster-api-provider-gcp/exp/addons"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1/addons"
 )
 
 func managedPool(name string, spec infrav1exp.GCPManagedMachinePoolClassSpec) infrav1exp.GCPManagedMachinePool {
