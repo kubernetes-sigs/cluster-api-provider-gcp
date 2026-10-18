@@ -22,7 +22,7 @@ import (
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
-//go:generate go run ./internal/docgen ../../../../docs/book/src/managed/_addons-table.md
+//go:generate go run ./internal/docgen ../../docs/book/src/managed/_addons-table.md
 
 // The keys GCPManagedControlPlane's addonsConfig accepts. Each is the name GKE's own API gives the
 // add-on, which is what makes it enough on its own to find the add-on in a GKE AddonsConfig: see

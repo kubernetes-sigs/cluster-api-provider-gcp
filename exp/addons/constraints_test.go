@@ -112,7 +112,7 @@ func TestRequiresGKEMetadataMode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := RequiresGKEMetadataMode().(ClusterConstraint).CheckCluster(Snapshot{NodePools: test.pools})
+			err := RequiresGKEMetadataMode().CheckCluster(Snapshot{NodePools: test.pools})
 			switch {
 			case test.wantPool == "" && err != nil:
 				t.Errorf("CheckCluster() = %v, want nil", err)

@@ -29,7 +29,7 @@ import (
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 
-	"sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1/addons"
+	"sigs.k8s.io/cluster-api-provider-gcp/exp/addons"
 )
 
 func main() {
