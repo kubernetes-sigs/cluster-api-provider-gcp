@@ -23,9 +23,12 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
+	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -64,7 +67,10 @@ func (*GCPMachine) ValidateCreate(_ context.Context, m *infrav1.GCPMachine) (adm
 	if err := validateConfidentialCompute(m.Spec); err != nil {
 		return nil, err
 	}
-	return nil, validateCustomerEncryptionKey(m.Spec)
+	if err := validateCustomerEncryptionKey(m.Spec); err != nil {
+		return nil, err
+	}
+	return nil, validateResourcePolicies(m.Spec.ResourcePolicies)
 }
 
 func (*GCPMachine) ValidateUpdate(_ context.Context, oldObj, m *infrav1.GCPMachine) (admission.Warnings, error) {
@@ -171,6 +177,29 @@ func validateCustomerEncryptionKey(spec infrav1.GCPMachineSpec) error {
 			if err := checkKeyType(disk.EncryptionKey); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+func validateResourcePolicies(policies []string) error {
+	for i, policy := range policies {
+		resource, err := cloud.ParseResourceURL(policy)
+		if err != nil {
+			return fmt.Errorf("resourcePolicies[%d] %q: invalid Compute Engine resource path", i, policy)
+		}
+		if resource.Key == nil || resource.Resource != "resourcePolicies" {
+			return fmt.Errorf("resourcePolicies[%d] %q: must reference a resource policy", i, policy)
+		}
+		if resource.Key.Type() != meta.Regional || !resource.Key.Valid() {
+			return fmt.Errorf("resourcePolicies[%d] %q: must reference a policy in a valid region", i, policy)
+		}
+		if resource.ProjectID == "" && !strings.HasPrefix(policy, "regions/") {
+			return fmt.Errorf("resourcePolicies[%d] %q: project must not be empty", i, policy)
+		}
+		// Compute policy names follow RFC1035, including its 63-character limit.
+		if errors := validation.IsDNS1035Label(resource.Key.Name); len(errors) > 0 {
+			return fmt.Errorf("resourcePolicies[%d] %q: %s", i, policy, strings.Join(errors, "; "))
 		}
 	}
 	return nil

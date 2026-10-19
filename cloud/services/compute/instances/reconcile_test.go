@@ -1137,3 +1137,34 @@ func TestService_createOrGetInstance(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateResourcePolicyRegions(t *testing.T) {
+	const policy = "projects/my-project/regions/us-central1/resourcePolicies/spread"
+	for _, tt := range []struct {
+		name     string
+		policies []string
+		zone     string
+		wantErr  string
+	}{
+		{name: "omitted", zone: "us-central1-a"},
+		{name: "regional path", policies: []string{"regions/us-central1/resourcePolicies/spread"}, zone: "us-central1-a"},
+		{name: "partial path", policies: []string{policy}, zone: "us-central1-a"},
+		{name: "full URL", policies: []string{"https://www.googleapis.com/compute/v1/" + policy}, zone: "us-central1-b"},
+		{name: "different region", policies: []string{policy}, zone: "europe-west1-b", wantErr: "must be in the same region"},
+		{name: "one mismatched policy", policies: []string{policy, strings.ReplaceAll(policy, "us-central1", "us-east1")}, zone: "us-central1-a", wantErr: "must be in the same region"},
+		{name: "missing zone", policies: []string{policy}, wantErr: "cannot determine region"},
+		{name: "missing region", policies: []string{"projects/my-project/resourcePolicies/spread"}, zone: "us-central1-a", wantErr: "failed to parse resource policy"},
+		{name: "missing key", policies: []string{"projects/my-project"}, zone: "us-central1-a", wantErr: "must be in the same region"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateResourcePolicyRegions(tt.policies, tt.zone)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %v, want error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}

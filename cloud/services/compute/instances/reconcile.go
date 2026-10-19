@@ -19,9 +19,11 @@ package instances
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
+	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"google.golang.org/api/compute/v1"
@@ -160,6 +162,10 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 			return nil, ErrInstanceNotFound
 		}
 
+		if err := validateResourcePolicyRegions(instanceSpec.ResourcePolicies, s.scope.Zone()); err != nil {
+			return nil, err
+		}
+
 		log.V(2).Info("Creating an instance", "name", instanceName, "zone", s.scope.Zone())
 		if err := s.instances.Insert(ctx, instanceKey, instanceSpec); err != nil {
 			log.Error(err, "Error creating an instance", "name", instanceName, "zone", s.scope.Zone())
@@ -173,6 +179,28 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 	}
 
 	return instance, nil
+}
+
+// validateResourcePolicyRegions checks against the selected zone, which is not
+// available when admitting a GCPMachineTemplate.
+func validateResourcePolicyRegions(policies []string, zone string) error {
+	for _, policy := range policies {
+		resource, err := cloud.ParseResourceURL(policy)
+		if err != nil {
+			return fmt.Errorf("failed to parse resource policy %q: %w", policy, err)
+		}
+		zoneRegion := ""
+		if i := strings.LastIndex(zone, "-"); i >= 0 {
+			zoneRegion = zone[:i]
+		}
+		if zoneRegion == "" {
+			return fmt.Errorf("cannot determine region from instance zone %q", zone)
+		}
+		if ptr.Deref(resource.Key, meta.Key{}).Region != zoneRegion {
+			return fmt.Errorf("resource policy %q must be in the same region as instance zone %q", policy, zone)
+		}
+	}
+	return nil
 }
 
 func (s *Service) registerControlPlaneInstance(ctx context.Context, instance *compute.Instance) error {
