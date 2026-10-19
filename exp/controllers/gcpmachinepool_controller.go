@@ -128,7 +128,7 @@ func (r *GCPMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	defer func() {
 		// Compute the Ready condition from the other conditions
 		if err := conditions.SetSummaryCondition(machinePoolScope.GCPMachinePool, machinePoolScope.GCPMachinePool,
-			expinfrav1.ReadyCondition,
+			clusterv1.ReadyCondition,
 			conditions.ForConditionTypes([]string{string(expinfrav1.MIGReadyCondition), string(expinfrav1.InstanceTemplateReadyCondition)}),
 		); err != nil && reterr == nil {
 			reterr = err

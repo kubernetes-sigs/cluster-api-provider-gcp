@@ -174,6 +174,9 @@ type GCPMachinePoolStatus struct {
 
 	// Conditions defines current service state of the GCPMachinePool.
 	// +optional
+	// +listType=map
+	// +listMapKey=type
+	// +kubebuilder:validation:MaxItems=32
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
@@ -224,6 +227,16 @@ func (r *GCPMachinePool) SetConditions(conditions []metav1.Condition) {
 // GetConditions gets conditions for a MachinePool.
 func (r *GCPMachinePool) GetConditions() []metav1.Condition {
 	return r.Status.Conditions
+}
+
+// GetV1Beta2Conditions returns the set of conditions for this object.
+func (r *GCPMachinePool) GetV1Beta2Conditions() []metav1.Condition {
+	return r.Status.Conditions
+}
+
+// SetV1Beta2Conditions sets the conditions on this object.
+func (r *GCPMachinePool) SetV1Beta2Conditions(conditions []metav1.Condition) {
+	r.Status.Conditions = conditions
 }
 
 func init() {
