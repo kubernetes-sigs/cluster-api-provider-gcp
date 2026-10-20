@@ -2,7 +2,7 @@ module sigs.k8s.io/cluster-api-provider-gcp/hack/tools
 
 go 1.26.0
 
-toolchain go1.26.8
+toolchain go1.26.10
 
 tool (
 	github.com/a8m/envsubst/cmd/envsubst
