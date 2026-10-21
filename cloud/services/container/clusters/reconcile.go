@@ -891,13 +891,7 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 	}
 	if !compareMasterAuthorizedNetworksConfig(desiredMasterAuthorizedNetworksConfig, existingAuthorizedNetworksConfig) {
 		needUpdate = true
-		if clusterUpdate.GetDesiredControlPlaneEndpointsConfig() == nil {
-			clusterUpdate.DesiredControlPlaneEndpointsConfig = &containerpb.ControlPlaneEndpointsConfig{}
-		}
-		if clusterUpdate.GetDesiredControlPlaneEndpointsConfig().GetIpEndpointsConfig() == nil {
-			clusterUpdate.DesiredControlPlaneEndpointsConfig.IpEndpointsConfig = &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{}
-		}
-		clusterUpdate.DesiredControlPlaneEndpointsConfig.IpEndpointsConfig.AuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
+		ensureDesiredIPEndpointsConfig(&clusterUpdate).AuthorizedNetworksConfig = desiredMasterAuthorizedNetworksConfig
 		log.V(2).Info("Master authorized networks config update required", "current", existingAuthorizedNetworksConfig, "desired", desiredMasterAuthorizedNetworksConfig)
 	}
 	log.V(4).Info("Master authorized networks config update check", "current", existingAuthorizedNetworksConfig)
@@ -937,12 +931,32 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		}
 	}
 
+	if s.prepareMasterGlobalAccessConfigUpdate(existingCluster, &clusterUpdate, log) {
+		needUpdate = true
+	}
+
+	if s.prepareWorkloadIdentityConfigUpdate(existingCluster, &clusterUpdate, log) {
+		needUpdate = true
+	}
+
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,
 	}
 	log.V(4).Info("Update cluster request. ", "needUpdate", needUpdate, "updateClusterRequest", &updateClusterRequest)
 	return needUpdate, &updateClusterRequest
+}
+
+// ensureDesiredIPEndpointsConfig returns clusterUpdate's DesiredControlPlaneEndpointsConfig.IpEndpointsConfig,
+// initializing either or both if this is the first field an update touches on them.
+func ensureDesiredIPEndpointsConfig(clusterUpdate *containerpb.ClusterUpdate) *containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig {
+	if clusterUpdate.GetDesiredControlPlaneEndpointsConfig() == nil {
+		clusterUpdate.DesiredControlPlaneEndpointsConfig = &containerpb.ControlPlaneEndpointsConfig{}
+	}
+	if clusterUpdate.GetDesiredControlPlaneEndpointsConfig().GetIpEndpointsConfig() == nil {
+		clusterUpdate.DesiredControlPlaneEndpointsConfig.IpEndpointsConfig = &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{}
+	}
+	return clusterUpdate.GetDesiredControlPlaneEndpointsConfig().GetIpEndpointsConfig()
 }
 
 // compare if two MasterAuthorizedNetworksConfig are equal.
@@ -988,4 +1002,35 @@ func buildIPAllocationPolicy(cn *infrav1exp.ClusterNetwork) *containerpb.IPAlloc
 		}
 	}
 	return policy
+}
+
+func (s *Service) prepareWorkloadIdentityConfigUpdate(existingCluster *containerpb.Cluster, clusterUpdate *containerpb.ClusterUpdate, log *logr.Logger) bool {
+	// Like global access, GKE supports changing the workload pool
+	// (or disabling it, with an empty pool) after creation. Only reconciled when the user has an opinion
+	// (ClusterSecurity set); nil is treated the same as every other create-only-applied field elsewhere in this
+	// function.
+	if cs := s.scope.GCPManagedControlPlane.Spec.ClusterSecurity; cs != nil && cs.WorkloadIdentityConfig != nil {
+		desiredWorkloadPool := cs.WorkloadIdentityConfig.WorkloadPool
+		existingWorkloadPool := existingCluster.GetWorkloadIdentityConfig().GetWorkloadPool()
+		if desiredWorkloadPool != existingWorkloadPool {
+			clusterUpdate.DesiredWorkloadIdentityConfig = &containerpb.WorkloadIdentityConfig{WorkloadPool: desiredWorkloadPool}
+			log.V(2).Info("WorkloadIdentityConfig update required", "current", existingWorkloadPool, "desired", desiredWorkloadPool)
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) prepareMasterGlobalAccessConfigUpdate(existingCluster *containerpb.Cluster, clusterUpdate *containerpb.ClusterUpdate, log *logr.Logger) bool {
+	// Unlike AuthorizedNetworksConfig, GKE actually supports changing this after creation
+	if cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork; cn != nil && cn.PrivateCluster != nil {
+		desiredGlobalAccess := cn.PrivateCluster.ControlPlaneGlobalAccess
+		existingGlobalAccess := existingCluster.GetControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetGlobalAccess()
+		if desiredGlobalAccess != existingGlobalAccess {
+			ensureDesiredIPEndpointsConfig(clusterUpdate).GlobalAccess = &desiredGlobalAccess
+			log.V(2).Info("Master global access update required", "current", existingGlobalAccess, "desired", desiredGlobalAccess)
+			return true
+		}
+	}
+	return false
 }
