@@ -45,3 +45,23 @@ spec:
 - **`clusterDNSDomain`** — the suffix used for cluster service records.
 
 `dnsConfig` is mutable — you can change its contents on an existing cluster. However, **once set it cannot be removed entirely**; there's no clean way to revert to "no DNS config" once GKE has one configured.
+
+## Global Access
+
+`controlPlaneGlobalAccess` allows access to the control plane from IP addresses in other Google Cloud regions. This
+can be enabled on the `GCPManagedControlPlane` resource as follows:
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedControlPlane
+metadata:
+  name: my-control-plane
+spec:
+  location: us-central1
+  project: my-proj
+  clusterNetwork:
+    privateCluster:
+      controlPlaneGlobalAccess: true
+```
+
+This is reconciled on create and afterwards by CAPG, and updating is a non-disruptive operation
