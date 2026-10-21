@@ -19,6 +19,7 @@ package webhooks
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
@@ -123,7 +124,23 @@ func (*GCPManagedControlPlane) ValidateCreate(_ context.Context, r *expinfrav1.G
 			serviceRangeName, cn.UseIPAliases, serviceCidrBlock,
 			field.NewPath("spec", "clusterNetwork", "service", "secondaryRangeName"),
 		)...)
+
+		if cn.DefaultMaxPodsPerNode != nil && !cn.UseIPAliases {
+			allErrs = append(allErrs, field.Invalid(
+				field.NewPath("spec", "clusterNetwork", "defaultMaxPodsPerNode"),
+				*cn.DefaultMaxPodsPerNode, "defaultMaxPodsPerNode requires useIPAliases to be true",
+			))
+		}
+
+		if cn.ClusterIpv4Cidr != nil && cn.UseIPAliases {
+			allErrs = append(allErrs, field.Invalid(
+				field.NewPath("spec", "clusterNetwork", "clusterIpv4Cidr"),
+				*cn.ClusterIpv4Cidr, "clusterIpv4Cidr is only used with classic (routes-based) networking: set useIPAliases to false",
+			))
+		}
 	}
+
+	allErrs = append(allErrs, validateLoggingServiceAndConfig(r.Spec.EnableAutopilot, r)...)
 
 	if len(allErrs) == 0 {
 		return allWarns, nil
@@ -161,6 +178,8 @@ func (*GCPManagedControlPlane) ValidateUpdate(_ context.Context, old, r *expinfr
 				r.Spec.MonitoringService, err.Error()))
 		}
 	}
+
+	allErrs = append(allErrs, validateLoggingServiceAndConfig(old.Spec.EnableAutopilot, r)...)
 
 	if len(allErrs) == 0 {
 		return nil, nil
@@ -256,6 +275,11 @@ func validateAutopilotUnsupportedFields(autopilotFlag bool, cp *expinfrav1.GCPMa
 			cp.Spec.ClusterNetwork.DatapathProvider, "can't be set when autopilot is enabled: Autopilot clusters always use Dataplane V2"))
 	}
 
+	if cp.Spec.ShieldedNodes != nil {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "ShieldedNodes"),
+			cp.Spec.ShieldedNodes, "can't be set when autopilot is enabled"))
+	}
+
 	return allErrs
 }
 
@@ -320,5 +344,55 @@ func validateImmutableFields(old, r *expinfrav1.GCPManagedControlPlane) field.Er
 		))
 	}
 
+	if !ptr.Equal(newClusterNetwork.DefaultMaxPodsPerNode, oldClusterNetwork.DefaultMaxPodsPerNode) {
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "clusterNetwork", "defaultMaxPodsPerNode"),
+			newClusterNetwork.DefaultMaxPodsPerNode, "field is immutable",
+		))
+	}
+
+	if !ptr.Equal(newClusterNetwork.ClusterIpv4Cidr, oldClusterNetwork.ClusterIpv4Cidr) {
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "clusterNetwork", "clusterIpv4Cidr"),
+			newClusterNetwork.ClusterIpv4Cidr, "field is immutable",
+		))
+	}
+
+	newPC := ptr.Deref(newClusterNetwork.PrivateCluster, expinfrav1.PrivateCluster{})
+	oldPC := ptr.Deref(oldClusterNetwork.PrivateCluster, expinfrav1.PrivateCluster{})
+	if newPC.PrivateEndpointSubnetwork != oldPC.PrivateEndpointSubnetwork {
+		allErrs = append(allErrs, field.Invalid(
+			field.NewPath("spec", "clusterNetwork", "privateCluster", "privateEndpointSubnetwork"),
+			newPC.PrivateEndpointSubnetwork, "field is immutable",
+		))
+	}
+
 	return allErrs
+}
+
+// validateLoggingServiceAndConfig rejects setting both LoggingService and LoggingConfig: they are
+// two API surfaces for the same underlying GKE setting, and GKE's API rejects a request that sets
+// both.
+func validateLoggingServiceAndConfig(isAutopilot bool, cp *expinfrav1.GCPManagedControlPlane) field.ErrorList {
+	var loggingServiceConfigErrors field.ErrorList
+
+	// Check for mutual exclusivity
+	if cp.Spec.LoggingConfig != nil && cp.Spec.LoggingService != nil {
+		loggingServiceConfigErrors = append(loggingServiceConfigErrors, field.Invalid(field.NewPath("spec", "loggingService"),
+			cp.Spec.LoggingService, "loggingService and loggingConfig are mutually exclusive: loggingConfig is the modern replacement for loggingService"))
+	}
+
+	// Check that on autopilot:
+	// - The list must be non-empty
+	// - The list must include SYSTEM_COMPONENTS
+	if isAutopilot {
+		if cp.Spec.LoggingConfig != nil && !slices.Contains(cp.Spec.LoggingConfig.EnableComponents, expinfrav1.LoggingComponentSystemComponents) {
+			loggingServiceConfigErrors = append(loggingServiceConfigErrors, field.Invalid(
+				field.NewPath("spec", "loggingConfig"),
+				cp.Spec.LoggingConfig, "loggingConfig.enableComponents cannot be empty and must include SYSTEM_COMPONENTS",
+			))
+		}
+	}
+
+	return loggingServiceConfigErrors
 }

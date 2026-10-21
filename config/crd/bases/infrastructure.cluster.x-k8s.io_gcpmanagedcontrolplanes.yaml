@@ -83,6 +83,12 @@ spec:
               clusterNetwork:
                 description: ClusterNetwork define the cluster network.
                 properties:
+                  clusterIpv4Cidr:
+                    description: |-
+                      ClusterIpv4Cidr is the IP address range for the cluster pod IPs when using classic
+                      (routes-based) networking instead of VPC-native (alias IP) networking. Only honored when
+                      UseIPAliases is false. This setting is permanent.
+                    type: string
                   datapathProvider:
                     description: |-
                       DatapathProvider represents the desired datapath provider for the GKE cluster.
@@ -93,6 +99,13 @@ spec:
                     - legacy
                     - advanced
                     type: string
+                  defaultMaxPodsPerNode:
+                    description: |-
+                      DefaultMaxPodsPerNode is the default constraint on the maximum number of pods that can be run
+                      simultaneously on a node in any node pool of this cluster. Only honored when UseIPAliases is
+                      true. This setting is permanent.
+                    format: int64
+                    type: integer
                   dnsConfig:
                     description: |-
                       DNSConfig represents the cluster DNS configuration for the GKE cluster.
@@ -173,6 +186,12 @@ spec:
                           1918 private addresses and communicate with the master via
                           private networking.
                         type: boolean
+                      privateEndpointSubnetwork:
+                        description: |-
+                          PrivateEndpointSubnetwork is the subnet to provision the control plane's private endpoint into,
+                          in projects/*/regions/*/subnetworks/* format. Honored when EnablePrivateEndpoint is true.
+                          This setting is permanent.
+                        type: string
                     type: object
                   service:
                     description: Service defines the range of CIDRBlock list from
@@ -262,6 +281,28 @@ spec:
                   Location represents the location (region or zone) in which the GKE cluster
                   will be created.
                 type: string
+              loggingConfig:
+                description: |-
+                  LoggingConfig lists the component-based GKE logging components to enable. This is the modern
+                  replacement for LoggingService and takes precedence over it; setting both is rejected.
+                properties:
+                  enableComponents:
+                    description: |-
+                      EnableComponents is the list of logging components to enable. An empty list disables all
+                      component-based logging on a non-Autopilot cluster. If Autopilot is being used this list
+                      must, at minimum, contain SYSTEM_COMPONENTS.
+                    items:
+                      description: LoggingComponent is a GKE logging component that
+                        can be enabled via LoggingConfig.
+                      enum:
+                      - SYSTEM_COMPONENTS
+                      - WORKLOADS
+                      - APISERVER
+                      - SCHEDULER
+                      - CONTROLLER_MANAGER
+                      type: string
+                    type: array
+                type: object
               loggingService:
                 description: |-
                   LoggingService represents configuration of logging service feature of the GKE cluster.
@@ -337,6 +378,12 @@ spec:
                 - stable
                 - extended
                 type: string
+              shieldedNodes:
+                description: |-
+                  ShieldedNodes indicates whether Shielded GKE Nodes (secure boot, vTPM and integrity
+                  monitoring) are enabled for all nodes in this cluster. Defaults to GKE's own default when unset.
+                  Enabling this will cause nodes to be recreated so disruption should be expected.
+                type: boolean
               version:
                 description: |-
                   Version represents the control plane version of the GKE cluster.
