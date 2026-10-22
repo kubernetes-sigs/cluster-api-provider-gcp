@@ -14,7 +14,7 @@
    - `brew install gettext && brew link --force gettext` on macOS.
    - `sudo apt install gettext` on Windows + WSL2.
    - `sudo apt install gettext` on Ubuntu Linux.
-4. Install [KIND][kind]
+4. Install [KinD][kind]
    - `GO111MODULE="on" go get sigs.k8s.io/kind@v0.14.0`.
 5. Install [Kustomize][kustomize]
    - `brew install kustomize` on macOS.
@@ -105,7 +105,7 @@ rather than Windows.
 
 ### Using Tilt
 
-Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local kind cluster. The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPG and CAPI, then follow the [CAPI and CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
+Both of the [Tilt](https://tilt.dev) setups below will get you started developing CAPG in a local KinD cluster. The main difference is the number of components you will build from source and the scope of the changes you'd like to make. If you only want to make changes in CAPG, then follow [CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-capg). This will save you from having to build all of the images for CAPI, which can take a while. If the scope of your development will span both CAPG and CAPI, then follow the [CAPI and CAPG instructions](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/book/src/developers/development.md#tilt-for-dev-in-both-capg-and-capi).
 
 #### Tilt for dev in CAPG
 
@@ -139,11 +139,21 @@ $ export GCP_NETWORK_NAME=<GCP_NETWORK_NAME or default> \
 $ export CLUSTER_NAME="<CLUSTER_NAME>" \
 ```
 
-To build a kind cluster and start Tilt, just run:
+To build a KinD cluster and start Tilt, just run:
 
 ```shell
 make tilt-up
 ```
+
+**Note:** On macOS port 5000 (the default port for the KinD registry) is often taken by AirPlay Receiver, so you might
+get an error message about that port being used.
+
+If that happens, re-run `make tilt-up` with `KIND_REGISTRY_PORT=<PORT_NUMBER>` and KinD will use the specified port
+number instead. Make sure to choose a port that is not being used by another process!
+
+If a previous attempt left behind a `kind-registry` container or a `capg` KinD cluster, you can run
+`docker rm -f kind-registry` and `make kind-reset` to get back to a blank slate before trying again (`make kind-reset`
+also deletes `capg-e2e` and `clusterapi` clusters).
 
 Alternatively, you can also run:
 
@@ -160,9 +170,9 @@ It will setup the network, if you already setup the network you can skip this st
 By default, the Cluster API components deployed by Tilt have experimental features turned off.
 If you would like to enable these features, add `extra_args` as specified in [The Cluster API Book](https://cluster-api.sigs.k8s.io/developer/tilt.html#create-a-tilt-settingsjson-file).
 
-Once your kind management cluster is up and running, you can [deploy a workload cluster](#deploying-a-workload-cluster).
+Once your KinD management cluster is up and running, you can [deploy a workload cluster](#deploying-a-workload-cluster).
 
-To tear down the kind cluster built by the command above, just run:
+To tear down the KinD cluster built by the command above, just run:
 
 ```shell
 make kind-reset
@@ -178,11 +188,11 @@ And if you need to cleanup the network setup you can run:
 
 If you want to develop in both CAPI and CAPG at the same time, then this is the path for you.
 
-To use [Tilt](https://tilt.dev/) for a simplified development workflow, follow the [instructions](https://cluster-api.sigs.k8s.io/developer/tilt.html) in the cluster-api repo. The instructions will walk you through cloning the Cluster API (CAPI) repository and configuring Tilt to use `kind` to deploy the cluster api management components.
+To use [Tilt](https://tilt.dev/) for a simplified development workflow, follow the [instructions](https://cluster-api.sigs.k8s.io/developer/tilt.html) in the cluster-api repo. The instructions will walk you through cloning the Cluster API (CAPI) repository and configuring Tilt to use KinD to deploy the cluster api management components.
 
 > you may wish to checkout out the correct version of CAPI to match the [version used in CAPG][go.mod]
 
-Note that `tilt up` will be run from the `cluster-api repository` directory and the `tilt-settings.json` file will point back to the `cluster-api-provider-gcp` repository directory. Any changes you make to the source code in `cluster-api` or `cluster-api-provider-gcp` repositories will automatically redeployed to the `kind` cluster.
+Note that `tilt up` will be run from the `cluster-api repository` directory and the `tilt-settings.json` file will point back to the `cluster-api-provider-gcp` repository directory. Any changes you make to the source code in `cluster-api` or `cluster-api-provider-gcp` repositories will automatically redeployed to the KinD cluster.
 
 After you have cloned both repositories, your folder structure should look like:
 
@@ -271,7 +281,7 @@ delve -a tcp://localhost:30000
 
 #### Deploying a workload cluster
 
-After your kind management cluster is up and running with Tilt, ensure you have all the environment variables set as
+After your KinD management cluster is up and running with Tilt, ensure you have all the environment variables set as
 described in [Tilt for dev in CAPG](#tilt-for-dev-in-capg), and deploy a workload cluster with the following:
 
 ```shell
