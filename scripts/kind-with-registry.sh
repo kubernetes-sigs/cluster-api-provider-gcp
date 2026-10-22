@@ -34,7 +34,7 @@ fi
 # create registry container unless it already exists
 kind_network='kind'
 reg_name='kind-registry'
-reg_port='5000'
+reg_port="${KIND_REGISTRY_PORT:-5000}"
 kind_network='bridge'
 
 # create registry container unless it already exists
@@ -47,7 +47,7 @@ fi
 
 reg_host="${reg_name}"
 if [ "${kind_network}" = "bridge" ]; then
-    reg_host="$(docker inspect -f '{{.NetworkSettings.IPAddress}}' "${reg_name}")"
+    reg_host="$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' "${reg_name}")"
 fi
 echo "Registry Host: ${reg_host}"
 
@@ -77,7 +77,7 @@ nodes:
 EOF
 
 for node in $("${KIND}" get nodes --name "${KIND_CLUSTER_NAME}"); do
-  "${KUBECTL}" annotate node "${node}" tilt.dev/registry=localhost:${reg_port};
+  "${KUBECTL}" annotate node "${node}" tilt.dev/registry=localhost:"${reg_port}";
 done
 
 if [ "${kind_network}" != "bridge" ]; then
