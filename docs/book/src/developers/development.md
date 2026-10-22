@@ -145,6 +145,16 @@ To build a kind cluster and start Tilt, just run:
 make tilt-up
 ```
 
+**Note:** On macOS port 5000 (the default port for the KinD registry) is often taken by AirPlay Receiver, so you might
+get an error message about that port being used.
+
+If that happens, re-run `make tilt-up` with `KIND_REGISTRY_PORT=<PORT_NUMBER>` and KinD will use the specified port
+number instead. Make sure to choose a port that is not being used by another process!
+
+If a previous attempt left behind a `kind-registry` container or a `capg` KinD cluster, you can run
+`docker rm -f kind-registry` and `make kind-reset` to get back to a blank slate before trying again (`make kind-reset`
+also deletes `capg-e2e` and `clusterapi` clusters).
+
 Alternatively, you can also run:
 
 ```shell
