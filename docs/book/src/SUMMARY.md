@@ -25,6 +25,7 @@
     - [Firewall Rules](./topics/firewall-rules.md)
     - [Gateway API](./topics/gateway-api.md)
     - [GPUs](./topics/gpus.md)
+    - [Load Balancers](./topics/load-balancers.md)
     - [Machine Locations](./topics/machine-locations.md)
     - [Monitoring](./topics/monitoring.md)
     - [Preemptible VMs](./topics/preemptible-vms.md)

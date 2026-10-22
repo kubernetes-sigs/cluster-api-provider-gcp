@@ -23,7 +23,7 @@ If you prefer to create a new Network, follow [these instructions](https://cloud
 
 #### Cloud NAT
 This infrastructure provider sets up Kubernetes clusters using a
-[Global Load Balancer](https://cloud.google.com/load-balancing/) with a public ip address.
+[Global Load Balancer](https://cloud.google.com/load-balancing/) with a public ip address by default. Other load balancer types are also supported, see the [Load Balancers](./topics/load-balancers.md) section for more information.
 
 Kubernetes nodes, to communicate with the control plane, pull container images from registered (e.g. gcr.io or dockerhub) need to have NAT access or a public ip.
 By default, the provider creates Machines without a public IP.
