@@ -288,6 +288,12 @@ type GCPManagedControlPlaneStatus struct {
 	// +optional
 	Version *string `json:"version,omitempty"`
 
+	// FleetMembership records the GKE Fleet this cluster is currently registered
+	// into, if any. Used to deregister/re-register correctly if Spec.Fleet is
+	// unset or its Project is changed.
+	// +optional
+	FleetMembership *FleetMembershipStatus `json:"fleetMembership,omitempty"`
+
 	// v1beta2 groups all the fields that will be added or modified in GCPManagedControlPlane's status with the v1beta2 contract.
 	// +optional
 	V1Beta2 *GCPManagedControlPlaneV1Beta2Status `json:"v1beta2,omitempty"`
@@ -301,6 +307,13 @@ type GCPManagedControlPlaneV1Beta2Status struct {
 	// +listMapKey=type
 	// +kubebuilder:validation:MaxItems=32
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// FleetMembershipStatus records the GKE Fleet Membership a cluster is currently
+// registered into.
+type FleetMembershipStatus struct {
+	// Project is the project the Membership was created in.
+	Project string `json:"project"`
 }
 
 // +kubebuilder:object:root=true
@@ -382,6 +395,16 @@ type ManagedPrometheusConfig struct {
 	// GKE enables this by default; set to false to disable it. This field cannot be set on Autopilot clusters.
 	// +optional
 	Enabled *bool `json:"enabled,omitempty"`
+}
+
+// Fleet defines the GKE Fleet to register this cluster into. If set, the cluster
+// is registered as a Membership in the fleet; unsetting or changing it causes the
+// existing Membership to be deregistered.
+type Fleet struct {
+	// Project is the project hosting the fleet. If not set, defaults to the
+	// cluster's own project (Spec.Project).
+	// +optional
+	Project *string `json:"project,omitempty"`
 }
 
 // LoggingService is GKE logging service configuration.
