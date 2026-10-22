@@ -236,6 +236,55 @@ func TestService_createOrGetHealthCheck(t *testing.T) {
 				UnhealthyThreshold: 6,
 			},
 		},
+		{
+			name: "health check with custom config for external load balancer",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.LoadBalancer.HealthCheck = &infrav1.LoadBalancerHealthCheck{
+					CheckIntervalSec:   2,
+					TimeoutSec:         2,
+					HealthyThreshold:   3,
+					UnhealthyThreshold: 3,
+				}
+				return s
+			},
+			lbName: infrav1.APIServerRoleTagValue,
+			mockHealthChecks: &cloud.MockHealthChecks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockHealthChecksObj{},
+			},
+			want: &compute.HealthCheck{
+				CheckIntervalSec:   2,
+				HealthyThreshold:   3,
+				HttpsHealthCheck:   &compute.HTTPSHealthCheck{Port: 6443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
+				Name:               "my-cluster-apiserver",
+				SelfLink:           "https://www.googleapis.com/compute/v1/projects/proj-id/global/healthChecks/my-cluster-apiserver",
+				TimeoutSec:         2,
+				Type:               "HTTPS",
+				UnhealthyThreshold: 3,
+			},
+		},
+		{
+			name: "health check uses custom loadBalancerBackendPort",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.Network.LoadBalancerBackendPort = ptr.To[int32](443)
+				return s
+			},
+			lbName: infrav1.APIServerRoleTagValue,
+			mockHealthChecks: &cloud.MockHealthChecks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockHealthChecksObj{},
+			},
+			want: &compute.HealthCheck{
+				CheckIntervalSec:   5,
+				HealthyThreshold:   1,
+				HttpsHealthCheck:   &compute.HTTPSHealthCheck{Port: 443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
+				Name:               "my-cluster-apiserver",
+				SelfLink:           "https://www.googleapis.com/compute/v1/projects/proj-id/global/healthChecks/my-cluster-apiserver",
+				TimeoutSec:         5,
+				Type:               "HTTPS",
+				UnhealthyThreshold: 6,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -290,6 +339,37 @@ func TestService_createOrGetRegionalHealthCheck(t *testing.T) {
 				TimeoutSec:         5,
 				Type:               "HTTPS",
 				UnhealthyThreshold: 6,
+			},
+		},
+		{
+			name: "regional health check with custom config for internal load balancer",
+			scope: func(s *scope.ClusterScope) Scope {
+				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
+					LoadBalancerType: &lbTypeInternal,
+					HealthCheck: &infrav1.LoadBalancerHealthCheck{
+						CheckIntervalSec:   2,
+						TimeoutSec:         2,
+						HealthyThreshold:   3,
+						UnhealthyThreshold: 3,
+					},
+				}
+				return s
+			},
+			lbName: infrav1.InternalRoleTagValue,
+			mockHealthChecks: &cloud.MockRegionHealthChecks{
+				ProjectRouter: &cloud.SingleProjectRouter{ID: "proj-id"},
+				Objects:       map[meta.Key]*cloud.MockRegionHealthChecksObj{},
+			},
+			want: &compute.HealthCheck{
+				CheckIntervalSec:   2,
+				HealthyThreshold:   3,
+				HttpsHealthCheck:   &compute.HTTPSHealthCheck{Port: 6443, PortSpecification: "USE_FIXED_PORT", RequestPath: "/readyz"},
+				Name:               "my-cluster-api-internal",
+				Region:             "us-central1",
+				SelfLink:           "https://www.googleapis.com/compute/v1/projects/proj-id/regions/us-central1/healthChecks/my-cluster-api-internal",
+				TimeoutSec:         2,
+				Type:               "HTTPS",
+				UnhealthyThreshold: 3,
 			},
 		},
 	}
