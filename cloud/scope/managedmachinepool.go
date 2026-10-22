@@ -39,6 +39,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	defaultMaxSurge               = 1
+	defaultMaxUnavailable         = 0
+	defaultNodepoolUpdateStrategy = containerpb.NodePoolUpdateStrategy_SURGE
+)
+
 // ManagedMachinePoolScopeParams defines the input parameters used to create a new Scope.
 type ManagedMachinePoolScopeParams struct {
 	ManagedClusterClient        *container.ClusterManagerClient
@@ -242,6 +248,15 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 		sdkNodePool.Management = &containerpb.NodeManagement{
 			AutoRepair:  nodePool.Spec.Management.AutoRepair,
 			AutoUpgrade: nodePool.Spec.Management.AutoUpgrade,
+		}
+	}
+	if nodePool.Spec.UpgradeSettings != nil {
+		defaultStrategy := defaultNodepoolUpdateStrategy
+
+		sdkNodePool.UpgradeSettings = &containerpb.NodePool_UpgradeSettings{
+			MaxSurge:       ptr.Deref(nodePool.Spec.UpgradeSettings.MaxSurge, defaultMaxSurge),
+			MaxUnavailable: ptr.Deref(nodePool.Spec.UpgradeSettings.MaxUnavailable, defaultMaxUnavailable),
+			Strategy:       &defaultStrategy,
 		}
 	}
 	if nodePool.Spec.MaxPodsPerNode != nil {
