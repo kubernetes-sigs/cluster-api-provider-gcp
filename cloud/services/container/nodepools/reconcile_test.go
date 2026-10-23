@@ -30,6 +30,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/durationpb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -47,7 +48,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var surgeUpdateStrategy = containerpb.NodePoolUpdateStrategy_SURGE
+var (
+	batchNodeCount          = int32(50)
+	batchPercentage         = int32(75)
+	batchPercentageFloat    = float32(0.45)
+	blueGreenUpdateStrategy = containerpb.NodePoolUpdateStrategy_BLUE_GREEN
+	surgeUpdateStrategy     = containerpb.NodePoolUpdateStrategy_SURGE
+)
 
 func init() {
 	_ = infrav1exp.AddToScheme(scheme.Scheme)
@@ -497,6 +504,132 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 				},
 			},
 			wantNeedUpdate: false,
+		},
+		{
+			name: "no diff for BLUE_GREEN updatestrategy if identical",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						UpgradeSettings: &infrav1exp.NodePoolUpgradeSettings{
+							Strategy: new("BLUE_GREEN"),
+							BlueGreenSettings: &infrav1exp.BlueGreenSettings{
+								StandardRolloutPolicy: &infrav1exp.StandardRolloutPolicy{
+									BatchNodeCount: &batchNodeCount,
+								},
+							},
+						},
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				UpgradeSettings: &containerpb.NodePool_UpgradeSettings{
+					Strategy: &blueGreenUpdateStrategy,
+					BlueGreenSettings: &containerpb.BlueGreenSettings{
+						NodePoolSoakDuration: durationpb.New(1 * time.Hour),
+						RolloutPolicy: &containerpb.BlueGreenSettings_StandardRolloutPolicy_{
+							StandardRolloutPolicy: &containerpb.BlueGreenSettings_StandardRolloutPolicy{
+								UpdateBatchSize:   &containerpb.BlueGreenSettings_StandardRolloutPolicy_BatchNodeCount{BatchNodeCount: 50},
+								BatchSoakDuration: durationpb.New(0),
+							},
+						},
+					},
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "change in BLUE_GREEN percentage gives update",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						UpgradeSettings: &infrav1exp.NodePoolUpgradeSettings{
+							Strategy: new("BLUE_GREEN"),
+							BlueGreenSettings: &infrav1exp.BlueGreenSettings{
+								StandardRolloutPolicy: &infrav1exp.StandardRolloutPolicy{
+									BatchPercentage: &batchPercentage,
+								},
+							},
+						},
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				UpgradeSettings: &containerpb.NodePool_UpgradeSettings{
+					Strategy: &blueGreenUpdateStrategy,
+					BlueGreenSettings: &containerpb.BlueGreenSettings{
+						NodePoolSoakDuration: durationpb.New(1 * time.Hour),
+						RolloutPolicy: &containerpb.BlueGreenSettings_StandardRolloutPolicy_{
+							StandardRolloutPolicy: &containerpb.BlueGreenSettings_StandardRolloutPolicy{
+								UpdateBatchSize:   &containerpb.BlueGreenSettings_StandardRolloutPolicy_BatchPercentage{BatchPercentage: batchPercentageFloat},
+								BatchSoakDuration: durationpb.New(0),
+							},
+						},
+					},
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateNodePoolRequest) {
+				t.Helper()
+				g := NewWithT(t)
+
+				g.Expect(req.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchPercentage()).To(Equal(float32(0.75)))
+			},
+		},
+		{
+			name: "change in strategy to BLUE_GREEN gives update",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						UpgradeSettings: &infrav1exp.NodePoolUpgradeSettings{
+							Strategy: new("BLUE_GREEN"),
+							BlueGreenSettings: &infrav1exp.BlueGreenSettings{
+								StandardRolloutPolicy: &infrav1exp.StandardRolloutPolicy{
+									BatchPercentage: &batchPercentage,
+								},
+							},
+						},
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				UpgradeSettings: &containerpb.NodePool_UpgradeSettings{
+					Strategy:       &surgeUpdateStrategy,
+					MaxUnavailable: 5,
+					MaxSurge:       10,
+				},
+			},
+			wantNeedUpdate: true,
+		},
+		{
+			name: "change in strategy from SURGE to BLUE_GREEN",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						UpgradeSettings: &infrav1exp.NodePoolUpgradeSettings{
+							Strategy: new("SURGE"),
+						},
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				UpgradeSettings: &containerpb.NodePool_UpgradeSettings{
+					Strategy: &blueGreenUpdateStrategy,
+					BlueGreenSettings: &containerpb.BlueGreenSettings{
+						NodePoolSoakDuration: durationpb.New(1 * time.Hour),
+						RolloutPolicy: &containerpb.BlueGreenSettings_StandardRolloutPolicy_{
+							StandardRolloutPolicy: &containerpb.BlueGreenSettings_StandardRolloutPolicy{
+								UpdateBatchSize:   &containerpb.BlueGreenSettings_StandardRolloutPolicy_BatchPercentage{BatchPercentage: batchPercentageFloat},
+								BatchSoakDuration: durationpb.New(0),
+							},
+						},
+					},
+				},
+			},
+			wantNeedUpdate: true,
 		},
 	}
 
