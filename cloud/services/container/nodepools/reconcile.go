@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/resourceurl"
 
 	"google.golang.org/api/iterator"
@@ -641,7 +642,7 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 	// Node pool upgrade settings — controls how a machine type change (or any other change
 	// that requires replacing nodes) is rolled out.
 	if desiredUpgradeSettings := desiredNodePool.GetUpgradeSettings(); desiredUpgradeSettings != nil &&
-		!cmp.Equal(desiredUpgradeSettings, existingNodePool.GetUpgradeSettings(), cmpopts.IgnoreUnexported(containerpb.NodePool_UpgradeSettings{})) {
+		!proto.Equal(desiredUpgradeSettings, existingNodePool.GetUpgradeSettings()) {
 		needUpdate = true
 		updateNodePoolRequest.UpgradeSettings = desiredUpgradeSettings
 	}
