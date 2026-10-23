@@ -1,9 +1,12 @@
 package scope
 
 import (
+	"time"
+
 	"cloud.google.com/go/container/apiv1/containerpb"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/types/known/durationpb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -249,6 +252,116 @@ var _ = Describe("GCPManagedMachinePool Scope", func() {
 				MaxUnavailable: maxUnavailable,
 				Strategy:       &strategy,
 			}))
+		})
+		It("UpgradeSettings should accept SURGE explicitly", func() {
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				Strategy: new("SURGE"),
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			strategy := containerpb.NodePoolUpdateStrategy_SURGE
+			Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+				MaxSurge:       1,
+				MaxUnavailable: 0,
+				Strategy:       &strategy,
+			}))
+		})
+		It("Unset strategy defaults to SURGE", func() {
+			maxSurge := int32(10)
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				MaxSurge: &maxSurge,
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			strategy := containerpb.NodePoolUpdateStrategy_SURGE
+			Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+				MaxSurge:       maxSurge,
+				MaxUnavailable: 0,
+				Strategy:       &strategy,
+			}))
+		})
+		It("SURGE strategies should not have BlueGreenSettings", func() {
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				Strategy: new("SURGE"),
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings()).To(BeNil())
+		})
+		It("BLUE_GREEN converts percentages correctly", func() {
+			percentage := int32(50)
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				Strategy: new("BLUE_GREEN"),
+				BlueGreenSettings: &v1beta1.BlueGreenSettings{
+					StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+						BatchPercentage: &percentage,
+					},
+				},
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchPercentage()).To(Equal(float32(0.5)))
+		})
+		It("BLUE_GREEN retains node count", func() {
+			nodeCount := int32(50)
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				Strategy: new("BLUE_GREEN"),
+				BlueGreenSettings: &v1beta1.BlueGreenSettings{
+					StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+						BatchNodeCount: &nodeCount,
+					},
+				},
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchNodeCount()).To(Equal(int32(50)))
+		})
+		It("BLUE_GREEN adheres to soak defaults", func() {
+			nodeCount := int32(50)
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				Strategy: new("BLUE_GREEN"),
+				BlueGreenSettings: &v1beta1.BlueGreenSettings{
+					StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+						BatchNodeCount: &nodeCount,
+					},
+				},
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetNodePoolSoakDuration()).To(Equal(durationpb.New(1 * time.Hour)))
+			Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchSoakDuration()).To(Equal(durationpb.New(0)))
+		})
+		It("BLUE_GREEN respects explicit durations", func() {
+			nodeCount := int32(50)
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				Strategy: new("BLUE_GREEN"),
+				BlueGreenSettings: &v1beta1.BlueGreenSettings{
+					StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+						BatchNodeCount:    &nodeCount,
+						BatchSoakDuration: &metav1.Duration{Duration: 2 * time.Hour},
+					},
+					NodePoolSoakDuration: &metav1.Duration{Duration: 4 * time.Hour},
+				},
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetNodePoolSoakDuration()).To(Equal(durationpb.New(4 * time.Hour)))
+			Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchSoakDuration()).To(Equal(durationpb.New(2 * time.Hour)))
+		})
+		It("BLUE_GREEN doesn't send maxSurge or maxUnavailable", func() {
+			nodeCount := int32(50)
+			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+				Strategy: new("BLUE_GREEN"),
+				BlueGreenSettings: &v1beta1.BlueGreenSettings{
+					StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+						BatchNodeCount: &nodeCount,
+					},
+				},
+			}
+			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
+
+			Expect(sdkNodePool.GetUpgradeSettings().GetMaxSurge()).To(Equal(int32(0)))
+			Expect(sdkNodePool.GetUpgradeSettings().GetMaxUnavailable()).To(Equal(int32(0)))
 		})
 	})
 })

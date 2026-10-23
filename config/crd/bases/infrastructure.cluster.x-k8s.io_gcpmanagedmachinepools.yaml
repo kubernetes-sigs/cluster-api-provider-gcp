@@ -327,6 +327,46 @@ spec:
                   UpgradeSettings specifies the rollout strategy GKE uses when a change to
                   this node pool requires replacing nodes, such as an InstanceType change.
                 properties:
+                  blueGreenSettings:
+                    description: |-
+                      BlueGreenSettings are the settings that configure a Blue/Green node
+                      rollout.
+                    properties:
+                      nodePoolSoakDuration:
+                        description: |-
+                          NodePoolSoakDuration is the length of time that node pools should have to 'soak' before
+                          the rollout moves on to the next phase.
+                        type: string
+                      standardRolloutPolicy:
+                        description: StandardRolloutPolicy is the policy applied during
+                          the rollout of new nodes
+                        properties:
+                          batchNodeCount:
+                            description: BatchNodeCount is the size (as a number of
+                              nodes) of each of the batches where changes are applied
+                            format: int32
+                            minimum: 0
+                            type: integer
+                          batchPercentage:
+                            description: BatchPercentage is the size (as an integer
+                              percentage) of each of the batches where changes are
+                              applied
+                            format: int32
+                            maximum: 100
+                            minimum: 1
+                            type: integer
+                          batchSoakDuration:
+                            description: BatchSoakDuration indicates how long each
+                              batch should 'soak' after changes are applied before
+                              moving on
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: batchPercentage and batchNodeCount are mutually
+                            exclusive, and at least one must be included
+                          rule: (has(self.batchPercentage) && !has(self.batchNodeCount))
+                            || (!has(self.batchPercentage) && has(self.batchNodeCount))
+                    type: object
                   maxSurge:
                     description: |-
                       MaxSurge is the number of extra nodes to add to the node pool during an
@@ -347,8 +387,20 @@ spec:
                       pool.
                     enum:
                     - SURGE
+                    - BLUE_GREEN
                     type: string
                 type: object
+                x-kubernetes-validations:
+                - message: BLUE_GREEN requires blueGreenSettings and standardRolloutPolicy
+                  rule: '!(has(self.strategy) && self.strategy == ''BLUE_GREEN'')
+                    || (has(self.blueGreenSettings) && has(self.blueGreenSettings.standardRolloutPolicy))'
+                - message: blueGreenSettings can only be set with a BLUE_GREEN strategy
+                  rule: '!((!(has(self.strategy)) || self.strategy == ''SURGE'') &&
+                    has(self.blueGreenSettings))'
+                - message: cannot set maxSurge or maxUnavailable with a BLUE_GREEN
+                    strategy
+                  rule: '!(has(self.strategy) && self.strategy == ''BLUE_GREEN'' &&
+                    (has(self.maxSurge) || has(self.maxUnavailable)))'
             type: object
           status:
             description: GCPManagedMachinePoolStatus defines the observed state of

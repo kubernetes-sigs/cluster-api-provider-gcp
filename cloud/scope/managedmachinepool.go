@@ -20,7 +20,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -40,8 +43,10 @@ import (
 )
 
 const (
+	defaultBatchSoakDuration      = 0
 	defaultMaxSurge               = 1
 	defaultMaxUnavailable         = 0
+	defaultNodepoolSoakDuration   = 1 * time.Hour
 	defaultNodepoolUpdateStrategy = containerpb.NodePoolUpdateStrategy_SURGE
 )
 
@@ -251,13 +256,7 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 		}
 	}
 	if nodePool.Spec.UpgradeSettings != nil {
-		defaultStrategy := defaultNodepoolUpdateStrategy
-
-		sdkNodePool.UpgradeSettings = &containerpb.NodePool_UpgradeSettings{
-			MaxSurge:       ptr.Deref(nodePool.Spec.UpgradeSettings.MaxSurge, defaultMaxSurge),
-			MaxUnavailable: ptr.Deref(nodePool.Spec.UpgradeSettings.MaxUnavailable, defaultMaxUnavailable),
-			Strategy:       &defaultStrategy,
-		}
+		sdkNodePool.UpgradeSettings = convertToSdkUpgradeSettings(nodePool.Spec.UpgradeSettings)
 	}
 	if nodePool.Spec.MaxPodsPerNode != nil {
 		sdkNodePool.MaxPodsConstraint = &containerpb.MaxPodsConstraint{
@@ -323,6 +322,56 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 		sdkNodePool.Version = strings.Replace(machinePool.Spec.Template.Spec.Version, "v", "", 1)
 	}
 	return &sdkNodePool
+}
+
+// convertToSdkUpgradeSettings converts our internal representation of UpgradeSettings to the correct version to
+// send to the GKE API
+func convertToSdkUpgradeSettings(upgradeSettings *infrav1exp.NodePoolUpgradeSettings) *containerpb.NodePool_UpgradeSettings {
+	strategy := defaultNodepoolUpdateStrategy
+	if ptr.Deref(upgradeSettings.Strategy, "") != "" {
+		strategy = containerpb.NodePoolUpdateStrategy(containerpb.NodePoolUpdateStrategy_value[*upgradeSettings.Strategy])
+	}
+
+	switch strategy {
+	default:
+		return &containerpb.NodePool_UpgradeSettings{
+			MaxSurge:       ptr.Deref(upgradeSettings.MaxSurge, defaultMaxSurge),
+			MaxUnavailable: ptr.Deref(upgradeSettings.MaxUnavailable, defaultMaxUnavailable),
+			Strategy:       &strategy,
+		}
+	case containerpb.NodePoolUpdateStrategy_BLUE_GREEN:
+		return &containerpb.NodePool_UpgradeSettings{
+			Strategy: &strategy,
+			BlueGreenSettings: &containerpb.BlueGreenSettings{
+				RolloutPolicy: convertToSdkRolloutPolicy(upgradeSettings.BlueGreenSettings.StandardRolloutPolicy),
+				NodePoolSoakDuration: durationpb.New(ptr.Deref(upgradeSettings.BlueGreenSettings.NodePoolSoakDuration, metav1.Duration{
+					Duration: defaultNodepoolSoakDuration,
+				}).Duration),
+			},
+		}
+	}
+}
+
+// convertToSdkRolloutPolicy converts our internal representation of the rolloutPolicy to the correct version to
+// send to the GKE API
+func convertToSdkRolloutPolicy(rolloutPolicy *infrav1exp.StandardRolloutPolicy) *containerpb.BlueGreenSettings_StandardRolloutPolicy_ {
+	result := containerpb.BlueGreenSettings_StandardRolloutPolicy_{
+		StandardRolloutPolicy: &containerpb.BlueGreenSettings_StandardRolloutPolicy{
+			BatchSoakDuration: durationpb.New(ptr.Deref(rolloutPolicy.BatchSoakDuration, metav1.Duration{
+				Duration: defaultBatchSoakDuration,
+			}).Duration),
+		},
+	}
+	if rolloutPolicy.BatchNodeCount != nil {
+		result.StandardRolloutPolicy.UpdateBatchSize = &containerpb.BlueGreenSettings_StandardRolloutPolicy_BatchNodeCount{
+			BatchNodeCount: *rolloutPolicy.BatchNodeCount,
+		}
+	} else {
+		result.StandardRolloutPolicy.UpdateBatchSize = &containerpb.BlueGreenSettings_StandardRolloutPolicy_BatchPercentage{
+			BatchPercentage: float32(*rolloutPolicy.BatchPercentage) / 100,
+		}
+	}
+	return &result
 }
 
 // ConvertToSdkNodePools converts node pools to format that is used by GCP SDK.

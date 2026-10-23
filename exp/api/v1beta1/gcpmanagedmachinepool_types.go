@@ -215,10 +215,12 @@ type NodePoolManagement struct {
 // NodePoolUpgradeSettings specifies how a node pool rolls out changes that require
 // replacing nodes, such as an InstanceType change. SURGE is GKE's default strategy
 // if Strategy is unset; MaxSurge and MaxUnavailable only apply to SURGE.
-// BLUE_GREEN is not currently supported.
+// +kubebuilder:validation:XValidation:rule="!(has(self.strategy) && self.strategy == 'BLUE_GREEN') || (has(self.blueGreenSettings) && has(self.blueGreenSettings.standardRolloutPolicy))",message="BLUE_GREEN requires blueGreenSettings and standardRolloutPolicy"
+// +kubebuilder:validation:XValidation:rule="!((!(has(self.strategy)) || self.strategy == 'SURGE') && has(self.blueGreenSettings))",message="blueGreenSettings can only be set with a BLUE_GREEN strategy"
+// +kubebuilder:validation:XValidation:rule="!(has(self.strategy) && self.strategy == 'BLUE_GREEN' && (has(self.maxSurge) || has(self.maxUnavailable)))",message="cannot set maxSurge or maxUnavailable with a BLUE_GREEN strategy"
 type NodePoolUpgradeSettings struct {
 	// Strategy is the upgrade strategy to use for the node pool.
-	// +kubebuilder:validation:Enum=SURGE
+	// +kubebuilder:validation:Enum=SURGE;BLUE_GREEN
 	// +optional
 	Strategy *string `json:"strategy,omitempty"`
 	// MaxSurge is the number of extra nodes to add to the node pool during an
@@ -232,6 +234,38 @@ type NodePoolUpgradeSettings struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
+	// BlueGreenSettings are the settings that configure a Blue/Green node
+	// rollout.
+	// +optional
+	BlueGreenSettings *BlueGreenSettings `json:"blueGreenSettings,omitempty"`
+}
+
+// BlueGreenSettings parameterises a Blue/Green rollout
+type BlueGreenSettings struct {
+	// StandardRolloutPolicy is the policy applied during the rollout of new nodes
+	// +optional
+	StandardRolloutPolicy *StandardRolloutPolicy `json:"standardRolloutPolicy,omitempty"`
+	// NodePoolSoakDuration is the length of time that node pools should have to 'soak' before
+	// the rollout moves on to the next phase.
+	// +optional
+	NodePoolSoakDuration *metav1.Duration `json:"nodePoolSoakDuration,omitempty"`
+}
+
+// StandardRolloutPolicy determines the way in which a node rollout occurs
+// +kubebuilder:validation:XValidation:rule="(has(self.batchPercentage) && !has(self.batchNodeCount)) || (!has(self.batchPercentage) && has(self.batchNodeCount))",message="batchPercentage and batchNodeCount are mutually exclusive, and at least one must be included"
+type StandardRolloutPolicy struct {
+	// BatchPercentage is the size (as an integer percentage) of each of the batches where changes are applied
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	BatchPercentage *int32 `json:"batchPercentage,omitempty"`
+	// BatchNodeCount is the size (as a number of nodes) of each of the batches where changes are applied
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	BatchNodeCount *int32 `json:"batchNodeCount,omitempty"`
+	// BatchSoakDuration indicates how long each batch should 'soak' after changes are applied before moving on
+	// +optional
+	BatchSoakDuration *metav1.Duration `json:"batchSoakDuration,omitempty"`
 }
 
 // ManagedNodePoolLocationPolicy specifies the location policy of the node pool when autoscaling is enabled.
