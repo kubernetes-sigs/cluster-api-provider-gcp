@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
+	capg "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 // TaintEffect is the effect for a Kubernetes taint.
@@ -108,6 +109,27 @@ func ConvertToSdkAutoscaling(autoscaling *NodePoolAutoScaling) *containerpb.Node
 	}
 
 	return &sdkAutoscaling
+}
+
+// ConvertToSdkConfidentialNodes converts a node pool's ConfidentialCompute policy to a value that is
+// used by GCP SDK.
+func ConvertToSdkConfidentialNodes(policy *capg.ConfidentialComputePolicy) *containerpb.ConfidentialNodes {
+	if policy == nil {
+		return nil
+	}
+
+	confidentialNodes := &containerpb.ConfidentialNodes{
+		Enabled: *policy != capg.ConfidentialComputePolicyDisabled,
+	}
+	switch *policy {
+	case capg.ConfidentialComputePolicyEnabled, capg.ConfidentialComputePolicySEV:
+		confidentialNodes.ConfidentialInstanceType = containerpb.ConfidentialNodes_SEV
+	case capg.ConfidentialComputePolicySEVSNP:
+		confidentialNodes.ConfidentialInstanceType = containerpb.ConfidentialNodes_SEV_SNP
+	case capg.ConfidentialComputePolicyTDX:
+		confidentialNodes.ConfidentialInstanceType = containerpb.ConfidentialNodes_TDX
+	}
+	return confidentialNodes
 }
 
 // ConvertFromSdkNodeVersion converts GCP SDK node version to k8s version.
