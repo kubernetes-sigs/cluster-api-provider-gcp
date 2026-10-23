@@ -20,34 +20,36 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	. "github.com/onsi/gomega"
 )
 
 func TestCredentialsClient_FromADCFile_EnvVarNotSet(t *testing.T) {
+	g := NewWithT(t)
 	t.Setenv(ConfigFileEnvVar, "")
 	data, err := CredentialsClient{}.fromADCFile()
-	assert.Nil(t, err)
-	assert.Nil(t, data)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(data).To(BeNil())
 }
 
 func TestCredentialsClient_FromADCFile_ValidFile(t *testing.T) {
+	g := NewWithT(t)
 	content := []byte(`{"type":"service_account","project_id":"test-project"}`)
 	f, err := os.CreateTemp(t.TempDir(), "creds-*.json")
-	require.NoError(t, err)
+	g.Expect(err).NotTo(HaveOccurred())
 	_, err = f.Write(content)
-	require.NoError(t, err)
-	require.NoError(t, f.Close())
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(f.Close()).To(Succeed())
 
 	t.Setenv(ConfigFileEnvVar, f.Name())
 	data, err := CredentialsClient{}.fromADCFile()
-	assert.NoError(t, err)
-	assert.Equal(t, content, data)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(data).To(Equal(content))
 }
 
 func TestCredentialsClient_FromADCFile_MissingFile(t *testing.T) {
+	g := NewWithT(t)
 	t.Setenv(ConfigFileEnvVar, "/nonexistent/path/credentials.json")
 	data, err := CredentialsClient{}.fromADCFile()
-	assert.Error(t, err)
-	assert.Nil(t, data)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(data).To(BeNil())
 }
