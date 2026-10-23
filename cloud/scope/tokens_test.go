@@ -68,6 +68,25 @@ func serviceAccountJSON(t *testing.T, tokenURI string) []byte {
 	return data
 }
 
+// authorizedUserJSON builds a minimal authorized_user credential blob, the
+// format produced by gcloud auth application-default login. Unlike
+// service_account credentials, these carry no private key — only OAuth2
+// client credentials and a refresh token that is validated lazily on first
+// use, so the test values below are sufficient for credential construction.
+func authorizedUserJSON(t *testing.T) []byte {
+	t.Helper()
+	g := NewWithT(t)
+
+	data, err := json.Marshal(map[string]string{
+		"type":          "authorized_user",
+		"client_id":     "test-client-id.apps.googleusercontent.com",
+		"client_secret": "test-client-secret",
+		"refresh_token": "test-refresh-token",
+	})
+	g.Expect(err).NotTo(HaveOccurred())
+	return data
+}
+
 func TestNewTokenClient(t *testing.T) {
 	tests := []struct {
 		name    string

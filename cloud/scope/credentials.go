@@ -34,6 +34,8 @@ import (
 // that contains the path to the credentials file.
 const ConfigFileEnvVar = "GOOGLE_APPLICATION_CREDENTIALS"
 
+var errUnrecognizedCredentialType = errors.New("unrecognized credential type")
+
 // CredentialsClient resolves GCP credentials in a standard form, regardless
 // of where they actually come from: an explicit service account key
 // referenced by a Secret, a credentials file referenced by
@@ -80,6 +82,15 @@ func (c CredentialsClient) Resolve(ctx context.Context, credentialsRef *infrav1.
 
 	credType, err := c.Type(rawData)
 	if err != nil {
+		if errors.Is(err, errUnrecognizedCredentialType) {
+			// Credential types we don't explicitly handle (authorized_user, etc.)
+			// are delegated to FindDefaultCredentials, which supports them all.
+			creds, fdcErr := google.FindDefaultCredentials(ctx, scopes...)
+			if fdcErr != nil {
+				return ResolvedCredentials{}, fmt.Errorf("finding default credentials (%v): %w", err, fdcErr)
+			}
+			return ResolvedCredentials{RawData: rawData, Credentials: creds}, nil
+		}
 		return ResolvedCredentials{}, err
 	}
 
@@ -108,12 +119,14 @@ func (CredentialsClient) Type(rawData []byte) (google.CredentialsType, error) {
 	}
 
 	switch header.Type {
+	case "service_account":
+		return google.ServiceAccount, nil
 	case "external_account":
 		return google.ExternalAccount, nil
 	case "impersonated_service_account":
 		return google.ImpersonatedServiceAccount, nil
 	default:
-		return google.ServiceAccount, nil
+		return "", fmt.Errorf("%w: %q", errUnrecognizedCredentialType, header.Type)
 	}
 }
 
