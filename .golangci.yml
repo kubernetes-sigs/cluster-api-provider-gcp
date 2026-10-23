@@ -70,6 +70,7 @@ linters:
           list-mode: strict
           files:
             - "**/api/**/*.go"
+            - "!$test"
           allow:
             - $gostd
             - cloud.google.com/go/container/apiv1/containerpb$
