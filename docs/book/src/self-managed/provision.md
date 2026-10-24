@@ -20,11 +20,18 @@ export GCP_REGION=us-east4
 export GCP_PROJECT=cluster-api-gcp-project
 export CONTROL_PLANE_MACHINE_COUNT=1
 export WORKER_MACHINE_COUNT=1
-export KUBERNETES_VERSION=1.29.3
+export KUBERNETES_VERSION=1.36.5
 export GCP_CONTROL_PLANE_MACHINE_TYPE=n1-standard-2
 export GCP_NODE_MACHINE_TYPE=n1-standard-2
 export GCP_NETWORK_NAME=default
 export IMAGE_ID=projects/cluster-api-gcp-project/global/images/your-image
+```
+
+If you want/need to configure the [Cluster Controller Manager](./../self-managed/ccm.md) as well you can also add the following lines:
+
+```sh
+export CCM_VERSION="v36.4.2"
+export POD_CIDR="192.168.0.0/16"
 ```
 
 ## Generate cluster definition
