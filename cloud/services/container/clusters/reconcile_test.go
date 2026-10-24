@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -70,6 +71,20 @@ func TestNetworkName(t *testing.T) {
 			}
 		})
 	}
+}
+
+// noDiffControlPlaneEndpointsConfig is the "authorized networks disabled" config an existing
+// cluster needs so that a nil spec.MasterAuthorizedNetworksConfig doesn't itself trigger a diff
+// (see the "no panic when existing cluster has nil ControlPlaneEndpointsConfig" case below) -
+// shared by test cases below that want to isolate a diff in one specific field.
+var noDiffControlPlaneEndpointsConfig = &containerpb.ControlPlaneEndpointsConfig{
+	IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+		AuthorizedNetworksConfig: &containerpb.MasterAuthorizedNetworksConfig{
+			Enabled:                     false,
+			CidrBlocks:                  []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{},
+			GcpPublicCidrsAccessEnabled: ptr.To(false),
+		},
+	},
 }
 
 func TestCheckDiffAndPrepareUpdate(t *testing.T) {
@@ -597,6 +612,115 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 					t.Errorf("expected DesiredDnsConfig CLOUD_DNS, got %v", req.GetUpdate().GetDesiredDnsConfig().GetClusterDns())
 				}
 			},
+		},
+		{
+			name: "update needed when shielded nodes differs",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName:   "test-cluster",
+						Project:       "test-project",
+						Location:      "us-central1",
+						ShieldedNodes: ptr.To(true),
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ShieldedNodes: &containerpb.ShieldedNodes{Enabled: false},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				if !req.GetUpdate().GetDesiredShieldedNodes().GetEnabled() {
+					t.Error("expected DesiredShieldedNodes to be enabled")
+				}
+			},
+		},
+		{
+			name: "no diff when shielded nodes is unset, regardless of what GKE actually has",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ShieldedNodes:               &containerpb.ShieldedNodes{Enabled: true},
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig,
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "update needed when logging config components differ",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						LoggingConfig: &infrav1exp.LoggingConfig{
+							EnableComponents: []infrav1exp.LoggingComponent{
+								infrav1exp.LoggingComponentSystemComponents,
+								infrav1exp.LoggingComponentWorkloads,
+							},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				LoggingConfig: &containerpb.LoggingConfig{
+					ComponentConfig: &containerpb.LoggingComponentConfig{
+						EnableComponents: []containerpb.LoggingComponentConfig_Component{
+							containerpb.LoggingComponentConfig_SYSTEM_COMPONENTS,
+						},
+					},
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				got := req.GetUpdate().GetDesiredLoggingConfig().GetComponentConfig().GetEnableComponents()
+				want := []containerpb.LoggingComponentConfig_Component{
+					containerpb.LoggingComponentConfig_SYSTEM_COMPONENTS,
+					containerpb.LoggingComponentConfig_WORKLOADS,
+				}
+				if !cmp.Equal(got, want) {
+					t.Errorf("DesiredLoggingConfig components = %v, want %v", got, want)
+				}
+			},
+		},
+		{
+			name: "no diff when logging config components match in a different order",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						LoggingConfig: &infrav1exp.LoggingConfig{
+							EnableComponents: []infrav1exp.LoggingComponent{
+								infrav1exp.LoggingComponentWorkloads,
+								infrav1exp.LoggingComponentSystemComponents,
+							},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				LoggingConfig: &containerpb.LoggingConfig{
+					ComponentConfig: &containerpb.LoggingComponentConfig{
+						EnableComponents: []containerpb.LoggingComponentConfig_Component{
+							containerpb.LoggingComponentConfig_SYSTEM_COMPONENTS,
+							containerpb.LoggingComponentConfig_WORKLOADS,
+						},
+					},
+				},
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig,
+			},
+			wantNeedUpdate: false,
 		},
 	}
 

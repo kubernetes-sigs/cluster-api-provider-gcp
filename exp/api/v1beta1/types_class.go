@@ -87,6 +87,17 @@ type GCPManagedControlPlaneClassSpec struct {
 	// MonitoringConfig represents configuration of the monitoring feature of the GKE cluster.
 	// +optional
 	MonitoringConfig *MonitoringConfig `json:"monitoringConfig,omitempty"`
+
+	// ShieldedNodes indicates whether Shielded GKE Nodes (secure boot, vTPM and integrity
+	// monitoring) are enabled for all nodes in this cluster. Defaults to GKE's own default when unset.
+	// Enabling this will cause nodes to be recreated so disruption should be expected.
+	// +optional
+	ShieldedNodes *bool `json:"shieldedNodes,omitempty"`
+
+	// LoggingConfig lists the component-based GKE logging components to enable. This is the modern
+	// replacement for LoggingService and takes precedence over it; setting both is rejected.
+	// +optional
+	LoggingConfig *LoggingConfig `json:"loggingConfig,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.

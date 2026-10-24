@@ -448,6 +448,137 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 			},
 		},
 		{
+			name:        "defaultMaxPodsPerNode without UseIPAliases should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases:          false,
+						DefaultMaxPodsPerNode: ptr.To(int64(110)),
+					},
+				},
+			},
+		},
+		{
+			name:        "defaultMaxPodsPerNode with UseIPAliases should be valid",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases:          true,
+						DefaultMaxPodsPerNode: ptr.To(int64(110)),
+					},
+				},
+			},
+		},
+		{
+			name:        "clusterIpv4Cidr with UseIPAliases should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases:    true,
+						ClusterIpv4Cidr: ptr.To("10.0.0.0/14"),
+					},
+				},
+			},
+		},
+		{
+			name:        "clusterIpv4Cidr without UseIPAliases should be valid",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases:    false,
+						ClusterIpv4Cidr: ptr.To("10.0.0.0/14"),
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingService and loggingConfig together should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					LoggingService: ptr.To(expinfrav1.LoggingService("none")),
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{expinfrav1.LoggingComponentSystemComponents},
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingConfig alone should be valid",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{expinfrav1.LoggingComponentSystemComponents},
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingConfig with an empty list should be valid",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{},
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingConfig on an autopilot cluster should not cause an error",
+			expectError: false,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{expinfrav1.LoggingComponentSystemComponents},
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingConfig on an autopilot cluster with an empty components list should cause error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{},
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingConfig on an autopilot cluster with a list that omits SYSTEM_COMPONENTS should cause an error",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{expinfrav1.LoggingComponentAPIServer, expinfrav1.LoggingComponentScheduler},
+					},
+				},
+			},
+		},
+		{
 			name:        "pod secondaryRangeName with uppercase letters should be invalid",
 			expectError: true,
 			expectWarn:  false,
@@ -470,6 +601,18 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 						UseIPAliases: true,
 						Pod:          &expinfrav1.ClusterNetworkPod{SecondaryRangeName: ptr.To("my-range-")},
 					},
+				},
+			},
+		},
+		{
+			name:        "shieldedNodes should be rejected under autopilot",
+			expectError: true,
+			expectWarn:  false,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					ShieldedNodes:   new(true),
 				},
 			},
 		},
@@ -815,6 +958,207 @@ func TestGCPManagedControlPlaneValidatingWebhookUpdate(t *testing.T) {
 						UseIPAliases: true,
 						Service:      &expinfrav1.ClusterNetworkService{SecondaryRangeName: ptr.To("services-range-2")},
 					},
+				},
+			},
+		},
+		{
+			name:        "request to set LoggingService when autopilot is enabled should error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ClusterName:     "default_cluster1",
+					LoggingService:  (*expinfrav1.LoggingService)(new("logging.googleapis.com/kubernetes")),
+				},
+			},
+		},
+		{
+			name:        "changing defaultMaxPodsPerNode should cause an error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases:          true,
+						DefaultMaxPodsPerNode: ptr.To(int64(110)),
+					},
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						UseIPAliases:          true,
+						DefaultMaxPodsPerNode: ptr.To(int64(64)),
+					},
+				},
+			},
+		},
+		{
+			name:        "changing clusterIpv4Cidr should cause an error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						ClusterIpv4Cidr: ptr.To("10.0.0.0/14"),
+					},
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						ClusterIpv4Cidr: ptr.To("10.4.0.0/14"),
+					},
+				},
+			},
+		},
+		{
+			name:        "changing privateEndpointSubnetwork should cause an error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						PrivateCluster: &expinfrav1.PrivateCluster{PrivateEndpointSubnetwork: "projects/p/regions/r/subnetworks/s1"},
+					},
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterNetwork: &expinfrav1.ClusterNetwork{
+						PrivateCluster: &expinfrav1.PrivateCluster{PrivateEndpointSubnetwork: "projects/p/regions/r/subnetworks/s2"},
+					},
+				},
+			},
+		},
+		{
+			name:        "changing workloadIdentityConfig workload pool should not cause an error",
+			expectError: false,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterSecurity: &expinfrav1.ClusterSecurity{
+						WorkloadIdentityConfig: &expinfrav1.WorkloadIdentityConfig{WorkloadPool: "old-pool.svc.id.goog"},
+					},
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName: "default_cluster1",
+					ClusterSecurity: &expinfrav1.ClusterSecurity{
+						WorkloadIdentityConfig: &expinfrav1.WorkloadIdentityConfig{WorkloadPool: "new-pool.svc.id.goog"},
+					},
+				},
+			},
+		},
+		{
+			name:        "setting loggingService and loggingConfig together should cause an error",
+			expectError: true,
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:    "default_cluster1",
+					LoggingService: ptr.To(expinfrav1.LoggingService("none")),
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{expinfrav1.LoggingComponentSystemComponents},
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingConfig on an autopilot cluster should not cause an error",
+			expectError: false,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{expinfrav1.LoggingComponentSystemComponents},
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingConfig on an autopilot cluster with an empty components list should cause error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{},
+					},
+				},
+			},
+		},
+		{
+			name:        "loggingConfig on an autopilot cluster with a list that omits SYSTEM_COMPONENTS should cause an error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ReleaseChannel:  &releaseChannel,
+					LoggingConfig: &expinfrav1.LoggingConfig{
+						EnableComponents: []expinfrav1.LoggingComponent{expinfrav1.LoggingComponentAPIServer, expinfrav1.LoggingComponentScheduler},
+					},
+				},
+			},
+		},
+		{
+			name:        "request to set MonitoringService when autopilot is enabled should error",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					ClusterName:     "default_cluster1",
+					EnableAutopilot: true,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot:   true,
+					ClusterName:       "default_cluster1",
+					MonitoringService: (*expinfrav1.MonitoringService)(new("monitoring.googleapis.com/kubernetes")),
+				},
+			},
+		},
+		{
+			name:        "shieldedNodes update should be rejected under autopilot",
+			expectError: true,
+			oldSpec: &expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+				},
+			},
+			spec: expinfrav1.GCPManagedControlPlaneSpec{
+				GCPManagedControlPlaneClassSpec: expinfrav1.GCPManagedControlPlaneClassSpec{
+					EnableAutopilot: true,
+					ShieldedNodes:   new(true),
 				},
 			},
 		},

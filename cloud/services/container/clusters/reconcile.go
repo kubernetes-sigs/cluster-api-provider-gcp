@@ -488,6 +488,11 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		cn := s.scope.GCPManagedControlPlane.Spec.ClusterNetwork
 		if cn.UseIPAliases {
 			cluster.IpAllocationPolicy = buildIPAllocationPolicy(cn)
+			if cn.DefaultMaxPodsPerNode != nil {
+				cluster.DefaultMaxPodsConstraint = &containerpb.MaxPodsConstraint{MaxPodsPerNode: *cn.DefaultMaxPodsPerNode}
+			}
+		} else if cn.ClusterIpv4Cidr != nil {
+			cluster.ClusterIpv4Cidr = *cn.ClusterIpv4Cidr
 		}
 
 		if cn.PrivateCluster != nil {
@@ -515,6 +520,7 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 				EnablePrivateNodes: cn.PrivateCluster.EnablePrivateNodes,
 			}
 			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess = &cn.PrivateCluster.ControlPlaneGlobalAccess
+			cluster.ControlPlaneEndpointsConfig.IpEndpointsConfig.PrivateEndpointSubnetwork = cn.PrivateCluster.PrivateEndpointSubnetwork
 		}
 
 		if cn.GatewayAPIChannel != nil {
@@ -541,8 +547,16 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 		}
 	}
 
+	if s.scope.GCPManagedControlPlane.Spec.LoggingConfig != nil {
+		cluster.LoggingConfig = convertToSdkLoggingConfig(s.scope.GCPManagedControlPlane.Spec.LoggingConfig)
+	}
+
 	if !s.scope.IsAutopilotCluster() {
 		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional, cluster.GetName())
+
+		if shieldedNodes := s.scope.GCPManagedControlPlane.Spec.ShieldedNodes; shieldedNodes != nil {
+			cluster.ShieldedNodes = &containerpb.ShieldedNodes{Enabled: *shieldedNodes}
+		}
 
 		if s.scope.GCPManagedControlPlane.Spec.LoggingService != nil {
 			cluster.LoggingService = s.scope.GCPManagedControlPlane.Spec.LoggingService.String()
@@ -937,6 +951,27 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 		}
 	}
 
+	// ShieldedNodes
+	if desiredShieldedNodes := s.scope.GCPManagedControlPlane.Spec.ShieldedNodes; desiredShieldedNodes != nil {
+		if *desiredShieldedNodes != existingCluster.GetShieldedNodes().GetEnabled() {
+			needUpdate = true
+			clusterUpdate.DesiredShieldedNodes = &containerpb.ShieldedNodes{Enabled: *desiredShieldedNodes}
+			log.V(2).Info("ShieldedNodes update required", "current", existingCluster.GetShieldedNodes().GetEnabled(), "desired", *desiredShieldedNodes)
+		}
+	}
+
+	// LoggingConfig
+	if lc := s.scope.GCPManagedControlPlane.Spec.LoggingConfig; lc != nil {
+		desiredLoggingConfig := convertToSdkLoggingConfig(lc)
+		existingComponents := existingCluster.GetLoggingConfig().GetComponentConfig().GetEnableComponents()
+		desiredComponents := desiredLoggingConfig.GetComponentConfig().GetEnableComponents()
+		if !cmp.Equal(desiredComponents, existingComponents, cmpopts.SortSlices(loggingComponentsLess)) {
+			needUpdate = true
+			clusterUpdate.DesiredLoggingConfig = desiredLoggingConfig
+			log.V(2).Info("LoggingConfig update required", "current", existingComponents, "desired", desiredComponents)
+		}
+	}
+
 	updateClusterRequest := containerpb.UpdateClusterRequest{
 		Name:   s.scope.ClusterFullName(),
 		Update: &clusterUpdate,
@@ -988,4 +1023,39 @@ func buildIPAllocationPolicy(cn *infrav1exp.ClusterNetwork) *containerpb.IPAlloc
 		}
 	}
 	return policy
+}
+
+// convertToSdkLoggingComponent converts a LoggingComponent to the SDK enum value.
+func convertToSdkLoggingComponent(c infrav1exp.LoggingComponent) containerpb.LoggingComponentConfig_Component {
+	switch c {
+	case infrav1exp.LoggingComponentSystemComponents:
+		return containerpb.LoggingComponentConfig_SYSTEM_COMPONENTS
+	case infrav1exp.LoggingComponentWorkloads:
+		return containerpb.LoggingComponentConfig_WORKLOADS
+	case infrav1exp.LoggingComponentAPIServer:
+		return containerpb.LoggingComponentConfig_APISERVER
+	case infrav1exp.LoggingComponentScheduler:
+		return containerpb.LoggingComponentConfig_SCHEDULER
+	case infrav1exp.LoggingComponentControllerManager:
+		return containerpb.LoggingComponentConfig_CONTROLLER_MANAGER
+	default:
+		return containerpb.LoggingComponentConfig_COMPONENT_UNSPECIFIED
+	}
+}
+
+// convertToSdkLoggingConfig converts a LoggingConfig to the SDK type.
+func convertToSdkLoggingConfig(lc *infrav1exp.LoggingConfig) *containerpb.LoggingConfig {
+	components := make([]containerpb.LoggingComponentConfig_Component, 0, len(lc.EnableComponents))
+	for _, c := range lc.EnableComponents {
+		components = append(components, convertToSdkLoggingComponent(c))
+	}
+	return &containerpb.LoggingConfig{
+		ComponentConfig: &containerpb.LoggingComponentConfig{EnableComponents: components},
+	}
+}
+
+// loggingComponentsLess orders two logging components for cmpopts.SortSlices, so that
+// comparing enabled components against GKE's response doesn't depend on either side's order.
+func loggingComponentsLess(a, b containerpb.LoggingComponentConfig_Component) bool {
+	return a < b
 }
