@@ -308,8 +308,18 @@ make test # Runs tests on the Go code
 
 #### Executing unit tests
 
-`make test` executes the project's unit tests. These tests do not stand up a
-Kubernetes cluster, nor do they have external dependencies.
+`make test` executes the project's unit tests. These tests need no Kubernetes cluster or GCP access. Some of them
+(the `envtest` suites) start a local API server and `etcd`, whose binaries `make test` downloads on first use.
+
+#### Test Frameworks
+
+When adding new tests, which should be done for the vast majority of changes, we have standardised on some specific frameworks:
+
+* Unit Tests: These are plain `go test` tests with `gomega` accessed via `NewWithT(t)`
+  * This is in preference to `testify`, which will cause linting to fail if used.
+  * **Note:** When using `g := NewWithT(t)` you should always use the 'nearest' `t`, rather than anything global. Definitely do not use the package-level `Expect`.
+* Tests that require `envtest`: These are written with Ginkgo and are often useful for testing CRD and CEL validation
+* End-To-End Tests: These are written with Ginkgo.
 
 [go]: https://golang.org/doc/install
 [tilt]: https://docs.tilt.dev/install.html

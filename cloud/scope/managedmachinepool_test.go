@@ -1,8 +1,9 @@
 package scope
 
 import (
+	"testing"
+
 	"cloud.google.com/go/container/apiv1/containerpb"
-	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -11,244 +12,290 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
-var (
-	TestGCPMMP      *v1beta1.GCPManagedMachinePool
-	TestMP          *clusterv1.MachinePool
-	TestClusterName string
+const (
+	clusterName            = "test-cluster"
+	managedMachinePoolName = "test-gcpmmp"
+	nodePoolName           = "test-pool"
+	namespace              = "capg-system"
+	replicas               = int32(1)
 )
 
-var _ = Describe("GCPManagedMachinePool Scope", func() {
-	BeforeEach(func() {
-		TestClusterName = "test-cluster"
-		gcpmmpName := "test-gcpmmp"
-		nodePoolName := "test-pool"
-		namespace := "capg-system"
-		replicas := int32(1)
-
-		TestGCPMMP = &v1beta1.GCPManagedMachinePool{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      gcpmmpName,
-				Namespace: namespace,
+func createTestManagedMachinePool() *v1beta1.GCPManagedMachinePool {
+	return &v1beta1.GCPManagedMachinePool{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      managedMachinePoolName,
+			Namespace: namespace,
+		},
+		Spec: v1beta1.GCPManagedMachinePoolSpec{
+			GCPManagedMachinePoolClassSpec: v1beta1.GCPManagedMachinePoolClassSpec{
+				NodePoolName: nodePoolName,
 			},
-			Spec: v1beta1.GCPManagedMachinePoolSpec{
-				GCPManagedMachinePoolClassSpec: v1beta1.GCPManagedMachinePoolClassSpec{
-					NodePoolName: nodePoolName,
-				},
+		},
+	}
+}
+
+func createTestMachinePool() *clusterv1.MachinePool {
+	return &clusterv1.MachinePool{
+		Spec: clusterv1.MachinePoolSpec{
+			Replicas: new(replicas),
+		},
+	}
+}
+
+func Test_NodePoolResourceLabels(t *testing.T) {
+	t.Run("append cluster owned label", func(t *testing.T) {
+		g := NewWithT(t)
+		labels := infrav1.Labels{"test-key": "test-value"}
+
+		g.Expect(NodePoolResourceLabels(labels, clusterName)).To(Equal(infrav1.Labels{
+			"test-key":                         "test-value",
+			infrav1.ClusterTagKey(clusterName): string(infrav1.ResourceLifecycleOwned),
+		}))
+	})
+}
+
+func Test_MachinePool_InfrastructureMachineKind(t *testing.T) {
+	t.Run("set infrastructure machine kind when empty", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testManagedMachinePool.Status = v1beta1.GCPManagedMachinePoolStatus{}
+		machinePoolScope := ManagedMachinePoolScope{
+			GCPManagedMachinePool: testManagedMachinePool,
+		}
+
+		update := machinePoolScope.SetInfrastructureMachineKind()
+		g.Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(Equal(v1beta1.GCPManagedMachinePoolMachineKind))
+		g.Expect(update).To(BeTrue())
+	})
+
+	t.Run("do not update infrastructure machine kind if already set", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testManagedMachinePool.Status = v1beta1.GCPManagedMachinePoolStatus{
+			InfrastructureMachineKind: v1beta1.GCPManagedMachinePoolMachineKind,
+		}
+		machinePoolScope := ManagedMachinePoolScope{
+			GCPManagedMachinePool: testManagedMachinePool,
+		}
+
+		update := machinePoolScope.SetInfrastructureMachineKind()
+		g.Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(Equal(v1beta1.GCPManagedMachinePoolMachineKind))
+		g.Expect(update).To(BeFalse())
+	})
+}
+
+func Test_MachinePool_ConvertToSdkNodePool(t *testing.T) {
+	t.Run("convert to SDK node pool with default values", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
+			Name:             testManagedMachinePool.Spec.NodePoolName,
+			InitialNodeCount: *testMachinePool.Spec.Replicas,
+			Config: &containerpb.NodeConfig{
+				ResourceLabels:         NodePoolResourceLabels(nil, clusterName),
+				ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
+			},
+		}))
+	})
+
+	t.Run("convert to SDK node pool node count in a regional cluster", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		newReplicas := 6
+		testMachinePool.Spec.Replicas = new(int32(newReplicas))
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, true, clusterName)
+
+		g.Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
+			Name:             testManagedMachinePool.Spec.NodePoolName,
+			InitialNodeCount: int32(newReplicas / cloud.DefaultNumRegionsPerZone),
+			Config: &containerpb.NodeConfig{
+				ResourceLabels:         NodePoolResourceLabels(nil, clusterName),
+				ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
+			},
+		}))
+	})
+
+	t.Run("convert to SDK node pool using GCPManagedMachinePool", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		instanceType := "n1-standard-1"
+		diskSizeGb := int32(128)
+		imageType := "ubuntu_containerd"
+		localSsdCount := int32(2)
+		diskType := v1beta1.SSD
+		maxPodsPerNode := int64(20)
+		enableAutoscaling := false
+		scaling := v1beta1.NodePoolAutoScaling{
+			EnableAutoscaling: &enableAutoscaling,
+		}
+		labels := infrav1.Labels{"test-key": "test-value"}
+		taints := v1beta1.Taints{
+			{
+				Key:    "test-key",
+				Value:  "test-value",
+				Effect: "NoSchedule",
 			},
 		}
-		TestMP = &clusterv1.MachinePool{
-			Spec: clusterv1.MachinePoolSpec{
-				Replicas: &replicas,
+		resourceLabels := infrav1.Labels{"test-key": "test-value"}
+
+		testManagedMachinePool.Spec.InstanceType = &instanceType
+		testManagedMachinePool.Spec.DiskSizeGb = &diskSizeGb
+		testManagedMachinePool.Spec.ImageType = &imageType
+		testManagedMachinePool.Spec.LocalSsdCount = &localSsdCount
+		testManagedMachinePool.Spec.DiskType = &diskType
+		testManagedMachinePool.Spec.Scaling = &scaling
+		testManagedMachinePool.Spec.MaxPodsPerNode = &maxPodsPerNode
+		testManagedMachinePool.Spec.KubernetesLabels = labels
+		testManagedMachinePool.Spec.KubernetesTaints = taints
+		testManagedMachinePool.Spec.AdditionalLabels = resourceLabels
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
+			Name:             testManagedMachinePool.Spec.NodePoolName,
+			InitialNodeCount: *testMachinePool.Spec.Replicas,
+			Config: &containerpb.NodeConfig{
+				Labels:                 labels,
+				Taints:                 v1beta1.ConvertToSdkTaint(taints),
+				ResourceLabels:         NodePoolResourceLabels(resourceLabels, clusterName),
+				MachineType:            instanceType,
+				DiskSizeGb:             diskSizeGb,
+				ImageType:              imageType,
+				LocalSsdCount:          localSsdCount,
+				DiskType:               string(diskType),
+				ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
 			},
+			Autoscaling: v1beta1.ConvertToSdkAutoscaling(&scaling),
+			MaxPodsConstraint: &containerpb.MaxPodsConstraint{
+				MaxPodsPerNode: maxPodsPerNode,
+			},
+		}))
+	})
+
+	t.Run("let DiskSizeGb take precedence over DiskSizeGB when both are set", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		diskSizeGb := int32(64)
+		diskSizeGB := int64(128)
+		testManagedMachinePool.Spec.DiskSizeGb = &diskSizeGb
+		testManagedMachinePool.Spec.DiskSizeGB = &diskSizeGB //nolint:staticcheck // SA1019: exercising deprecated field for backward-compatibility test
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetConfig().GetDiskSizeGb()).To(Equal(diskSizeGb))
+	})
+
+	t.Run("fall back to DiskSizeGB when DiskSizeGb is unset", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		diskSizeGB := int64(128)
+		testManagedMachinePool.Spec.DiskSizeGB = &diskSizeGB //nolint:staticcheck // SA1019: exercising deprecated field for backward-compatibility test
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetConfig().GetDiskSizeGb()).To(Equal(int32(diskSizeGB)))
+	})
+
+	t.Run("prefer InstanceType over the deprecated MachineType when both are set", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		machineType := "n1-standard-1"
+		instanceType := "n1-standard-2"
+		testManagedMachinePool.Spec.MachineType = &machineType //nolint:staticcheck // SA1019: deprecated field set intentionally to test precedence
+		testManagedMachinePool.Spec.InstanceType = &instanceType
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(instanceType))
+	})
+
+	t.Run("use the deprecated MachineType when InstanceType is unset", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		machineType := "n1-standard-2"
+		testManagedMachinePool.Spec.MachineType = &machineType //nolint:staticcheck // SA1019: deprecated field set intentionally to test backward compatibility
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(machineType))
+	})
+
+	t.Run("leave UpgradeSettings unset on the SDK node pool when not specified", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetUpgradeSettings()).To(BeNil())
+	})
+
+	t.Run("UpgradeSettings should take default values if nothing is set", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		strategy := containerpb.NodePoolUpdateStrategy_SURGE
+		g.Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+			MaxSurge:       1,
+			MaxUnavailable: 0,
+			Strategy:       &strategy,
+		}))
+	})
+
+	t.Run("UpgradeSettings should respect maxSurge if it is set and default everything else", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		maxSurge := int32(100)
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			MaxSurge: &maxSurge,
 		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		strategy := containerpb.NodePoolUpdateStrategy_SURGE
+		g.Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+			MaxSurge:       maxSurge,
+			MaxUnavailable: 0,
+			Strategy:       &strategy,
+		}))
 	})
 
-	Context("Test NodePoolResourceLabels", func() {
-		It("should append cluster owned label", func() {
-			labels := infrav1.Labels{"test-key": "test-value"}
+	t.Run("UpgradeSettings should respect maxUnavailable if it is set and default everything else", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
 
-			Expect(NodePoolResourceLabels(labels, TestClusterName)).To(Equal(infrav1.Labels{
-				"test-key":                             "test-value",
-				infrav1.ClusterTagKey(TestClusterName): string(infrav1.ResourceLifecycleOwned),
-			}))
-		})
+		maxUnavailable := int32(100)
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			MaxUnavailable: &maxUnavailable,
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		strategy := containerpb.NodePoolUpdateStrategy_SURGE
+		g.Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+			MaxSurge:       1,
+			MaxUnavailable: maxUnavailable,
+			Strategy:       &strategy,
+		}))
 	})
-
-	Context("Test MachinePool InfrastructureMachineKind", func() {
-		It("should set infrastructure machine kind when empty", func() {
-			TestGCPMMP.Status = v1beta1.GCPManagedMachinePoolStatus{}
-			machinePoolScope := ManagedMachinePoolScope{
-				GCPManagedMachinePool: TestGCPMMP,
-			}
-
-			update := machinePoolScope.SetInfrastructureMachineKind()
-			Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(Equal(v1beta1.GCPManagedMachinePoolMachineKind))
-			Expect(update).To(BeTrue())
-		})
-
-		It("should not update infrastructure machine kind if already set", func() {
-			TestGCPMMP.Status = v1beta1.GCPManagedMachinePoolStatus{
-				InfrastructureMachineKind: v1beta1.GCPManagedMachinePoolMachineKind,
-			}
-			machinePoolScope := ManagedMachinePoolScope{
-				GCPManagedMachinePool: TestGCPMMP,
-			}
-
-			update := machinePoolScope.SetInfrastructureMachineKind()
-			Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(Equal(v1beta1.GCPManagedMachinePoolMachineKind))
-			Expect(update).To(BeFalse())
-		})
-	})
-
-	Context("Test ConvertToSdkNodePool", func() {
-		It("should convert to SDK node pool with default values", func() {
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
-				Name:             TestGCPMMP.Spec.NodePoolName,
-				InitialNodeCount: *TestMP.Spec.Replicas,
-				Config: &containerpb.NodeConfig{
-					ResourceLabels:         NodePoolResourceLabels(nil, TestClusterName),
-					ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
-				},
-			}))
-		})
-
-		It("should convert to SDK node pool node count in a regional cluster", func() {
-			replicas := int32(6)
-			TestMP.Spec.Replicas = &replicas
-
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, true, TestClusterName)
-
-			Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
-				Name:             TestGCPMMP.Spec.NodePoolName,
-				InitialNodeCount: replicas / cloud.DefaultNumRegionsPerZone,
-				Config: &containerpb.NodeConfig{
-					ResourceLabels:         NodePoolResourceLabels(nil, TestClusterName),
-					ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
-				},
-			}))
-		})
-
-		It("should convert to SDK node pool using GCPManagedMachinePool", func() {
-			instanceType := "n1-standard-1"
-			diskSizeGb := int32(128)
-			imageType := "ubuntu_containerd"
-			localSsdCount := int32(2)
-			diskType := v1beta1.SSD
-			maxPodsPerNode := int64(20)
-			enableAutoscaling := false
-			scaling := v1beta1.NodePoolAutoScaling{
-				EnableAutoscaling: &enableAutoscaling,
-			}
-			labels := infrav1.Labels{"test-key": "test-value"}
-			taints := v1beta1.Taints{
-				{
-					Key:    "test-key",
-					Value:  "test-value",
-					Effect: "NoSchedule",
-				},
-			}
-			resourceLabels := infrav1.Labels{"test-key": "test-value"}
-
-			TestGCPMMP.Spec.InstanceType = &instanceType
-			TestGCPMMP.Spec.DiskSizeGb = &diskSizeGb
-			TestGCPMMP.Spec.ImageType = &imageType
-			TestGCPMMP.Spec.LocalSsdCount = &localSsdCount
-			TestGCPMMP.Spec.DiskType = &diskType
-			TestGCPMMP.Spec.Scaling = &scaling
-			TestGCPMMP.Spec.MaxPodsPerNode = &maxPodsPerNode
-			TestGCPMMP.Spec.KubernetesLabels = labels
-			TestGCPMMP.Spec.KubernetesTaints = taints
-			TestGCPMMP.Spec.AdditionalLabels = resourceLabels
-
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
-				Name:             TestGCPMMP.Spec.NodePoolName,
-				InitialNodeCount: *TestMP.Spec.Replicas,
-				Config: &containerpb.NodeConfig{
-					Labels:                 labels,
-					Taints:                 v1beta1.ConvertToSdkTaint(taints),
-					ResourceLabels:         NodePoolResourceLabels(resourceLabels, TestClusterName),
-					MachineType:            instanceType,
-					DiskSizeGb:             diskSizeGb,
-					ImageType:              imageType,
-					LocalSsdCount:          localSsdCount,
-					DiskType:               string(diskType),
-					ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
-				},
-				Autoscaling: v1beta1.ConvertToSdkAutoscaling(&scaling),
-				MaxPodsConstraint: &containerpb.MaxPodsConstraint{
-					MaxPodsPerNode: maxPodsPerNode,
-				},
-			}))
-		})
-
-		It("should let DiskSizeGb take precedence over DiskSizeGB when both are set", func() {
-			diskSizeGb := int32(64)
-			diskSizeGB := int64(128)
-			TestGCPMMP.Spec.DiskSizeGb = &diskSizeGb
-			TestGCPMMP.Spec.DiskSizeGB = &diskSizeGB //nolint:staticcheck // SA1019: exercising deprecated field for backward-compatibility test
-
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			Expect(sdkNodePool.GetConfig().GetDiskSizeGb()).To(Equal(diskSizeGb))
-		})
-
-		It("should fall back to DiskSizeGB when DiskSizeGb is unset", func() {
-			diskSizeGB := int64(128)
-			TestGCPMMP.Spec.DiskSizeGB = &diskSizeGB //nolint:staticcheck // SA1019: exercising deprecated field for backward-compatibility test
-
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			Expect(sdkNodePool.GetConfig().GetDiskSizeGb()).To(Equal(int32(diskSizeGB)))
-		})
-
-		It("should prefer InstanceType over the deprecated MachineType when both are set", func() {
-			machineType := "n1-standard-1"
-			instanceType := "n1-standard-2"
-			TestGCPMMP.Spec.MachineType = &machineType //nolint:staticcheck // SA1019: deprecated field set intentionally to test precedence
-			TestGCPMMP.Spec.InstanceType = &instanceType
-
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(instanceType))
-		})
-
-		It("should use the deprecated MachineType when InstanceType is unset", func() {
-			machineType := "n1-standard-2"
-			TestGCPMMP.Spec.MachineType = &machineType //nolint:staticcheck // SA1019: deprecated field set intentionally to test backward compatibility
-
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			Expect(sdkNodePool.GetConfig().GetMachineType()).To(Equal(machineType))
-		})
-
-		It("should leave UpgradeSettings unset on the SDK node pool when not specified", func() {
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			Expect(sdkNodePool.GetUpgradeSettings()).To(BeNil())
-		})
-
-		It("UpgradeSettings should take default values if nothing is set", func() {
-			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{}
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			strategy := containerpb.NodePoolUpdateStrategy_SURGE
-			Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
-				MaxSurge:       1,
-				MaxUnavailable: 0,
-				Strategy:       &strategy,
-			}))
-		})
-		It("UpgradeSettings should respect maxSurge if it is set and default everything else", func() {
-			maxSurge := int32(100)
-			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
-				MaxSurge: &maxSurge,
-			}
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			strategy := containerpb.NodePoolUpdateStrategy_SURGE
-			Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
-				MaxSurge:       maxSurge,
-				MaxUnavailable: 0,
-				Strategy:       &strategy,
-			}))
-		})
-		It("UpgradeSettings should respect maxUnavailable if it is set and default everything else", func() {
-			maxUnavailable := int32(100)
-			TestGCPMMP.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
-				MaxUnavailable: &maxUnavailable,
-			}
-			sdkNodePool := ConvertToSdkNodePool(*TestGCPMMP, *TestMP, false, TestClusterName)
-
-			strategy := containerpb.NodePoolUpdateStrategy_SURGE
-			Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
-				MaxSurge:       1,
-				MaxUnavailable: maxUnavailable,
-				Strategy:       &strategy,
-			}))
-		})
-	})
-})
+}

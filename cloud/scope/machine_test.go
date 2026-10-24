@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -14,6 +14,7 @@ import (
 // This test verifies that if a user selects "local-ssd"
 // as a disk type then the MachineScope correctly detects it as such.
 func TestMachineLocalSSDDiskType(t *testing.T) {
+	g := NewWithT(t)
 	ctx := context.Background()
 
 	// Register the GCPMachine types in a scheme.
@@ -21,7 +22,7 @@ func TestMachineLocalSSDDiskType(t *testing.T) {
 	err := infrav1.AddToScheme(schema)
 
 	// Make sure no errors were triggered.
-	assert.Nil(t, err)
+	g.Expect(err).NotTo(HaveOccurred())
 
 	// Create a controller fake client.
 	// It's best to use envtest but in this case we are not really using the client
@@ -63,24 +64,25 @@ func TestMachineLocalSSDDiskType(t *testing.T) {
 	testMachineScope, err := NewMachineScope(testScopeParams)
 
 	// Make sure the machine scope is create correctly.
-	assert.Nil(t, err)
-	assert.NotNil(t, testMachineScope)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(testMachineScope).NotTo(BeNil())
 
 	// Now make sure the local-ssd disk type is detected as SCRATCH.
 	diskSpec := instanceAdditionalDiskSpec(ctx, testGCPMachine.Spec.AdditionalDisks, testGCPMachine.Spec.RootDiskEncryptionKey, testMachineScope.Zone(), testGCPMachine.Spec.ResourceManagerTags)
-	assert.NotEmpty(t, diskSpec)
+	g.Expect(diskSpec).NotTo(BeEmpty())
 
 	// Get the local-ssd disk now.
 	localSSDTest := diskSpec[0]
-	assert.True(t, localSSDTest.AutoDelete)
-	assert.Equal(t, "SCRATCH", localSSDTest.Type)
-	assert.Equal(t, "NVME", localSSDTest.Interface)
-	assert.Equal(t, int64(375), localSSDTest.InitializeParams.DiskSizeGb)
+	g.Expect(localSSDTest.AutoDelete).To(BeTrue())
+	g.Expect(localSSDTest.Type).To(Equal("SCRATCH"))
+	g.Expect(localSSDTest.Interface).To(Equal("NVME"))
+	g.Expect(localSSDTest.InitializeParams.DiskSizeGb).To(Equal(int64(375)))
 }
 
 // TestInstanceNetworkInterfaceAliasIPRangesSpec tests the InstanceNetworkInterfaceAliasIPRangesSpec function
 func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 	t.Run("should return nil for empty alias IP ranges", func(t *testing.T) {
+		g := NewWithT(t)
 		testGCPMachine := infrav1.GCPMachine{
 			Spec: infrav1.GCPMachineSpec{
 				AliasIPRanges: []infrav1.AliasIPRange{},
@@ -88,10 +90,11 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 		}
 
 		result := InstanceNetworkInterfaceAliasIPRangesSpec(testGCPMachine.Spec.AliasIPRanges)
-		assert.Nil(t, result)
+		g.Expect(result).To(BeNil())
 	})
 
 	t.Run("should convert single alias IP range", func(t *testing.T) {
+		g := NewWithT(t)
 		testGCPMachine := infrav1.GCPMachine{
 			Spec: infrav1.GCPMachineSpec{
 				AliasIPRanges: []infrav1.AliasIPRange{
@@ -104,13 +107,14 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 		}
 
 		result := InstanceNetworkInterfaceAliasIPRangesSpec(testGCPMachine.Spec.AliasIPRanges)
-		assert.NotNil(t, result)
-		assert.Len(t, result, 1)
-		assert.Equal(t, "10.0.0.0/24", result[0].IpCidrRange)
-		assert.Equal(t, "pods", result[0].SubnetworkRangeName)
+		g.Expect(result).NotTo(BeNil())
+		g.Expect(result).To(HaveLen(1))
+		g.Expect(result[0].IpCidrRange).To(Equal("10.0.0.0/24"))
+		g.Expect(result[0].SubnetworkRangeName).To(Equal("pods"))
 	})
 
 	t.Run("should convert multiple alias IP ranges", func(t *testing.T) {
+		g := NewWithT(t)
 		testGCPMachine := infrav1.GCPMachine{
 			Spec: infrav1.GCPMachineSpec{
 				AliasIPRanges: []infrav1.AliasIPRange{
@@ -127,15 +131,16 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 		}
 
 		result := InstanceNetworkInterfaceAliasIPRangesSpec(testGCPMachine.Spec.AliasIPRanges)
-		assert.NotNil(t, result)
-		assert.Len(t, result, 2)
-		assert.Equal(t, "10.0.0.0/24", result[0].IpCidrRange)
-		assert.Equal(t, "pods", result[0].SubnetworkRangeName)
-		assert.Equal(t, "10.1.0.0/24", result[1].IpCidrRange)
-		assert.Equal(t, "services", result[1].SubnetworkRangeName)
+		g.Expect(result).NotTo(BeNil())
+		g.Expect(result).To(HaveLen(2))
+		g.Expect(result[0].IpCidrRange).To(Equal("10.0.0.0/24"))
+		g.Expect(result[0].SubnetworkRangeName).To(Equal("pods"))
+		g.Expect(result[1].IpCidrRange).To(Equal("10.1.0.0/24"))
+		g.Expect(result[1].SubnetworkRangeName).To(Equal("services"))
 	})
 
 	t.Run("should handle alias IP range without SubnetworkRangeName", func(t *testing.T) {
+		g := NewWithT(t)
 		testGCPMachine := infrav1.GCPMachine{
 			Spec: infrav1.GCPMachineSpec{
 				AliasIPRanges: []infrav1.AliasIPRange{
@@ -148,9 +153,9 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 		}
 
 		result := InstanceNetworkInterfaceAliasIPRangesSpec(testGCPMachine.Spec.AliasIPRanges)
-		assert.NotNil(t, result)
-		assert.Len(t, result, 1)
-		assert.Equal(t, "10.100.0.0/24", result[0].IpCidrRange)
-		assert.Equal(t, "", result[0].SubnetworkRangeName)
+		g.Expect(result).NotTo(BeNil())
+		g.Expect(result).To(HaveLen(1))
+		g.Expect(result[0].IpCidrRange).To(Equal("10.100.0.0/24"))
+		g.Expect(result[0].SubnetworkRangeName).To(Equal(""))
 	})
 }
