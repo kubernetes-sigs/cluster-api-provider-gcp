@@ -55,10 +55,10 @@ Choose the smallest test layer that exercises the behavior:
 
 - **Unit tests:** Use for package-level logic that does not need a Kubernetes
   API server or GCP. Follow nearby `_test.go` patterns; CAPG uses Go's testing
-  package, Ginkgo, and Gomega.
+  package and Gomega for unit tests.
 - **Integration tests:** Use when testing controllers, webhooks, or Kubernetes
-  API interactions. CAPG suites use `envtest`; `make test` runs the unit and
-  integration tests. `envtest` does not exercise real GCP APIs.
+  API interactions. CAPG suites use `envtest` (Ginkgo); `make test` runs the unit 
+  and integration tests. `envtest` does not exercise real GCP APIs.
 - **End-to-end tests:** Add or update tests for user-visible provisioning
   lifecycle behavior that needs a real management/workload cluster or GCP API
   interactions. Follow the helpers, configured wait intervals, cleanup, and
