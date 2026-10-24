@@ -18,35 +18,108 @@ package controllers
 
 import (
 	"context"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var _ = Describe("GCPMachineReconciler", func() {
-	BeforeEach(func() {})
-	AfterEach(func() {})
+func newMachine(clusterName, machineName string) *clusterv1.Machine {
+	return &clusterv1.Machine{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				clusterv1.ClusterNameLabel: clusterName,
+			},
+			Name:      machineName,
+			Namespace: "default",
+		},
+	}
+}
 
-	Context("Reconcile an GCPMachine", func() {
-		It("should not error with minimal set up", func() {
-			reconciler := &GCPMachineReconciler{
-				Client: k8sClient,
-			}
-			By("Calling reconcile")
-			ctx := context.Background()
-			instance := &infrav1.GCPMachine{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
-			result, err := reconciler.Reconcile(ctx, ctrl.Request{
-				NamespacedName: client.ObjectKey{
-					Namespace: instance.Namespace,
-					Name:      instance.Name,
+func newMachineWithInfrastructureRef(clusterName, machineName string) *clusterv1.Machine {
+	m := newMachine(clusterName, machineName)
+	m.Spec.InfrastructureRef = clusterv1.ContractVersionedObjectReference{
+		Kind:     "GCPMachine",
+		Name:     "gcp" + machineName,
+		APIGroup: infrav1.GroupVersion.Group,
+	}
+
+	return m
+}
+
+func newCluster(name string) *clusterv1.Cluster {
+	return &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "default",
+		},
+	}
+}
+
+func TestGCPMachineReconciler_GCPClusterToGCPMachines(t *testing.T) {
+	g := NewWithT(t)
+
+	ctx := context.TODO()
+
+	scheme := runtime.NewScheme()
+	g.Expect(infrav1.AddToScheme(scheme)).To(Succeed())
+	g.Expect(clusterv1.AddToScheme(scheme)).To(Succeed())
+
+	clusterName := "my-cluster"
+	initObjects := []runtime.Object{
+		newCluster(clusterName),
+		// Create two Machines with an infrastructure ref and one without.
+		newMachineWithInfrastructureRef(clusterName, "my-machine-0"),
+		newMachineWithInfrastructureRef(clusterName, "my-machine-1"),
+		newMachine(clusterName, "my-machine-2"),
+	}
+
+	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(initObjects...).Build()
+
+	reconciler := &GCPMachineReconciler{
+		Client: client,
+	}
+
+	fn := reconciler.GCPClusterToGCPMachines(ctrl.SetupSignalHandler())
+	rr := fn(ctx, &infrav1.GCPCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Name:       clusterName,
+					Kind:       "Cluster",
+					APIVersion: clusterv1.GroupVersion.String(),
 				},
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.RequeueAfter).To(BeZero())
-		})
+			},
+		},
 	})
-})
+	g.Expect(rr).To(HaveLen(2))
+}
+
+func TestGCPMachineReconciler_Reconcile_NotFound(t *testing.T) {
+	g := NewWithT(t)
+
+	scheme := runtime.NewScheme()
+	g.Expect(infrav1.AddToScheme(scheme)).To(Succeed())
+
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+
+	reconciler := &GCPMachineReconciler{
+		Client: client,
+	}
+	result, err := reconciler.Reconcile(t.Context(), ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "foo",
+			Name:      "bar",
+		},
+	})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(result.RequeueAfter).To(BeZero())
+}
