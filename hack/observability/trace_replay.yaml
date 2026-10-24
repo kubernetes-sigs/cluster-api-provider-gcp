@@ -1,0 +1,16 @@
+# OpenTelemetry Collector configuration used by hack/view-traces.sh to replay traces captured by the
+# collector in hack/observability/otel-collector.yaml (the JSON lines in log-collector.log) into Jaeger.
+receivers:
+  otlp_json_file:
+    include: ["/traces/traces.otlp.json"]
+    start_at: beginning
+exporters:
+  otlp_grpc:
+    endpoint: jaeger-trace-replay:4317
+    tls:
+      insecure: true
+service:
+  pipelines:
+    traces:
+      receivers: [otlp_json_file]
+      exporters: [otlp_grpc]
