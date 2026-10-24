@@ -59,7 +59,7 @@ func (s *Service) reconcileKubeconfig(ctx context.Context, cluster *containerpb.
 			return fmt.Errorf("creating kubeconfig secret: %w", createErr)
 		}
 	} else if updateErr := s.updateCAPIKubeconfigSecret(ctx, configSecret); updateErr != nil {
-		return fmt.Errorf("updating kubeconfig secret: %w", err)
+		return fmt.Errorf("updating kubeconfig secret: %w", updateErr)
 	}
 
 	return nil
@@ -85,7 +85,7 @@ func (s *Service) reconcileAdditionalKubeconfigs(ctx context.Context, cluster *c
 			&clusterRef,
 		)
 		if createErr != nil {
-			return fmt.Errorf("creating additional kubeconfig secret: %w", err)
+			return fmt.Errorf("creating additional kubeconfig secret: %w", createErr)
 		}
 	}
 
