@@ -626,6 +626,15 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 			Taints: desiredNodePool.GetConfig().GetTaints(),
 		}
 	}
+	// Architecture taint behavior. GKE omits TaintConfig from GetNodePool when it has never been
+	// set, so only diff this when the spec asks for a behavior. Comparing unconditionally would
+	// make a pool that leaves the field unset report a change on every reconcile.
+	if desiredTaintConfig := desiredNodePool.GetConfig().GetTaintConfig(); desiredTaintConfig != nil {
+		if desiredTaintConfig.GetArchitectureTaintBehavior() != existingNodePool.GetConfig().GetTaintConfig().GetArchitectureTaintBehavior() {
+			needUpdate = true
+			updateNodePoolRequest.TaintConfig = desiredTaintConfig
+		}
+	}
 	// Node image type
 	// GCP API returns image type string in all uppercase, we can do a case-insensitive check here.
 	if desiredNodePool.GetConfig().GetImageType() != "" && !strings.EqualFold(desiredNodePool.GetConfig().GetImageType(), existingNodePool.GetConfig().GetImageType()) {

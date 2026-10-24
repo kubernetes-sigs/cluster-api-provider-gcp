@@ -395,6 +395,57 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 				}
 			},
 		},
+		{
+			// GKE omits TaintConfig entirely for a pool that has never set one, so a spec that
+			// leaves the field unset must not register a diff on every reconcile.
+			name:        "no diff when architecture taint behavior is unset",
+			machinePool: defaultGCPManagedMachinePool(),
+			mp:          defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "diff on architecture taint behavior triggers update",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						ArchitectureTaintBehavior: ptr.To(infrav1exp.ArchitectureTaintBehaviorNone),
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateNodePoolRequest) {
+				t.Helper()
+				if got := req.GetTaintConfig().GetArchitectureTaintBehavior(); got != containerpb.TaintConfig_NONE {
+					t.Errorf("expected architecture taint behavior NONE, got %v", got)
+				}
+			},
+		},
+		{
+			name: "no diff when architecture taint behavior already matches",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						ArchitectureTaintBehavior: ptr.To(infrav1exp.ArchitectureTaintBehaviorNone),
+					},
+				},
+			},
+			mp: defaultMachinePool(),
+			existingNodePool: &containerpb.NodePool{
+				Config: &containerpb.NodeConfig{
+					TaintConfig: &containerpb.TaintConfig{
+						ArchitectureTaintBehavior: containerpb.TaintConfig_NONE.Enum(),
+					},
+				},
+			},
+			wantNeedUpdate: false,
+		},
 	}
 
 	for _, tt := range tests {

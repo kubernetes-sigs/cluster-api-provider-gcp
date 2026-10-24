@@ -238,6 +238,9 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 	if nodePool.Spec.DiskType != nil {
 		sdkNodePool.Config.DiskType = string(*nodePool.Spec.DiskType)
 	}
+	if nodePool.Spec.ArchitectureTaintBehavior != nil {
+		sdkNodePool.Config.TaintConfig = infrav1exp.ConvertToSdkTaintConfig(nodePool.Spec.ArchitectureTaintBehavior)
+	}
 	if nodePool.Spec.Scaling != nil {
 		sdkNodePool.Autoscaling = infrav1exp.ConvertToSdkAutoscaling(nodePool.Spec.Scaling)
 	}

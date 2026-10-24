@@ -1085,6 +1085,11 @@ func (in *GCPManagedMachinePoolClassSpec) DeepCopyInto(out *GCPManagedMachinePoo
 		*out = make(Taints, len(*in))
 		copy(*out, *in)
 	}
+	if in.ArchitectureTaintBehavior != nil {
+		in, out := &in.ArchitectureTaintBehavior, &out.ArchitectureTaintBehavior
+		*out = new(ArchitectureTaintBehavior)
+		**out = **in
+	}
 	if in.AdditionalLabels != nil {
 		in, out := &in.AdditionalLabels, &out.AdditionalLabels
 		*out = make(apiv1beta1.Labels, len(*in))
