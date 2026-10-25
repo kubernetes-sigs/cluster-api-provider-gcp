@@ -48,31 +48,10 @@ func (c *GCPCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // GCPCluster implements a validating and defaulting webhook for GCPCluster.
 type GCPCluster struct{}
 
-var validLoadBalancerTypes = map[infrav1.LoadBalancerType]struct{}{
-	infrav1.External:                 {},
-	infrav1.RegionalExternal:         {},
-	infrav1.Internal:                 {},
-	infrav1.InternalExternal:         {},
-	infrav1.RegionalInternalExternal: {},
-}
-
-// validateLoadBalancerSpec returns admission warnings and errors for a
-// LoadBalancerSpec. The kubebuilder Enum marker on LoadBalancerType only
-// enforces the CRD schema; this runs the same check for clients that bypass
-// it, plus a cross-field check that catches configuration that is silently
-// ignored by the reconciler.
-func validateLoadBalancerSpec(lb *infrav1.LoadBalancerSpec, fldPath *field.Path) (admission.Warnings, field.ErrorList) {
+// validateLoadBalancerSpec returns admission warnings for LoadBalancerSpec
+// configuration that is silently ignored by the reconciler.
+func validateLoadBalancerSpec(lb *infrav1.LoadBalancerSpec, fldPath *field.Path) admission.Warnings {
 	var warnings admission.Warnings
-	var allErrs field.ErrorList
-
-	if lb.LoadBalancerType != nil {
-		if _, ok := validLoadBalancerTypes[*lb.LoadBalancerType]; !ok {
-			allErrs = append(allErrs, field.NotSupported(fldPath.Child("loadBalancerType"), *lb.LoadBalancerType, []string{
-				string(infrav1.External), string(infrav1.RegionalExternal), string(infrav1.Internal),
-				string(infrav1.InternalExternal), string(infrav1.RegionalInternalExternal),
-			}))
-		}
-	}
 
 	if lb.ExternalLoadBalancerConfig != nil && lb.LoadBalancerType != nil && *lb.LoadBalancerType == infrav1.Internal {
 		warnings = append(warnings,
@@ -80,7 +59,7 @@ func validateLoadBalancerSpec(lb *infrav1.LoadBalancerSpec, fldPath *field.Path)
 				" is set but LoadBalancerType is Internal, which has no external component; the field will be ignored")
 	}
 
-	return warnings, allErrs
+	return warnings
 }
 
 // validateRegionalLoadBalancerFeatureGate rejects the LoadBalancerSpec fields
@@ -136,8 +115,7 @@ func (*GCPCluster) ValidateCreate(_ context.Context, c *infrav1.GCPCluster) (adm
 		field.NewPath("spec", "Network", "Firewall", "FirewallRules"))
 
 	fldPath := field.NewPath("spec", "loadBalancer")
-	warnings, lbErrs := validateLoadBalancerSpec(&c.Spec.LoadBalancer, fldPath)
-	allErrs = append(allErrs, lbErrs...)
+	warnings := validateLoadBalancerSpec(&c.Spec.LoadBalancer, fldPath)
 	allErrs = append(allErrs, validateRegionalLoadBalancerFeatureGate(&c.Spec.LoadBalancer, fldPath)...)
 	if len(allErrs) == 0 {
 		return warnings, nil
@@ -149,11 +127,8 @@ func (*GCPCluster) ValidateCreate(_ context.Context, c *infrav1.GCPCluster) (adm
 func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster) (admission.Warnings, error) {
 	clusterlog.Info("validate update", "name", c.Name)
 
-	// Re-run the semantic LoadBalancer validation on updates. The
-	// LoadBalancer field is immutable and blocked below, but running
-	// the validation here still catches invalid state that slipped in via a
-	// client that bypassed the create webhook (e.g. Go SDK/operator).
-	warnings, allErrs := validateLoadBalancerSpec(&c.Spec.LoadBalancer, field.NewPath("spec", "loadBalancer"))
+	warnings := validateLoadBalancerSpec(&c.Spec.LoadBalancer, field.NewPath("spec", "loadBalancer"))
+	var allErrs field.ErrorList
 
 	if !reflect.DeepEqual(c.Spec.Project, old.Spec.Project) {
 		allErrs = append(allErrs,

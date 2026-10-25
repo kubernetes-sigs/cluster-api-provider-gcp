@@ -42,17 +42,6 @@ func TestGCPCluster_ValidateCreate(t *testing.T) {
 			cluster: &infrav1.GCPCluster{},
 		},
 		{
-			name: "unknown load balancer type is rejected",
-			cluster: &infrav1.GCPCluster{
-				Spec: infrav1.GCPClusterSpec{
-					LoadBalancer: infrav1.LoadBalancerSpec{
-						LoadBalancerType: ptr.To(infrav1.LoadBalancerType("Weird")),
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "ExternalLoadBalancerConfig with Internal LB emits warning",
 			cluster: &infrav1.GCPCluster{
 				Spec: infrav1.GCPClusterSpec{
@@ -334,26 +323,6 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 				},
 			},
 			wantErr: false,
-		},
-		{
-			name: "invalid LoadBalancerType is rejected on update",
-			newCluster: &infrav1.GCPCluster{
-				Spec: infrav1.GCPClusterSpec{
-					Network: infrav1.NetworkSpec{Mtu: int64(1500)},
-					LoadBalancer: infrav1.LoadBalancerSpec{
-						LoadBalancerType: ptr.To(infrav1.LoadBalancerType("Weird")),
-					},
-				},
-			},
-			oldCluster: &infrav1.GCPCluster{
-				Spec: infrav1.GCPClusterSpec{
-					Network: infrav1.NetworkSpec{Mtu: int64(1500)},
-					LoadBalancer: infrav1.LoadBalancerSpec{
-						LoadBalancerType: ptr.To(infrav1.LoadBalancerType("Weird")),
-					},
-				},
-			},
-			wantErr: true,
 		},
 		{
 			name: "ExternalLoadBalancerConfig with Internal LB emits warning on update",

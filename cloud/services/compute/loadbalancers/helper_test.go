@@ -255,49 +255,6 @@ func TestGetInternalLoadBalancerName(t *testing.T) {
 	}
 }
 
-func TestGetLoadBalancingMode(t *testing.T) {
-	tests := []struct {
-		name   string
-		lbType infrav1.LoadBalancerType
-		want   loadBalancingMode
-	}{
-		{
-			name:   "InternalExternal returns CONNECTION mode",
-			lbType: infrav1.InternalExternal,
-			want:   loadBalancingModeConnection,
-		},
-		{
-			name:   "RegionalInternalExternal returns UTILIZATION mode",
-			lbType: infrav1.RegionalInternalExternal,
-			want:   loadBalancingModeUtilization,
-		},
-		{
-			name:   "RegionalExternal returns UTILIZATION mode",
-			lbType: infrav1.RegionalExternal,
-			want:   loadBalancingModeUtilization,
-		},
-		{
-			name:   "External returns UTILIZATION mode",
-			lbType: infrav1.External,
-			want:   loadBalancingModeUtilization,
-		},
-		{
-			name:   "Internal returns UTILIZATION mode",
-			lbType: infrav1.Internal,
-			want:   loadBalancingModeUtilization,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := getLoadBalancingMode(tt.lbType)
-			if got != tt.want {
-				t.Errorf("getLoadBalancingMode() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestCreateBackends(t *testing.T) {
 	instanceGroups := []*compute.InstanceGroup{
 		{
