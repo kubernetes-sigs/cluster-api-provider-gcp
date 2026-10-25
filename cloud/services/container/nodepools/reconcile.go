@@ -732,6 +732,10 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 }
 
 func (s *Service) checkDiffAndPrepareUpdateAutoscaling(existingNodePool *containerpb.NodePool) (bool, *containerpb.SetNodePoolAutoscalingRequest) {
+	if s.scope.GCPManagedMachinePool.Spec.Scaling == nil {
+		return false, nil
+	}
+
 	needUpdate := false
 	desiredAutoscaling := infrav1exp.ConvertToSdkAutoscaling(s.scope.GCPManagedMachinePool.Spec.Scaling)
 

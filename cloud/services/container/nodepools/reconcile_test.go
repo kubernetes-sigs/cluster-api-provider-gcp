@@ -809,6 +809,148 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 	}
 }
 
+func TestCheckDiffAndPrepareUpdateAutoscaling(t *testing.T) {
+	tests := []struct {
+		name             string
+		machinePool      *infrav1exp.GCPManagedMachinePool
+		mp               *clusterv1.MachinePool
+		controlPlane     *infrav1exp.GCPManagedControlPlane
+		existingNodePool *containerpb.NodePool
+		wantNeedUpdate   bool
+		wantEnabled      bool
+	}{
+		{
+			name: "empty scaling block enables autoscaling",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						Scaling: &infrav1exp.NodePoolAutoScaling{},
+					},
+				},
+			},
+			mp:           defaultMachinePool(),
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				Autoscaling: &containerpb.NodePoolAutoscaling{
+					Enabled:           false,
+					TotalMinNodeCount: 0,
+					TotalMaxNodeCount: 1,
+					LocationPolicy:    containerpb.NodePoolAutoscaling_BALANCED,
+				},
+			},
+			wantNeedUpdate: true,
+			wantEnabled:    true,
+		},
+		{
+			name:         "nil scaling but existing enabled (min 0 / max 1)",
+			machinePool:  defaultGCPManagedMachinePool(),
+			mp:           defaultMachinePool(),
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				Autoscaling: &containerpb.NodePoolAutoscaling{
+					Enabled:      true,
+					MinNodeCount: 0,
+					MaxNodeCount: 1,
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name:         "nil scaling but existing {}",
+			machinePool:  defaultGCPManagedMachinePool(),
+			mp:           defaultMachinePool(),
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				Autoscaling: &containerpb.NodePoolAutoscaling{},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "disabled against existing enabled",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						Scaling: &infrav1exp.NodePoolAutoScaling{
+							EnableAutoscaling: new(false),
+						},
+					},
+				},
+			},
+			mp:           defaultMachinePool(),
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				Autoscaling: &containerpb.NodePoolAutoscaling{
+					Enabled: true,
+				},
+			},
+			wantNeedUpdate: true,
+		},
+		{
+			name: "enabled with min/max different from existing",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						Scaling: &infrav1exp.NodePoolAutoScaling{
+							EnableAutoscaling: new(true),
+							MinCount:          new(int32(0)),
+							MaxCount:          new(int32(4)),
+						},
+					},
+				},
+			},
+			mp:           defaultMachinePool(),
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				Autoscaling: &containerpb.NodePoolAutoscaling{
+					Enabled:           true,
+					TotalMinNodeCount: int32(7),
+					TotalMaxNodeCount: int32(14),
+				},
+			},
+			wantNeedUpdate: true,
+			wantEnabled:    true,
+		},
+		{
+			name: "enabled with equal settings",
+			machinePool: &infrav1exp.GCPManagedMachinePool{
+				Spec: infrav1exp.GCPManagedMachinePoolSpec{
+					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
+						Scaling: &infrav1exp.NodePoolAutoScaling{
+							EnableAutoscaling: new(true),
+							MinCount:          new(int32(0)),
+							MaxCount:          new(int32(4)),
+						},
+					},
+				},
+			},
+			mp:           defaultMachinePool(),
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				Autoscaling: &containerpb.NodePoolAutoscaling{
+					Enabled:           true,
+					TotalMinNodeCount: int32(0),
+					TotalMaxNodeCount: int32(4),
+					LocationPolicy:    containerpb.NodePoolAutoscaling_BALANCED,
+				},
+			},
+			wantNeedUpdate: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := newTestService(tt.machinePool, tt.mp, tt.controlPlane)
+			needUpdate, req := svc.checkDiffAndPrepareUpdateAutoscaling(tt.existingNodePool)
+			if needUpdate != tt.wantNeedUpdate {
+				t.Errorf("checkDiffAndPrepareUpdateAutoscaling() needUpdate = %v, want %v", needUpdate, tt.wantNeedUpdate)
+			}
+			if tt.wantNeedUpdate && req.GetAutoscaling().GetEnabled() != tt.wantEnabled {
+				t.Errorf("wanted enabled to be %v, but was %v", tt.wantEnabled, req.GetAutoscaling().GetEnabled())
+			}
+		})
+	}
+}
+
 type fakeClusterManager struct {
 	containerpb.UnimplementedClusterManagerServer
 	nodePool *containerpb.NodePool
