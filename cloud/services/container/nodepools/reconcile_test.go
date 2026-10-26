@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"testing"
+	"time"
 
 	compute "cloud.google.com/go/compute/apiv1"
 	container "cloud.google.com/go/container/apiv1"
@@ -33,17 +34,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
+	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
-	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
 var surgeUpdateStrategy = containerpb.NodePoolUpdateStrategy_SURGE
@@ -713,7 +714,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		{
 			name:        "zonal cluster divides replicas by zone count (should be 1)",
 			location:    zonalLocation,
-			machinePool: defaultGCPManagedMachinePool(),
+			machinePool: createGCPManagedMachinePoolWithProviderList(3),
 			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(3))}},
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
@@ -857,6 +858,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 				Locations:        []string{"us-central1-a", "us-central1-b", "us-central1-c"},
 			},
 			wantNeedUpdate: false,
+			wantErr:        true,
 		},
 		{
 			name:         "observed is above desired",
@@ -1209,6 +1211,67 @@ func TestService_Reconcile(t *testing.T) {
 					t.Errorf("v1beta2 condition %s = %s/%s/%q, want False/%s/%q", conditionType, c.Status, c.Reason, c.Message, tt.wantReason, tt.wantMessage)
 				}
 			}
+		})
+	}
+}
+
+func TestService_ReconcileWithAutoscaling(t *testing.T) {
+	tests := []struct {
+		name                string
+		nodePool            *containerpb.NodePool
+		machinePoolReplicas int32
+		scalingBlock        *infrav1exp.NodePoolAutoScaling
+		wantRequeueAfter    time.Duration
+	}{
+		{
+			name:     "nil scaling, no requeue",
+			nodePool: &containerpb.NodePool{Status: containerpb.NodePool_RUNNING, Locations: []string{"us-central1-a"}},
+		},
+		{
+			name: "autoscaling enabled, requeue triggered",
+			nodePool: &containerpb.NodePool{Status: containerpb.NodePool_RUNNING, Locations: []string{"us-central1-a"}, Autoscaling: &containerpb.NodePoolAutoscaling{
+				Enabled:           true,
+				TotalMinNodeCount: 1,
+				TotalMaxNodeCount: 6,
+				LocationPolicy:    containerpb.NodePoolAutoscaling_BALANCED,
+			}},
+			scalingBlock: &infrav1exp.NodePoolAutoScaling{
+				EnableAutoscaling: new(true),
+				MinCount:          new(int32(1)),
+				MaxCount:          new(int32(6)),
+			},
+			wantRequeueAfter: reconciler.DefaultRetryTime,
+		},
+		{
+			name: "autoscaling disabled",
+			nodePool: &containerpb.NodePool{Status: containerpb.NodePool_RUNNING, Locations: []string{"us-central1-a"}, Autoscaling: &containerpb.NodePoolAutoscaling{
+				Enabled: false,
+			}},
+			scalingBlock: &infrav1exp.NodePoolAutoScaling{
+				EnableAutoscaling: new(false),
+			},
+		},
+		{
+			name:         "empty scaling block",
+			scalingBlock: &infrav1exp.NodePoolAutoScaling{},
+			nodePool: &containerpb.NodePool{Status: containerpb.NodePool_RUNNING, Locations: []string{"us-central1-a"}, Autoscaling: &containerpb.NodePoolAutoscaling{
+				Enabled:           true,
+				TotalMinNodeCount: 0,
+				TotalMaxNodeCount: 1,
+				LocationPolicy:    containerpb.NodePoolAutoscaling_BALANCED,
+			}},
+			wantRequeueAfter: reconciler.DefaultRetryTime,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewWithT(t)
+			svc := newReconcileTestService(t, test.nodePool, nil)
+			svc.scope.MachinePool.Spec.Replicas = new(test.machinePoolReplicas)
+			svc.scope.GCPManagedMachinePool.Spec.Scaling = test.scalingBlock
+			res, err := svc.Reconcile(t.Context())
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(res.RequeueAfter).To(Equal(test.wantRequeueAfter))
 		})
 	}
 }

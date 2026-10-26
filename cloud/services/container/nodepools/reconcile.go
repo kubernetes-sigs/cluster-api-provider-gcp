@@ -393,6 +393,11 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition)
 	v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolCreatingCondition, infrav1exp.GKEMachinePoolCreatedReason, clusterv1beta1.ConditionSeverityInfo, "")
 
+	// If the autoscaler is enabled size may well have changed out of band so we need to keep reconciling to keep up
+	if s.scope.AutoscalingEnabled() {
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
