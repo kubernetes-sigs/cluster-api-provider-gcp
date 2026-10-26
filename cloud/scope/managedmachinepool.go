@@ -423,7 +423,7 @@ func (s *ManagedMachinePoolScope) ClearInfrastructureMachineKind() bool {
 // SetReplicasManagedBy sets the CAPI annotation `replicas-managed-by` such that the correct statuses are displayed
 // by the MachinePool
 func (s *ManagedMachinePoolScope) SetReplicasManagedBy() {
-	if s.GCPManagedMachinePool.Spec.Scaling != nil && infrav1exp.ConvertToSdkAutoscaling(s.GCPManagedMachinePool.Spec.Scaling).GetEnabled() {
+	if s.AutoscalingEnabled() {
 		if s.MachinePool.Annotations == nil {
 			s.MachinePool.Annotations = map[string]string{}
 		}
@@ -431,6 +431,11 @@ func (s *ManagedMachinePoolScope) SetReplicasManagedBy() {
 		return
 	}
 	delete(s.MachinePool.Annotations, clusterv1.ReplicasManagedByAnnotation)
+}
+
+// AutoscalingEnabled is a canonical check whether the ManagedMachinePool has autoscaling enabled or not
+func (s *ManagedMachinePoolScope) AutoscalingEnabled() bool {
+	return s.GCPManagedMachinePool.Spec.Scaling != nil && infrav1exp.ConvertToSdkAutoscaling(s.GCPManagedMachinePool.Spec.Scaling).GetEnabled()
 }
 
 // PatchCAPIMachinePoolObject patches the MachinePool so it matches the one in the scope

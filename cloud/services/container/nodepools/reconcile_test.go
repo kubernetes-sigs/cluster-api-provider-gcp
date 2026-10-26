@@ -18,6 +18,7 @@ package nodepools
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 
@@ -107,6 +108,23 @@ func defaultMachinePool() *clusterv1.MachinePool {
 
 func defaultGCPManagedMachinePool() *infrav1exp.GCPManagedMachinePool {
 	return &infrav1exp.GCPManagedMachinePool{}
+}
+
+func createGCPManagedMachinePoolWithProviderList(listLen int) *infrav1exp.GCPManagedMachinePool {
+	return &infrav1exp.GCPManagedMachinePool{
+		Spec: infrav1exp.GCPManagedMachinePoolSpec{
+			ProviderIDList: createProviderIDList(listLen),
+		},
+	}
+}
+
+func createProviderIDList(length int) []string {
+	prefixFormat := "gce://my-project/us-central1-%c/node-%d"
+	var providerIDList []string
+	for i := 1; i < length+1; i++ {
+		providerIDList = append(providerIDList, fmt.Sprintf(prefixFormat, 'a'+rune(i-1), i))
+	}
+	return providerIDList
 }
 
 func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
@@ -605,7 +623,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		{
 			name:         "no diff when replica count matches",
 			location:     zonalLocation,
-			machinePool:  defaultGCPManagedMachinePool(),
+			machinePool:  createGCPManagedMachinePoolWithProviderList(3),
 			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(3))}},
 			controlPlane: defaultControlPlane(),
 			existingNodePool: &containerpb.NodePool{
@@ -617,7 +635,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		{
 			name:         "diff detected when replica count increases",
 			location:     zonalLocation,
-			machinePool:  defaultGCPManagedMachinePool(),
+			machinePool:  createGCPManagedMachinePoolWithProviderList(3),
 			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(5))}},
 			controlPlane: defaultControlPlane(),
 			existingNodePool: &containerpb.NodePool{
@@ -630,7 +648,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		{
 			name:         "diff detected when replica count decreases",
 			location:     zonalLocation,
-			machinePool:  defaultGCPManagedMachinePool(),
+			machinePool:  createGCPManagedMachinePoolWithProviderList(3),
 			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(1))}},
 			controlPlane: defaultControlPlane(),
 			existingNodePool: &containerpb.NodePool{
@@ -664,7 +682,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		{
 			name:         "nil Scaling spec does not suppress size update",
 			location:     zonalLocation,
-			machinePool:  defaultGCPManagedMachinePool(),
+			machinePool:  createGCPManagedMachinePoolWithProviderList(3),
 			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(5))}},
 			controlPlane: defaultControlPlane(),
 			existingNodePool: &containerpb.NodePool{
@@ -677,7 +695,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		{
 			name:        "regional cluster divides replicas by zone count",
 			location:    regionalLocation,
-			machinePool: defaultGCPManagedMachinePool(),
+			machinePool: createGCPManagedMachinePoolWithProviderList(6),
 			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(6))}},
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
@@ -713,7 +731,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		{
 			name:        "regional cluster detects diff after division",
 			location:    regionalLocation,
-			machinePool: defaultGCPManagedMachinePool(),
+			machinePool: createGCPManagedMachinePoolWithProviderList(6),
 			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(9))}},
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
@@ -789,6 +807,69 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 				Locations:        []string{"us-central1-a", "us-central-1b", "us-central-1c"},
 			},
 			wantNeedUpdate: false,
+		},
+		{
+			name:         "autoscaler shrinks pool, then autoscaler disabled (regional)",
+			machinePool:  createGCPManagedMachinePoolWithProviderList(1),
+			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(3))}},
+			location:     regionalLocation,
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 1,
+				Locations:        []string{"us-central1-a", "us-central1-b", "us-central1-c"},
+			},
+			wantNeedUpdate: true,
+			wantNodeCount:  1,
+		},
+		{
+			name:         "autoscaler shrinks pool, then autoscaler disabled (zonal)",
+			machinePool:  createGCPManagedMachinePoolWithProviderList(1),
+			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(3))}},
+			location:     regionalLocation,
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 3,
+				Locations:        []string{"us-central1-a"},
+			},
+			wantNeedUpdate: true,
+			wantNodeCount:  3,
+		},
+		{
+			name:         "converged after autoscaler",
+			machinePool:  createGCPManagedMachinePoolWithProviderList(3),
+			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(3))}},
+			location:     regionalLocation,
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 1,
+				Locations:        []string{"us-central1-a", "us-central1-b", "us-central1-c"},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name:         "uneven number of replicas vs zones",
+			machinePool:  createGCPManagedMachinePoolWithProviderList(3),
+			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(4))}},
+			location:     regionalLocation,
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 1,
+				Locations:        []string{"us-central1-a", "us-central1-b", "us-central1-c"},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name:         "observed is above desired",
+			machinePool:  createGCPManagedMachinePoolWithProviderList(6),
+			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(3))}},
+			location:     regionalLocation,
+			controlPlane: defaultControlPlane(),
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 1,
+				Locations:        []string{"us-central1-a", "us-central1-b", "us-central1-c"},
+			},
+			wantNeedUpdate: true,
+			wantNodeCount:  1,
 		},
 	}
 
@@ -939,7 +1020,7 @@ func TestCheckDiffAndPrepareUpdateAutoscaling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := newTestService(tt.machinePool, tt.mp, tt.controlPlane)
+			svc := newTestService(tt.machinePool, tt.mp, tt.controlPlane, zonalLocation)
 			needUpdate, req := svc.checkDiffAndPrepareUpdateAutoscaling(tt.existingNodePool)
 			if needUpdate != tt.wantNeedUpdate {
 				t.Errorf("checkDiffAndPrepareUpdateAutoscaling() needUpdate = %v, want %v", needUpdate, tt.wantNeedUpdate)
