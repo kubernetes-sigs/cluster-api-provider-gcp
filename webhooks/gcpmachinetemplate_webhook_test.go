@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
@@ -272,6 +273,101 @@ func TestGCPMachineTemplate_ValidateUpdate(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "allows changing image and imageFamily",
+			oldTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType: "n2d-standard-4",
+							Image:        ptr.To("projects/p/global/images/old"),
+							ImageFamily:  ptr.To("old-family"),
+						},
+					},
+				},
+			},
+			newTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType: "n2d-standard-4",
+							Image:        ptr.To("projects/p/global/images/new"),
+							ImageFamily:  ptr.To("new-family"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "allows changing rootDeviceSize and serviceAccounts",
+			oldTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType:   "n2d-standard-4",
+							RootDeviceSize: 30,
+						},
+					},
+				},
+			},
+			newTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType:   "n2d-standard-4",
+							RootDeviceSize: 100,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "allows changing additionalMetadata and resourceManagerTags",
+			oldTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType: "n2d-standard-4",
+						},
+					},
+				},
+			},
+			newTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType:        "n2d-standard-4",
+							AdditionalMetadata:  []infrav1.MetadataItem{{Key: "foo", Value: ptr.To("bar")}},
+							ResourceManagerTags: infrav1.ResourceManagerTags{{Key: "env", Value: "prod"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "rejects changing subnet",
+			oldTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType: "n2d-standard-4",
+							Subnet:       ptr.To("subnet-a"),
+						},
+					},
+				},
+			},
+			newTemplate: &infrav1.GCPMachineTemplate{
+				Spec: infrav1.GCPMachineTemplateSpec{
+					Template: infrav1.GCPMachineTemplateResource{
+						Spec: infrav1.GCPMachineSpec{
+							InstanceType: "n2d-standard-4",
+							Subnet:       ptr.To("subnet-b"),
+						},
+					},
+				},
+			},
+			wantErr: true,
 		},
 		{
 			name: "rejects changing instanceType",
