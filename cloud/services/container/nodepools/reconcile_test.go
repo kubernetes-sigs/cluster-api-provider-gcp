@@ -24,6 +24,7 @@ import (
 	compute "cloud.google.com/go/compute/apiv1"
 	container "cloud.google.com/go/container/apiv1"
 	"cloud.google.com/go/container/apiv1/containerpb"
+	. "github.com/onsi/gomega"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -36,6 +37,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -598,6 +600,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		existingNodePool *containerpb.NodePool
 		wantNeedUpdate   bool
 		wantNodeCount    int32
+		wantErr          bool
 	}{
 		{
 			name:         "no diff when replica count matches",
@@ -728,12 +731,74 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 			wantNeedUpdate: true,
 			wantNodeCount:  3,
 		},
+		{
+			name:        "regional with no locations but replicas that do not divide into 3",
+			location:    regionalLocation,
+			machinePool: defaultGCPManagedMachinePool(),
+			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(4))}},
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterName: "test-cluster",
+					},
+				},
+			},
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 2,
+			},
+			wantErr: true,
+		},
+		{
+			name:        "regional with locations but replicas that do not divide the number of locations",
+			location:    regionalLocation,
+			machinePool: defaultGCPManagedMachinePool(),
+			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(4))}},
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterName: "test-cluster",
+					},
+				},
+			},
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 2,
+				Locations:        []string{"us-central1-a", "us-central-1b", "us-central-1c"},
+			},
+			wantErr: true,
+		},
+		{
+			name:        "regional with 0 replicas",
+			location:    regionalLocation,
+			machinePool: defaultGCPManagedMachinePool(),
+			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(0))}},
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterName: "test-cluster",
+					},
+				},
+			},
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 0,
+				Locations:        []string{"us-central1-a", "us-central-1b", "us-central-1c"},
+			},
+			wantNeedUpdate: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
 			svc := newTestService(tt.machinePool, tt.mp, tt.controlPlane, tt.location)
-			needUpdate, req := svc.checkDiffAndPrepareUpdateSize(tt.existingNodePool)
+			needUpdate, req, err := svc.checkDiffAndPrepareUpdateSize(tt.existingNodePool)
+
+			g.Expect(err != nil).To(Equal(tt.wantErr))
 			if needUpdate != tt.wantNeedUpdate {
 				t.Errorf("checkDiffAndPrepareUpdateSize() needUpdate = %v, want %v", needUpdate, tt.wantNeedUpdate)
 			}
@@ -765,7 +830,7 @@ func (f *fakeResolver) Resolve(_ context.Context, _, _ string) (*location.Resolv
 
 // newReconcileTestService returns a Service backed by a fake GKE API that always returns nodePool.
 // The machine pool starts as ready, so tests can check that a reconcile marks it as not ready.
-func newReconcileTestService(t *testing.T, nodePool *containerpb.NodePool) *Service {
+func newReconcileTestService(t *testing.T, nodePool *containerpb.NodePool, replicas *int32) *Service {
 	t.Helper()
 	ctx := context.TODO()
 
@@ -805,10 +870,13 @@ func newReconcileTestService(t *testing.T, nodePool *containerpb.NodePool) *Serv
 		Reason: infrav1exp.GKEMachinePoolCreatedReason,
 	})
 
+	machinePool := defaultMachinePool()
+	machinePool.Spec.Replicas = replicas
+
 	s, err := scope.NewManagedMachinePoolScope(ctx, scope.ManagedMachinePoolScopeParams{
 		Client:                      fake.NewClientBuilder().WithScheme(scheme.Scheme).Build(),
 		Cluster:                     &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "test-cluster"}},
-		MachinePool:                 defaultMachinePool(),
+		MachinePool:                 machinePool,
 		GCPManagedCluster:           &infrav1exp.GCPManagedCluster{},
 		GCPManagedControlPlane:      defaultControlPlane(),
 		GCPManagedMachinePool:       gcpMachinePool,
@@ -829,9 +897,11 @@ func TestService_Reconcile(t *testing.T) {
 	tests := []struct {
 		name        string
 		nodePool    *containerpb.NodePool
+		replicas    *int32
 		wantErr     bool
 		wantReason  string
 		wantMessage string
+		wantRequeue bool
 	}{
 		{
 			name: "node pool in error",
@@ -839,31 +909,52 @@ func TestService_Reconcile(t *testing.T) {
 				Status:     containerpb.NodePool_ERROR,
 				Conditions: []*containerpb.StatusCondition{{Message: "quota exceeded"}},
 			},
+			replicas:    new(int32(3)),
 			wantReason:  infrav1exp.GKEMachinePoolErrorReason,
 			wantMessage: "quota exceeded",
+			wantRequeue: false,
 		},
 		{
-			name:       "node pool running with error",
-			nodePool:   &containerpb.NodePool{Status: containerpb.NodePool_RUNNING_WITH_ERROR},
-			wantReason: infrav1exp.GKEMachinePoolErrorReason,
+			name:        "node pool running with error",
+			nodePool:    &containerpb.NodePool{Status: containerpb.NodePool_RUNNING_WITH_ERROR},
+			replicas:    new(int32(3)),
+			wantReason:  infrav1exp.GKEMachinePoolErrorReason,
+			wantRequeue: false,
 		},
 		{
-			name:       "node pool provisioning",
-			nodePool:   &containerpb.NodePool{Status: containerpb.NodePool_PROVISIONING},
-			wantReason: infrav1exp.GKEMachinePoolCreatingReason,
+			name:        "node pool provisioning",
+			nodePool:    &containerpb.NodePool{Status: containerpb.NodePool_PROVISIONING},
+			replicas:    new(int32(3)),
+			wantReason:  infrav1exp.GKEMachinePoolCreatingReason,
+			wantRequeue: true,
 		},
 		{
-			name:       "node pool stopping",
-			nodePool:   &containerpb.NodePool{Status: containerpb.NodePool_STOPPING},
-			wantReason: infrav1exp.GKEMachinePoolDeletingReason,
+			name:        "node pool stopping",
+			nodePool:    &containerpb.NodePool{Status: containerpb.NodePool_STOPPING},
+			replicas:    new(int32(3)),
+			wantReason:  infrav1exp.GKEMachinePoolDeletingReason,
+			wantRequeue: false,
+		},
+		{
+			name: "node pool running with non-multiple replicas",
+			nodePool: &containerpb.NodePool{Status: containerpb.NodePool_RUNNING, Locations: []string{
+				"us-central1-a", "us-central1-b", "us-central-1c",
+			}},
+			replicas:    new(int32(4)),
+			wantReason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
+			wantMessage: "updating node pool size: invalid replicas: 4 is not a multiple of the zone count (3)",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.TODO()
-			svc := newReconcileTestService(t, tt.nodePool)
-			_, err := svc.Reconcile(ctx)
+			svc := newReconcileTestService(t, tt.nodePool, tt.replicas)
+			res, err := svc.Reconcile(ctx)
+			if (res != ctrl.Result{}) != tt.wantRequeue {
+				t.Errorf("Reconcile() got = %v, wanted requeue to be %v", res, tt.wantRequeue)
+				return
+			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return

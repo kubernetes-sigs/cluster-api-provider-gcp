@@ -17,7 +17,10 @@
 package shared
 
 import (
+	"errors"
 	"testing"
+
+	. "github.com/onsi/gomega"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -59,11 +62,11 @@ func TestCalculateReplicaDivisor(t *testing.T) {
 	}
 }
 
-func createManagedMachinePool(nodeLocations []string) *infrav1exp.GCPManagedMachinePool {
+func createManagedMachinePool(nodeLocations []string, name string) *infrav1exp.GCPManagedMachinePool {
 	return &infrav1exp.GCPManagedMachinePool{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "mmp-",
-			Namespace:    "default",
+			Name:      name,
+			Namespace: "default",
 		},
 		Spec: infrav1exp.GCPManagedMachinePoolSpec{
 			GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -73,7 +76,7 @@ func createManagedMachinePool(nodeLocations []string) *infrav1exp.GCPManagedMach
 	}
 }
 
-func createMachinePool(replicas int32) *clusterv1.MachinePool {
+func createMachinePool(replicas int32, name string) *clusterv1.MachinePool {
 	return &clusterv1.MachinePool{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "mp-",
@@ -81,6 +84,13 @@ func createMachinePool(replicas int32) *clusterv1.MachinePool {
 		},
 		Spec: clusterv1.MachinePoolSpec{
 			Replicas: &replicas,
+			Template: clusterv1.MachineTemplateSpec{
+				Spec: clusterv1.MachineSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Name: name,
+					},
+				},
+			},
 		},
 	}
 }
@@ -89,36 +99,66 @@ func TestManagedMachinePoolPreflightCheck(t *testing.T) {
 	tests := []struct {
 		name          string
 		nodeLocations []string
+		mmpName       string
+		mpName        string
 		replicas      int32
 		regional      bool
 		wantErr       bool
+		matchSentinel bool
 	}{
 		{
 			name:          "replicas not a multiple of the divisor fails",
 			nodeLocations: []string{"us-central1-a", "us-central1-a"},
+			mmpName:       "my-machine-pool",
+			mpName:        "my-machine-pool",
 			replicas:      5,
 			regional:      true,
 			wantErr:       true,
+			matchSentinel: true,
 		},
 		{
 			name:          "replicas not a multiple of the divisor fails when regional (3)",
 			nodeLocations: []string{},
+			mmpName:       "my-machine-pool",
+			mpName:        "my-machine-pool",
 			replicas:      5,
 			regional:      true,
 			wantErr:       true,
+			matchSentinel: true,
 		},
 		{
 			name:          "any count passes for a zonal cluster",
 			nodeLocations: []string{},
+			mmpName:       "my-machine-pool",
+			mpName:        "my-machine-pool",
 			replicas:      1298,
 			regional:      false,
 			wantErr:       false,
 		},
+		{
+			name:          "name mismatch is not the sentinel error",
+			nodeLocations: []string{},
+			mmpName:       "my-machine-pool",
+			mpName:        "this-name-does-not-match",
+			replicas:      3,
+			regional:      false,
+			wantErr:       true,
+			matchSentinel: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ManagedMachinePoolPreflightCheck(createManagedMachinePool(tt.nodeLocations), createMachinePool(tt.replicas), tt.regional); (err != nil) != tt.wantErr {
-				t.Errorf("ManagedMachinePoolPreflightCheck() error = %v, wantErr %v", err, tt.wantErr)
+			g := NewWithT(t)
+			err := ManagedMachinePoolPreflightCheck(createManagedMachinePool(tt.nodeLocations, tt.mmpName), createMachinePool(tt.replicas, tt.mpName), tt.regional)
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+				if tt.matchSentinel {
+					g.Expect(errors.Is(err, ErrInvalidReplicas)).To(BeTrue())
+				} else {
+					g.Expect(errors.Is(err, ErrInvalidReplicas)).To(BeFalse())
+				}
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
 			}
 		})
 	}

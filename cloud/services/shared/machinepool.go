@@ -30,6 +30,9 @@ const (
 	DefaultNumZonesPerRegion = 3
 )
 
+// ErrInvalidReplicas returns if the number of replicas is invalid for the given configuration
+var ErrInvalidReplicas = errors.New("invalid replicas")
+
 // ManagedMachinePoolPreflightCheck will perform checks against the machine pool before its created.
 func ManagedMachinePoolPreflightCheck(managedPool *infrav1exp.GCPManagedMachinePool, machinePool *clusterv1.MachinePool, regional bool) error {
 	if machinePool.Spec.Template.Spec.InfrastructureRef.Name != managedPool.Name {
@@ -48,7 +51,7 @@ func ValidateReplicas(replicas, divisor int32) error {
 		return fmt.Errorf("divisor must be positive: %d", divisor)
 	}
 	if replicas%divisor != 0 {
-		return fmt.Errorf("replicas (%d) must be a multiple of the zone count (%d)", replicas, divisor)
+		return fmt.Errorf("%w: %d is not a multiple of the zone count (%d)", ErrInvalidReplicas, replicas, divisor)
 	}
 	return nil
 }
