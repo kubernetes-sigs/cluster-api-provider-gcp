@@ -535,14 +535,12 @@ func (s *Service) fetchInstanceTemplateLabels(ctx context.Context, nodePool *con
 
 func (s *Service) createNodePool(ctx context.Context, log *logr.Logger) error {
 	log.V(2).Info("Running pre-flight checks on machine pool before creation")
-	if err := shared.ManagedMachinePoolPreflightCheck(s.scope.GCPManagedMachinePool, s.scope.MachinePool, s.scope.Region()); err != nil {
+	if err := shared.ManagedMachinePoolPreflightCheck(s.scope.GCPManagedMachinePool, s.scope.MachinePool, s.scope.IsRegional()); err != nil {
 		return fmt.Errorf("preflight checks on machine pool before creating: %w", err)
 	}
 
-	isRegional := shared.IsRegional(s.scope.Region())
-
 	createNodePoolRequest := &containerpb.CreateNodePoolRequest{
-		NodePool: scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, isRegional, s.scope.GCPManagedControlPlane.Spec.ClusterName),
+		NodePool: scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, s.scope.IsRegional(), s.scope.GCPManagedControlPlane.Spec.ClusterName),
 		Parent:   s.scope.NodePoolLocation(),
 	}
 	_, err := s.scope.ManagedMachinePoolClient().CreateNodePool(ctx, createNodePoolRequest)
@@ -601,8 +599,7 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 		Name: s.scope.NodePoolFullName(),
 	}
 
-	isRegional := shared.IsRegional(s.scope.Region())
-	desiredNodePool := scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, isRegional, s.scope.GCPManagedControlPlane.Spec.ClusterName)
+	desiredNodePool := scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, s.scope.IsRegional(), s.scope.GCPManagedControlPlane.Spec.ClusterName)
 
 	// Node version
 	if s.scope.NodePoolVersion() != "" {
@@ -737,10 +734,7 @@ func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.No
 		Name: s.scope.NodePoolFullName(),
 	}
 
-	replicas := *s.scope.MachinePool.Spec.Replicas
-	if shared.IsRegional(s.scope.Region()) {
-		replicas /= int32(len(existingNodePool.GetLocations()))
-	}
+	replicas := *s.scope.MachinePool.Spec.Replicas / shared.CalculateReplicaDivisor(existingNodePool.GetLocations(), s.scope.IsRegional())
 
 	if replicas != existingNodePool.GetInitialNodeCount() {
 		needUpdate = true

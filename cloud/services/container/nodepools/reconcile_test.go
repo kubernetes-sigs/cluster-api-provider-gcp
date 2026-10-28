@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
@@ -48,18 +49,20 @@ func init() {
 	_ = infrav1exp.AddToScheme(scheme.Scheme)
 }
 
-func newTestService(machinePool *infrav1exp.GCPManagedMachinePool, mp *clusterv1.MachinePool, controlPlane *infrav1exp.GCPManagedControlPlane) *Service {
+func newTestService(machinePool *infrav1exp.GCPManagedMachinePool, mp *clusterv1.MachinePool, controlPlane *infrav1exp.GCPManagedControlPlane, location location.ResolvedLocation) *Service {
 	s := new(scope.ManagedMachinePoolScope)
 	s.GCPManagedMachinePool = machinePool
 	s.MachinePool = mp
 	s.GCPManagedControlPlane = controlPlane
+	s.ResolvedLocation = location
 	return &Service{scope: s}
 }
 
-func newTestNodePoolService(machinePool *infrav1exp.GCPManagedMachinePool, controlPlane *infrav1exp.GCPManagedControlPlane) *Service {
+func newTestNodePoolService(machinePool *infrav1exp.GCPManagedMachinePool, controlPlane *infrav1exp.GCPManagedControlPlane, location location.ResolvedLocation) *Service {
 	s := new(scope.ManagedMachinePoolScope)
 	s.GCPManagedMachinePool = machinePool
 	s.GCPManagedControlPlane = controlPlane
+	s.ResolvedLocation = location
 	s.MachinePool = &clusterv1.MachinePool{
 		Spec: clusterv1.MachinePoolSpec{
 			Replicas: ptr.To(int32(1)),
@@ -80,6 +83,18 @@ func defaultControlPlane() *infrav1exp.GCPManagedControlPlane {
 	}
 }
 
+var zonalLocation = location.ResolvedLocation{
+	Region:   "us-central1",
+	Zone:     new("us-central1-a"),
+	Regional: false,
+}
+
+var regionalLocation = location.ResolvedLocation{
+	Region:   "us-central1",
+	Zone:     nil,
+	Regional: true,
+}
+
 func defaultMachinePool() *clusterv1.MachinePool {
 	return &clusterv1.MachinePool{
 		Spec: clusterv1.MachinePoolSpec{
@@ -95,6 +110,7 @@ func defaultGCPManagedMachinePool() *infrav1exp.GCPManagedMachinePool {
 func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 	tests := []struct {
 		name                   string
+		location               location.ResolvedLocation
 		machinePool            *infrav1exp.GCPManagedMachinePool
 		mp                     *clusterv1.MachinePool
 		existingNodePool       *containerpb.NodePool
@@ -104,6 +120,7 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 	}{
 		{
 			name:        "no diff when everything matches",
+			location:    zonalLocation,
 			machinePool: defaultGCPManagedMachinePool(),
 			mp:          defaultMachinePool(),
 			existingNodePool: &containerpb.NodePool{
@@ -112,7 +129,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			wantNeedUpdate: false,
 		},
 		{
-			name: "no diff when desired resource labels already present in instance template",
+			name:     "no diff when desired resource labels already present in instance template",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -133,7 +151,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			wantNeedUpdate: false,
 		},
 		{
-			name: "diff on resource labels triggers update when label missing from template",
+			name:     "diff on resource labels triggers update when label missing from template",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -158,7 +177,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "no resource label update when template labels unavailable",
+			name:     "no resource label update when template labels unavailable",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -174,7 +194,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			wantNeedUpdate:         false,
 		},
 		{
-			name: "diff on Kubernetes labels triggers update",
+			name:     "diff on Kubernetes labels triggers update",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -197,7 +218,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "no diff on image type when case differs (case-insensitive match)",
+			name:     "no diff on image type when case differs (case-insensitive match)",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -214,7 +236,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			wantNeedUpdate: false,
 		},
 		{
-			name: "diff on image type triggers update",
+			name:     "diff on image type triggers update",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -237,7 +260,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "diff on instance type triggers update",
+			name:     "diff on instance type triggers update",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -260,7 +284,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "no diff on instance type when values match",
+			name:     "no diff on instance type when values match",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -278,6 +303,7 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 		},
 		{
 			name:        "no update when instance type is unset",
+			location:    zonalLocation,
 			machinePool: defaultGCPManagedMachinePool(),
 			mp:          defaultMachinePool(),
 			existingNodePool: &containerpb.NodePool{
@@ -288,7 +314,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			wantNeedUpdate: false,
 		},
 		{
-			name: "diff on upgrade settings triggers update",
+			name:     "diff on upgrade settings triggers update",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -316,7 +343,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "update not needed if defaults align",
+			name:     "update not needed if defaults align",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -338,6 +366,7 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 		},
 		{
 			name:        "no update when upgrade settings unset",
+			location:    zonalLocation,
 			machinePool: defaultGCPManagedMachinePool(),
 			mp:          defaultMachinePool(),
 			existingNodePool: &containerpb.NodePool{
@@ -349,7 +378,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			wantNeedUpdate: false,
 		},
 		{
-			name: "diff on network tags triggers update",
+			name:     "diff on network tags triggers update",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -374,7 +404,8 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "diff on node locations triggers update",
+			name:     "diff on node locations triggers update",
+			location: regionalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -450,7 +481,7 @@ func TestCheckDiffAndPrepareUpdateConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := newTestService(tt.machinePool, tt.mp, defaultControlPlane())
+			svc := newTestService(tt.machinePool, tt.mp, defaultControlPlane(), tt.location)
 			needUpdate, req := svc.checkDiffAndPrepareUpdateConfig(tt.existingNodePool, tt.existingTemplateLabels)
 			if needUpdate != tt.wantNeedUpdate {
 				t.Errorf("checkDiffAndPrepareUpdateConfig() needUpdate = %v, want %v", needUpdate, tt.wantNeedUpdate)
@@ -475,12 +506,14 @@ func TestCheckDiffAndPrepareUpdateConfig_WorkloadMetadataMode(t *testing.T) {
 
 	tests := []struct {
 		name                 string
+		location             location.ResolvedLocation
 		workloadMetadataMode *infrav1exp.WorkloadMetadataMode
 		existingNodePool     *containerpb.NodePool
 		wantMetadataMode     *containerpb.WorkloadMetadataConfig_Mode
 	}{
 		{
 			name:                 "nil mode does not trigger update even when existing has GKE_METADATA",
+			location:             zonalLocation,
 			workloadMetadataMode: nil,
 			existingNodePool: &containerpb.NodePool{
 				Config: &containerpb.NodeConfig{
@@ -493,6 +526,7 @@ func TestCheckDiffAndPrepareUpdateConfig_WorkloadMetadataMode(t *testing.T) {
 		},
 		{
 			name:                 "GKE_METADATA mode triggers update when existing is unset",
+			location:             zonalLocation,
 			workloadMetadataMode: ptr.To(infrav1exp.WorkloadMetadataModeGKEMetadata),
 			existingNodePool: &containerpb.NodePool{
 				Config: &containerpb.NodeConfig{},
@@ -501,6 +535,7 @@ func TestCheckDiffAndPrepareUpdateConfig_WorkloadMetadataMode(t *testing.T) {
 		},
 		{
 			name:                 "GCE_METADATA mode triggers update when existing has GKE_METADATA",
+			location:             zonalLocation,
 			workloadMetadataMode: ptr.To(infrav1exp.WorkloadMetadataModeGCEMetadata),
 			existingNodePool: &containerpb.NodePool{
 				Config: &containerpb.NodeConfig{
@@ -513,6 +548,7 @@ func TestCheckDiffAndPrepareUpdateConfig_WorkloadMetadataMode(t *testing.T) {
 		},
 		{
 			name:                 "no update when desired GKE_METADATA matches existing",
+			location:             zonalLocation,
 			workloadMetadataMode: ptr.To(infrav1exp.WorkloadMetadataModeGKEMetadata),
 			existingNodePool: &containerpb.NodePool{
 				Config: &containerpb.NodeConfig{
@@ -538,7 +574,7 @@ func TestCheckDiffAndPrepareUpdateConfig_WorkloadMetadataMode(t *testing.T) {
 				},
 			}
 
-			svc := newTestNodePoolService(machinePool, controlPlane)
+			svc := newTestNodePoolService(machinePool, controlPlane, tt.location)
 			_, updateReq := svc.checkDiffAndPrepareUpdateConfig(tt.existingNodePool, nil)
 
 			if tt.wantMetadataMode == nil {
@@ -555,6 +591,7 @@ func TestCheckDiffAndPrepareUpdateConfig_WorkloadMetadataMode(t *testing.T) {
 func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 	tests := []struct {
 		name             string
+		location         location.ResolvedLocation
 		machinePool      *infrav1exp.GCPManagedMachinePool
 		mp               *clusterv1.MachinePool
 		controlPlane     *infrav1exp.GCPManagedControlPlane
@@ -564,6 +601,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 	}{
 		{
 			name:         "no diff when replica count matches",
+			location:     zonalLocation,
 			machinePool:  defaultGCPManagedMachinePool(),
 			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(3))}},
 			controlPlane: defaultControlPlane(),
@@ -575,6 +613,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		},
 		{
 			name:         "diff detected when replica count increases",
+			location:     zonalLocation,
 			machinePool:  defaultGCPManagedMachinePool(),
 			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(5))}},
 			controlPlane: defaultControlPlane(),
@@ -587,6 +626,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		},
 		{
 			name:         "diff detected when replica count decreases",
+			location:     zonalLocation,
 			machinePool:  defaultGCPManagedMachinePool(),
 			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(1))}},
 			controlPlane: defaultControlPlane(),
@@ -598,7 +638,8 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 			wantNodeCount:  1,
 		},
 		{
-			name: "autoscaling enabled suppresses size update",
+			name:     "autoscaling enabled suppresses size update",
+			location: zonalLocation,
 			machinePool: &infrav1exp.GCPManagedMachinePool{
 				Spec: infrav1exp.GCPManagedMachinePoolSpec{
 					GCPManagedMachinePoolClassSpec: infrav1exp.GCPManagedMachinePoolClassSpec{
@@ -609,16 +650,17 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 					},
 				},
 			},
-			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(5))}},
+			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(4))}},
 			controlPlane: defaultControlPlane(),
 			existingNodePool: &containerpb.NodePool{
 				InitialNodeCount: 3,
-				Locations:        []string{"us-central1-a"},
+				Locations:        []string{"us-central1-a", "us-central1-b", "us-central1-c"},
 			},
 			wantNeedUpdate: false,
 		},
 		{
 			name:         "nil Scaling spec does not suppress size update",
+			location:     zonalLocation,
 			machinePool:  defaultGCPManagedMachinePool(),
 			mp:           &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(5))}},
 			controlPlane: defaultControlPlane(),
@@ -631,25 +673,43 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 		},
 		{
 			name:        "regional cluster divides replicas by zone count",
+			location:    regionalLocation,
 			machinePool: defaultGCPManagedMachinePool(),
 			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(6))}},
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
 				Spec: infrav1exp.GCPManagedControlPlaneSpec{
 					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
 						Project:     "test-project",
-						Location:    "us-central1",
 						ClusterName: "test-cluster",
 					},
 				},
 			},
 			existingNodePool: &containerpb.NodePool{
 				InitialNodeCount: 2,
-				Locations:        []string{"us-central1-a", "us-central1-b", "us-central1-c"},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name:        "zonal cluster divides replicas by zone count (should be 1)",
+			location:    zonalLocation,
+			machinePool: defaultGCPManagedMachinePool(),
+			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(3))}},
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						Project:     "test-project",
+						ClusterName: "test-cluster",
+					},
+				},
+			},
+			existingNodePool: &containerpb.NodePool{
+				InitialNodeCount: 3,
 			},
 			wantNeedUpdate: false,
 		},
 		{
 			name:        "regional cluster detects diff after division",
+			location:    regionalLocation,
 			machinePool: defaultGCPManagedMachinePool(),
 			mp:          &clusterv1.MachinePool{Spec: clusterv1.MachinePoolSpec{Replicas: ptr.To(int32(9))}},
 			controlPlane: &infrav1exp.GCPManagedControlPlane{
@@ -672,7 +732,7 @@ func TestCheckDiffAndPrepareUpdateSize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := newTestService(tt.machinePool, tt.mp, tt.controlPlane)
+			svc := newTestService(tt.machinePool, tt.mp, tt.controlPlane, tt.location)
 			needUpdate, req := svc.checkDiffAndPrepareUpdateSize(tt.existingNodePool)
 			if needUpdate != tt.wantNeedUpdate {
 				t.Errorf("checkDiffAndPrepareUpdateSize() needUpdate = %v, want %v", needUpdate, tt.wantNeedUpdate)
@@ -691,6 +751,16 @@ type fakeClusterManager struct {
 
 func (f *fakeClusterManager) GetNodePool(_ context.Context, _ *containerpb.GetNodePoolRequest) (*containerpb.NodePool, error) {
 	return f.nodePool, nil
+}
+
+type fakeResolver struct{}
+
+func (f *fakeResolver) Resolve(_ context.Context, _, _ string) (*location.ResolvedLocation, error) {
+	return &location.ResolvedLocation{
+		Region:   "us-central1",
+		Zone:     new("us-central1-a"),
+		Regional: false,
+	}, nil
 }
 
 // newReconcileTestService returns a Service backed by a fake GKE API that always returns nodePool.
@@ -745,6 +815,7 @@ func newReconcileTestService(t *testing.T, nodePool *containerpb.NodePool) *Serv
 		ManagedClusterClient:        mcClient,
 		InstanceGroupManagersClient: migClient,
 		InstanceTemplatesClient:     templatesClient,
+		Resolver:                    &fakeResolver{},
 	})
 	if err != nil {
 		t.Fatal(err)

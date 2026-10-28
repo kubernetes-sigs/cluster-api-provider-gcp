@@ -22,9 +22,11 @@ import (
 	"time"
 
 	computerest "cloud.google.com/go/compute/apiv1"
+	"cloud.google.com/go/compute/apiv1/computepb"
 	container "cloud.google.com/go/container/apiv1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
+	"github.com/googleapis/gax-go/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
@@ -32,6 +34,7 @@ import (
 	"k8s.io/client-go/pkg/version"
 	"k8s.io/client-go/util/flowcontrol"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -47,6 +50,19 @@ type GCPRateLimiter struct{}
 // GCP credentials from JSON data.
 type credentialHeader struct {
 	Type string `json:"type"`
+}
+
+// zonesAdapter is a wrapper for the GCP ZonesClient so we can deal in concrete types not pointers
+type zonesAdapter struct {
+	zoneClient *computerest.ZonesClient
+}
+
+func (za *zonesAdapter) Close() error {
+	return za.zoneClient.Close()
+}
+
+func (za *zonesAdapter) List(ctx context.Context, req *computepb.ListZonesRequest, opts ...gax.CallOption) location.ZoneIterator {
+	return za.zoneClient.List(ctx, req, opts...)
 }
 
 // Accept blocks until the operation can be performed.
@@ -204,4 +220,21 @@ func newTagBindingsClient(ctx context.Context, credentialsRef *infrav1.ObjectRef
 	}
 
 	return client, nil
+}
+
+// NewResolver this builds a location.Resolver with real GCP clients so that we can resolve locations
+// correctly
+func NewResolver(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*location.Resolver, error) {
+	clientOptions, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	if err != nil {
+		return nil, err
+	}
+	if endpoints != nil && endpoints.ComputeServiceEndpoint != "" {
+		clientOptions = append(clientOptions, option.WithEndpoint(endpoints.ComputeServiceEndpoint))
+	}
+	zonesClient, err := computerest.NewZonesRESTClient(ctx, clientOptions...)
+	if err != nil {
+		return nil, err
+	}
+	return location.NewResolver(&zonesAdapter{zoneClient: zonesClient}), nil
 }

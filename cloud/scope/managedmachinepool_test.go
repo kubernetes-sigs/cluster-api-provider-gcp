@@ -1,13 +1,14 @@
 package scope
 
 import (
+	"strings"
 	"testing"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	"sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
@@ -112,11 +113,52 @@ func Test_MachinePool_ConvertToSdkNodePool(t *testing.T) {
 
 		g.Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
 			Name:             testManagedMachinePool.Spec.NodePoolName,
-			InitialNodeCount: int32(newReplicas / cloud.DefaultNumRegionsPerZone),
+			InitialNodeCount: int32(newReplicas / shared.DefaultNumZonesPerRegion),
 			Config: &containerpb.NodeConfig{
 				ResourceLabels:         NodePoolResourceLabels(nil, clusterName),
 				ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
 			},
+		}))
+	})
+
+	t.Run("convert to SDK node pool node count in a zonal cluster", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		newReplicas := 6
+		testMachinePool.Spec.Replicas = new(int32(newReplicas))
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
+			Name:             testManagedMachinePool.Spec.NodePoolName,
+			InitialNodeCount: int32(newReplicas),
+			Config: &containerpb.NodeConfig{
+				ResourceLabels:         NodePoolResourceLabels(nil, clusterName),
+				ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
+			},
+		}))
+	})
+
+	t.Run("convert to SDK node pool node count in a regional cluster with explicit nodeLocations", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		newReplicas := 6
+		testMachinePool.Spec.Replicas = new(int32(newReplicas))
+		locations := []string{"us-central1-a", "us-central1-b"}
+		testManagedMachinePool.Spec.NodeLocations = locations
+
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, true, clusterName)
+
+		g.Expect(sdkNodePool).To(Equal(&containerpb.NodePool{
+			Name:             testManagedMachinePool.Spec.NodePoolName,
+			InitialNodeCount: 3,
+			Config: &containerpb.NodeConfig{
+				ResourceLabels:         NodePoolResourceLabels(nil, clusterName),
+				ShieldedInstanceConfig: &containerpb.ShieldedInstanceConfig{},
+			},
+			Locations: locations,
 		}))
 	})
 
@@ -298,4 +340,49 @@ func Test_MachinePool_ConvertToSdkNodePool(t *testing.T) {
 			Strategy:       &strategy,
 		}))
 	})
+}
+
+func Test_ManagedMachinePool_Location_Synchronicity(t *testing.T) {
+	tests := []struct {
+		name                   string
+		location               string
+		locationResponse       string
+		nodePoolLocationSuffix string
+	}{
+		{
+			name:                   "Region input reports directly",
+			location:               "us-central1",
+			locationResponse:       "us-central1",
+			nodePoolLocationSuffix: "locations/us-central1/clusters/" + clusterName,
+		},
+		{
+			name:                   "Zonal input reports directly",
+			location:               "us-central1-a",
+			locationResponse:       "us-central1-a",
+			nodePoolLocationSuffix: "locations/us-central1-a/clusters/" + clusterName,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mmp := createTestManagedMachinePool()
+			mmps := ManagedMachinePoolScope{
+				GCPManagedMachinePool: mmp,
+				GCPManagedControlPlane: &v1beta1.GCPManagedControlPlane{
+					Spec: v1beta1.GCPManagedControlPlaneSpec{
+						GCPManagedControlPlaneClassSpec: v1beta1.GCPManagedControlPlaneClassSpec{
+							ClusterName: clusterName,
+							Location:    test.location,
+						},
+					},
+				},
+			}
+			mmps.GCPManagedControlPlane.Spec.Location = test.location
+			if mmps.Location() != test.locationResponse {
+				t.Fatalf("Expected %s but got %s", test.locationResponse, mmps.Location())
+			}
+			if !strings.HasSuffix(mmps.NodePoolLocation(), test.nodePoolLocationSuffix) {
+				t.Fatalf("Expected %s but got %s", test.nodePoolLocationSuffix, mmps.NodePoolLocation())
+			}
+		})
+	}
 }

@@ -49,6 +49,7 @@ type ManagedControlPlaneScopeParams struct {
 	Cluster                *clusterv1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
+	Resolver               location.Resolving
 }
 
 // NewManagedControlPlaneScope creates a new Scope from the supplied parameters.
@@ -85,6 +86,19 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		}
 		params.TokenClient = &tokenClient
 	}
+	if params.Resolver == nil {
+		resolver, err := NewResolver(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create location resolver")
+		}
+		defer resolver.Close()
+		params.Resolver = resolver
+	}
+
+	resolvedLocation, err := params.Resolver.Resolve(ctx, params.GCPManagedControlPlane.Spec.Project, params.GCPManagedControlPlane.Spec.Location)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to resolve location")
+	}
 
 	helper, err := v1beta1patch.NewHelper(params.GCPManagedControlPlane, params.Client)
 	if err != nil {
@@ -100,6 +114,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		tagBindingsClient:      params.TagBindingsClient,
 		tokenClient:            *params.TokenClient,
 		patchHelper:            helper,
+		ResolvedLocation:       *resolvedLocation,
 	}, nil
 }
 
@@ -114,6 +129,7 @@ type ManagedControlPlaneScope struct {
 	mcClient               *container.ClusterManagerClient
 	tagBindingsClient      *resourcemanager.TagBindingsClient
 	tokenClient            TokenClient
+	ResolvedLocation       location.ResolvedLocation
 
 	AllMachinePools        []clusterv1.MachinePool
 	AllManagedMachinePools []infrav1exp.GCPManagedMachinePool
@@ -211,8 +227,28 @@ func (s *ManagedControlPlaneScope) GetAllNodePools(ctx context.Context) ([]infra
 
 // Region returns the region of the GKE cluster.
 func (s *ManagedControlPlaneScope) Region() string {
-	loc, _ := location.Parse(s.GCPManagedControlPlane.Spec.Location)
-	return loc.Region
+	return s.ResolvedLocation.Region
+}
+
+// IsRegional returns if the GKE cluster is a regional cluster.
+func (s *ManagedControlPlaneScope) IsRegional() bool {
+	return s.ResolvedLocation.Regional
+}
+
+// ValidateLocation checks both that the regions of the cluster and control plane match and that we don't try to
+// use Autopilot with a Zonal cluster
+func (s *ManagedControlPlaneScope) ValidateLocation() (reason, message string) {
+	controlPlaneRegion := s.Region()
+	clusterRegion := s.GCPManagedCluster.Spec.Region
+	if controlPlaneRegion != clusterRegion {
+		return infrav1exp.GKEControlPlaneRegionMismatchReason, fmt.Sprintf("control plane in region %s, while cluster in region %s", controlPlaneRegion, clusterRegion)
+	}
+	zonal := !s.IsRegional()
+	autopilotEnabled := s.GCPManagedControlPlane.Spec.EnableAutopilot
+	if zonal && autopilotEnabled {
+		return infrav1exp.GKEControlPlaneAutopilotRequiresRegionalReason, "an Autopilot enabled cluster cannot also be zonal"
+	}
+	return "", ""
 }
 
 // ClusterLocation returns the location of the cluster.
