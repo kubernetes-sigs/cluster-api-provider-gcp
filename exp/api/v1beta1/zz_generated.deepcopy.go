@@ -1813,10 +1813,18 @@ func (in Taints) DeepCopy() Taints {
 func (in *TimeWindow) DeepCopyInto(out *TimeWindow) {
 	*out = *in
 	in.StartTime.DeepCopyInto(&out.StartTime)
-	in.EndTime.DeepCopyInto(&out.EndTime)
+	if in.EndTime != nil {
+		in, out := &in.EndTime, &out.EndTime
+		*out = (*in).DeepCopy()
+	}
 	if in.MaintenanceExclusionOption != nil {
 		in, out := &in.MaintenanceExclusionOption, &out.MaintenanceExclusionOption
 		*out = new(MaintenanceExclusionOption)
+		**out = **in
+	}
+	if in.EndTimeBehavior != nil {
+		in, out := &in.EndTimeBehavior, &out.EndTimeBehavior
+		*out = new(EndTimeBehavior)
 		**out = **in
 	}
 }

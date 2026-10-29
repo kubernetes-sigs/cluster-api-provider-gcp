@@ -313,8 +313,15 @@ spec:
                       properties:
                         endTime:
                           description: EndTime represents the time that the window
-                            ends.
+                            ends. This is ignored if using tracking as GKE computes
+                            it.
                           format: date-time
+                          type: string
+                        endTimeBehavior:
+                          description: EndTimeBehavior represents an event on which
+                            to end a time window rather than a specific time
+                          enum:
+                          - until-end-of-support
                           type: string
                         maintenanceExclusionOption:
                           description: |-
@@ -333,7 +340,13 @@ spec:
                       type: object
                       x-kubernetes-validations:
                       - message: endTime must be after startTime
-                        rule: self.startTime < self.endTime
+                        rule: '!has(self.endTime) || self.startTime < self.endTime'
+                      - message: endTime is required unless endTimeBehavior is set
+                        rule: has(self.endTime) || has(self.endTimeBehavior)
+                      - message: endTimeBehavior until end-of-support requires a no-minor-upgrades
+                          or no-minor-or-node-upgrades exclusion option
+                        rule: '!has(self.endTimeBehavior) || (has(self.maintenanceExclusionOption)
+                          && self.maintenanceExclusionOption != ''no-upgrades'')'
                     description: |-
                       MaintenanceExclusions represents a map of maintenance exclusion names to a TimeWindow representing the exclusion period
                       (consists of a start time, end time, and exclusion scope). Non-emergency maintenance should not occur in these windows.
@@ -358,8 +371,15 @@ spec:
                         properties:
                           endTime:
                             description: EndTime represents the time that the window
-                              ends.
+                              ends. This is ignored if using tracking as GKE computes
+                              it.
                             format: date-time
+                            type: string
+                          endTimeBehavior:
+                            description: EndTimeBehavior represents an event on which
+                              to end a time window rather than a specific time
+                            enum:
+                            - until-end-of-support
                             type: string
                           maintenanceExclusionOption:
                             description: |-
@@ -378,8 +398,18 @@ spec:
                         type: object
                         x-kubernetes-validations:
                         - message: endTime must be after startTime
-                          rule: self.startTime < self.endTime
+                          rule: '!has(self.endTime) || self.startTime < self.endTime'
+                        - message: endTime is required unless endTimeBehavior is set
+                          rule: has(self.endTime) || has(self.endTimeBehavior)
+                        - message: endTimeBehavior until end-of-support requires a
+                            no-minor-upgrades or no-minor-or-node-upgrades exclusion
+                            option
+                          rule: '!has(self.endTimeBehavior) || (has(self.maintenanceExclusionOption)
+                            && self.maintenanceExclusionOption != ''no-upgrades'')'
                     type: object
+                    x-kubernetes-validations:
+                    - message: recurringMaintenanceWindows cannot set endTimeBehavior
+                      rule: '!has(self.window) || !has(self.window.endTimeBehavior)'
                 type: object
                 x-kubernetes-validations:
                 - message: only one of dailyMaintenanceWindow and recurringMaintenanceWindow

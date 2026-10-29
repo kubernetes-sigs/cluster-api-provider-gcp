@@ -41,9 +41,10 @@ func maintenancePolicyWithExclusionOptions(options ...*expinfrav1.MaintenanceExc
 	exclusions := map[string]*expinfrav1.TimeWindow{}
 	for i, option := range options {
 		start := time.Date(2024, 1, i+1, 0, 0, 0, 0, time.UTC)
+		end := metav1.NewTime(start.Add(time.Hour))
 		exclusions[fmt.Sprintf("exclusion-%d", i)] = &expinfrav1.TimeWindow{
 			StartTime:                  metav1.NewTime(start),
-			EndTime:                    metav1.NewTime(start.Add(time.Hour)),
+			EndTime:                    &end,
 			MaintenanceExclusionOption: option,
 		}
 	}
@@ -177,6 +178,8 @@ func TestGCPManagedControlPlaneDefaultingWebhook(t *testing.T) {
 }
 
 func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
+	endTime := metav1.NewTime(time.Date(2024, 1, 8, 0, 0, 0, 0, time.UTC))
+
 	tests := []struct {
 		name        string
 		expectError bool
@@ -542,7 +545,7 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 							"bar": nil,
 							"bash": {
 								StartTime: start,
-								EndTime:   end,
+								EndTime:   &end,
 							},
 						},
 					},
@@ -560,7 +563,7 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 						RecurringMaintenanceWindow: &expinfrav1.RecurringMaintenanceWindow{
 							Window: &expinfrav1.TimeWindow{
 								StartTime: metav1.NewTime(time.Date(2024, 1, 6, 0, 0, 0, 0, time.UTC)),
-								EndTime:   metav1.NewTime(time.Date(2024, 1, 8, 0, 0, 0, 0, time.UTC)),
+								EndTime:   &endTime,
 							},
 							Recurrence: "FREQ=WEEKLY;BYDAY=SA,SU",
 						},
@@ -579,7 +582,7 @@ func TestGCPManagedControlPlaneValidatingWebhookCreate(t *testing.T) {
 						RecurringMaintenanceWindow: &expinfrav1.RecurringMaintenanceWindow{
 							Window: &expinfrav1.TimeWindow{
 								StartTime: metav1.NewTime(time.Date(2024, 1, 6, 0, 0, 0, 0, time.UTC)),
-								EndTime:   metav1.NewTime(time.Date(2024, 1, 8, 0, 0, 0, 0, time.UTC)),
+								EndTime:   &endTime,
 							},
 							Recurrence: "not a valid rrule",
 						},

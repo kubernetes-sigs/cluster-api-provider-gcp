@@ -1312,6 +1312,12 @@ func TestClusterNetworkNilPointerGuards(t *testing.T) {
 	}
 }
 
+var (
+	noMinorOrNodeUpgrades = infrav1exp.NoMinorOrNodeUpgrades
+	noMinorUpgrades       = infrav1exp.NoMinorUpgrades
+	untilEndOfSupport     = infrav1exp.UntilEndOfSupport
+)
+
 func TestConvertToSdkMaintenancePolicy(t *testing.T) {
 	start := metav1.NewTime(time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC))
 	end := metav1.NewTime(time.Date(2024, 1, 1, 14, 0, 0, 0, time.UTC))
@@ -1343,7 +1349,7 @@ func TestConvertToSdkMaintenancePolicy(t *testing.T) {
 			name: "recurring maintenance window",
 			policy: &infrav1exp.MaintenancePolicy{
 				RecurringMaintenanceWindow: &infrav1exp.RecurringMaintenanceWindow{
-					Window:     &infrav1exp.TimeWindow{StartTime: start, EndTime: end},
+					Window:     &infrav1exp.TimeWindow{StartTime: start, EndTime: &end},
 					Recurrence: "FREQ=WEEKLY;BYDAY=SA,SU",
 				},
 			},
@@ -1366,7 +1372,7 @@ func TestConvertToSdkMaintenancePolicy(t *testing.T) {
 			name: "maintenance exclusion without an explicit option leaves scope unset",
 			policy: &infrav1exp.MaintenancePolicy{
 				MaintenanceExclusions: map[string]*infrav1exp.TimeWindow{
-					"exclusion-1": {StartTime: start, EndTime: end},
+					"exclusion-1": {StartTime: start, EndTime: &end},
 				},
 			},
 			want: &containerpb.MaintenancePolicy{
@@ -1392,6 +1398,70 @@ func TestConvertToSdkMaintenancePolicy(t *testing.T) {
 				DisruptionBudget: &containerpb.DisruptionBudget{
 					MinorVersionDisruptionInterval: durationpb.New(7 * 24 * time.Hour),
 					PatchVersionDisruptionInterval: durationpb.New(24 * time.Hour),
+				},
+			},
+		},
+		{
+			name: "tracking with no-minor-upgrades",
+			policy: &infrav1exp.MaintenancePolicy{
+				MaintenanceExclusions: map[string]*infrav1exp.TimeWindow{
+					"foo": {StartTime: start, EndTimeBehavior: &untilEndOfSupport, MaintenanceExclusionOption: &noMinorUpgrades},
+				},
+			},
+			want: &containerpb.MaintenancePolicy{
+				Window: &containerpb.MaintenanceWindow{
+					MaintenanceExclusions: map[string]*containerpb.TimeWindow{
+						"foo": {
+							Options: &containerpb.TimeWindow_MaintenanceExclusionOptions{
+								MaintenanceExclusionOptions: &containerpb.MaintenanceExclusionOptions{
+									Scope:           containerpb.MaintenanceExclusionOptions_NO_MINOR_UPGRADES,
+									EndTimeBehavior: containerpb.MaintenanceExclusionOptions_UNTIL_END_OF_SUPPORT,
+								},
+							},
+							StartTime: timestamppb.New(start.Time),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "fixed end times still get sent",
+			policy: &infrav1exp.MaintenancePolicy{
+				MaintenanceExclusions: map[string]*infrav1exp.TimeWindow{
+					"foo": {StartTime: start, EndTime: &end},
+				},
+			},
+			want: &containerpb.MaintenancePolicy{
+				Window: &containerpb.MaintenanceWindow{
+					MaintenanceExclusions: map[string]*containerpb.TimeWindow{
+						"foo": {
+							StartTime: timestamppb.New(start.Time),
+							EndTime:   timestamppb.New(end.Time),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "tracking with no-minor-or-node-upgrades",
+			policy: &infrav1exp.MaintenancePolicy{
+				MaintenanceExclusions: map[string]*infrav1exp.TimeWindow{
+					"foo": {StartTime: start, EndTimeBehavior: &untilEndOfSupport, MaintenanceExclusionOption: &noMinorOrNodeUpgrades},
+				},
+			},
+			want: &containerpb.MaintenancePolicy{
+				Window: &containerpb.MaintenanceWindow{
+					MaintenanceExclusions: map[string]*containerpb.TimeWindow{
+						"foo": {
+							Options: &containerpb.TimeWindow_MaintenanceExclusionOptions{
+								MaintenanceExclusionOptions: &containerpb.MaintenanceExclusionOptions{
+									Scope:           containerpb.MaintenanceExclusionOptions_NO_MINOR_OR_NODE_UPGRADES,
+									EndTimeBehavior: containerpb.MaintenanceExclusionOptions_UNTIL_END_OF_SUPPORT,
+								},
+							},
+							StartTime: timestamppb.New(start.Time),
+						},
+					},
 				},
 			},
 		},
@@ -1523,7 +1593,7 @@ func TestCheckDiffAndPrepareUpdateMaintenancePolicy(t *testing.T) {
 			name: "unrelated disruption budget observability fields don't trigger a diff",
 			controlPlane: baseControlPlane(&infrav1exp.MaintenancePolicy{
 				RecurringMaintenanceWindow: &infrav1exp.RecurringMaintenanceWindow{
-					Window:     &infrav1exp.TimeWindow{StartTime: start, EndTime: end},
+					Window:     &infrav1exp.TimeWindow{StartTime: start, EndTime: &end},
 					Recurrence: "FREQ=WEEKLY;BYDAY=SA,SU",
 				},
 			}),
@@ -1544,6 +1614,125 @@ func TestCheckDiffAndPrepareUpdateMaintenancePolicy(t *testing.T) {
 				},
 			},
 			wantNeedUpdate: false,
+		},
+		{
+			name: "computed endTime from tracking yields no diff",
+			controlPlane: baseControlPlane(&infrav1exp.MaintenancePolicy{
+				MaintenanceExclusions: map[string]*infrav1exp.TimeWindow{
+					"foo": {
+						StartTime:                  start,
+						MaintenanceExclusionOption: &noMinorOrNodeUpgrades,
+						EndTimeBehavior:            &untilEndOfSupport,
+					},
+				},
+			}),
+			existingCluster: &containerpb.Cluster{
+				MaintenancePolicy: &containerpb.MaintenancePolicy{
+					ResourceVersion: "abc123",
+					Window: &containerpb.MaintenanceWindow{
+						MaintenanceExclusions: map[string]*containerpb.TimeWindow{
+							"foo": {
+								Options: &containerpb.TimeWindow_MaintenanceExclusionOptions{
+									MaintenanceExclusionOptions: &containerpb.MaintenanceExclusionOptions{
+										Scope:           containerpb.MaintenanceExclusionOptions_NO_MINOR_OR_NODE_UPGRADES,
+										EndTimeBehavior: containerpb.MaintenanceExclusionOptions_UNTIL_END_OF_SUPPORT,
+									},
+								},
+								StartTime: timestamppb.New(start.Time),
+								EndTime:   timestamppb.New(end.Time),
+							},
+						},
+					},
+				},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "change to tracking is detected",
+			controlPlane: baseControlPlane(&infrav1exp.MaintenancePolicy{
+				MaintenanceExclusions: map[string]*infrav1exp.TimeWindow{
+					"foo": {
+						StartTime: start,
+						EndTime:   &end,
+					},
+				},
+			}),
+			existingCluster: &containerpb.Cluster{
+				MaintenancePolicy: &containerpb.MaintenancePolicy{
+					ResourceVersion: "abc123",
+					Window: &containerpb.MaintenanceWindow{
+						MaintenanceExclusions: map[string]*containerpb.TimeWindow{
+							"foo": {
+								Options: &containerpb.TimeWindow_MaintenanceExclusionOptions{
+									MaintenanceExclusionOptions: &containerpb.MaintenanceExclusionOptions{
+										Scope:           containerpb.MaintenanceExclusionOptions_NO_MINOR_UPGRADES,
+										EndTimeBehavior: containerpb.MaintenanceExclusionOptions_UNTIL_END_OF_SUPPORT,
+									},
+								},
+								StartTime: timestamppb.New(start.Time),
+								EndTime:   timestamppb.New(end.Time),
+							},
+						},
+					},
+				},
+			},
+			wantNeedUpdate: true,
+		},
+		{
+			name: "change to tracking scope is detected",
+			controlPlane: baseControlPlane(&infrav1exp.MaintenancePolicy{
+				MaintenanceExclusions: map[string]*infrav1exp.TimeWindow{
+					"foo": {
+						StartTime:                  start,
+						MaintenanceExclusionOption: &noMinorOrNodeUpgrades,
+						EndTimeBehavior:            &untilEndOfSupport,
+					},
+				},
+			}),
+			existingCluster: &containerpb.Cluster{
+				MaintenancePolicy: &containerpb.MaintenancePolicy{
+					ResourceVersion: "abc123",
+					Window: &containerpb.MaintenanceWindow{
+						MaintenanceExclusions: map[string]*containerpb.TimeWindow{
+							"foo": {
+								Options: &containerpb.TimeWindow_MaintenanceExclusionOptions{
+									MaintenanceExclusionOptions: &containerpb.MaintenanceExclusionOptions{
+										Scope:           containerpb.MaintenanceExclusionOptions_NO_MINOR_UPGRADES,
+										EndTimeBehavior: containerpb.MaintenanceExclusionOptions_UNTIL_END_OF_SUPPORT,
+									},
+								},
+								StartTime: timestamppb.New(start.Time),
+								EndTime:   timestamppb.New(end.Time),
+							},
+						},
+					},
+				},
+			},
+			wantNeedUpdate: true,
+		},
+		{
+			name: "fixed exclusion missing its endTime is detected",
+			controlPlane: baseControlPlane(&infrav1exp.MaintenancePolicy{
+				MaintenanceExclusions: map[string]*infrav1exp.TimeWindow{
+					"foo": {
+						StartTime: start,
+					},
+				},
+			}),
+			existingCluster: &containerpb.Cluster{
+				MaintenancePolicy: &containerpb.MaintenancePolicy{
+					ResourceVersion: "abc123",
+					Window: &containerpb.MaintenanceWindow{
+						MaintenanceExclusions: map[string]*containerpb.TimeWindow{
+							"foo": {
+								StartTime: timestamppb.New(start.Time),
+								EndTime:   timestamppb.New(end.Time),
+							},
+						},
+					},
+				},
+			},
+			wantNeedUpdate: true,
 		},
 		{
 			name: "empty map vs no exclusions gives no diff",

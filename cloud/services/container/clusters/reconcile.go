@@ -903,22 +903,32 @@ func convertToSdkTimeWindow(window *infrav1exp.TimeWindow) *containerpb.TimeWind
 
 	tw := &containerpb.TimeWindow{
 		StartTime: timestamppb.New(window.StartTime.Time),
-		EndTime:   timestamppb.New(window.EndTime.Time),
 	}
 
-	if window.MaintenanceExclusionOption != nil {
+	if window.EndTime != nil {
+		tw.EndTime = timestamppb.New(window.EndTime.Time)
+	}
+
+	if window.MaintenanceExclusionOption != nil || window.EndTimeBehavior != nil {
 		twOptions := &containerpb.TimeWindow_MaintenanceExclusionOptions{
 			MaintenanceExclusionOptions: &containerpb.MaintenanceExclusionOptions{},
 		}
-		switch *window.MaintenanceExclusionOption {
-		case infrav1exp.NoMinorUpgrades:
-			twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_MINOR_UPGRADES
-		case infrav1exp.NoMinorOrNodeUpgrades:
-			twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_MINOR_OR_NODE_UPGRADES
-		case infrav1exp.NoUpgrades:
-			twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_UPGRADES
-		default:
-			twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_UPGRADES
+		if window.MaintenanceExclusionOption != nil {
+			switch *window.MaintenanceExclusionOption {
+			case infrav1exp.NoMinorUpgrades:
+				twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_MINOR_UPGRADES
+			case infrav1exp.NoMinorOrNodeUpgrades:
+				twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_MINOR_OR_NODE_UPGRADES
+			case infrav1exp.NoUpgrades:
+				twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_UPGRADES
+			default:
+				twOptions.MaintenanceExclusionOptions.Scope = containerpb.MaintenanceExclusionOptions_NO_UPGRADES
+			}
+		}
+		if window.EndTimeBehavior != nil {
+			if *window.EndTimeBehavior == infrav1exp.UntilEndOfSupport {
+				twOptions.MaintenanceExclusionOptions.EndTimeBehavior = containerpb.MaintenanceExclusionOptions_UNTIL_END_OF_SUPPORT
+			}
 		}
 		tw.Options = twOptions
 	}
@@ -1138,12 +1148,24 @@ func compareMaintenancePolicy(a, b *containerpb.MaintenancePolicy) bool {
 				policy.DisruptionBudget = nil
 			}
 		}
+
 		// If we don't normalise duration here we get stuck in a reconcile loop, because GKE sets this to
 		// 4h as a default, but the API itself only accepts a start time. So we have to apply this normalisation
 		// otherwise reconciliation will never converge
 		if daily := policy.GetWindow().GetDailyMaintenanceWindow(); daily != nil {
 			daily.Duration = ""
 		}
+
+		// For every policy that sets `UNTIL_END_OF_SUPPORT` we need to remove the end time, otherwise we'll be stuck
+		// in a reconcile loop forever
+		for _, exclusion := range policy.GetWindow().GetMaintenanceExclusions() {
+			if exclusion != nil {
+				if exclusion.GetMaintenanceExclusionOptions().GetEndTimeBehavior() == containerpb.MaintenanceExclusionOptions_UNTIL_END_OF_SUPPORT {
+					exclusion.EndTime = nil
+				}
+			}
+		}
+
 		return policy
 	}
 
