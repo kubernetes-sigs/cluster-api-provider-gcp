@@ -467,6 +467,7 @@ type DailyMaintenanceWindow struct {
 }
 
 // RecurringMaintenanceWindow represents an arbitrary window of time that recurs.
+// +kubebuilder:validation:XValidation:rule="!has(self.window) || !has(self.window.endTimeBehavior)",message="recurringMaintenanceWindows cannot set endTimeBehavior"
 type RecurringMaintenanceWindow struct {
 	// Window represents the time window of first recurrence.
 	// +optional
@@ -478,17 +479,32 @@ type RecurringMaintenanceWindow struct {
 }
 
 // TimeWindow represents an arbitrary window of time.
-// +kubebuilder:validation:XValidation:rule="self.startTime < self.endTime",message="endTime must be after startTime"
+// +kubebuilder:validation:XValidation:rule="!has(self.endTime) || self.startTime < self.endTime",message="endTime must be after startTime"
+// +kubebuilder:validation:XValidation:rule="has(self.endTime) || has(self.endTimeBehavior)",message="endTime is required unless endTimeBehavior is set"
+// +kubebuilder:validation:XValidation:rule="!has(self.endTimeBehavior) || (has(self.maintenanceExclusionOption) && self.maintenanceExclusionOption != 'no-upgrades')",message="endTimeBehavior until end-of-support requires a no-minor-upgrades or no-minor-or-node-upgrades exclusion option"
 type TimeWindow struct {
 	// StartTime represents the time that the window first starts.
 	StartTime metav1.Time `json:"startTime,omitempty"`
-	// EndTime represents the time that the window ends.
-	EndTime metav1.Time `json:"endTime,omitempty"`
+	// EndTime represents the time that the window ends. This is ignored if using tracking as GKE computes it.
+	// +optional
+	EndTime *metav1.Time `json:"endTime,omitempty"`
 	// MaintenanceExclusionOption represents the maintenance exclusion scope for which
 	// upgrades are blocked by the exclusion.
 	// +optional
 	MaintenanceExclusionOption *MaintenanceExclusionOption `json:"maintenanceExclusionOption,omitempty"`
+	// EndTimeBehavior represents an event on which to end a time window rather than a specific time
+	// +optional
+	EndTimeBehavior *EndTimeBehavior `json:"endTimeBehavior,omitempty"`
 }
+
+// EndTimeBehavior represents an event on which to mark the end time rather than a specific time
+// +kubebuilder:validation:Enum=until-end-of-support
+type EndTimeBehavior string
+
+const (
+	// UntilEndOfSupport means track the end of support date for the cluster's minor version
+	UntilEndOfSupport EndTimeBehavior = "until-end-of-support"
+)
 
 // MaintenanceExclusionOption represents the maintenance exclusion options for a TimeWindow.
 // +kubebuilder:validation:Enum=no-upgrades;no-minor-upgrades;no-minor-or-node-upgrades
