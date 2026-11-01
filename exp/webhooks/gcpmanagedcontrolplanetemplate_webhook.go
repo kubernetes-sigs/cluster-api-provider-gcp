@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	webhookutils "sigs.k8s.io/cluster-api-provider-gcp/util/webhook"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -37,7 +38,7 @@ func SetupGCPManagedControlPlaneTemplateWebhookWithManager(mgr ctrl.Manager) err
 	mcptw := &GCPManagedControlPlaneTemplate{Client: mgr.GetClient()}
 	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedControlPlaneTemplate{}).
 		WithDefaulter(mcptw).
-		WithValidator(mcptw).
+		WithValidator(webhookutils.TopologyDryRunAware(mcptw)).
 		Complete()
 }
 

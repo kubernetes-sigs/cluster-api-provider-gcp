@@ -37,7 +37,7 @@ func SetupGCPManagedMachinePoolTemplateWebhookWithManager(mgr ctrl.Manager) erro
 	mmptw := &GCPManagedMachinePoolTemplate{Client: mgr.GetClient()}
 	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedMachinePoolTemplate{}).
 		WithDefaulter(mmptw).
-		WithValidator(mmptw).
+		WithValidator(webhookutils.TopologyDryRunAware(mmptw)).
 		Complete()
 }
 

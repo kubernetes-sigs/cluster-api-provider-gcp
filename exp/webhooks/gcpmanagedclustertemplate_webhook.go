@@ -22,6 +22,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	webhookutils "sigs.k8s.io/cluster-api-provider-gcp/util/webhook"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -33,7 +34,7 @@ var gmctlog = logf.Log.WithName("gcpclustertemplate-resource")
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (r *GCPManagedClusterTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, &expinfrav1.GCPManagedClusterTemplate{}).
-		WithValidator(r).
+		WithValidator(webhookutils.TopologyDryRunAware(r)).
 		Complete()
 }
 
