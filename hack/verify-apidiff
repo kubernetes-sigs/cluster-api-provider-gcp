@@ -28,9 +28,16 @@ fi
 
 echo "*** Running go-apidiff ***"
 
+# Check if go-apidiff is executable to catch problems if the script is executed out of band
+if ! [[ -x "${GO_APIDIFF:-}" ]]; then
+  echo "go-apidiff binary not found or not executable" >&2
+  exit 1
+fi
+
 # Run go-apidiff and filter for changes in api/ or exp/api/
-apidiffs=$(go run github.com/joelanford/go-apidiff@v0.8.3 ${APIDIFF_OLD_COMMIT} || true)
-filtered=$(echo "$apidiffs" | grep -E 'cluster-api-provider-gcp/(api/|exp/api/)' || true)
+# Only match package headings: signature lines for other packages can mention api types without any api change.
+apidiffs=$("${GO_APIDIFF}" "${APIDIFF_OLD_COMMIT}" || true)
+filtered=$(echo "$apidiffs" | grep -E '^sigs\.k8s\.io/cluster-api-provider-gcp/(api|exp/api)(/|$)' || true)
 
 if [[ -n "$filtered" ]]; then
   echo "API differences found in api/ or exp/api/ packages."
