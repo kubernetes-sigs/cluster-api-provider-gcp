@@ -44,6 +44,8 @@ export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=60s
 
 # Keep the standalone cert manager pinned here; it is not a dependency of either Go module.
 CERT_MANAGER_VER := v1.16.3
+# Keep the standalone go-apidiff pinned here; it is not a dependency of either Go module.
+GO_APIDIFF_VER := v0.8.3
 # Keep the standalone yq pinned here; it is not a dependency of either Go module.
 YQ_VER := v4.45.4
 # Keep the standalone kustomize CLI pinned here; it is not a dependency of either Go module.
@@ -125,6 +127,9 @@ GOTESTSUM := $(TOOLS_BIN_DIR)/$(GOTESTSUM_BIN)
 
 YQ_BIN := yq
 YQ :=  $(TOOLS_BIN_DIR)/$(YQ_BIN)-$(YQ_VER)
+
+GO_APIDIFF_BIN := go-apidiff
+GO_APIDIFF := $(TOOLS_BIN_DIR)/$(GO_APIDIFF_BIN)-$(GO_APIDIFF_VER)
 
 KUSTOMIZE_BIN := kustomize
 KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
@@ -264,6 +269,9 @@ $(KPROMO_BIN): $(KPROMO) ## Build a local copy of kpromo
 .PHONY: $(YQ_BIN)
 $(YQ_BIN): $(YQ) ## Build a local copy of yq
 
+.PHONY: $(GO_APIDIFF_BIN)
+$(GO_APIDIFF_BIN): $(GO_APIDIFF) ## Build a local copy of go-apidiff
+
 $(CLUSTERCTL): go.mod ## Build clusterctl binary.
 	go build -o $(BIN_DIR)/clusterctl sigs.k8s.io/cluster-api/cmd/clusterctl
 
@@ -278,6 +286,9 @@ $(KUSTOMIZE): ## Build kustomize from tools folder.
 
 $(SETUP_ENVTEST): $(TOOLS_DIR)/go.mod # Build setup-envtest from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-runtime/tools/setup-envtest $(SETUP_ENVTEST_BIN) $(SETUP_ENVTEST_VER)
+
+$(GO_APIDIFF):
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) github.com/joelanford/go-apidiff $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
 
 $(KPROMO):
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) sigs.k8s.io/promo-tools/v4/cmd/kpromo $(KPROMO_BIN) $(KPROMO_VER)
@@ -611,7 +622,7 @@ clean-release: ## Remove the release folder
 apidiff: APIDIFF_OLD_COMMIT ?= $(shell git rev-parse origin/main)
 apidiff: $(GO_APIDIFF) ## Check for API differences
 	@$(call checkdiff) > /dev/null
-	APIDIFF_OLD_COMMIT="$(APIDIFF_OLD_COMMIT)" hack/verify-apidiff
+	APIDIFF_OLD_COMMIT="$(APIDIFF_OLD_COMMIT)" GO_APIDIFF="$(GO_APIDIFF)" hack/verify-apidiff
 
 define checkdiff
 	git --no-pager diff --name-only FETCH_HEAD
