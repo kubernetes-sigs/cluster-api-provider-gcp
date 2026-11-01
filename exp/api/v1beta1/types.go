@@ -52,6 +52,23 @@ func convertToSdkTaintEffect(effect TaintEffect) containerpb.NodeTaint_Effect {
 	}
 }
 
+// ConvertToSdkTaintConfig converts an ArchitectureTaintBehavior to the SDK TaintConfig.
+// It utilises an SDK lookup, which therefore requires that CAPG's string values are the SDK enum
+// ones lower-cased. This is enforced by a test in types_test.go.
+// A nil behavior returns nil, which leaves whatever GKE already has in place.
+func ConvertToSdkTaintConfig(behavior *ArchitectureTaintBehavior) *containerpb.TaintConfig {
+	if behavior == nil {
+		return nil
+	}
+	index := containerpb.TaintConfig_ArchitectureTaintBehavior_value[strings.ToUpper(string(*behavior))]
+	if index == 0 {
+		return nil
+	}
+	return &containerpb.TaintConfig{
+		ArchitectureTaintBehavior: containerpb.TaintConfig_ArchitectureTaintBehavior(index).Enum(),
+	}
+}
+
 // ConvertToSdkTaint converts taints to format that is used by GCP SDK.
 func ConvertToSdkTaint(taints Taints) []*containerpb.NodeTaint {
 	if taints == nil {
