@@ -239,6 +239,19 @@ func (*GCPManagedMachinePoolTemplate) ValidateUpdate(_ context.Context, old, r *
 		allErrs = append(allErrs, err)
 	}
 
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "template", "spec", "spot"),
+		old.Spec.Template.Spec.Spot,
+		r.Spec.Template.Spec.Spot); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	if err := webhookutils.ValidateImmutable(
+		field.NewPath("spec", "template", "spec", "preemptible"),
+		old.Spec.Template.Spec.Preemptible,
+		r.Spec.Template.Spec.Preemptible); err != nil {
+		allErrs = append(allErrs, err)
+	}
 
 	if err := webhookutils.ValidateImmutable(
 		field.NewPath("spec", "template", "spec", "reservationAffinity"),

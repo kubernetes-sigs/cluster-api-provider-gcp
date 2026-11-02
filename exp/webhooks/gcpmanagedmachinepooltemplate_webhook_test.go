@@ -174,6 +174,26 @@ func TestGCPManagedMachinePoolTemplateValidatingWebhookUpdate(t *testing.T) {
 			expectError: true,
 		},
 		{
+			name: "spot field is immutable",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				Spot: new(false),
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				Spot: new(true),
+			},
+			expectError: true,
+		},
+		{
+			name: "preemptible field is immutable",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				Preemptible: new(false),
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				Preemptible: new(true),
+			},
+			expectError: true,
+		},
+		{
 			name: "reservationAffinity field is immutable",
 			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
 				ReservationAffinity: &expinfrav1.ReservationAffinity{
