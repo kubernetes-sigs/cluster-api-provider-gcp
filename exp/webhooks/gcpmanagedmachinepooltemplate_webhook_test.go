@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
@@ -169,6 +170,20 @@ func TestGCPManagedMachinePoolTemplateValidatingWebhookUpdate(t *testing.T) {
 					ServiceAccount: expinfrav1.ServiceAccountConfig{
 						Email: new("somebody-else@example.com"),
 					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "reservationAffinity field is immutable",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				ReservationAffinity: &infrav1.ReservationAffinity{
+					ConsumeReservationType: "ANY_RESERVATION",
+				},
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				ReservationAffinity: &infrav1.ReservationAffinity{
+					ConsumeReservationType: "NO_RESERVATION",
 				},
 			},
 			expectError: true,

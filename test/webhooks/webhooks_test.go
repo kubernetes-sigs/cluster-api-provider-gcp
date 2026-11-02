@@ -18,6 +18,7 @@ package webhooks
 
 import (
 	"context"
+	"errors"
 	"maps"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -322,4 +323,80 @@ var _ = Describe("Webhook Dry Run Tests", func() {
 				}
 			},
 		}))
+})
+
+var _ = Describe("Webhook CEL Tests", func() {
+	DescribeTable("Reservation Affinity is properly dealt with", func(ctx context.Context, ra infrav1.ReservationAffinity, errorField string, messageFragment string) {
+		mmp := expinfrav1.GCPManagedMachinePool{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "test-",
+				Namespace:    "default",
+			},
+			Spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					ReservationAffinity: &ra,
+				},
+			},
+		}
+		err := k8sClient.Create(ctx, &mmp)
+		if errorField == "" {
+			Expect(err).NotTo(HaveOccurred())
+			return
+		}
+		Expect(apierrors.IsInvalid(err)).To(BeTrue())
+		var causeErr *apierrors.StatusError
+		Expect(errors.As(err, &causeErr)).To(BeTrue())
+		Expect(causeErr.ErrStatus.Details.Causes).To(ContainElement(And(
+			HaveField("Field", errorField), HaveField("Message", ContainSubstring(messageFragment)))))
+	},
+		Entry("NO_RESERVATION accepted", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeNoReservation,
+		}, nil, ""),
+		Entry("ANY_RESERVATION accepted", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeAnyReservation,
+		}, nil, ""),
+		Entry("ANY_RESERVATION_THEN_FAIL accepted", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeAnyReservationThenFail,
+		}, nil, ""),
+		Entry("SPECIFIC_RESERVATION accepted with keys and values", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeSpecificReservation,
+			Key:                    infrav1.ReservationKeyReservationName,
+			Values: []string{
+				"my_reservation",
+			},
+		}, nil, ""),
+		Entry("SPECIFIC_RESERVATION with no key is rejected", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeSpecificReservation,
+			Values: []string{
+				"my_reservation",
+			},
+		}, "spec.reservationAffinity", "must also be specified"),
+		Entry("SPECIFIC_RESERVATION with no values is rejected", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeSpecificReservation,
+			Key:                    infrav1.ReservationKeyReservationName,
+		}, "spec.reservationAffinity", "must also be specified"),
+		Entry("SPECIFIC_RESERVATION with empty values is rejected", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeSpecificReservation,
+			Key:                    infrav1.ReservationKeyReservationName,
+			Values:                 make([]string, 0),
+		}, "spec.reservationAffinity", "must also be specified"),
+		Entry("SPECIFIC_RESERVATION with values that only have empty string is rejected", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeSpecificReservation,
+			Key:                    infrav1.ReservationKeyReservationName,
+			Values:                 []string{""},
+		}, "spec.reservationAffinity", "must also be specified"),
+		Entry("SPECIFIC_RESERVATION with key that is not the allowed value is rejected", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeSpecificReservation,
+			Key:                    "my special key",
+			Values:                 []string{"my-reservation"},
+		}, "spec.reservationAffinity.key", "Unsupported value"),
+		Entry("ANY_RESERVATION with only values is rejected", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeAnyReservation,
+			Values:                 []string{"a", "b", "c'"},
+		}, "spec.reservationAffinity", "not valid without using"),
+		Entry("ANY_RESERVATION with only key is rejected", infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeAnyReservation,
+			Key:                    infrav1.ReservationKeyReservationName,
+		}, "spec.reservationAffinity", "not valid without using"),
+	)
 })
