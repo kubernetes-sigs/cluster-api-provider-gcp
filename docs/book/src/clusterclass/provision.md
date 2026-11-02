@@ -22,6 +22,10 @@ In this case, while inspecting the sample files, you probably noticed that there
 - `./templates/cluster-template-clusterclass.yaml` is the class definition. It represents the template that define a topology: control plane and machine deployment but it won't provision the cluster.
 - `./templates/cluster-template-topology.yaml` is the cluster definition that references the class. This workload cluster definition is considerably simpler than a regular CAPI cluster template that does not use ClusterClass, as most of the complexity of defining the control plane and machine deployment has been removed by the class.
 
+### Changing a template
+
+If you make a change to a ClusterClass or to a Cluster's topology variables, such that a template's spec changes, the CAPI topology controller will create a new template, point machine deployments or the control plane at it and then remove the old template. In practice, this means that if you try to manually edit a template's `spec`, most edits will be rejected. In these cases you should use ClusterClass/Cluster variables, or, as a last resort, create a new template and point the ClusterClass at that.
+
 ## Configure ClusterClass
 
 While inspecting the templates you probably noticed that they contain a number of parameterized values that must be substituted with the specifics of your use case. This can be done via environment variables and `clusterctl` and effectively make the templates more flexible to adapt to different provisioning scenarios. These are the environment variables that you'll be required to set before deploying a class and a workload cluster from it:
