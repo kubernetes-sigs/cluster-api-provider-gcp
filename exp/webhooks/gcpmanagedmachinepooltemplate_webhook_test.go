@@ -173,6 +173,20 @@ func TestGCPManagedMachinePoolTemplateValidatingWebhookUpdate(t *testing.T) {
 			},
 			expectError: true,
 		},
+		{
+			name: "reservationAffinity field is immutable",
+			oldSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				ReservationAffinity: &expinfrav1.ReservationAffinity{
+					ConsumeReservationType: "ANY_RESERVATION",
+				},
+			},
+			newSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+				ReservationAffinity: &expinfrav1.ReservationAffinity{
+					ConsumeReservationType: "NO_RESERVATION",
+				},
+			},
+			expectError: true,
+		},
 	}
 
 	for _, tc := range tests {

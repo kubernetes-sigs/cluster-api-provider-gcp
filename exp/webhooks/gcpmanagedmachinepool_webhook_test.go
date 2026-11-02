@@ -380,6 +380,18 @@ func TestGCPManagedMachinePoolValidatingWebhookUpdate(t *testing.T) {
 			expectError: true,
 		},
 		{
+			name: "immutable field reservationAffinity set after creation should fail",
+			spec: expinfrav1.GCPManagedMachinePoolSpec{
+				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
+					NodePoolName: "nodepool1",
+					ReservationAffinity: &expinfrav1.ReservationAffinity{
+						ConsumeReservationType: "ANY_RESERVATION",
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
 			name: "immutable nodeSecurity sandboxType is mutated",
 			spec: expinfrav1.GCPManagedMachinePoolSpec{
 				GCPManagedMachinePoolClassSpec: expinfrav1.GCPManagedMachinePoolClassSpec{
