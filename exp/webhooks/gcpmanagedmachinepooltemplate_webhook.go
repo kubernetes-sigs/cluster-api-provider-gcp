@@ -46,6 +46,7 @@ type GCPManagedMachinePoolTemplate struct {
 	Client client.Client
 }
 
+//+kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedmachinepooltemplate,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepooltemplates,versions=v1beta1,name=vgcpmanagedmachinepooltemplate.kb.io,sideEffects=None,admissionReviewVersions=v1
 //+kubebuilder:webhook:verbs=create;update,path=/mutate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedmachinepooltemplate,mutating=true,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmanagedmachinepooltemplates,versions=v1beta1,name=mgcpmanagedmachinepooltemplate.kb.io,admissionReviewVersions=v1
 
 func (*GCPManagedMachinePoolTemplate) Default(_ context.Context, r *expinfrav1.GCPManagedMachinePoolTemplate) error {
