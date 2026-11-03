@@ -191,4 +191,7 @@ type GCPManagedMachinePoolClassSpec struct {
 	// any time and are recommended over Preemptible VMs for new workloads. This field is immutable.
 	// +optional
 	Spot *bool `json:"spot,omitempty"`
+	// ReservationAffinity specifies whether to utilize reservations for compute. This field is immutable.
+	// +optional
+	ReservationAffinity *ReservationAffinity `json:"reservationAffinity,omitempty"`
 }

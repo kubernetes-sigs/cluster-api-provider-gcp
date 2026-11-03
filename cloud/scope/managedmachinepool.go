@@ -325,6 +325,9 @@ func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool
 	if machinePool.Spec.Template.Spec.Version != "" {
 		sdkNodePool.Version = strings.Replace(machinePool.Spec.Template.Spec.Version, "v", "", 1)
 	}
+
+	sdkNodePool.Config.ReservationAffinity = infrav1exp.ConvertToSdkReservationAffinity(nodePool.Spec.ReservationAffinity)
+
 	return &sdkNodePool
 }
 
