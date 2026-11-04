@@ -41,6 +41,8 @@ const (
 
 	// defaultNetworkName is the GCP alias for a project's default network.
 	defaultNetworkName = "default"
+	// defaultHealthCheckPort is the default port assigned by GCP for cluster health checks
+	defaultHealthCheckPort = 6443
 )
 
 // ClusterScopeParams defines the input parameters used to create a new Scope.
@@ -304,12 +306,7 @@ func (s *ClusterScope) SubnetSpecs() []*compute.Subnetwork {
 
 // FirewallRulesSpec returns google compute firewall spec.
 func (s *ClusterScope) FirewallRulesSpec() ([]*compute.Firewall, error) {
-	return createFirewallRules(
-		s.Name(),
-		s.NetworkLink(),
-		s.GCPCluster.Spec.Network.Firewall.DefaultRulesManagement,
-		s.GCPCluster.Spec.Network.Firewall.FirewallRules,
-	)
+	return createFirewallRules(s.Name(), s.NetworkLink(), s.GCPCluster.Spec.Network.Firewall.DefaultRulesManagement, s.GCPCluster.Spec.Network.Firewall.FirewallRules, s.resolvePortNumber())
 }
 
 // ANCHOR_END: ClusterFirewallSpec
@@ -358,7 +355,7 @@ func (s *ClusterScope) HealthCheckSpec(lbname string) *compute.HealthCheck {
 		Name: fmt.Sprintf("%s-%s", s.Name(), lbname),
 		Type: "HTTPS",
 		HttpsHealthCheck: &compute.HTTPSHealthCheck{
-			Port:              6443,
+			Port:              s.resolvePortNumber(),
 			PortSpecification: "USE_FIXED_PORT",
 			RequestPath:       "/readyz",
 		},
@@ -371,17 +368,22 @@ func (s *ClusterScope) HealthCheckSpec(lbname string) *compute.HealthCheck {
 
 // InstanceGroupSpec returns google compute instance-group spec.
 func (s *ClusterScope) InstanceGroupSpec(zone string) *compute.InstanceGroup {
-	port := ptr.Deref(s.GCPCluster.Spec.Network.LoadBalancerBackendPort, 6443)
 	tag := ptr.Deref(s.GCPCluster.Spec.LoadBalancer.APIServerInstanceGroupTagOverride, infrav1.APIServerRoleTagValue)
 	return &compute.InstanceGroup{
 		Name: fmt.Sprintf("%s-%s-%s", s.Name(), tag, zone),
 		NamedPorts: []*compute.NamedPort{
 			{
 				Name: "apiserver",
-				Port: int64(port),
+				Port: s.resolvePortNumber(),
 			},
 		},
 	}
+}
+
+// resolvePortNumber this centralises resolving the port number for a health check, first from the
+// scope and then a default value
+func (s *ClusterScope) resolvePortNumber() int64 {
+	return int64(ptr.Deref(s.GCPCluster.Spec.Network.LoadBalancerBackendPort, defaultHealthCheckPort))
 }
 
 // TargetTCPProxySpec returns google compute target-tcp-proxy spec.

@@ -11,7 +11,7 @@ import (
 )
 
 // createFirewallRules
-func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesManagementPolicy, userSpecifiedRules []infrav1.FirewallRule) ([]*compute.Firewall, error) {
+func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesManagementPolicy, userSpecifiedRules []infrav1.FirewallRule, port int64) ([]*compute.Firewall, error) {
 	firewallRules := []*compute.Firewall{}
 
 	// Only when the user explicitly states that it is unmanaged, the rules should be skipped.
@@ -25,7 +25,7 @@ func createFirewallRules(clusterName, networkLink string, policy infrav1.RulesMa
 					{
 						IPProtocol: protocolTCP,
 						Ports: []string{
-							strconv.FormatInt(6443, 10),
+							strconv.FormatInt(port, 10),
 						},
 					},
 				},
