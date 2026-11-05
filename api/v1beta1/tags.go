@@ -20,7 +20,11 @@ import (
 	"fmt"
 )
 
-// ResourceManagerTags is an slice of ResourceManagerTag structs.
+// ResourceManagerTags is a slice of ResourceManagerTag structs.
+// +listType=map
+// +listMapKey=parentID
+// +listMapKey=key
+// +kubebuilder:validation:MaxItems=50
 type ResourceManagerTags []ResourceManagerTag
 
 // ResourceManagerTagsMap defines a map of key value pairs as expected by compute.InstanceParams.ResourceManagerTags.
