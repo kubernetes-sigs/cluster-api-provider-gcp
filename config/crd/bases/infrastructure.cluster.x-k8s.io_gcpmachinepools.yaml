@@ -349,7 +349,12 @@ spec:
                   - parentID
                   - value
                   type: object
+                maxItems: 50
                 type: array
+                x-kubernetes-list-map-keys:
+                - parentID
+                - key
+                x-kubernetes-list-type: map
               rootDeviceSize:
                 description: |-
                   RootDeviceSize is the size of the root volume in GB.
