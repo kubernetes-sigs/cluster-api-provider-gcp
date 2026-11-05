@@ -356,7 +356,12 @@ spec:
                   - parentID
                   - value
                   type: object
+                maxItems: 50
                 type: array
+                x-kubernetes-list-map-keys:
+                - parentID
+                - key
+                x-kubernetes-list-type: map
               resourcePolicies:
                 description: |-
                   ResourcePolicies are full or partial URLs of existing regional resource policies
