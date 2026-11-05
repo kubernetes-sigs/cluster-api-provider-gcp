@@ -285,12 +285,7 @@ func (s *ManagedClusterScope) SubnetSpecs() []*compute.Subnetwork {
 // The DefaultRulesManagement field is ignored here; only user-specified custom
 // firewall rules are reconciled.
 func (s *ManagedClusterScope) FirewallRulesSpec() ([]*compute.Firewall, error) {
-	return createFirewallRules(
-		s.Name(),
-		s.NetworkLink(),
-		infrav1.RulesManagementUnmanaged,
-		s.GCPManagedCluster.Spec.Network.Firewall.FirewallRules,
-	)
+	return createFirewallRules(s.Name(), s.NetworkLink(), infrav1.RulesManagementUnmanaged, s.GCPManagedCluster.Spec.Network.Firewall.FirewallRules, defaultHealthCheckPort)
 }
 
 // ANCHOR_END: ClusterFirewallSpec

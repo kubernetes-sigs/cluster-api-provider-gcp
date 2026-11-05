@@ -46,7 +46,7 @@ func unnamedRule(port string) infrav1.FirewallRule {
 func TestCreateFirewallRulesNamesUnnamedRulesLikeTheWebhook(t *testing.T) {
 	rules := []infrav1.FirewallRule{unnamedRule("443"), unnamedRule("8443")}
 
-	specs, err := createFirewallRules("my-cluster", "my-network", infrav1.RulesManagementUnmanaged, rules)
+	specs, err := createFirewallRules("my-cluster", "my-network", infrav1.RulesManagementUnmanaged, rules, defaultHealthCheckPort)
 	if err != nil {
 		t.Fatalf("createFirewallRules() error = %v", err)
 	}
@@ -80,7 +80,7 @@ func TestCreateFirewallRulesNamesRulesOfALongNamedClusterApart(t *testing.T) {
 		t.Fatalf("DefaultRuleNames() error = %v", err)
 	}
 
-	specs, err := createFirewallRules(clusterName, "my-network", infrav1.RulesManagementUnmanaged, rules)
+	specs, err := createFirewallRules(clusterName, "my-network", infrav1.RulesManagementUnmanaged, rules, defaultHealthCheckPort)
 	if err != nil {
 		t.Fatalf("createFirewallRules() error = %v", err)
 	}
@@ -102,12 +102,12 @@ func TestCreateFirewallRulesNamesRulesOfALongNamedClusterApart(t *testing.T) {
 func TestCreateFirewallRulesIsStableAcrossCalls(t *testing.T) {
 	rules := []infrav1.FirewallRule{unnamedRule("443")}
 
-	first, err := createFirewallRules("my-cluster", "my-network", infrav1.RulesManagementUnmanaged, rules)
+	first, err := createFirewallRules("my-cluster", "my-network", infrav1.RulesManagementUnmanaged, rules, defaultHealthCheckPort)
 	if err != nil {
 		t.Fatalf("createFirewallRules() error = %v", err)
 	}
 
-	second, err := createFirewallRules("my-cluster", "my-network", infrav1.RulesManagementUnmanaged, rules)
+	second, err := createFirewallRules("my-cluster", "my-network", infrav1.RulesManagementUnmanaged, rules, defaultHealthCheckPort)
 	if err != nil {
 		t.Fatalf("createFirewallRules() error = %v", err)
 	}
@@ -122,7 +122,7 @@ func TestCreateFirewallRulesIsStableAcrossCalls(t *testing.T) {
 func TestCreateFirewallRulesDoesNotMutateTheSpec(t *testing.T) {
 	rules := []infrav1.FirewallRule{unnamedRule("443")}
 
-	if _, err := createFirewallRules("my-cluster", "my-network", infrav1.RulesManagementUnmanaged, rules); err != nil {
+	if _, err := createFirewallRules("my-cluster", "my-network", infrav1.RulesManagementUnmanaged, rules, defaultHealthCheckPort); err != nil {
 		t.Fatalf("createFirewallRules() error = %v", err)
 	}
 
