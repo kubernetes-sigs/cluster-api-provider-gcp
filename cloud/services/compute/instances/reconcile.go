@@ -166,6 +166,10 @@ func (s *Service) createOrGetInstance(ctx context.Context) (*compute.Instance, e
 			return nil, err
 		}
 
+		if err := s.scope.InstanceTagger().TagInstance(ctx, instanceSpec, s.scope.ResourceManagerTags()); err != nil {
+			return nil, err
+		}
+
 		log.V(2).Info("Creating an instance", "name", instanceName, "zone", s.scope.Zone())
 		if err := s.instances.Insert(ctx, instanceKey, instanceSpec); err != nil {
 			log.Error(err, "Error creating an instance", "name", instanceName, "zone", s.scope.Zone())

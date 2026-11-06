@@ -34,13 +34,15 @@ import (
 	"k8s.io/client-go/pkg/version"
 	"k8s.io/client-go/util/flowcontrol"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // GCPServices contains all the gcp services used by the scopes.
 type GCPServices struct {
-	Compute *compute.Service
+	Compute    *compute.Service
+	TagManager *shared.TagManager
 }
 
 // GCPRateLimiter implements cloud.RateLimiter.
@@ -198,6 +200,24 @@ func newInstanceTemplatesRESTClient(ctx context.Context, credentialsRef *infrav1
 	}
 
 	return instanceTemplatesClient, nil
+}
+
+func newTagManager(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*shared.TagManager, error) {
+	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	if err != nil {
+		return nil, fmt.Errorf("getting default gcp client options: %w", err)
+	}
+
+	if endpoints != nil && endpoints.ResourceManagerServiceEndpoint != "" {
+		opts = append(opts, option.WithEndpoint(endpoints.ResourceManagerServiceEndpoint))
+	}
+
+	tvClient, err := resourcemanager.NewTagValuesClient(ctx, opts...)
+	if err != nil {
+		return nil, errors.Errorf("failed to create gcp tag values client: %v", err)
+	}
+
+	return shared.NewTagManager(tvClient), nil
 }
 
 func newTagBindingsClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, location string, endpoints *infrav1.ServiceEndpoints) (*resourcemanager.TagBindingsClient, error) {

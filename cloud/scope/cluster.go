@@ -23,6 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -70,6 +71,15 @@ func NewClusterScope(ctx context.Context, params ClusterScopeParams) (*ClusterSc
 		}
 
 		params.Compute = computeSvc
+	}
+
+	if params.TagManager == nil {
+		tagManager, err := newTagManager(ctx, params.GCPCluster.Spec.CredentialsRef, params.Client, params.GCPCluster.Spec.ServiceEndpoints)
+		if err != nil {
+			return nil, errors.Errorf("failed to create gcp tag manager: %v", err)
+		}
+
+		params.TagManager = tagManager
 	}
 
 	helper, err := v1beta1patch.NewHelper(params.GCPCluster, params.Client)
@@ -193,6 +203,11 @@ func (s *ClusterScope) ResourceManagerTags() infrav1.ResourceManagerTags {
 	}
 
 	return s.GCPCluster.Spec.ResourceManagerTags.DeepCopy()
+}
+
+// InstanceTagger returns the manager we use to tag instances
+func (s *ClusterScope) InstanceTagger() cloud.InstanceTagger {
+	return s.TagManager
 }
 
 // ControlPlaneEndpoint returns the cluster control-plane endpoint.
@@ -430,5 +445,10 @@ func (s *ClusterScope) PatchObject(ctx context.Context) error {
 
 // Close closes the current scope persisting the cluster configuration and status.
 func (s *ClusterScope) Close(ctx context.Context) error {
-	return s.PatchObject(ctx)
+	var errList []error
+	if s.TagManager != nil {
+		errList = append(errList, s.TagManager.Close())
+	}
+	errList = append(errList, s.PatchObject(ctx))
+	return kerrors.NewAggregate(errList)
 }
