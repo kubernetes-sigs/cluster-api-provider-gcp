@@ -322,3 +322,8 @@ func (s *ManagedClusterScope) PatchObject(ctx context.Context) error {
 func (s *ManagedClusterScope) Close(ctx context.Context) error {
 	return s.PatchObject(ctx)
 }
+
+// InstanceTagger returns the ability to tag instances
+func (s *ManagedClusterScope) InstanceTagger() cloud.InstanceTagger {
+	return nil
+}

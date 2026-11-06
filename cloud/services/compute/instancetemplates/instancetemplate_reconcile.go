@@ -116,6 +116,10 @@ func (s *Service) createOrGetInstanceTemplate(ctx context.Context) (*compute.Ins
 		return nil, nil, err
 	}
 
+	if err := s.scope.InstanceTagger().TagInstanceTemplate(ctx, desired, s.scope.ResourceManagerTags()); err != nil {
+		return nil, nil, err
+	}
+
 	desiredJSON, err := json.Marshal(desired)
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshalling instance template to json: %w", err)
