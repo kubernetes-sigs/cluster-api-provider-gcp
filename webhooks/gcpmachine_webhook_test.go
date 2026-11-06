@@ -59,6 +59,28 @@ func TestGCPMachine_ValidateCreate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "GCPMachined with ConfidentialCompute enabled (c4-standard-4/TDX) and OnHostMaintenance set to Terminate - valid",
+			GCPMachine: &infrav1.GCPMachine{
+				Spec: infrav1.GCPMachineSpec{
+					InstanceType:        "c4-standard-4",
+					OnHostMaintenance:   &onHostMaintenanceTerminate,
+					ConfidentialCompute: &confidentialComputeTDX,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPMachined with ConfidentialCompute enabled (c3d-standard-4/TDX) and OnHostMaintenance set to Terminate - valid",
+			GCPMachine: &infrav1.GCPMachine{
+				Spec: infrav1.GCPMachineSpec{
+					InstanceType:        "c3d-standard-4",
+					OnHostMaintenance:   &onHostMaintenanceTerminate,
+					ConfidentialCompute: &confidentialComputeTDX,
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "GCPMachined with ConfidentialCompute enabled and OnHostMaintenance set to Migrate - invalid",
 			GCPMachine: &infrav1.GCPMachine{
 				Spec: infrav1.GCPMachineSpec{

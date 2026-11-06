@@ -298,4 +298,19 @@ func Test_MachinePool_ConvertToSdkNodePool(t *testing.T) {
 			Strategy:       &strategy,
 		}))
 	})
+
+	t.Run("convert ConfidentialCompute to SDK Confidential Nodes", func(t *testing.T) {
+		g := NewWithT(t)
+
+		mmp := createTestManagedMachinePool()
+		mp := createTestMachinePool()
+		mmp.Spec.NodeSecurity.ConfidentialCompute = new(infrav1.ConfidentialComputePolicySEVSNP)
+
+		sdkNodePool := ConvertToSdkNodePool(*mmp, *mp, false, clusterName)
+
+		g.Expect(sdkNodePool.GetConfig().GetConfidentialNodes()).To(Equal(&containerpb.ConfidentialNodes{
+			Enabled:                  true,
+			ConfidentialInstanceType: containerpb.ConfidentialNodes_SEV_SNP,
+		}))
+	})
 }
