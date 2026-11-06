@@ -363,6 +363,11 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	v1beta1conditions.MarkTrue(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition)
 	v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolCreatingCondition, infrav1exp.GKEMachinePoolCreatedReason, clusterv1beta1.ConditionSeverityInfo, "")
 
+	// If the autoscaler is enabled size may well have changed out of band so we need to keep reconciling to keep up
+	if s.scope.AutoscalingEnabled() {
+		return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -705,6 +710,10 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 }
 
 func (s *Service) checkDiffAndPrepareUpdateAutoscaling(existingNodePool *containerpb.NodePool) (bool, *containerpb.SetNodePoolAutoscalingRequest) {
+	if s.scope.GCPManagedMachinePool.Spec.Scaling == nil {
+		return false, nil
+	}
+
 	needUpdate := false
 	desiredAutoscaling := infrav1exp.ConvertToSdkAutoscaling(s.scope.GCPManagedMachinePool.Spec.Scaling)
 
@@ -723,14 +732,8 @@ func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.No
 	needUpdate := false
 
 	// Only skip size update if autoscaling is explicitly configured and enabled.
-	// ConvertToSdkAutoscaling returns {Enabled: true} when passed nil, so without this
-	// guard any node pool with no Spec.Scaling set would have manual size updates silently
-	// suppressed.
-	if s.scope.GCPManagedMachinePool.Spec.Scaling != nil {
-		desiredAutoscaling := infrav1exp.ConvertToSdkAutoscaling(s.scope.GCPManagedMachinePool.Spec.Scaling)
-		if desiredAutoscaling.GetEnabled() {
-			return false, nil
-		}
+	if s.scope.AutoscalingEnabled() {
+		return false, nil
 	}
 
 	setNodePoolSizeRequest := containerpb.SetNodePoolSizeRequest{
@@ -742,7 +745,12 @@ func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.No
 		replicas /= int32(len(existingNodePool.GetLocations()))
 	}
 
-	if replicas != existingNodePool.GetInitialNodeCount() {
+	desiredTotal := int(replicas) * len(existingNodePool.GetLocations())
+	observed := len(s.scope.GCPManagedMachinePool.Spec.ProviderIDList)
+
+	// We can't just rely on initialNodeCount here because it's the last size that CAPG itself set, whereas if an
+	// autoscaler is in play that might have changed things out of band
+	if replicas != existingNodePool.GetInitialNodeCount() || observed != desiredTotal {
 		needUpdate = true
 		setNodePoolSizeRequest.NodeCount = replicas
 	}

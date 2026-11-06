@@ -303,7 +303,8 @@ spec:
                   type: string
                 type: array
               scaling:
-                description: Scaling specifies scaling for the node pool
+                description: Scaling specifies scaling for the node pool, nil indicates
+                  unmanaged
                 properties:
                   enableAutoscaling:
                     description: Is autoscaling enabled for this node pool. If unspecified,
@@ -317,12 +318,12 @@ spec:
                     type: string
                   maxCount:
                     description: MaxCount specifies the maximum number of nodes in
-                      the node pool
+                      the node pool across all the node pool's zones
                     format: int32
                     type: integer
                   minCount:
                     description: MinCount specifies the minimum number of nodes in
-                      the node pool
+                      the node pool across all the node pool's zones
                     format: int32
                     type: integer
                 type: object

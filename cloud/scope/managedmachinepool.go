@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -36,6 +37,7 @@ import (
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
 	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
 	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
+	v1beta2patch "sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -43,6 +45,7 @@ const (
 	defaultMaxSurge               = 1
 	defaultMaxUnavailable         = 0
 	defaultNodepoolUpdateStrategy = containerpb.NodePoolUpdateStrategy_SURGE
+	replicasManagedByValue        = "gcp-autoscaler"
 )
 
 // ManagedMachinePoolScopeParams defines the input parameters used to create a new Scope.
@@ -101,26 +104,33 @@ func NewManagedMachinePoolScope(ctx context.Context, params ManagedMachinePoolSc
 
 	helper, err := v1beta1patch.NewHelper(params.GCPManagedMachinePool, params.Client)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to init patch helper")
+		return nil, errors.Wrap(err, "failed to init the GCPManagedMachinePool patch helper")
+	}
+
+	mpPatchHelper, err := v1beta2patch.NewHelper(params.MachinePool, params.Client)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to init the MachinePool patch helper")
 	}
 
 	return &ManagedMachinePoolScope{
-		client:                  params.Client,
-		Cluster:                 params.Cluster,
-		MachinePool:             params.MachinePool,
-		GCPManagedControlPlane:  params.GCPManagedControlPlane,
-		GCPManagedMachinePool:   params.GCPManagedMachinePool,
-		mcClient:                params.ManagedClusterClient,
-		migClient:               params.InstanceGroupManagersClient,
-		instanceTemplatesClient: params.InstanceTemplatesClient,
-		patchHelper:             helper,
+		client:                     params.Client,
+		Cluster:                    params.Cluster,
+		MachinePool:                params.MachinePool,
+		GCPManagedControlPlane:     params.GCPManagedControlPlane,
+		GCPManagedMachinePool:      params.GCPManagedMachinePool,
+		mcClient:                   params.ManagedClusterClient,
+		migClient:                  params.InstanceGroupManagersClient,
+		instanceTemplatesClient:    params.InstanceTemplatesClient,
+		patchHelper:                helper,
+		capiMachinePoolPatchHelper: mpPatchHelper,
 	}, nil
 }
 
 // ManagedMachinePoolScope defines the basic context for an actuator to operate upon.
 type ManagedMachinePoolScope struct {
-	client      client.Client
-	patchHelper *v1beta1patch.Helper
+	client                     client.Client
+	patchHelper                *v1beta1patch.Helper
+	capiMachinePoolPatchHelper *v1beta2patch.Helper
 
 	Cluster                 *clusterv1.Cluster
 	MachinePool             *clusterv1.MachinePool
@@ -157,7 +167,13 @@ func (s *ManagedMachinePoolScope) Close(ctx context.Context) error {
 	s.mcClient.Close()
 	s.migClient.Close()
 	s.instanceTemplatesClient.Close()
-	return s.PatchObject(ctx)
+	patchErr := s.PatchObject(ctx)
+	if s.GCPManagedMachinePool.DeletionTimestamp.IsZero() {
+		s.SetReplicasManagedBy()
+		err := s.PatchCAPIMachinePoolObject(ctx)
+		return kerrors.NewAggregate([]error{err, patchErr})
+	}
+	return patchErr
 }
 
 // ConditionSetter returns a v1beta1 condition setter for this scope.
@@ -376,4 +392,30 @@ func (s *ManagedMachinePoolScope) SetInfrastructureMachineKind() bool {
 	}
 
 	return false
+}
+
+// SetReplicasManagedBy sets the CAPI annotation `replicas-managed-by` such that the correct statuses are displayed
+// by the MachinePool
+func (s *ManagedMachinePoolScope) SetReplicasManagedBy() {
+	if s.AutoscalingEnabled() {
+		if s.MachinePool.Annotations == nil {
+			s.MachinePool.Annotations = map[string]string{}
+		}
+		s.MachinePool.Annotations[clusterv1.ReplicasManagedByAnnotation] = replicasManagedByValue
+		return
+	}
+	delete(s.MachinePool.Annotations, clusterv1.ReplicasManagedByAnnotation)
+}
+
+// AutoscalingEnabled is a canonical check whether the ManagedMachinePool has autoscaling enabled or not
+func (s *ManagedMachinePoolScope) AutoscalingEnabled() bool {
+	return s.GCPManagedMachinePool.Spec.Scaling != nil && infrav1exp.ConvertToSdkAutoscaling(s.GCPManagedMachinePool.Spec.Scaling).GetEnabled()
+}
+
+// PatchCAPIMachinePoolObject patches the MachinePool so it matches the one in the scope
+func (s *ManagedMachinePoolScope) PatchCAPIMachinePoolObject(ctx context.Context) error {
+	return s.capiMachinePoolPatchHelper.Patch(
+		ctx,
+		s.MachinePool,
+	)
 }

@@ -9,6 +9,7 @@
 - [Managed clusters - GKE](./managed/index.md)
     - [Provisioning a Cluster](./managed/provision.md)
     - [Cluster Upgrades](./managed/upgrades.md)
+    - [Node Pool Scaling](./managed/node-pool-scaling.md)
     - [Enabling](./managed/enabling.md)
     - [Disabling](./managed/disabling.md)
     - [Network Configuration](./managed/network-config.md)

@@ -114,7 +114,7 @@ type GCPManagedMachinePoolClassSpec struct {
 	// LocalSsdCount is the number of local SSD disks to be attached to the node.
 	// +optional
 	LocalSsdCount *int32 `json:"localSsdCount,omitempty"`
-	// Scaling specifies scaling for the node pool
+	// Scaling specifies scaling for the node pool, nil indicates unmanaged
 	// +optional
 	Scaling *NodePoolAutoScaling `json:"scaling,omitempty"`
 	// NodeLocations is the list of zones in which the NodePool's
