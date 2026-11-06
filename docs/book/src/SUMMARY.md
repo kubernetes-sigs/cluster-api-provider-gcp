@@ -11,6 +11,7 @@
     - [Cluster Upgrades](./managed/upgrades.md)
     - [Enabling](./managed/enabling.md)
     - [Disabling](./managed/disabling.md)
+    - [Maintenance Policy](./managed/maintenance-policy.md)
     - [Network Configuration](./managed/network-config.md)
     - [Workload Identity](./managed/workload-identity.md)
 - [ClusterClass](./clusterclass/index.md)
