@@ -27,24 +27,36 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"github.com/pkg/errors"
 	"google.golang.org/api/compute/v1"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var errNoBinder = errors.New("tag manager has no tag bindings client")
 
 type tagValueGetter interface {
 	GetNamespacedTagValue(context.Context, *rmpb.GetNamespacedTagValueRequest, ...gax.CallOption) (*rmpb.TagValue, error)
 	io.Closer
 }
 
+type tagBinder interface {
+	CreateTagBinding(context.Context, *rmpb.CreateTagBindingRequest, ...gax.CallOption) (*resourcemanager.CreateTagBindingOperation, error)
+	io.Closer
+}
+
 // TagManager is responsible for centralising dealing with the ResourceManager Tags on different objects.
 type TagManager struct {
 	valueGetter tagValueGetter
+	binder      tagBinder
 }
 
 // NewTagManager constructs a TagManager.
 func NewTagManager(tvg tagValueGetter) *TagManager {
 	return &TagManager{valueGetter: tvg}
+}
+
+// NewTagManagerWithBinder constructs a TagManager, but with a tag binder as well.
+func NewTagManagerWithBinder(tvg tagValueGetter, tb tagBinder) *TagManager {
+	return &TagManager{valueGetter: tvg, binder: tb}
 }
 
 // TagInstance applies a set of tags to a GCE compute instance.
@@ -98,9 +110,44 @@ func (m *TagManager) TagInstanceTemplate(ctx context.Context, instanceTemplate *
 	return nil
 }
 
+// TagCluster applies a set of ResourceManager Tagst to a GKE Cluster object
+func (m *TagManager) TagCluster(ctx context.Context, clusterFullName string, tags infrav1.ResourceManagerTags) error {
+	if len(tags) == 0 {
+		return nil
+	}
+	if m.binder == nil {
+		return errNoBinder
+	}
+	resolvedTags, err := m.resolve(ctx, tags)
+	if err != nil {
+		return err
+	}
+	for _, tagValue := range resolvedTags {
+		op, err := m.binder.CreateTagBinding(ctx, &rmpb.CreateTagBindingRequest{
+			TagBinding: &rmpb.TagBinding{
+				TagValue: tagValue,
+				Parent:   "//container.googleapis.com/" + clusterFullName,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create tag binding: %w", err)
+		}
+
+		_, err = op.Wait(ctx)
+		if err != nil {
+			return fmt.Errorf("tag binding operation failed: %w", err)
+		}
+	}
+	return nil
+}
+
 // Close is responsible for closing the TagManager and any underlying clients.
 func (m *TagManager) Close() error {
-	return m.valueGetter.Close()
+	errList := []error{m.valueGetter.Close()}
+	if m.binder != nil {
+		errList = append(errList, m.binder.Close())
+	}
+	return kerrors.NewAggregate(errList)
 }
 
 func (m *TagManager) resolve(ctx context.Context, t infrav1.ResourceManagerTags) (infrav1.ResourceManagerTagsMap, error) {
@@ -120,52 +167,4 @@ func (m *TagManager) resolve(ctx context.Context, t infrav1.ResourceManagerTags)
 	}
 
 	return tagValueList, nil
-}
-
-// ResourceTagBinding creates a TagBinding between a TagValue and a Google Cloud resource.
-// If any of the SDK calls fail, the error is logged and no action is taken.
-func ResourceTagBinding(ctx context.Context, client *resourcemanager.TagBindingsClient, spec infrav1exp.GCPManagedClusterSpec, name string) error {
-	for _, tag := range spec.ResourceManagerTags {
-		tagValue, err := getTagValues(ctx, tag)
-		if err != nil {
-			return fmt.Errorf("failed to retrieve tag value: %w", err)
-		}
-		req := &rmpb.CreateTagBindingRequest{
-			TagBinding: &rmpb.TagBinding{
-				Parent:   fmt.Sprintf("//container.googleapis.com/projects/%s/locations/%s/clusters/%s", tag.ParentID, spec.Region, name),
-				TagValue: tagValue.GetName(),
-			},
-		}
-		op, err := client.CreateTagBinding(ctx, req)
-		if err != nil {
-			return fmt.Errorf("failed to create tag binding: %w", err)
-		}
-
-		_, err = op.Wait(ctx)
-		if err != nil {
-			return fmt.Errorf("tag binding operation failed: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func getTagValues(ctx context.Context, tag infrav1.ResourceManagerTag) (*rmpb.TagValue, error) {
-	log := log.FromContext(ctx)
-	client, err := resourcemanager.NewTagValuesClient(ctx)
-	if err != nil {
-		log.Error(err, "failed to create tag values client")
-		return &rmpb.TagValue{}, err
-	}
-	defer client.Close()
-
-	req := &rmpb.GetNamespacedTagValueRequest{
-		Name: fmt.Sprintf("%s/%s/%s", tag.ParentID, tag.Key, tag.Value),
-	}
-	tagValue, err := client.GetNamespacedTagValue(ctx, req)
-	if err != nil {
-		return &rmpb.TagValue{}, err
-	}
-
-	return tagValue, nil
 }

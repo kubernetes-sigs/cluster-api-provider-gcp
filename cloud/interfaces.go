@@ -123,3 +123,8 @@ type InstanceTagger interface {
 	TagInstance(ctx context.Context, instance *compute.Instance, tags infrav1.ResourceManagerTags) error
 	TagInstanceTemplate(ctx context.Context, template *compute.InstanceTemplate, tags infrav1.ResourceManagerTags) error
 }
+
+// ClusterTagger is an interface which can tag Clusters (GKE) with ResourceManagerTags
+type ClusterTagger interface {
+	TagCluster(ctx context.Context, clusterFullName string, tags infrav1.ResourceManagerTags) error
+}
