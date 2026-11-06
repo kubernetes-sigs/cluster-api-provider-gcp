@@ -103,6 +103,43 @@ const (
 	WorkloadMetadataModeGCEMetadata WorkloadMetadataMode = "GCE_METADATA"
 )
 
+// ReservationConsumeType is the mode in which reservations should be consumed if they exist
+// +kubebuilder:validation:Enum=NO_RESERVATION;ANY_RESERVATION;SPECIFIC_RESERVATION;ANY_RESERVATION_THEN_FAIL
+type ReservationConsumeType string
+
+const (
+	// ReservationConsumeTypeNoReservation means to explicitly not take capacity from any reservation (i.e. always from the general population of compute)
+	ReservationConsumeTypeNoReservation ReservationConsumeType = "NO_RESERVATION"
+	// ReservationConsumeTypeAnyReservation means take compute from any reservation
+	ReservationConsumeTypeAnyReservation ReservationConsumeType = "ANY_RESERVATION"
+	// ReservationConsumeTypeSpecificReservation means take compute from a reservation specified by `key` and `values`
+	ReservationConsumeTypeSpecificReservation ReservationConsumeType = "SPECIFIC_RESERVATION"
+	// ReservationConsumeTypeAnyReservationThenFail means take compute from any reservation but then fail if there isn't sufficient capacity in those reservations
+	ReservationConsumeTypeAnyReservationThenFail ReservationConsumeType = "ANY_RESERVATION_THEN_FAIL"
+)
+
+// ReservationAffinity encapsulates all the ways you can configure nodes to take capacity from reservations
+// +kubebuilder:validation:XValidation:rule="!(self.consumeReservationType == 'SPECIFIC_RESERVATION') || (has(self.key) && self.key.size() > 0 && has(self.values) && self.values.size() > 0 && self.values.all(e, e.size() > 0))",message="if using SPECIFIC_RESERVATION, key and values must also be specified"
+// +kubebuilder:validation:XValidation:rule="(self.consumeReservationType == 'SPECIFIC_RESERVATION') || (!has(self.key) && (!has(self.values) || self.values.size() == 0))",message="setting key and values is not valid without using the SPECIFIC_RESERVATION type"
+type ReservationAffinity struct {
+	// ConsumeReservationType decides how reservations should be consumed if they exist
+	ConsumeReservationType ReservationConsumeType `json:"consumeReservationType"`
+	// Key dictates the key that should be used to match the reservation, required only for SPECIFIC_RESERVATION.
+	// Can only take the value "compute.googleapis.com/reservation-name"
+	// +optional
+	Key ReservationKey `json:"key,omitempty"`
+	// Values are the names of the reservations to match against, required only for SPECIFIC_RESERVATION
+	// +optional
+	Values []string `json:"values,omitempty"`
+}
+
+// ReservationKey is the set of values that can be passed to the `key` field, when using SPECIFIC_RESERVATION
+// +kubebuilder:validation:Enum=compute.googleapis.com/reservation-name
+type ReservationKey string
+
+// ReservationKeyReservationName stores the label used to match with reservation names
+const ReservationKeyReservationName ReservationKey = "compute.googleapis.com/reservation-name"
+
 // NodeSecurityConfig encapsulates node security configurations.
 type NodeSecurityConfig struct {
 	// ServiceAccount specifies the identity details for node

@@ -175,3 +175,21 @@ func ConvertToSdkLinuxNodeConfig(linuxNodeConfig *LinuxNodeConfig) *containerpb.
 	}
 	return &sdkLinuxNodeConfig
 }
+
+// ConvertToSdkReservationAffinity converts a ReservationAffinity to the GCP SDK ReservationAffinity.
+// It utilizes an SDK lookup, which therefore requires that CAPG's string values are exactly the same
+// as the SDK enum ones. This is enforced by a test in types_test.go
+func ConvertToSdkReservationAffinity(affinity *ReservationAffinity) *containerpb.ReservationAffinity {
+	if affinity == nil {
+		return nil
+	}
+	index := containerpb.ReservationAffinity_Type_value[string(affinity.ConsumeReservationType)]
+	if index == 0 {
+		return nil
+	}
+	return &containerpb.ReservationAffinity{
+		ConsumeReservationType: containerpb.ReservationAffinity_Type(index),
+		Key:                    string(affinity.Key),
+		Values:                 affinity.Values,
+	}
+}

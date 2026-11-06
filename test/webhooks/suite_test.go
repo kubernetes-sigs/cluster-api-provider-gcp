@@ -114,6 +114,9 @@ var _ = BeforeSuite(func() {
 	err = expwebhooks.SetupGCPManagedMachinePoolTemplateWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = (&expwebhooks.GCPManagedMachinePool{}).SetupWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
 	ctx, cancel := context.WithCancel(context.Background())
 	DeferCleanup(cancel)
 
