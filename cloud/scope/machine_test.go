@@ -1,7 +1,6 @@
 package scope
 
 import (
-	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -15,8 +14,6 @@ import (
 // as a disk type then the MachineScope correctly detects it as such.
 func TestMachineLocalSSDDiskType(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
-
 	// Register the GCPMachine types in a scheme.
 	schema := runtime.NewScheme()
 	err := infrav1.AddToScheme(schema)
@@ -68,7 +65,7 @@ func TestMachineLocalSSDDiskType(t *testing.T) {
 	g.Expect(testMachineScope).NotTo(BeNil())
 
 	// Now make sure the local-ssd disk type is detected as SCRATCH.
-	diskSpec := instanceAdditionalDiskSpec(ctx, testGCPMachine.Spec.AdditionalDisks, testGCPMachine.Spec.RootDiskEncryptionKey, testMachineScope.Zone(), testGCPMachine.Spec.ResourceManagerTags)
+	diskSpec := instanceAdditionalDiskSpec(testGCPMachine.Spec.AdditionalDisks, testGCPMachine.Spec.RootDiskEncryptionKey, testMachineScope.Zone())
 	g.Expect(diskSpec).NotTo(BeEmpty())
 
 	// Get the local-ssd disk now.

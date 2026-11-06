@@ -195,6 +195,12 @@ func (r *GCPMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
+	defer func() {
+		if err := clusterScope.CloseClients(); err != nil && reterr == nil {
+			reterr = err
+		}
+	}()
+
 	// Create the machine scope
 	machineScope, err := scope.NewMachineScope(scope.MachineScopeParams{
 		Client:        r.Client,

@@ -112,6 +112,12 @@ func (r *GCPMachinePoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
+	defer func() {
+		if err := clusterScope.CloseClients(); err != nil && reterr == nil {
+			reterr = err
+		}
+	}()
+
 	// Create the machine pool scope
 	machinePoolScope, err := scope.NewMachinePoolScope(scope.MachinePoolScopeParams{
 		ClusterGetter:  clusterScope,
