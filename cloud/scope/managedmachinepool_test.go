@@ -2,9 +2,11 @@ package scope
 
 import (
 	"testing"
+	"time"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/types/known/durationpb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
@@ -297,5 +299,155 @@ func Test_MachinePool_ConvertToSdkNodePool(t *testing.T) {
 			MaxUnavailable: maxUnavailable,
 			Strategy:       &strategy,
 		}))
+	})
+
+	t.Run("UpgradeSettings should accept SURGE explicitly", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			Strategy: new("SURGE"),
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		strategy := containerpb.NodePoolUpdateStrategy_SURGE
+		g.Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+			MaxSurge:       1,
+			MaxUnavailable: 0,
+			Strategy:       &strategy,
+		}))
+	})
+
+	t.Run("Unset strategy defaults to SURGE", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		maxSurge := int32(10)
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			MaxSurge: &maxSurge,
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		strategy := containerpb.NodePoolUpdateStrategy_SURGE
+		g.Expect(sdkNodePool.GetUpgradeSettings()).To(Equal(&containerpb.NodePool_UpgradeSettings{
+			MaxSurge:       maxSurge,
+			MaxUnavailable: 0,
+			Strategy:       &strategy,
+		}))
+	})
+
+	t.Run("SURGE strategies should not have BlueGreenSettings", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			Strategy: new("SURGE"),
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings()).To(BeNil())
+	})
+
+	t.Run("BLUE_GREEN converts percentages correctly", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		percentage := int32(50)
+
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			Strategy: new("BLUE_GREEN"),
+			BlueGreenSettings: &v1beta1.BlueGreenSettings{
+				StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+					BatchPercentage: &percentage,
+				},
+			},
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchPercentage()).To(Equal(float32(0.5)))
+	})
+
+	t.Run("BLUE_GREEN retains node count", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		nodeCount := int32(50)
+
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			Strategy: new("BLUE_GREEN"),
+			BlueGreenSettings: &v1beta1.BlueGreenSettings{
+				StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+					BatchNodeCount: &nodeCount,
+				},
+			},
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchNodeCount()).To(Equal(int32(50)))
+	})
+
+	t.Run("BLUE_GREEN adheres to soak defaults", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		nodeCount := int32(50)
+
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			Strategy: new("BLUE_GREEN"),
+			BlueGreenSettings: &v1beta1.BlueGreenSettings{
+				StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+					BatchNodeCount: &nodeCount,
+				},
+			},
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetNodePoolSoakDuration()).To(Equal(durationpb.New(1 * time.Hour)))
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchSoakDuration()).To(Equal(durationpb.New(0)))
+	})
+
+	t.Run("BLUE_GREEN respects explicit durations", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		nodeCount := int32(50)
+
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			Strategy: new("BLUE_GREEN"),
+			BlueGreenSettings: &v1beta1.BlueGreenSettings{
+				StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+					BatchNodeCount:    &nodeCount,
+					BatchSoakDuration: &metav1.Duration{Duration: 2 * time.Hour},
+				},
+				NodePoolSoakDuration: &metav1.Duration{Duration: 4 * time.Hour},
+			},
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetNodePoolSoakDuration()).To(Equal(durationpb.New(4 * time.Hour)))
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetBlueGreenSettings().GetStandardRolloutPolicy().GetBatchSoakDuration()).To(Equal(durationpb.New(2 * time.Hour)))
+	})
+
+	t.Run("BLUE_GREEN doesn't send maxSurge or maxUnavailable", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+		nodeCount := int32(50)
+
+		testManagedMachinePool.Spec.UpgradeSettings = &v1beta1.NodePoolUpgradeSettings{
+			Strategy: new("BLUE_GREEN"),
+			BlueGreenSettings: &v1beta1.BlueGreenSettings{
+				StandardRolloutPolicy: &v1beta1.StandardRolloutPolicy{
+					BatchNodeCount: &nodeCount,
+				},
+			},
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetMaxSurge()).To(Equal(int32(0)))
+		g.Expect(sdkNodePool.GetUpgradeSettings().GetMaxUnavailable()).To(Equal(int32(0)))
 	})
 }
