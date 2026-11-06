@@ -376,8 +376,10 @@ generate-manifests: $(CONTROLLER_GEN) ## Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) \
 		paths=./ \
 		paths=./api/... \
+		paths=./webhooks/... \
 		paths=./$(EXP_DIR)/api/... \
 		paths=./$(EXP_DIR)/bootstrap/gke/api/... \
+		paths=./$(EXP_DIR)/webhooks/... \
 		crd:crdVersions=v1 \
 		rbac:roleName=manager-role \
 		output:crd:dir=$(CRD_ROOT) \

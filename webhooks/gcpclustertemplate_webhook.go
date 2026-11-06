@@ -22,13 +22,14 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	webhookutils "sigs.k8s.io/cluster-api-provider-gcp/util/webhook"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func (r *GCPClusterTemplate) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, &infrav1.GCPClusterTemplate{}).
-		WithValidator(r).
+		WithValidator(webhookutils.TopologyDryRunAware(r)).
 		WithDefaulter(r).
 		Complete()
 }

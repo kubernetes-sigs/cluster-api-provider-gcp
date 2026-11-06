@@ -259,6 +259,25 @@ webhooks:
     - gcpmachines
   sideEffects: None
 - admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinepool
+  failurePolicy: Fail
+  name: validation.gcpmachinepool.infrastructure.cluster.x-k8s.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - UPDATE
+    resources:
+    - gcpmachinepools
+  sideEffects: None
+- admissionReviewVersions:
   - v1beta1
   clientConfig:
     service:
@@ -278,25 +297,6 @@ webhooks:
     - UPDATE
     resources:
     - gcpmachinetemplates
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinepool
-  failurePolicy: Fail
-  name: validation.gcpmachinepool.infrastructure.cluster.x-k8s.io
-  rules:
-  - apiGroups:
-    - infrastructure.cluster.x-k8s.io
-    apiVersions:
-    - v1beta1
-    operations:
-    - UPDATE
-    resources:
-    - gcpmachinepools
   sideEffects: None
 - admissionReviewVersions:
   - v1
@@ -397,4 +397,25 @@ webhooks:
     - UPDATE
     resources:
     - gcpmanagedmachinepools
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmanagedmachinepooltemplate
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: vgcpmanagedmachinepooltemplate.kb.io
+  rules:
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gcpmanagedmachinepooltemplates
   sideEffects: None
