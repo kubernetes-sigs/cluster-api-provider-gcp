@@ -33,30 +33,32 @@ import (
 
 var errNoBinder = errors.New("tag manager has no tag bindings client")
 
-type tagValueGetter interface {
+// TagValueGetter allows us to only use concrete client interfaces when in production code
+type TagValueGetter interface {
 	GetNamespacedTagValue(context.Context, *rmpb.GetNamespacedTagValueRequest, ...gax.CallOption) (*rmpb.TagValue, error)
 	io.Closer
 }
 
-type tagBinder interface {
+// TagBinder allows us to only use concrete client interfaces when in production code
+type TagBinder interface {
 	CreateTagBinding(context.Context, *rmpb.CreateTagBindingRequest, ...gax.CallOption) (*resourcemanager.CreateTagBindingOperation, error)
 	io.Closer
 }
 
 // TagManager is responsible for centralising dealing with the ResourceManager Tags on different objects.
 type TagManager struct {
-	valueGetter tagValueGetter
-	binder      tagBinder
+	valueGetter    TagValueGetter
+	binder         TagBinder
+	newValueGetter func(ctx context.Context) (TagValueGetter, error)
+	newBinder      func(ctx context.Context) (TagBinder, error)
 }
 
-// NewTagManager constructs a TagManager.
-func NewTagManager(tvg tagValueGetter) *TagManager {
-	return &TagManager{valueGetter: tvg}
-}
-
-// NewTagManagerWithBinder constructs a TagManager, but with a tag binder as well.
-func NewTagManagerWithBinder(tvg tagValueGetter, tb tagBinder) *TagManager {
-	return &TagManager{valueGetter: tvg, binder: tb}
+// NewLazyTagManager constructs a TagManager that lazily instantiates its clients rather than creating them upfront
+func NewLazyTagManager(valueGetterFactory func(ctx context.Context) (TagValueGetter, error), binderFactory func(ctx context.Context) (TagBinder, error)) *TagManager {
+	return &TagManager{
+		newValueGetter: valueGetterFactory,
+		newBinder:      binderFactory,
+	}
 }
 
 // TagInstance applies a set of tags to a GCE compute instance.
@@ -110,18 +112,29 @@ func (m *TagManager) TagInstanceTemplate(ctx context.Context, instanceTemplate *
 	return nil
 }
 
-// TagCluster applies a set of ResourceManager Tagst to a GKE Cluster object
+// TagCluster applies a set of ResourceManager Tags to a GKE Cluster object
 func (m *TagManager) TagCluster(ctx context.Context, clusterFullName string, tags infrav1.ResourceManagerTags) error {
 	if len(tags) == 0 {
 		return nil
 	}
-	if m.binder == nil {
+
+	if m.binder == nil && m.newBinder == nil {
 		return errNoBinder
 	}
+
 	resolvedTags, err := m.resolve(ctx, tags)
 	if err != nil {
 		return err
 	}
+
+	if m.binder == nil {
+		binder, err := m.newBinder(ctx)
+		if err != nil {
+			return fmt.Errorf("could not create tag binder: %w", err)
+		}
+		m.binder = binder
+	}
+
 	for _, tagValue := range resolvedTags {
 		op, err := m.binder.CreateTagBinding(ctx, &rmpb.CreateTagBindingRequest{
 			TagBinding: &rmpb.TagBinding{
@@ -143,7 +156,11 @@ func (m *TagManager) TagCluster(ctx context.Context, clusterFullName string, tag
 
 // Close is responsible for closing the TagManager and any underlying clients.
 func (m *TagManager) Close() error {
-	errList := []error{m.valueGetter.Close()}
+	var errList []error
+
+	if m.valueGetter != nil {
+		errList = append(errList, m.valueGetter.Close())
+	}
 	if m.binder != nil {
 		errList = append(errList, m.binder.Close())
 	}
@@ -154,6 +171,12 @@ func (m *TagManager) resolve(ctx context.Context, t infrav1.ResourceManagerTags)
 	tagValueList := make(infrav1.ResourceManagerTagsMap, len(t))
 	if len(t) == 0 {
 		return tagValueList, nil
+	}
+
+	// Lazily instantiate valueGetter if it's not set
+	err := m.upsertValueGetter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not instantiate TagValue getter: %w", err)
 	}
 
 	for _, tag := range t {
@@ -167,4 +190,18 @@ func (m *TagManager) resolve(ctx context.Context, t infrav1.ResourceManagerTags)
 	}
 
 	return tagValueList, nil
+}
+
+func (m *TagManager) upsertValueGetter(ctx context.Context) error {
+	if m.valueGetter == nil && m.newValueGetter == nil {
+		return errors.New("nil getter and getter factory")
+	}
+	if m.valueGetter == nil && m.newValueGetter != nil {
+		vg, err := m.newValueGetter(ctx)
+		if err != nil {
+			return err
+		}
+		m.valueGetter = vg
+	}
+	return nil
 }
