@@ -26,8 +26,13 @@ import (
 
 	container "cloud.google.com/go/container/apiv1"
 	"cloud.google.com/go/container/apiv1/containerpb"
+	gkehub "cloud.google.com/go/gkehub/apiv1beta1"
+	"cloud.google.com/go/gkehub/apiv1beta1/gkehubpb"
+	"github.com/googleapis/gax-go/v2/apierror"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
@@ -345,6 +350,23 @@ func FindMachinePoolByName(pools []*expv1.MachinePool, name string) *expv1.Machi
 	}
 	Fail(fmt.Sprintf("no machine pool named %q found among %d machine pools", name, len(pools)))
 	return nil
+}
+
+// membershipExists checks directly against the GKE Hub API whether the fleet
+// Membership identified by name currently exists.
+func membershipExists(ctx context.Context, gkeHubClient *gkehub.GkeHubMembershipClient, name string) bool {
+	_, err := gkeHubClient.GetMembership(ctx, &gkehubpb.GetMembershipRequest{Name: name})
+	if err == nil {
+		return true
+	}
+
+	var apiErr *apierror.APIError
+	if errors.As(err, &apiErr) && apiErr.GRPCStatus().Code() == codes.NotFound {
+		return false
+	}
+
+	Expect(err).NotTo(HaveOccurred(), "unexpected error getting fleet membership %s", name)
+	return false
 }
 
 func setDefaults(input *ApplyManagedClusterTemplateAndWaitInput) {
