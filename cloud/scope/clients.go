@@ -79,17 +79,34 @@ func newCloud(project string, service GCPServices) cloud.Cloud {
 	})
 }
 
-func defaultClientOptions(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) ([]option.ClientOption, error) {
+// defaultClientOptions returns the client options shared by every GCP client,
+// along with the universe domain those options resolve to. Callers that build
+// an endpoint themselves need the universe domain so they do not have to
+// re-resolve the credentials to get it.
+//
+// Credentials are resolved even when credentialsRef is nil, because the
+// clients would otherwise fall back to Application Default Credentials on
+// their own and the universe domain has to come from whichever credentials
+// they end up using. option.WithUniverseDomain takes precedence over the
+// GOOGLE_CLOUD_UNIVERSE_DOMAIN environment variable, so pinning it here means
+// a sovereign (GCD) universe is detected from the credentials alone rather
+// than from the controller's environment.
+func defaultClientOptions(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client) ([]option.ClientOption, string, error) {
 	opts := []option.ClientOption{
 		option.WithUserAgent(fmt.Sprintf("gcp.cluster.x-k8s.io/%s", version.Get())),
 	}
 
-	if credentialsRef != nil {
-		resolved, err := CredentialsClient{}.Resolve(ctx, credentialsRef, crClient)
-		if err != nil {
-			return nil, fmt.Errorf("getting gcp credentials from reference %s: %w", credentialsRef, err)
+	resolved, err := CredentialsClient{}.Resolve(ctx, credentialsRef, crClient)
+	if err != nil {
+		if credentialsRef == nil {
+			return nil, "", fmt.Errorf("getting application default gcp credentials: %w", err)
 		}
+		return nil, "", fmt.Errorf("getting gcp credentials from reference %s: %w", credentialsRef, err)
+	}
 
+	// Only an explicit reference injects its credential JSON into the clients.
+	// Implicit ADC is still left for them to resolve themselves.
+	if credentialsRef != nil {
 		var optCredType option.CredentialsType
 		switch resolved.Type {
 		case google.ExternalAccount:
@@ -100,23 +117,44 @@ func defaultClientOptions(ctx context.Context, credentialsRef *infrav1.ObjectRef
 			optCredType = option.ServiceAccount
 		}
 		opts = append(opts, option.WithAuthCredentialsJSON(optCredType, resolved.RawData))
-
-		// Extract universe domain for sovereign clouds.
-		universeDomain, err := resolved.Credentials.GetUniverseDomain()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get universe domain from credentials: %w", err)
-		}
-		opts = append(opts, option.WithUniverseDomain(universeDomain))
 	}
 
-	return opts, nil
+	// Extract universe domain for sovereign clouds.
+	universeDomain, err := resolved.Credentials.GetUniverseDomain()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get universe domain from credentials: %w", err)
+	}
+	opts = append(opts, option.WithUniverseDomain(universeDomain))
+
+	return opts, universeDomain, nil
+}
+
+// tagBindingsEndpoint returns the Cloud Resource Manager endpoint to dial for
+// location in universeDomain. An explicit ResourceManagerServiceEndpoint
+// override always wins; otherwise the regional endpoint is derived from the
+// universe domain. Tag bindings have no universe-aware default endpoint in the
+// client library because the endpoint is regional, so CAPG builds it here
+// instead of letting the library derive it.
+func tagBindingsEndpoint(location, universeDomain string, endpoints *infrav1.ServiceEndpoints) string {
+	if endpoints != nil && endpoints.ResourceManagerServiceEndpoint != "" {
+		return endpoints.ResourceManagerServiceEndpoint
+	}
+
+	if universeDomain == "" {
+		universeDomain = DefaultUniverseDomain
+	}
+
+	return fmt.Sprintf("%s-cloudresourcemanager.%s:443", location, universeDomain)
 }
 
 func newComputeService(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*compute.Service, error) {
-	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	opts, universeDomain, err := defaultClientOptions(ctx, credentialsRef, crClient)
 	if err != nil {
 		return nil, fmt.Errorf("getting default gcp client options: %w", err)
 	}
+	// The compute service is the one client every non-GKE scope builds, so this
+	// reports the universe domain once per scope rather than once per client.
+	logUniverseDomain(ctx, universeDomain, endpoints)
 
 	if endpoints != nil && endpoints.ComputeServiceEndpoint != "" {
 		opts = append(opts, option.WithEndpoint(endpoints.ComputeServiceEndpoint))
@@ -131,10 +169,13 @@ func newComputeService(ctx context.Context, credentialsRef *infrav1.ObjectRefere
 }
 
 func newClusterManagerClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*container.ClusterManagerClient, error) {
-	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	opts, universeDomain, err := defaultClientOptions(ctx, credentialsRef, crClient)
 	if err != nil {
 		return nil, fmt.Errorf("getting default gcp client options: %w", err)
 	}
+	// Likewise for GKE scopes, which build a cluster manager client rather than
+	// a compute service.
+	logUniverseDomain(ctx, universeDomain, endpoints)
 
 	if endpoints != nil && endpoints.ContainerServiceEndpoint != "" {
 		opts = append(opts, option.WithEndpoint(endpoints.ContainerServiceEndpoint))
@@ -149,7 +190,7 @@ func newClusterManagerClient(ctx context.Context, credentialsRef *infrav1.Object
 }
 
 func newInstanceGroupManagerClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*computerest.InstanceGroupManagersClient, error) {
-	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	opts, _, err := defaultClientOptions(ctx, credentialsRef, crClient)
 	if err != nil {
 		return nil, fmt.Errorf("getting default gcp client options: %w", err)
 	}
@@ -167,7 +208,7 @@ func newInstanceGroupManagerClient(ctx context.Context, credentialsRef *infrav1.
 }
 
 func newInstanceTemplatesRESTClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*computerest.InstanceTemplatesClient, error) {
-	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	opts, _, err := defaultClientOptions(ctx, credentialsRef, crClient)
 	if err != nil {
 		return nil, fmt.Errorf("getting default gcp client options: %w", err)
 	}
@@ -185,18 +226,12 @@ func newInstanceTemplatesRESTClient(ctx context.Context, credentialsRef *infrav1
 }
 
 func newTagBindingsClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, location string, endpoints *infrav1.ServiceEndpoints) (*resourcemanager.TagBindingsClient, error) {
-	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
-
-	if endpoints != nil && endpoints.ResourceManagerServiceEndpoint != "" {
-		opts = append(opts, option.WithEndpoint(endpoints.ResourceManagerServiceEndpoint))
-	} else {
-		endpoint := location + "-cloudresourcemanager.googleapis.com:443"
-		opts = append(opts, option.WithEndpoint(endpoint))
-	}
-
+	opts, universeDomain, err := defaultClientOptions(ctx, credentialsRef, crClient)
 	if err != nil {
 		return nil, fmt.Errorf("getting default gcp client options: %w", err)
 	}
+
+	opts = append(opts, option.WithEndpoint(tagBindingsEndpoint(location, universeDomain, endpoints)))
 
 	client, err := resourcemanager.NewTagBindingsClient(ctx, opts...)
 	if err != nil {
