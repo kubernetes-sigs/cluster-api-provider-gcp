@@ -74,12 +74,7 @@ func NewClusterScope(ctx context.Context, params ClusterScopeParams) (*ClusterSc
 	}
 
 	if params.TagManager == nil {
-		tagManager, err := newTagManager(ctx, params.GCPCluster.Spec.CredentialsRef, params.Client, params.GCPCluster.Spec.ServiceEndpoints)
-		if err != nil {
-			return nil, errors.Errorf("failed to create gcp tag manager: %v", err)
-		}
-
-		params.TagManager = tagManager
+		params.TagManager = newTagManager(params.GCPCluster.Spec.CredentialsRef, params.Client, params.GCPCluster.Spec.ServiceEndpoints)
 	}
 
 	helper, err := v1beta1patch.NewHelper(params.GCPCluster, params.Client)

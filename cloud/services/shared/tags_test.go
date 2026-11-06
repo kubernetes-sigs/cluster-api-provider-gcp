@@ -616,3 +616,29 @@ func TestTagManager_TagCluster(t *testing.T) {
 		})
 	}
 }
+
+func TestLazyConstruction(t *testing.T) {
+	g := NewWithT(t)
+
+	getterFactoryRun := new(false)
+	binderFactoryRun := new(false)
+
+	tagManager := NewLazyTagManager(
+		func(_ context.Context) (TagValueGetter, error) {
+			getterFactoryRun = new(true)
+			return fakeGetter{}, nil
+		},
+		func(_ context.Context) (TagBinder, error) {
+			binderFactoryRun = new(true)
+			return fakeBinder{}, nil
+		},
+	)
+
+	err := tagManager.TagInstance(t.Context(), createInstance(nil, nil), infrav1.ResourceManagerTags{})
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(*getterFactoryRun).To(BeFalse())
+
+	err = tagManager.TagCluster(t.Context(), "my-cluster", infrav1.ResourceManagerTags{})
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(*binderFactoryRun).To(BeFalse())
+}
