@@ -19,6 +19,7 @@ package scope
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	computerest "cloud.google.com/go/compute/apiv1"
@@ -29,6 +30,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/pkg/version"
 	"k8s.io/client-go/util/flowcontrol"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -204,24 +206,36 @@ func newTagManager(ctx context.Context, credentialsRef *infrav1.ObjectReference,
 	return shared.NewTagManager(tvClient), nil
 }
 
-func newTagBindingsClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, location string, endpoints *infrav1.ServiceEndpoints) (*resourcemanager.TagBindingsClient, error) {
+func newGKETagManager(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, location string, endpoints *infrav1.ServiceEndpoints) (*shared.TagManager, error) {
 	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
-
-	if endpoints != nil && endpoints.ResourceManagerServiceEndpoint != "" {
-		opts = append(opts, option.WithEndpoint(endpoints.ResourceManagerServiceEndpoint))
-	} else {
-		endpoint := location + "-cloudresourcemanager.googleapis.com:443"
-		opts = append(opts, option.WithEndpoint(endpoint))
-	}
-
 	if err != nil {
 		return nil, fmt.Errorf("getting default gcp client options: %w", err)
 	}
+	valuesOpts := slices.Clone(opts)
+	binderOpts := slices.Clone(opts)
 
-	client, err := resourcemanager.NewTagBindingsClient(ctx, opts...)
+	if endpoints != nil && endpoints.ResourceManagerServiceEndpoint != "" {
+		valuesOpts = append(valuesOpts, option.WithEndpoint(endpoints.ResourceManagerServiceEndpoint))
+	}
+	valuesClient, err := resourcemanager.NewTagValuesClient(ctx, valuesOpts...)
 	if err != nil {
-		return nil, errors.Errorf("failed to create gcp tag binding client: %v", err)
+		return nil, errors.Errorf("failed to create gcp tag values client: %v", err)
 	}
 
-	return client, nil
+	if endpoints != nil && endpoints.ResourceManagerServiceEndpoint != "" {
+		binderOpts = append(binderOpts, option.WithEndpoint(endpoints.ResourceManagerServiceEndpoint))
+	} else {
+		endpoint := location + "-cloudresourcemanager.googleapis.com:443"
+		binderOpts = append(binderOpts, option.WithEndpoint(endpoint))
+	}
+	bindingsClient, err := resourcemanager.NewTagBindingsClient(ctx, binderOpts...)
+	if err != nil {
+		valCloseErr := valuesClient.Close()
+		return nil, kerrors.NewAggregate([]error{
+			valCloseErr,
+			errors.Errorf("failed to create gcp tag binding client: %v", err),
+		})
+	}
+
+	return shared.NewTagManagerWithBinder(valuesClient, bindingsClient), nil
 }

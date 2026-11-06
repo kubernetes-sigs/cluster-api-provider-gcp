@@ -20,10 +20,12 @@ import (
 	"context"
 	"fmt"
 
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
 	container "cloud.google.com/go/container/apiv1"
-	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
@@ -44,7 +46,7 @@ const (
 type ManagedControlPlaneScopeParams struct {
 	TokenClient            *TokenClient
 	ManagedClusterClient   *container.ClusterManagerClient
-	TagBindingsClient      *resourcemanager.TagBindingsClient
+	TagManager             *shared.TagManager
 	Client                 client.Client
 	Cluster                *clusterv1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
@@ -71,12 +73,12 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		}
 		params.ManagedClusterClient = managedClusterClient
 	}
-	if params.TagBindingsClient == nil {
-		tagBindingsClient, err := newTagBindingsClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.Region, params.GCPManagedCluster.Spec.ServiceEndpoints)
+	if params.TagManager == nil {
+		tagManager, err := newGKETagManager(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.Region, params.GCPManagedCluster.Spec.ServiceEndpoints)
 		if err != nil {
 			return nil, errors.Errorf("failed to create gcp tag bindings client: %v", err)
 		}
-		params.TagBindingsClient = tagBindingsClient
+		params.TagManager = tagManager
 	}
 	if params.TokenClient == nil {
 		tokenClient, err := NewTokenClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
@@ -97,7 +99,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		GCPManagedCluster:      params.GCPManagedCluster,
 		GCPManagedControlPlane: params.GCPManagedControlPlane,
 		mcClient:               params.ManagedClusterClient,
-		tagBindingsClient:      params.TagBindingsClient,
+		tagManager:             params.TagManager,
 		tokenClient:            *params.TokenClient,
 		patchHelper:            helper,
 	}, nil
@@ -112,7 +114,7 @@ type ManagedControlPlaneScope struct {
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane *infrav1exp.GCPManagedControlPlane
 	mcClient               *container.ClusterManagerClient
-	tagBindingsClient      *resourcemanager.TagBindingsClient
+	tagManager             *shared.TagManager
 	tokenClient            TokenClient
 
 	AllMachinePools        []clusterv1.MachinePool
@@ -141,9 +143,15 @@ func (s *ManagedControlPlaneScope) PatchObject(ctx context.Context) error {
 
 // Close closes the current scope persisting the managed control plane configuration and status.
 func (s *ManagedControlPlaneScope) Close(ctx context.Context) error {
-	s.mcClient.Close()
-	s.tagBindingsClient.Close()
-	return s.PatchObject(ctx)
+	errList := []error{s.mcClient.Close()}
+
+	if s.tagManager != nil {
+		errList = append(errList, s.tagManager.Close())
+	}
+
+	errList = append(errList, s.PatchObject(ctx))
+
+	return kerrors.NewAggregate(errList)
 }
 
 // ConditionSetter returns a v1beta1 condition setter for this scope.
@@ -166,9 +174,9 @@ func (s *ManagedControlPlaneScope) ManagedControlPlaneClient() *container.Cluste
 	return s.mcClient
 }
 
-// TagBindingsClient returns a client used to interact with resource manager tags.
-func (s *ManagedControlPlaneScope) TagBindingsClient() *resourcemanager.TagBindingsClient {
-	return s.tagBindingsClient
+// ClusterTagger returns a client used to tag clusters
+func (s *ManagedControlPlaneScope) ClusterTagger() cloud.ClusterTagger {
+	return s.tagManager
 }
 
 // TokenClient returns the client used to mint short-lived access tokens
