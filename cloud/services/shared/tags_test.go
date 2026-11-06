@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	. "github.com/onsi/gomega"
 
 	rmpb "cloud.google.com/go/resourcemanager/apiv3/resourcemanagerpb"
@@ -31,16 +32,20 @@ import (
 )
 
 const (
+	clusterFullName      = "projects/my-proj/location/us-central1/clusters/my-cluster"
 	instanceName         = "my-instance"
 	instanceTemplateName = "my-instance-template"
+)
+
+var (
+	errBindingOperation = errors.New("binding operation failed")
+	errNotFound         = errors.New("not found")
 )
 
 type fakeGetter struct {
 	fakeResults map[string]*rmpb.TagValue
 	CallCounter *int
 }
-
-var errNotFound = errors.New("not found")
 
 func (f fakeGetter) GetNamespacedTagValue(_ context.Context, request *rmpb.GetNamespacedTagValueRequest, _ ...gax.CallOption) (*rmpb.TagValue, error) {
 	*f.CallCounter++
@@ -51,6 +56,19 @@ func (f fakeGetter) GetNamespacedTagValue(_ context.Context, request *rmpb.GetNa
 }
 
 func (f fakeGetter) Close() error {
+	return nil
+}
+
+type fakeBinder struct {
+	CallCount *int
+}
+
+func (f fakeBinder) CreateTagBinding(_ context.Context, _ *rmpb.CreateTagBindingRequest, _ ...gax.CallOption) (*resourcemanager.CreateTagBindingOperation, error) {
+	*f.CallCount++
+	return nil, errBindingOperation
+}
+
+func (f fakeBinder) Close() error {
 	return nil
 }
 
@@ -489,6 +507,112 @@ func TestTagManager_resolve(t *testing.T) {
 				return
 			}
 			g.Expect(got).To(Equal(tt.wantedTags))
+		})
+	}
+}
+
+func TestTagManager_TagCluster(t *testing.T) {
+	tests := []struct {
+		name                  string
+		tagsInput             infrav1.ResourceManagerTags
+		knownTags             map[string]*rmpb.TagValue
+		includeBinder         bool
+		wantedBinderCallCount int
+		wantedGetterCallCount int
+		wantedError           error
+	}{
+		{
+			name:          "empty tags",
+			tagsInput:     infrav1.ResourceManagerTags{},
+			includeBinder: true,
+		},
+		{
+			name: "no binder",
+			tagsInput: infrav1.ResourceManagerTags{
+				{
+					ParentID: "foo",
+					Key:      "key1",
+					Value:    "value1",
+				},
+				{
+					ParentID: "bar",
+					Key:      "key1",
+					Value:    "value2",
+				},
+			},
+			wantedError: errNoBinder,
+		},
+		{
+			name:          "lookup failure",
+			includeBinder: true,
+			tagsInput: infrav1.ResourceManagerTags{
+				{
+					ParentID: "foo",
+					Key:      "key1",
+					Value:    "value1",
+				},
+				{
+					ParentID: "bar",
+					Key:      "key1",
+					Value:    "value2",
+				},
+			},
+			wantedGetterCallCount: 1,
+			wantedError:           errNotFound,
+		},
+		{
+			name:          "error from binder",
+			includeBinder: true,
+			tagsInput: infrav1.ResourceManagerTags{
+				{
+					ParentID: "foo",
+					Key:      "key1",
+					Value:    "value1",
+				},
+			},
+			knownTags: map[string]*rmpb.TagValue{
+				"foo/key1/value1": {
+					Name:   "tag123",
+					Parent: "foo",
+				},
+			},
+			wantedGetterCallCount: 1,
+			wantedBinderCallCount: 1,
+			wantedError:           errBindingOperation,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			getterCallCounter := 0
+			binderCallCounter := 0
+
+			getter := fakeGetter{
+				fakeResults: tt.knownTags,
+				CallCounter: &getterCallCounter,
+			}
+
+			var m *TagManager
+			if tt.includeBinder {
+				m = &TagManager{
+					valueGetter: getter,
+					binder:      fakeBinder{CallCount: &binderCallCounter},
+				}
+			} else {
+				m = &TagManager{
+					valueGetter: getter,
+				}
+			}
+
+			err := m.TagCluster(t.Context(), clusterFullName, tt.tagsInput)
+			if tt.wantedError == nil {
+				g.Expect(err).ToNot(HaveOccurred())
+			} else {
+				g.Expect(errors.Is(err, tt.wantedError)).To(BeTrue())
+			}
+			g.Expect(binderCallCounter).To(Equal(tt.wantedBinderCallCount))
+			g.Expect(getterCallCounter).To(Equal(tt.wantedGetterCallCount))
 		})
 	}
 }
