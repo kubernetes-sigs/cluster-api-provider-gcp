@@ -53,6 +53,12 @@ type PrivateCluster struct {
 	// +optional
 	ControlPlaneCidrBlock string `json:"controlPlaneCidrBlock,omitempty"`
 
+	// PrivateEndpointSubnetwork is the subnet to provision the control plane's private endpoint into,
+	// in projects/*/regions/*/subnetworks/* format. Honored when EnablePrivateEndpoint is true.
+	// This setting is permanent.
+	// +optional
+	PrivateEndpointSubnetwork string `json:"privateEndpointSubnetwork,omitempty"`
+
 	// ControlPlaneGlobalAccess is whenever master is accessible globally or not. Honored when enabled is true.
 	// +optional
 	ControlPlaneGlobalAccess bool `json:"controlPlaneGlobalAccess,omitempty"`
@@ -127,7 +133,45 @@ type ClusterNetwork struct {
 	// Once set, it cannot be removed entirely, though its contents may be changed.
 	// +optional
 	DNSConfig *DNSConfig `json:"dnsConfig,omitempty"`
+
+	// DefaultMaxPodsPerNode is the default constraint on the maximum number of pods that can be run
+	// simultaneously on a node in any node pool of this cluster. Only honored when UseIPAliases is
+	// true. This setting is permanent.
+	// +optional
+	DefaultMaxPodsPerNode *int64 `json:"defaultMaxPodsPerNode,omitempty"`
+
+	// ClusterIpv4Cidr is the IP address range for the cluster pod IPs when using classic
+	// (routes-based) networking instead of VPC-native (alias IP) networking. Only honored when
+	// UseIPAliases is false. This setting is permanent.
+	// +optional
+	ClusterIpv4Cidr *string `json:"clusterIpv4Cidr,omitempty"`
 }
+
+// LoggingConfig lists which GKE logging components are enabled for the cluster.
+type LoggingConfig struct {
+	// EnableComponents is the list of logging components to enable. An empty list disables all
+	// component-based logging on a non-Autopilot cluster. If Autopilot is being used this list
+	// must, at minimum, contain SYSTEM_COMPONENTS.
+	// +optional
+	EnableComponents []LoggingComponent `json:"enableComponents,omitempty"`
+}
+
+// LoggingComponent is a GKE logging component that can be enabled via LoggingConfig.
+// +kubebuilder:validation:Enum=SYSTEM_COMPONENTS;WORKLOADS;APISERVER;SCHEDULER;CONTROLLER_MANAGER
+type LoggingComponent string
+
+const (
+	// LoggingComponentSystemComponents enables logging of GKE system components.
+	LoggingComponentSystemComponents LoggingComponent = "SYSTEM_COMPONENTS"
+	// LoggingComponentWorkloads enables logging of user workloads.
+	LoggingComponentWorkloads LoggingComponent = "WORKLOADS"
+	// LoggingComponentAPIServer enables logging of the Kubernetes API server.
+	LoggingComponentAPIServer LoggingComponent = "APISERVER"
+	// LoggingComponentScheduler enables logging of the Kubernetes scheduler.
+	LoggingComponentScheduler LoggingComponent = "SCHEDULER"
+	// LoggingComponentControllerManager enables logging of the Kubernetes controller manager.
+	LoggingComponentControllerManager LoggingComponent = "CONTROLLER_MANAGER"
+)
 
 // GatewayAPIChannel is the release channel of the GKE Gateway API controller.
 // +kubebuilder:validation:Enum=disabled;standard

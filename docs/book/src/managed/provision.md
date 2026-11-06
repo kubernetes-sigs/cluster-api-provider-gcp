@@ -86,3 +86,63 @@ spec:
 ```
 
 The named ranges must already exist on the subnet before the cluster is created. Both fields are optional and independent of each other. They are **immutable** after cluster creation — the GCP API does not allow changes to the IP allocation policy of an existing cluster.
+
+## Default max pods per node and classic (routes-based) networking
+
+`clusterNetwork.defaultMaxPodsPerNode` sets the default constraint on the number of pods that can run on a node in any node pool of the cluster. It requires `useIPAliases: true` and is **immutable** after creation.
+
+`clusterNetwork.clusterIpv4Cidr` sets the pod IP range for a classic, routes-based cluster instead of a VPC-native one. It is only used when `useIPAliases: false`, and is **immutable** after creation.
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedControlPlane
+metadata:
+  name: my-gke-control-plane
+spec:
+  project: my-gcp-project
+  location: us-central1
+  clusterNetwork:
+    useIPAliases: true
+    defaultMaxPodsPerNode: 64
+```
+
+## Private cluster endpoint subnet
+
+`clusterNetwork.privateCluster.privateEndpointSubnetwork` provisions the control plane's private endpoint into a specific subnet, in `projects/*/regions/*/subnetworks/*` format, instead of GKE's own choice. Honored when `enablePrivateEndpoint` is true, and **immutable** after creation.
+
+## Shielded GKE Nodes
+
+`shieldedNodes` turns [Shielded GKE Nodes](https://cloud.google.com/kubernetes-engine/docs/how-to/shielded-gke-nodes) (secure boot, vTPM, integrity monitoring) on or off for every node in the cluster, and can be changed after creation:
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedControlPlane
+metadata:
+  name: my-gke-control-plane
+spec:
+  project: my-gcp-project
+  location: us-central1
+  shieldedNodes: true
+```
+
+`shieldedNodes` cannot be set on Autopilot clusters. Also note that adding this setting will cause Nodes to be recreated and so could be disruptive for some workloads.
+
+## Component-based logging
+
+`loggingConfig` selects which GKE logging components to enable, replacing the older `loggingService` enum-based setting. `loggingService` and `loggingConfig` are mutually exclusive — they configure the same underlying setting, and GKE's API rejects a request that sets both. `loggingConfig` can be changed after creation.
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedControlPlane
+metadata:
+  name: my-gke-control-plane
+spec:
+  project: my-gcp-project
+  location: us-central1
+  loggingConfig:
+    enableComponents:
+      - SYSTEM_COMPONENTS
+      - WORKLOADS
+```
+
+An empty `enableComponents` list disables all component-based logging on Standard clusters. If Autopilot is being used `enableComponents` must, at minimum, contain `SYSTEM_COMPONENTS`.
