@@ -130,7 +130,6 @@ func getFakeGCPMachine() *infrav1.GCPMachine {
 			AdditionalLabels: map[string]string{
 				"foo": "bar",
 			},
-			ResourceManagerTags: []infrav1.ResourceManagerTag{},
 		},
 	}
 }
@@ -249,9 +248,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -276,9 +274,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
@@ -317,9 +312,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -344,9 +338,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
@@ -387,9 +378,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -414,9 +404,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
@@ -457,9 +444,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -484,9 +470,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				ConfidentialInstanceConfig: &compute.ConfidentialInstanceConfig{
@@ -532,9 +515,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -559,9 +541,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				ConfidentialInstanceConfig: &compute.ConfidentialInstanceConfig{
@@ -608,9 +587,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -635,9 +613,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				ConfidentialInstanceConfig: &compute.ConfidentialInstanceConfig{
@@ -684,9 +659,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -711,9 +685,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				ConfidentialInstanceConfig: &compute.ConfidentialInstanceConfig{
@@ -758,9 +729,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -785,9 +755,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink: "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{
@@ -824,9 +791,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-a/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-a/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -851,9 +817,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-a/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
@@ -897,9 +860,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -927,9 +889,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
@@ -973,9 +932,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -1003,9 +961,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
@@ -1049,9 +1004,8 @@ func TestService_createOrGetInstance(t *testing.T) {
 						AutoDelete: true,
 						Boot:       true,
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskType:            "zones/us-central1-c/diskTypes/pd-standard",
-							SourceImage:         "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
-							ResourceManagerTags: map[string]string{},
+							DiskType:    "zones/us-central1-c/diskTypes/pd-standard",
+							SourceImage: "projects/my-proj/global/images/family/capi-ubuntu-1804-k8s-v1-19",
 							Labels: map[string]string{
 								"foo": "bar",
 							},
@@ -1079,9 +1033,6 @@ func TestService_createOrGetInstance(t *testing.T) {
 					{
 						Network: "projects/my-proj/global/networks/default",
 					},
-				},
-				Params: &compute.InstanceParams{
-					ResourceManagerTags: map[string]string{},
 				},
 				SelfLink:   "https://www.googleapis.com/compute/v1/projects/proj-id/zones/us-central1-c/instances/my-machine",
 				Scheduling: &compute.Scheduling{},
