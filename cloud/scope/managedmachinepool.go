@@ -23,7 +23,7 @@ import (
 
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
+	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
 	compute "cloud.google.com/go/compute/apiv1"
@@ -56,6 +56,7 @@ type ManagedMachinePoolScopeParams struct {
 	GCPManagedCluster           *infrav1exp.GCPManagedCluster
 	GCPManagedControlPlane      *infrav1exp.GCPManagedControlPlane
 	GCPManagedMachinePool       *infrav1exp.GCPManagedMachinePool
+	Resolver                    location.Resolving
 }
 
 // NewManagedMachinePoolScope creates a new Scope from the supplied parameters.
@@ -99,6 +100,20 @@ func NewManagedMachinePoolScope(ctx context.Context, params ManagedMachinePoolSc
 		params.InstanceTemplatesClient = instanceTemplatesClient
 	}
 
+	if params.Resolver == nil {
+		resolver, err := NewResolver(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create location resolver")
+		}
+		defer resolver.Close()
+		params.Resolver = resolver
+	}
+
+	resolvedLocation, err := params.Resolver.Resolve(ctx, params.GCPManagedControlPlane.Spec.Project, params.GCPManagedControlPlane.Spec.Location)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to resolve location")
+	}
+
 	helper, err := v1beta1patch.NewHelper(params.GCPManagedMachinePool, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
@@ -114,6 +129,7 @@ func NewManagedMachinePoolScope(ctx context.Context, params ManagedMachinePoolSc
 		migClient:               params.InstanceGroupManagersClient,
 		instanceTemplatesClient: params.InstanceTemplatesClient,
 		patchHelper:             helper,
+		ResolvedLocation:        *resolvedLocation,
 	}, nil
 }
 
@@ -130,6 +146,7 @@ type ManagedMachinePoolScope struct {
 	mcClient                *container.ClusterManagerClient
 	migClient               *compute.InstanceGroupManagersClient
 	instanceTemplatesClient *compute.InstanceTemplatesClient
+	ResolvedLocation        location.ResolvedLocation
 }
 
 // PatchObject persists the managed control plane configuration and status.
@@ -202,14 +219,7 @@ func NodePoolResourceLabels(additionalLabels infrav1.Labels, clusterName string)
 
 // ConvertToSdkNodePool converts a node pool to format that is used by GCP SDK.
 func ConvertToSdkNodePool(nodePool infrav1exp.GCPManagedMachinePool, machinePool clusterv1.MachinePool, regional bool, clusterName string) *containerpb.NodePool {
-	replicas := *machinePool.Spec.Replicas
-	if regional {
-		if len(nodePool.Spec.NodeLocations) != 0 {
-			replicas /= int32(len(nodePool.Spec.NodeLocations))
-		} else {
-			replicas /= cloud.DefaultNumRegionsPerZone
-		}
-	}
+	replicas := *machinePool.Spec.Replicas / shared.CalculateReplicaDivisor(nodePool.Spec.NodeLocations, regional)
 	nodePoolName := nodePool.Spec.NodePoolName
 	if len(nodePoolName) == 0 {
 		// Use the GCPManagedMachinePool CR name if nodePoolName is not specified
@@ -350,15 +360,26 @@ func (s *ManagedMachinePoolScope) NodePoolName() string {
 	return s.GCPManagedMachinePool.Name
 }
 
-// Region returns the region of the GKE node pool.
+// Region returns the region of the GKE cluster the node pool belongs to. The GCPManagedControlPlane location is used,
+// as in GCP node pools have no location of their own, a pool lives wherever its cluster lives.
 func (s *ManagedMachinePoolScope) Region() string {
-	loc, _ := location.Parse(s.GCPManagedControlPlane.Spec.Location)
-	return loc.Region
+	return s.ResolvedLocation.Region
+}
+
+// IsRegional returns whether the GKE cluster the node pool belongs to is regional.
+func (s *ManagedMachinePoolScope) IsRegional() bool {
+	return s.ResolvedLocation.Regional
+}
+
+// Location returns the location of the GKE node pool. As above, we use the GCPManagedControlPlane location,
+// as node pools in GCP have no location of their own
+func (s *ManagedMachinePoolScope) Location() string {
+	return s.GCPManagedControlPlane.Spec.Location
 }
 
 // NodePoolLocation returns the location of the node pool.
 func (s *ManagedMachinePoolScope) NodePoolLocation() string {
-	return fmt.Sprintf("projects/%s/locations/%s/clusters/%s", s.GCPManagedControlPlane.Spec.Project, s.Region(), s.GCPManagedControlPlane.Spec.ClusterName)
+	return fmt.Sprintf("projects/%s/locations/%s/clusters/%s", s.GCPManagedControlPlane.Spec.Project, s.Location(), s.GCPManagedControlPlane.Spec.ClusterName)
 }
 
 // NodePoolFullName returns the full name of the node pool.

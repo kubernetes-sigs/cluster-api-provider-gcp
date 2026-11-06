@@ -54,6 +54,12 @@ const (
 	GKEControlPlaneReconciliationFailedReason = "GKEControlPlaneReconciliationFailed"
 	// GKEControlPlaneRequiresAtLeastOneNodePoolReason used to report that no node pool is specified for the GKE control plane.
 	GKEControlPlaneRequiresAtLeastOneNodePoolReason = "GKEControlPlaneRequiresAtLeastOneNodePool"
+	// GKEControlPlaneInvalidLocationReason used to report that the control plane's location is invalid
+	GKEControlPlaneInvalidLocationReason = "GKEControlPlaneInvalidLocation"
+	// GKEControlPlaneRegionMismatchReason used to report that the control plane's region is mismatched with the cluster
+	GKEControlPlaneRegionMismatchReason = "GKEControlPlaneRegionMismatch"
+	// GKEControlPlaneAutopilotRequiresRegionalReason used to report that an Autopilot cluster cannot be zonal
+	GKEControlPlaneAutopilotRequiresRegionalReason = "GKEControlPlaneAutopilotRequiresRegional"
 
 	// GKEMachinePoolReadyCondition condition reports on the successful reconciliation of GKE node pool.
 	GKEMachinePoolReadyCondition clusterv1beta1.ConditionType = "GKEMachinePoolReady"

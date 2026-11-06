@@ -24,15 +24,21 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/scope"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/container/clusters"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 	"sigs.k8s.io/cluster-api-provider-gcp/util/reconciler"
+	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
+	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
+	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2"
+	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -134,7 +140,26 @@ func (r *GCPManagedControlPlaneReconciler) Reconcile(ctx context.Context, req ct
 		GCPManagedControlPlane: gcpManagedControlPlane,
 	})
 	if err != nil {
-		return ctrl.Result{}, errors.Errorf("failed to create scope: %+v", err)
+		if errors.Is(err, location.ErrInvalidLocation) {
+			helper, err := v1beta1patch.NewHelper(gcpManagedControlPlane, r.Client)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			if !gcpManagedControlPlane.DeletionTimestamp.IsZero() && !gcpManagedControlPlane.Status.Initialized && !gcpManagedControlPlane.Status.Ready {
+				// This only makes sense because there's no way objects could exist in GCP at this point
+				controllerutil.RemoveFinalizer(gcpManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
+			} else {
+				message := fmt.Sprintf("location '%s' could not be resolved with project '%s'. Likely location '%s' is an unknown zone or region", gcpManagedControlPlane.Spec.Location, gcpManagedControlPlane.Spec.Project, gcpManagedControlPlane.Spec.Location)
+				markNotReady(gcpManagedControlPlane, infrav1exp.GKEControlPlaneInvalidLocationReason, message)
+				r.Recorder.Eventf(gcpManagedControlPlane, corev1.EventTypeWarning, "GCPManagedControlPlaneReconcile", "Could not determine location correctly from input %s", gcpManagedControlPlane.Spec.Location)
+			}
+			err = helper.Patch(ctx, gcpManagedControlPlane)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, errors.Wrap(err, "failed to create scope")
 	}
 
 	// Always close the scope when exiting this function so we can persist any GCPManagedControlPlane changes.
@@ -160,6 +185,11 @@ func (r *GCPManagedControlPlaneReconciler) reconcile(ctx context.Context, manage
 	controllerutil.AddFinalizer(managedControlPlaneScope.GCPManagedControlPlane, infrav1exp.ManagedControlPlaneFinalizer)
 	if err := managedControlPlaneScope.PatchObject(ctx); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if reason, message := managedControlPlaneScope.ValidateLocation(); reason != "" {
+		markNotReady(managedControlPlaneScope.GCPManagedControlPlane, reason, message)
+		return ctrl.Result{}, nil
 	}
 
 	if !managedControlPlaneScope.GCPManagedCluster.Status.Ready {
@@ -213,4 +243,21 @@ func (r *GCPManagedControlPlaneReconciler) reconcileDelete(ctx context.Context, 
 	}
 
 	return ctrl.Result{RequeueAfter: reconciler.DefaultRetryTime}, nil
+}
+
+func markNotReady(cp *infrav1exp.GCPManagedControlPlane, reason, message string) {
+	v1beta2conditions.Set(cp, metav1.Condition{
+		Type:    infrav1exp.GCPManagedControlPlaneReadyCondition,
+		Status:  metav1.ConditionFalse,
+		Reason:  reason,
+		Message: message,
+	})
+	v1beta2conditions.Set(cp, metav1.Condition{
+		Type:    infrav1exp.GCPManagedControlPlaneGKEControlPlaneReadyCondition,
+		Status:  metav1.ConditionFalse,
+		Reason:  reason,
+		Message: message,
+	})
+	v1beta1conditions.MarkFalse(cp, clusterv1beta1.ReadyCondition, reason, clusterv1beta1.ConditionSeverityError, "%s", message)
+	v1beta1conditions.MarkFalse(cp, infrav1exp.GKEControlPlaneReadyCondition, reason, clusterv1beta1.ConditionSeverityError, "%s", message)
 }

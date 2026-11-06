@@ -21,6 +21,8 @@ export GCP_NETWORK_NAME=default
 export WORKER_MACHINE_COUNT=1
 ```
 
+**Note:** If you want to provision a [zonal cluster](#zonal-clusters) you will need to edit the generated YAML. Set `spec.location` on `GCPManagedControlPlane` to a zone and keep `GCPManagedCluster.spec.region` as the region.
+
 ## Generate cluster definition
 
 The sample cluster templates are already prepared so that you can use them with `clusterctl` to create a GKE cluster with CAPG.
@@ -62,6 +64,22 @@ kubectl --namespace=default get secret managed-test-user-kubeconfig \
 This kubeconfig is used internally by CAPI and shouldn't be used outside of the management server. It is used by CAPI to perform operations, such as draining a node. The name of the secret that contains the kubeconfig will be `[cluster-name]-kubeconfig` where you need to replace **[cluster-name]** with the name of your cluster. Note that there is NO `-user` in the name.
 
 The kubeconfig is regenerated every `sync-period` as the token that is embedded in the kubeconfig is only valid for a short period of time.
+
+## Zonal clusters
+
+CAPG allows you to provision either regional or zonal clusters depending on the value passed to `spec.location` on the `GCPManagedControlPlane` resource. In addition, the `GCPManagedCluster.spec.region` field must be the region that the zone specified on the `GCPManagedControlPlane` belongs to. For example, if `GCPManagedCluster.spec.region` is `us-central1` then for a zonal cluster `spec.location` must be something like `us-central1-a`. If this doesn't happen the `Ready` condition will be set to false.
+
+A zonal cluster runs one control plane replica in a single zone (say `us-central1-a`) and replica count on the `MachinePool` is used as is, unless `nodeLocations` is set. This is in contrast to regional clusters where the node count has to be a multiple of the number of zones (3 by default or the number of `nodeLocations`) so nodes are deployed across multiple zones. GCP restricts converting zonal clusters to regional clusters later.
+
+The `nodeLocations` field can spread a zonal cluster's pools across extra zones in the same region. However, replicas must divide evenly across listed zones; otherwise, preflight checks will fail upon create.
+
+**Note:** Zonal clusters cannot be used with Autopilot and attempts to configure a cluster like this will cause the `Ready` condition to become false on the `GCPManagedControlPlane` object and any retries will not progress.
+
+## Location resolution
+
+Locations in this context refer to regions or zones (such as `us-central1` or `us-west2-a`), when these are set on CAPG resources the CAPG controller will resolve them against GCP. This means we can easily support new zones and regions as GCP brings them online rather than maintaining a list that we support.
+
+This has the consequence that it's possible to set invalid locations, if this happens the `Ready` condition on the `GCPManagedControlPlane` object is set to false and a warning event is emitted. As locations are immutable, once this condition is set it will not retry, so recreate the edited object to fix this issue.
 
 ## VPC-native clusters: named secondary IP ranges
 

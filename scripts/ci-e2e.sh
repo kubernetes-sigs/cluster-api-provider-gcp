@@ -44,6 +44,7 @@ mkdir -p "${ARTIFACTS}/logs/"
 : "${GOOGLE_APPLICATION_CREDENTIALS:?Environment variable empty or not defined.}"
 
 export GCP_REGION=${GCP_REGION:-"us-east4"}
+export GCP_ZONE=${GCP_ZONE:-"${GCP_REGION}-a"}
 export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
 GCP_B64ENCODED_CREDENTIALS=$(base64 "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
