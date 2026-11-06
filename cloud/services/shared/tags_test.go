@@ -40,15 +40,20 @@ const (
 var (
 	errBindingOperation = errors.New("binding operation failed")
 	errNotFound         = errors.New("not found")
+	errClose            = errors.New("close failed")
 )
 
 type fakeGetter struct {
-	fakeResults map[string]*rmpb.TagValue
-	CallCounter *int
+	fakeResults  map[string]*rmpb.TagValue
+	CallCounter  *int
+	CloseCounter *int
+	CloseErr     error
 }
 
 func (f fakeGetter) GetNamespacedTagValue(_ context.Context, request *rmpb.GetNamespacedTagValueRequest, _ ...gax.CallOption) (*rmpb.TagValue, error) {
-	*f.CallCounter++
+	if f.CallCounter != nil {
+		*f.CallCounter++
+	}
 	if res, ok := f.fakeResults[request.GetName()]; ok {
 		return res, nil
 	}
@@ -56,20 +61,32 @@ func (f fakeGetter) GetNamespacedTagValue(_ context.Context, request *rmpb.GetNa
 }
 
 func (f fakeGetter) Close() error {
-	return nil
+	if f.CloseCounter != nil {
+		*f.CloseCounter++
+	}
+
+	return f.CloseErr
 }
 
 type fakeBinder struct {
-	CallCount *int
+	CallCount  *int
+	CloseCount *int
+	CloseErr   error
 }
 
 func (f fakeBinder) CreateTagBinding(_ context.Context, _ *rmpb.CreateTagBindingRequest, _ ...gax.CallOption) (*resourcemanager.CreateTagBindingOperation, error) {
-	*f.CallCount++
+	if f.CallCount != nil {
+		*f.CallCount++
+	}
 	return nil, errBindingOperation
 }
 
 func (f fakeBinder) Close() error {
-	return nil
+	if f.CloseCount != nil {
+		*f.CloseCount++
+	}
+
+	return f.CloseErr
 }
 
 func createInstance(params *compute.InstanceParams, disks []*compute.AttachedDisk) *compute.Instance {
@@ -613,6 +630,116 @@ func TestTagManager_TagCluster(t *testing.T) {
 			}
 			g.Expect(binderCallCounter).To(Equal(tt.wantedBinderCallCount))
 			g.Expect(getterCallCounter).To(Equal(tt.wantedGetterCallCount))
+		})
+	}
+}
+
+func TestLazyConstruction(t *testing.T) {
+	g := NewWithT(t)
+
+	getterFactoryRun := new(false)
+	binderFactoryRun := new(false)
+
+	tagManager := NewLazyTagManager(
+		func(_ context.Context) (TagValueGetter, error) {
+			getterFactoryRun = new(true)
+			return fakeGetter{}, nil
+		},
+		func(_ context.Context) (TagBinder, error) {
+			binderFactoryRun = new(true)
+			return fakeBinder{}, nil
+		},
+	)
+
+	err := tagManager.TagInstance(t.Context(), createInstance(nil, nil), infrav1.ResourceManagerTags{})
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(*getterFactoryRun).To(BeFalse())
+
+	err = tagManager.TagCluster(t.Context(), "my-cluster", infrav1.ResourceManagerTags{})
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(*binderFactoryRun).To(BeFalse())
+}
+
+func TestCloseBehaviour(t *testing.T) {
+	knownTags := map[string]*rmpb.TagValue{
+		"foo/key1/value1": {Name: "tag123", Parent: "foo"},
+	}
+	tags := infrav1.ResourceManagerTags{
+		{ParentID: "foo", Key: "key1", Value: "value1"},
+	}
+
+	tests := []struct {
+		name                  string
+		useGetter             bool // resolving tags builds the value getter
+		useBinder             bool // binding tags builds the value getter and the binder
+		getterCloseErr        error
+		wantCloseErr          bool
+		wantGetterFactoryRuns int
+		wantBinderFactoryRuns int
+		wantGetterCloses      int
+		wantBinderCloses      int
+	}{
+		{
+			name: "never used: no client is built and nothing is closed",
+		},
+		{
+			name:                  "getter only: closed once, however often Close is called",
+			useGetter:             true,
+			wantGetterFactoryRuns: 1,
+			wantGetterCloses:      1,
+		},
+		{
+			name:                  "getter and binder: each closed once, however often Close is called",
+			useBinder:             true,
+			wantGetterFactoryRuns: 1,
+			wantBinderFactoryRuns: 1,
+			wantGetterCloses:      1,
+			wantBinderCloses:      1,
+		},
+		{
+			name:                  "a client that fails to close is reported and retried, healthy ones are not closed again",
+			useBinder:             true,
+			getterCloseErr:        errClose,
+			wantCloseErr:          true,
+			wantGetterFactoryRuns: 1,
+			wantBinderFactoryRuns: 1,
+			wantGetterCloses:      2,
+			wantBinderCloses:      1,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			var getterFactoryRuns, binderFactoryRuns, getterCloses, binderCloses int
+			m := NewLazyTagManager(
+				func(_ context.Context) (TagValueGetter, error) {
+					getterFactoryRuns++
+					return fakeGetter{fakeResults: knownTags, CloseCounter: &getterCloses, CloseErr: test.getterCloseErr}, nil
+				},
+				func(_ context.Context) (TagBinder, error) {
+					binderFactoryRuns++
+					return fakeBinder{CloseCount: &binderCloses}, nil
+				},
+			)
+			if test.useGetter {
+				g.Expect(m.TagInstance(t.Context(), createInstance(nil, nil), tags)).To(Succeed())
+			}
+			if test.useBinder {
+				// The fake binder always fails the binding, but both clients have been built by then.
+				g.Expect(m.TagCluster(t.Context(), clusterFullName, tags)).To(MatchError(errBindingOperation))
+			}
+			for range 2 {
+				if test.wantCloseErr {
+					g.Expect(m.Close()).To(MatchError(errClose))
+				} else {
+					g.Expect(m.Close()).To(Succeed())
+				}
+			}
+			g.Expect(getterFactoryRuns).To(Equal(test.wantGetterFactoryRuns))
+			g.Expect(binderFactoryRuns).To(Equal(test.wantBinderFactoryRuns))
+			g.Expect(getterCloses).To(Equal(test.wantGetterCloses))
+			g.Expect(binderCloses).To(Equal(test.wantBinderCloses))
 		})
 	}
 }

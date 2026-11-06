@@ -75,11 +75,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		params.ManagedClusterClient = managedClusterClient
 	}
 	if params.TagManager == nil {
-		tagManager, err := newGKETagManager(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.Region, params.GCPManagedCluster.Spec.ServiceEndpoints)
-		if err != nil {
-			return nil, errors.Errorf("failed to create gcp tag bindings client: %v", err)
-		}
-		params.TagManager = tagManager
+		params.TagManager = newGKETagManager(params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.Region, params.GCPManagedCluster.Spec.ServiceEndpoints)
 	}
 	if params.TokenClient == nil {
 		tokenClient, err := NewTokenClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client)
