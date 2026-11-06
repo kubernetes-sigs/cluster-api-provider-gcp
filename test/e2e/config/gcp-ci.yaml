@@ -88,7 +88,9 @@ variables:
 
   # Derived and other variables (maintain alphabetical order)
 
+  CAPG_ENABLE_TRACING: "${CAPG_ENABLE_TRACING:-true}"
   CAPG_LOGLEVEL: "4"
+  CAPG_OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
   CCM: "${PWD}/test/e2e/data/ccm/gce-cloud-controller-manager.yaml"
   CCM_VERSION: "${CCM_VERSION}"
   CLUSTER_AUTOSCALER_VERSION: "${CLUSTER_AUTOSCALER_VERSION}"
@@ -116,6 +118,7 @@ variables:
   KUBERNETES_VERSION_UPGRADE_FROM: "${KUBERNETES_VERSION_UPGRADE_FROM}"
   KUBERNETES_VERSION_UPGRADE_TO: "${KUBERNETES_VERSION_UPGRADE_TO}"
   KUBETEST_CONFIGURATION: "${PWD}/test/e2e/data/kubetest/conformance.yaml"
+  TRACING_INFRASTRUCTURE_CONFIGURATION: "${PWD}/hack/observability/otel-collector.yaml"
   WORKERS_MACHINE_TEMPLATE_UPGRADE_TO: "worker-k8s-upgrade-and-conformance"
 
 intervals:
