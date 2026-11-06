@@ -117,19 +117,29 @@ spec:
           nodeRegistration:
             name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
             kubeletExtraArgs:
-              cloud-provider: gce
+              cloud-provider: external
         clusterConfiguration:
           apiServer:
             timeoutForControlPlane: 20m
           controllerManager:
             extraArgs:
-              cloud-provider: gce
+              cloud-provider: external
               allocate-node-cidrs: "false"
         joinConfiguration:
           nodeRegistration:
             name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
             kubeletExtraArgs:
-              cloud-provider: gce
+              cloud-provider: external
+        files:
+          - content: |
+              [Global]
+
+              project-id = "${GCP_PROJECT}"
+              network-name = "${GCP_NETWORK_NAME}"
+              multizone = true
+            owner: root:root
+            path: /etc/kubernetes/cloud.config
+            permissions: "0744"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
@@ -162,4 +172,4 @@ spec:
         nodeRegistration:
           name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
           kubeletExtraArgs:
-            cloud-provider: gce
+            cloud-provider: external

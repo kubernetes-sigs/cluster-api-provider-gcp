@@ -89,7 +89,7 @@ variables:
   # Derived and other variables (maintain alphabetical order)
 
   CAPG_LOGLEVEL: "4"
-  CCM: "${PWD}/test/e2e/data/ccm/gce-cloud-controller-manager.yaml"
+  CCM: "${PWD}/templates/addons/gce-cloud-controller-manager.yaml"
   CCM_VERSION: "${CCM_VERSION}"
   CLUSTER_AUTOSCALER_VERSION: "${CLUSTER_AUTOSCALER_VERSION}"
   CLUSTER_TOPOLOGY: "true"
