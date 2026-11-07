@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	firewallutil "sigs.k8s.io/cluster-api-provider-gcp/util/firewall"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -208,6 +209,148 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 										},
 									},
 								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "GCPCluster with Network.Name changed is rejected",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:  int64(1500),
+						Name: ptr.To("new-network"),
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:  int64(1500),
+						Name: ptr.To("old-network"),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with Network.AutoCreateSubnetworks changed is rejected",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:                   int64(1500),
+						AutoCreateSubnetworks: ptr.To(false),
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:                   int64(1500),
+						AutoCreateSubnetworks: ptr.To(true),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with Network.Subnets changed is rejected",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu: int64(1500),
+						Subnets: infrav1.Subnets{
+							{
+								Name:      "sub-2",
+								CidrBlock: "10.0.1.0/24",
+							},
+						},
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu: int64(1500),
+						Subnets: infrav1.Subnets{
+							{
+								Name:      "sub-1",
+								CidrBlock: "10.0.0.0/24",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with Network.HostProject changed is rejected",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:         int64(1500),
+						HostProject: ptr.To("host-project-2"),
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:         int64(1500),
+						HostProject: ptr.To("host-project-1"),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with Network.LoadBalancerBackendPort changed is rejected",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:                     int64(1500),
+						LoadBalancerBackendPort: ptr.To(int32(8443)),
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:                     int64(1500),
+						LoadBalancerBackendPort: ptr.To(int32(6443)),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "GCPCluster with unchanged Network succeeds",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:  int64(1500),
+						Name: ptr.To("same-network"),
+						Subnets: infrav1.Subnets{
+							{
+								Name:      "sub-1",
+								CidrBlock: "10.0.0.0/24",
+							},
+						},
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{
+						Mtu:  int64(1500),
+						Name: ptr.To("same-network"),
+						Subnets: infrav1.Subnets{
+							{
+								Name:      "sub-1",
+								CidrBlock: "10.0.0.0/24",
 							},
 						},
 					},

@@ -111,6 +111,41 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster)
 		)
 	}
 
+	if !reflect.DeepEqual(c.Spec.Network.Name, old.Spec.Network.Name) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Network", "Name"),
+				c.Spec.Network.Name, "field is immutable"),
+		)
+	}
+
+	if !reflect.DeepEqual(c.Spec.Network.AutoCreateSubnetworks, old.Spec.Network.AutoCreateSubnetworks) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Network", "AutoCreateSubnetworks"),
+				c.Spec.Network.AutoCreateSubnetworks, "field is immutable"),
+		)
+	}
+
+	if !reflect.DeepEqual(c.Spec.Network.Subnets, old.Spec.Network.Subnets) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Network", "Subnets"),
+				c.Spec.Network.Subnets, "field is immutable"),
+		)
+	}
+
+	if !reflect.DeepEqual(c.Spec.Network.HostProject, old.Spec.Network.HostProject) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Network", "HostProject"),
+				c.Spec.Network.HostProject, "field is immutable"),
+		)
+	}
+
+	if !reflect.DeepEqual(c.Spec.Network.LoadBalancerBackendPort, old.Spec.Network.LoadBalancerBackendPort) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Network", "LoadBalancerBackendPort"),
+				c.Spec.Network.LoadBalancerBackendPort, "field is immutable"),
+		)
+	}
+
 	if c.Spec.Network.Mtu < int64(1300) {
 		allErrs = append(allErrs,
 			field.Invalid(field.NewPath("spec", "Network", "Mtu"),
