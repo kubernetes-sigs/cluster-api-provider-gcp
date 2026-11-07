@@ -75,6 +75,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-gke-custom-subnet.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-external-and-internal-lb.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-internal-lb.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-regional-external-lb.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-gke-autopilot-cc.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-autopilot-topology.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
@@ -101,6 +102,7 @@ variables:
   COREDNS_VERSION_UPGRADE_TO: "${COREDNS_VERSION_UPGRADE_TO}"
   ETCD_VERSION_UPGRADE_TO: "${ETCD_VERSION_UPGRADE_TO}"
   EXP_CAPG_GKE: "true"
+  EXP_CAPG_REGIONAL_LOAD_BALANCER: "true"
   EXP_CLUSTER_RESOURCE_SET: "true"
   EXP_MACHINE_POOL: "true"
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
