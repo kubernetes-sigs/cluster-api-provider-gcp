@@ -3,21 +3,20 @@
 aliases:
   sig-cluster-lifecycle-leads:
     - fabriziopandini
+    - hakman
     - justinsb
     - neolit123
-    - vincepri
+    - sbueringer
 
   cluster-api-admins:
     - fabriziopandini
     - sbueringer
-    - vincepri
 
   cluster-api-maintainers:
     - chrischdi
-    - enxebre
     - fabriziopandini
+    - JoelSpeed
     - sbueringer
-    - vincepri
 
   cluster-api-gcp-maintainers:
     - cpanato
