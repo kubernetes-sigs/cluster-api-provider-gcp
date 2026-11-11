@@ -135,9 +135,29 @@ func ApplyManagedClusterTemplateAndWait(ctx context.Context, input ApplyManagedC
 		Cluster: result.Cluster,
 	}, input.WaitForMachinePools...)
 
+	By("Verifying the machine pools replica counters")
+	verifyMachinePoolsReplicaCounters(ctx, input.ClusterProxy.GetClient(), result.MachinePools, input.WaitForMachinePools...)
+
 	if input.PostMachinesProvisioned != nil {
 		By("Calling PostMachinesProvisioned")
 		input.PostMachinesProvisioned()
+	}
+}
+
+// verifyMachinePoolsReplicaCounters checks that the replica counters of the MachinePools match the desired replicas.
+// GKE node pools don't support MachinePool Machines, so Cluster API must compute these counters from the node pool
+// status. If GCPManagedMachinePool sets status.infrastructureMachineKind, Cluster API computes them from Machines
+// that are never created and reports 0 ready and available replicas.
+func verifyMachinePoolsReplicaCounters(ctx context.Context, getter framework.Getter, machinePools []*expv1.MachinePool, intervals ...interface{}) {
+	for _, mp := range machinePools {
+		key := client.ObjectKeyFromObject(mp)
+		Eventually(func(g Gomega) {
+			machinePool := &expv1.MachinePool{}
+			g.Expect(getter.Get(ctx, key, machinePool)).To(Succeed())
+			desiredReplicas := ptr.Deref(machinePool.Spec.Replicas, 0)
+			g.Expect(ptr.Deref(machinePool.Status.ReadyReplicas, 0)).To(Equal(desiredReplicas), "MachinePool %s should report all replicas as ready", klog.KObj(machinePool))
+			g.Expect(ptr.Deref(machinePool.Status.AvailableReplicas, 0)).To(Equal(desiredReplicas), "MachinePool %s should report all replicas as available", klog.KObj(machinePool))
+		}, intervals...).Should(Succeed(), "Failed to verify replica counters for MachinePool %s", klog.KObj(mp))
 	}
 }
 
