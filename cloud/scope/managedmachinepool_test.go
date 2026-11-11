@@ -55,7 +55,22 @@ func Test_NodePoolResourceLabels(t *testing.T) {
 }
 
 func Test_MachinePool_InfrastructureMachineKind(t *testing.T) {
-	t.Run("set infrastructure machine kind when empty", func(t *testing.T) {
+	t.Run("clear infrastructure machine kind set by previous versions", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testManagedMachinePool.Status = v1beta1.GCPManagedMachinePoolStatus{
+			InfrastructureMachineKind: "GCPManagedMachinePool",
+		}
+		machinePoolScope := ManagedMachinePoolScope{
+			GCPManagedMachinePool: testManagedMachinePool,
+		}
+
+		update := machinePoolScope.ClearInfrastructureMachineKind()
+		g.Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(BeEmpty()) //nolint:staticcheck // SA1019: verifying the deprecated field is cleared
+		g.Expect(update).To(BeTrue())
+	})
+
+	t.Run("do not update infrastructure machine kind if already empty", func(t *testing.T) {
 		g := NewWithT(t)
 		testManagedMachinePool := createTestManagedMachinePool()
 		testManagedMachinePool.Status = v1beta1.GCPManagedMachinePoolStatus{}
@@ -63,23 +78,8 @@ func Test_MachinePool_InfrastructureMachineKind(t *testing.T) {
 			GCPManagedMachinePool: testManagedMachinePool,
 		}
 
-		update := machinePoolScope.SetInfrastructureMachineKind()
-		g.Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(Equal(v1beta1.GCPManagedMachinePoolMachineKind))
-		g.Expect(update).To(BeTrue())
-	})
-
-	t.Run("do not update infrastructure machine kind if already set", func(t *testing.T) {
-		g := NewWithT(t)
-		testManagedMachinePool := createTestManagedMachinePool()
-		testManagedMachinePool.Status = v1beta1.GCPManagedMachinePoolStatus{
-			InfrastructureMachineKind: v1beta1.GCPManagedMachinePoolMachineKind,
-		}
-		machinePoolScope := ManagedMachinePoolScope{
-			GCPManagedMachinePool: testManagedMachinePool,
-		}
-
-		update := machinePoolScope.SetInfrastructureMachineKind()
-		g.Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(Equal(v1beta1.GCPManagedMachinePoolMachineKind))
+		update := machinePoolScope.ClearInfrastructureMachineKind()
+		g.Expect(machinePoolScope.GCPManagedMachinePool.Status.InfrastructureMachineKind).To(BeEmpty()) //nolint:staticcheck // SA1019: verifying the deprecated field is cleared
 		g.Expect(update).To(BeFalse())
 	})
 }

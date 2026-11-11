@@ -366,11 +366,13 @@ func (s *ManagedMachinePoolScope) NodePoolFullName() string {
 	return fmt.Sprintf("%s/nodePools/%s", s.NodePoolLocation(), s.NodePoolName())
 }
 
-// SetInfrastructureMachineKind sets the infrastructure machine kind in the status if it is not set already, returning
-// `true` if the status was updated. This supports MachinePool Machines.
-func (s *ManagedMachinePoolScope) SetInfrastructureMachineKind() bool {
-	if s.GCPManagedMachinePool.Status.InfrastructureMachineKind != infrav1exp.GCPManagedMachinePoolMachineKind {
-		s.GCPManagedMachinePool.Status.InfrastructureMachineKind = infrav1exp.GCPManagedMachinePoolMachineKind
+// ClearInfrastructureMachineKind unsets the infrastructure machine kind in the status, returning `true` if the status
+// was updated. GKE node pools don't have per-node infrastructure resources, so MachinePool Machines are not supported.
+// Setting this field makes Cluster API compute the MachinePool replica counters and versions from Machines that are
+// never created. This also clears the value set by previous versions.
+func (s *ManagedMachinePoolScope) ClearInfrastructureMachineKind() bool {
+	if s.GCPManagedMachinePool.Status.InfrastructureMachineKind != "" { //nolint:staticcheck // clearing the deprecated field is intentional.
+		s.GCPManagedMachinePool.Status.InfrastructureMachineKind = "" //nolint:staticcheck // clearing the deprecated field is intentional.
 
 		return true
 	}
