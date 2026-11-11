@@ -454,11 +454,10 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	nodePools, machinePools, _ := s.scope.GetAllNodePools(ctx)
 
 	log.V(2).Info("Running pre-flight checks on machine pools before cluster creation")
-	if err := shared.ManagedMachinePoolsPreflightCheck(nodePools, machinePools, s.scope.Region()); err != nil {
+	if err := shared.ManagedMachinePoolsPreflightCheck(nodePools, machinePools, s.scope.IsRegional()); err != nil {
 		return fmt.Errorf("preflight checks on machine pools before cluster create: %w", err)
 	}
 
-	isRegional := shared.IsRegional(s.scope.Region())
 	cluster := &containerpb.Cluster{
 		Name:           s.scope.ClusterName(),
 		Description:    s.scope.GCPManagedControlPlane.Spec.Description,
@@ -546,7 +545,7 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	}
 
 	if !s.scope.IsAutopilotCluster() {
-		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, isRegional, cluster.GetName())
+		cluster.NodePools = scope.ConvertToSdkNodePools(nodePools, machinePools, s.scope.IsRegional(), cluster.GetName())
 
 		if s.scope.GCPManagedControlPlane.Spec.LoggingService != nil {
 			cluster.LoggingService = s.scope.GCPManagedControlPlane.Spec.LoggingService.String()

@@ -280,7 +280,37 @@ func (s *Service) Reconcile(ctx context.Context) (ctrl.Result, error) {
 	// concurrent operation per node pool, so we apply one per cycle (with requeue)
 	// in priority order: size first (user-initiated scaling is most time-sensitive),
 	// then autoscaling config, then general config.
-	needUpdateSize, setNodePoolSizeRequest := s.checkDiffAndPrepareUpdateSize(nodePool)
+	needUpdateSize, setNodePoolSizeRequest, err := s.checkDiffAndPrepareUpdateSize(nodePool)
+	if err != nil {
+		message := fmt.Sprintf("updating node pool size: %v", err)
+		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1exp.GCPManagedMachinePoolReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
+			Message: message,
+		})
+		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1exp.GCPManagedMachinePoolGKEMachinePoolReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
+			Message: message,
+		})
+		v1beta2conditions.Set(s.scope.V1Beta2ConditionSetter(), metav1.Condition{
+			Type:    infrav1exp.GCPManagedMachinePoolGKEMachinePoolUpdatingCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1exp.GKEMachinePoolReconciliationFailedReason,
+			Message: message,
+		})
+		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), clusterv1beta1.ReadyCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%s", message)
+		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolReadyCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%s", message)
+		v1beta1conditions.MarkFalse(s.scope.ConditionSetter(), infrav1exp.GKEMachinePoolUpdatingCondition, infrav1exp.GKEMachinePoolReconciliationFailedReason, clusterv1beta1.ConditionSeverityError, "%s", message)
+
+		if errors.Is(err, shared.ErrInvalidReplicas) {
+			// If this error has come because replicas is invalid there's no point retrying
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
 	needUpdateAutoscaling, setNodePoolAutoscalingRequest := s.checkDiffAndPrepareUpdateAutoscaling(nodePool)
 	needUpdateConfig, nodePoolUpdateConfigRequest := s.checkDiffAndPrepareUpdateConfig(nodePool, templateLabels)
 
@@ -535,14 +565,12 @@ func (s *Service) fetchInstanceTemplateLabels(ctx context.Context, nodePool *con
 
 func (s *Service) createNodePool(ctx context.Context, log *logr.Logger) error {
 	log.V(2).Info("Running pre-flight checks on machine pool before creation")
-	if err := shared.ManagedMachinePoolPreflightCheck(s.scope.GCPManagedMachinePool, s.scope.MachinePool, s.scope.Region()); err != nil {
+	if err := shared.ManagedMachinePoolPreflightCheck(s.scope.GCPManagedMachinePool, s.scope.MachinePool, s.scope.IsRegional()); err != nil {
 		return fmt.Errorf("preflight checks on machine pool before creating: %w", err)
 	}
 
-	isRegional := shared.IsRegional(s.scope.Region())
-
 	createNodePoolRequest := &containerpb.CreateNodePoolRequest{
-		NodePool: scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, isRegional, s.scope.GCPManagedControlPlane.Spec.ClusterName),
+		NodePool: scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, s.scope.IsRegional(), s.scope.GCPManagedControlPlane.Spec.ClusterName),
 		Parent:   s.scope.NodePoolLocation(),
 	}
 	_, err := s.scope.ManagedMachinePoolClient().CreateNodePool(ctx, createNodePoolRequest)
@@ -601,8 +629,7 @@ func (s *Service) checkDiffAndPrepareUpdateConfig(existingNodePool *containerpb.
 		Name: s.scope.NodePoolFullName(),
 	}
 
-	isRegional := shared.IsRegional(s.scope.Region())
-	desiredNodePool := scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, isRegional, s.scope.GCPManagedControlPlane.Spec.ClusterName)
+	desiredNodePool := scope.ConvertToSdkNodePool(*s.scope.GCPManagedMachinePool, *s.scope.MachinePool, s.scope.IsRegional(), s.scope.GCPManagedControlPlane.Spec.ClusterName)
 
 	// Node version
 	if s.scope.NodePoolVersion() != "" {
@@ -719,7 +746,7 @@ func (s *Service) checkDiffAndPrepareUpdateAutoscaling(existingNodePool *contain
 	return needUpdate, &setNodePoolAutoscalingRequest
 }
 
-func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.NodePool) (bool, *containerpb.SetNodePoolSizeRequest) {
+func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.NodePool) (bool, *containerpb.SetNodePoolSizeRequest, error) {
 	needUpdate := false
 
 	// Only skip size update if autoscaling is explicitly configured and enabled.
@@ -729,7 +756,7 @@ func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.No
 	if s.scope.GCPManagedMachinePool.Spec.Scaling != nil {
 		desiredAutoscaling := infrav1exp.ConvertToSdkAutoscaling(s.scope.GCPManagedMachinePool.Spec.Scaling)
 		if desiredAutoscaling.GetEnabled() {
-			return false, nil
+			return false, nil, nil
 		}
 	}
 
@@ -737,14 +764,17 @@ func (s *Service) checkDiffAndPrepareUpdateSize(existingNodePool *containerpb.No
 		Name: s.scope.NodePoolFullName(),
 	}
 
-	replicas := *s.scope.MachinePool.Spec.Replicas
-	if shared.IsRegional(s.scope.Region()) {
-		replicas /= int32(len(existingNodePool.GetLocations()))
+	divisor := shared.CalculateReplicaDivisor(existingNodePool.GetLocations(), s.scope.IsRegional())
+	err := shared.ValidateReplicas(*s.scope.MachinePool.Spec.Replicas, divisor)
+	if err != nil {
+		return false, nil, err
 	}
+
+	replicas := *s.scope.MachinePool.Spec.Replicas / divisor
 
 	if replicas != existingNodePool.GetInitialNodeCount() {
 		needUpdate = true
 		setNodePoolSizeRequest.NodeCount = replicas
 	}
-	return needUpdate, &setNodePoolSizeRequest
+	return needUpdate, &setNodePoolSizeRequest, nil
 }

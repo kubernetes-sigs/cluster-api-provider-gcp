@@ -14,6 +14,8 @@ You can find all logic and configuration files in the E2E folder of the reposito
 
 The test suite will provision a cluster based on a pre-defined yaml template (stored in `./test/e2e/data`) which is then sourced in `./test/e2e/config/gcp-ci.yaml`. New cluster definitions for E2E tests have to be added and sourced before being available to use in the E2E workflow.
 
+**Note:** If you create a zonal cluster (using a zonal flavor) you can specify the zone by exporting `GCP_ZONE` before running those suites. This zone must be inside `GCP_REGION`. If you run the suites without the script (`ci-e2e.sh`) you will need to set `GCP_ZONE` manually, whereas the script sets `GCP_ZONE` to `GCP_REGION` with a suffix of `-a`.
+
 ## Add test case
 
 When the template is available, you can reference it as a flavor in Go. For example, adding a new test for self-managed cluster provisioning would look like the following:
