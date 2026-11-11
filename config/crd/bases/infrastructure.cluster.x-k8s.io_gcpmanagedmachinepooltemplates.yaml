@@ -299,6 +299,47 @@ spec:
                           Preemptible VMs have a maximum lifetime of 24 hours and may be reclaimed with 30 seconds
                           notice. This field is immutable.
                         type: boolean
+                      reservationAffinity:
+                        description: ReservationAffinity specifies whether to utilize
+                          reservations for compute. This field is immutable.
+                        properties:
+                          consumeReservationType:
+                            description: ConsumeReservationType decides how reservations
+                              should be consumed if they exist
+                            enum:
+                            - NO_RESERVATION
+                            - ANY_RESERVATION
+                            - SPECIFIC_RESERVATION
+                            - ANY_RESERVATION_THEN_FAIL
+                            type: string
+                          key:
+                            description: |-
+                              Key dictates the key that should be used to match the reservation, required only for SPECIFIC_RESERVATION.
+                              Can only take the value "compute.googleapis.com/reservation-name"
+                            enum:
+                            - compute.googleapis.com/reservation-name
+                            type: string
+                          values:
+                            description: Values are the names of the reservations
+                              to match against, required only for SPECIFIC_RESERVATION
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - consumeReservationType
+                        type: object
+                        x-kubernetes-validations:
+                        - message: if using SPECIFIC_RESERVATION, key and values must
+                            also be specified
+                          rule: '!(self.consumeReservationType == ''SPECIFIC_RESERVATION'')
+                            || (has(self.key) && self.key.size() > 0 && has(self.values)
+                            && self.values.size() > 0 && self.values.all(e, e.size()
+                            > 0))'
+                        - message: setting key and values is not valid without using
+                            the SPECIFIC_RESERVATION type
+                          rule: (self.consumeReservationType == 'SPECIFIC_RESERVATION')
+                            || (!has(self.key) && (!has(self.values) || self.values.size()
+                            == 0))
                       scaling:
                         description: Scaling specifies scaling for the node pool
                         properties:

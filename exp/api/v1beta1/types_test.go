@@ -20,22 +20,14 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"slices"
 	"strings"
 	"testing"
 
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"k8s.io/utils/ptr"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
-
-func TestConvertToSdkWorkloadMetadataModeCoversEveryEnumVariant(t *testing.T) {
-	enumVariants := getEnumVariants(t, "gcpmanagedmachinepool_types.go", "WorkloadMetadataMode")
-	for _, variant := range enumVariants {
-		if ConvertToSdkWorkloadMetadataMode(new(WorkloadMetadataMode(variant))) == nil {
-			t.Errorf("ConvertToSdkWorkloadMetadataMode(%v) should not return nil as enum variants "+
-				"should match the SDK", variant)
-		}
-	}
-}
 
 func getEnumVariants(t *testing.T, file, typeName string) []string {
 	t.Helper()
@@ -62,6 +54,16 @@ func getEnumVariants(t *testing.T, file, typeName string) []string {
 	}
 	t.Fatalf("no Enum marker on type %s in %s", typeName, file)
 	return nil
+}
+
+func TestConvertToSdkWorkloadMetadataModeCoversEveryEnumVariant(t *testing.T) {
+	enumVariants := getEnumVariants(t, "gcpmanagedmachinepool_types.go", "WorkloadMetadataMode")
+	for _, variant := range enumVariants {
+		if ConvertToSdkWorkloadMetadataMode(new(WorkloadMetadataMode(variant))) == nil {
+			t.Errorf("ConvertToSdkWorkloadMetadataMode(%v) should not return nil as enum variants "+
+				"should match the SDK", variant)
+		}
+	}
 }
 
 func TestConvertToSdkWorkloadMetadataMode(t *testing.T) {
@@ -158,6 +160,72 @@ func TestConvertToSdkTaintConfig(t *testing.T) {
 				}
 			} else if got.GetArchitectureTaintBehavior() != *tc.wantBehavior {
 				t.Errorf("expected behavior %v, got %v", *tc.wantBehavior, got.GetArchitectureTaintBehavior())
+			}
+		})
+	}
+}
+
+func TestConvertToSdkReservationAffinityCoversEveryEnumVariant(t *testing.T) {
+	enumVariants := getEnumVariants(t, "../../../api/v1beta1/gcpmachine_types.go", "ReservationConsumeType")
+	for _, variant := range enumVariants {
+		if ConvertToSdkReservationAffinity(&infrav1.ReservationAffinity{ConsumeReservationType: infrav1.ReservationConsumeType(variant)}) == nil {
+			t.Errorf("ConvertToSdkReservationAffinity(%v) should not return nil as enum variants "+
+				"should match the SDK", variant)
+		}
+	}
+}
+
+func TestConvertToSdkReservationAffinity(t *testing.T) {
+	tests := []struct {
+		name         string
+		affinity     *infrav1.ReservationAffinity
+		wantAffinity *containerpb.ReservationAffinity
+	}{
+		{
+			name:         "nil returns nil",
+			affinity:     nil,
+			wantAffinity: nil,
+		},
+		{
+			name: "unspecified is unreachable",
+			affinity: &infrav1.ReservationAffinity{
+				ConsumeReservationType: "UNSPECIFIED",
+			},
+			wantAffinity: nil,
+		},
+		{
+			name: "any reservation passes through",
+			affinity: &infrav1.ReservationAffinity{
+				ConsumeReservationType: "ANY_RESERVATION",
+			},
+			wantAffinity: &containerpb.ReservationAffinity{
+				ConsumeReservationType: containerpb.ReservationAffinity_ANY_RESERVATION,
+			},
+		},
+		{
+			name: "specific reservation saves keys and values",
+			affinity: &infrav1.ReservationAffinity{
+				ConsumeReservationType: "SPECIFIC_RESERVATION",
+				Key:                    "foo",
+				Values:                 []string{"bar", "bing", "bash"},
+			},
+			wantAffinity: &containerpb.ReservationAffinity{
+				ConsumeReservationType: containerpb.ReservationAffinity_SPECIFIC_RESERVATION,
+				Key:                    "foo",
+				Values:                 []string{"bar", "bing", "bash"},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ConvertToSdkReservationAffinity(tc.affinity)
+			if tc.wantAffinity == nil {
+				if got != nil {
+					t.Errorf("expected nil, got %v", got)
+				}
+			} else if got.GetConsumeReservationType() != tc.wantAffinity.GetConsumeReservationType() || got.GetKey() != tc.wantAffinity.GetKey() || !slices.Equal(got.GetValues(), tc.wantAffinity.GetValues()) {
+				t.Errorf("expected affinity %v, got %v", tc.wantAffinity, got)
 			}
 		})
 	}

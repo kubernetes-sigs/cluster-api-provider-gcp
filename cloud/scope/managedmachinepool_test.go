@@ -298,4 +298,46 @@ func Test_MachinePool_ConvertToSdkNodePool(t *testing.T) {
 			Strategy:       &strategy,
 		}))
 	})
+	t.Run("ReservationAffinity should be unset when nil", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		testManagedMachinePool.Spec.ReservationAffinity = nil
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetConfig().GetReservationAffinity()).To(BeNil())
+	})
+	t.Run("ReservationAffinity should pass through ANY_RESERVATION", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		testManagedMachinePool.Spec.ReservationAffinity = &infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeAnyReservation,
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetConfig().GetReservationAffinity()).To(Equal(&containerpb.ReservationAffinity{
+			ConsumeReservationType: containerpb.ReservationAffinity_ANY_RESERVATION,
+		}))
+	})
+	t.Run("ReservationAffinity should pass key and values when SPECIFIC_RESERVATION is used", func(t *testing.T) {
+		g := NewWithT(t)
+		testManagedMachinePool := createTestManagedMachinePool()
+		testMachinePool := createTestMachinePool()
+
+		testManagedMachinePool.Spec.ReservationAffinity = &infrav1.ReservationAffinity{
+			ConsumeReservationType: infrav1.ReservationConsumeTypeSpecificReservation,
+			Key:                    "compute.googleapis.com/reservation-name",
+			Values:                 []string{"a", "b", "c"},
+		}
+		sdkNodePool := ConvertToSdkNodePool(*testManagedMachinePool, *testMachinePool, false, clusterName)
+
+		g.Expect(sdkNodePool.GetConfig().GetReservationAffinity()).To(Equal(&containerpb.ReservationAffinity{
+			ConsumeReservationType: containerpb.ReservationAffinity_SPECIFIC_RESERVATION,
+			Key:                    "compute.googleapis.com/reservation-name",
+			Values:                 []string{"a", "b", "c"},
+		}))
+	})
 }
