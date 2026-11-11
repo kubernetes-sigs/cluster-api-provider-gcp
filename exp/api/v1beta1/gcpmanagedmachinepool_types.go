@@ -31,6 +31,9 @@ const (
 	ManagedMachinePoolFinalizer = "gcpmanagedmachinepool.infrastructure.cluster.x-k8s.io"
 
 	// GCPManagedMachinePoolMachineKind indicates the kind of an GCPManagedMachinePoolMachine.
+	//
+	// Deprecated: GCPManagedMachinePool doesn't support MachinePool Machines and no longer sets
+	// status.infrastructureMachineKind. This constant will be removed in a future API version.
 	GCPManagedMachinePoolMachineKind = "GCPManagedMachinePool"
 )
 
@@ -151,6 +154,10 @@ type GCPManagedMachinePoolStatus struct {
 	// +optional
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
 	// InfrastructureMachineKind is the kind of the infrastructure resources behind MachinePool Machines.
+	//
+	// Deprecated: GKE node pools don't support MachinePool Machines, so this field is no longer set and
+	// any existing value is cleared. This field will be removed in a future API version.
+	//
 	// +optional
 	InfrastructureMachineKind string `json:"infrastructureMachineKind,omitempty"`
 

@@ -457,8 +457,11 @@ spec:
                   type: object
                 type: array
               infrastructureMachineKind:
-                description: InfrastructureMachineKind is the kind of the infrastructure
-                  resources behind MachinePool Machines.
+                description: |-
+                  InfrastructureMachineKind is the kind of the infrastructure resources behind MachinePool Machines.
+
+                  Deprecated: GKE node pools don't support MachinePool Machines, so this field is no longer set and
+                  any existing value is cleared. This field will be removed in a future API version.
                 type: string
               ready:
                 default: false
