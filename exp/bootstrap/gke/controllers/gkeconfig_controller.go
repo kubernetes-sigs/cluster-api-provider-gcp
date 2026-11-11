@@ -113,8 +113,13 @@ func (r *GKEConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	// set GKEConfig as ready when GCPManagedMachinePool becomes ready
+	// Set the GKEConfig as ready once the GCPManagedMachinePool becomes ready.
+	// Cluster API requires status.dataSecretName (v1beta1) and status.initialization.dataSecretCreated (v1beta2)
+	// to be set whenever the bootstrap data is reported as created, so set it to an empty string, matching the
+	// dataSecretName: "" convention used by MachinePools that don't reference a bootstrap config.
 	config.Status.Ready = true
+	config.Status.DataSecretName = new("")
+	config.Status.Initialization.DataSecretCreated = new(true)
 	if err := r.Status().Update(ctx, config); err != nil {
 		log.Info("Failed to update GKEConfig status", "GKEConfig", config.GetName(), "error", err)
 		return ctrl.Result{}, err

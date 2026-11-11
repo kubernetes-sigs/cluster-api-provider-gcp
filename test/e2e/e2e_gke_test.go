@@ -248,10 +248,10 @@ var _ = Describe("GKE workload cluster creation", func() {
 		})
 	})
 
-	Context("Creating a GKE cluster with autopilot from a cluster class", func() {
-		It("Should create a cluster class and a cluster from it", func() {
+	Context("Creating a GKE cluster from a cluster class", func() {
+		It("Should create a cluster class and a cluster with 1 machine pool from it and scale", func() {
 			clusterName := fmt.Sprintf("%s-cc", clusterNamePrefix)
-			By("Initializes a managed control plane and managed cluster")
+			By("Initializes a managed control plane, managed cluster and 1 machine pool")
 
 			ApplyManagedClusterTemplateAndWait(ctx, ApplyManagedClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
@@ -260,17 +260,35 @@ var _ = Describe("GKE workload cluster creation", func() {
 					ClusterctlConfigPath:     clusterctlConfigPath,
 					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
 					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
-					Flavor:                   "ci-gke-autopilot-topology",
+					Flavor:                   "ci-gke-topology",
 					Namespace:                namespace.Name,
 					ClusterName:              clusterName,
 					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersionGKE),
 					ControlPlaneMachineCount: ptr.To[int64](1),
-					WorkerMachineCount:       ptr.To[int64](0),
+					WorkerMachineCount:       ptr.To[int64](3),
 				},
 				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
 				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
 			}, result)
+
+			By("Scaling the machine pool up through the cluster topology")
+			framework.ScaleMachinePoolTopologyAndWait(ctx, framework.ScaleMachinePoolTopologyAndWaitInput{
+				ClusterProxy:        bootstrapClusterProxy,
+				Cluster:             result.Cluster,
+				Replicas:            6,
+				WaitForMachinePools: e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
+				Getter:              bootstrapClusterProxy.GetClient(),
+			})
+
+			By("Scaling the machine pool down through the cluster topology")
+			framework.ScaleMachinePoolTopologyAndWait(ctx, framework.ScaleMachinePoolTopologyAndWaitInput{
+				ClusterProxy:        bootstrapClusterProxy,
+				Cluster:             result.Cluster,
+				Replicas:            3,
+				WaitForMachinePools: e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
+				Getter:              bootstrapClusterProxy.GetClient(),
+			})
 		})
 	})
 })

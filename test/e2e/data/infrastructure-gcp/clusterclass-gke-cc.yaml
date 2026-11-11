@@ -2,7 +2,7 @@
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: ClusterClass
 metadata:
-  name: gke-autopilot-cc
+  name: gke-cc
   namespace: default
 spec:
   controlPlane:
@@ -15,6 +15,20 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: GCPManagedClusterTemplate
       name: ${CLUSTER_NAME}
+  workers:
+    machinePools:
+      - class: default-worker
+        template:
+          bootstrap:
+            ref:
+              apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+              kind: GKEConfigTemplate
+              name: ${CLUSTER_NAME}-default-worker
+          infrastructure:
+            ref:
+              apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+              kind: GCPManagedMachinePoolTemplate
+              name: ${CLUSTER_NAME}-default-worker
   variables:
     - name: region
       required: true
@@ -75,7 +89,6 @@ spec:
     spec:
       project: "${GCP_PROJECT}"
       location: "set-by-patch"
-      enableAutopilot: true
       releaseChannel: "regular"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -89,3 +102,22 @@ spec:
       region: "set-by-patch"
       network:
         name: "set-by-patch"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPManagedMachinePoolTemplate
+metadata:
+  name: ${CLUSTER_NAME}-default-worker
+spec:
+  template:
+    spec: {}
+---
+# GKE nodes are bootstrapped by GKE itself, but ClusterClass requires a bootstrap
+# template for every MachinePool class. GKEConfig is a no-op bootstrap config that
+# becomes ready once the backing GCPManagedMachinePool is ready.
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: GKEConfigTemplate
+metadata:
+  name: ${CLUSTER_NAME}-default-worker
+spec:
+  template:
+    spec: {}
