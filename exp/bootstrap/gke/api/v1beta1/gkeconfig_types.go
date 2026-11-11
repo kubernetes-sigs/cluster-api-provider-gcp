@@ -47,8 +47,15 @@ type GKEConfigStatus struct {
 	Ready bool `json:"ready,omitempty"`
 
 	// DataSecretName is the name of the secret that stores the bootstrap data script.
+	// GKE bootstraps its own nodes, so this is set to an empty string once the GKEConfig is ready.
 	// +optional
 	DataSecretName *string `json:"dataSecretName,omitempty"`
+
+	// initialization provides observations of the GKEConfig initialization process.
+	// NOTE: Fields in this struct are part of the Cluster API contract and are used to orchestrate
+	// initial MachinePool provisioning.
+	// +optional
+	Initialization GKEConfigInitializationStatus `json:"initialization,omitempty,omitzero"`
 
 	// FailureReason will be set on non-retryable errors
 	// +optional
@@ -70,6 +77,17 @@ type GKEConfigStatus struct {
 	// with the v1beta2 version of the Cluster API contract.
 	// +optional
 	V1Beta2 *GKEConfigV1Beta2Status `json:"v1beta2,omitempty"`
+}
+
+// GKEConfigInitializationStatus provides observations of the GKEConfig initialization process.
+// +kubebuilder:validation:MinProperties=1
+type GKEConfigInitializationStatus struct {
+	// dataSecretCreated is true when the bootstrap data secret is considered created.
+	// GKE bootstraps its own nodes, so this is set to true once the GCPManagedMachinePool is ready.
+	// NOTE: this field is part of the Cluster API contract, and it is used to orchestrate
+	// initial MachinePool provisioning.
+	// +optional
+	DataSecretCreated *bool `json:"dataSecretCreated,omitempty"`
 }
 
 // GKEConfigV1Beta2Status groups the fields that will be added or modified in GKEConfig's status

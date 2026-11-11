@@ -112,8 +112,9 @@ spec:
                   type: object
                 type: array
               dataSecretName:
-                description: DataSecretName is the name of the secret that stores
-                  the bootstrap data script.
+                description: |-
+                  DataSecretName is the name of the secret that stores the bootstrap data script.
+                  GKE bootstraps its own nodes, so this is set to an empty string once the GKEConfig is ready.
                 type: string
               failureMessage:
                 description: FailureMessage will be set on non-retryable errors
@@ -121,6 +122,21 @@ spec:
               failureReason:
                 description: FailureReason will be set on non-retryable errors
                 type: string
+              initialization:
+                description: |-
+                  initialization provides observations of the GKEConfig initialization process.
+                  NOTE: Fields in this struct are part of the Cluster API contract and are used to orchestrate
+                  initial MachinePool provisioning.
+                minProperties: 1
+                properties:
+                  dataSecretCreated:
+                    description: |-
+                      dataSecretCreated is true when the bootstrap data secret is considered created.
+                      GKE bootstraps its own nodes, so this is set to true once the GCPManagedMachinePool is ready.
+                      NOTE: this field is part of the Cluster API contract, and it is used to orchestrate
+                      initial MachinePool provisioning.
+                    type: boolean
+                type: object
               observedGeneration:
                 description: ObservedGeneration is the latest generation observed
                   by the controller.
