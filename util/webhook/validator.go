@@ -26,6 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 )
 
 const (
@@ -88,6 +89,18 @@ func ValidateResourcePolicies(policies []string) error {
 		if errors := validation.IsDNS1035Label(resource.Key.Name); len(errors) > 0 {
 			return fmt.Errorf("resourcePolicies[%d] %q: %s", i, policy, strings.Join(errors, "; "))
 		}
+	}
+	return nil
+}
+
+// ValidateReservationAffinity ensures that reservation affinities cannot be set to values the underlying objects
+// do not support.
+func ValidateReservationAffinity(affinity *infrav1.ReservationAffinity) error {
+	if affinity == nil {
+		return nil
+	}
+	if affinity.ConsumeReservationType == infrav1.ReservationConsumeTypeAnyReservationThenFail {
+		return fmt.Errorf("%s is a GKE only feature, instances and machine pools only support ANY_RESERVATION, NO_RESERVATION and SPECIFIC_RESERVATION only", infrav1.ReservationConsumeTypeAnyReservationThenFail)
 	}
 	return nil
 }
