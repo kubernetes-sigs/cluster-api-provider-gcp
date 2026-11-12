@@ -173,6 +173,15 @@ type GCPMachinePoolSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=VIRTIO_NET;GVNIC;IDPF
 	NICType *capg.NICType `json:"nicType,omitempty"`
+
+	// ResourcePolicies are full or partial URLs of existing regional resource policies
+	// to attach when creating the instance. For example:
+	// projects/my-project/regions/us-central1/resourcePolicies/my-placement-policy.
+	// Policies must be in the same region as the instances and the same project as the cluster.
+	// CAPG does not create or delete these policies.
+	// +optional
+	// +listType=set
+	ResourcePolicies []string `json:"resourcePolicies,omitempty"`
 }
 
 // GCPMachinePoolStatus defines the observed state of GCPMachinePool.

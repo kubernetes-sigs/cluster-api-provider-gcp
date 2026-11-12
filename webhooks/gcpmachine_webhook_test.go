@@ -269,6 +269,17 @@ func TestGCPMachine_ValidateCreate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "GCPMachine with incorrect ReservationAffinity fails",
+			GCPMachine: &infrav1.GCPMachine{
+				Spec: infrav1.GCPMachineSpec{
+					ReservationAffinity: &infrav1.ReservationAffinity{
+						ConsumeReservationType: infrav1.ReservationConsumeTypeAnyReservationThenFail,
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
