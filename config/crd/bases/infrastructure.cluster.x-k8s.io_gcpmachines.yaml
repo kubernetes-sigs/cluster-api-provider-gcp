@@ -286,6 +286,14 @@ spec:
                   MinCPUPlatform indicates the minimum Compute Engine CPU platform name, e.g. "Intel Haswell".
                   Changing this field requires replacing the machine.
                 type: string
+              nicType:
+                description: NICType indicates the type of the primary network interface.
+                  Changing this field requires replacing the machine.
+                enum:
+                - VIRTIO_NET
+                - GVNIC
+                - IDPF
+                type: string
               onHostMaintenance:
                 description: |-
                   OnHostMaintenance determines the behavior when a maintenance event occurs that might cause the instance to reboot.

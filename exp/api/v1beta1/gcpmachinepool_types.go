@@ -168,6 +168,11 @@ type GCPMachinePoolSpec struct {
 	// MinCPUPlatform indicates the minimum Compute Engine CPU platform name, e.g. "Intel Haswell".
 	// +optional
 	MinCPUPlatform *string `json:"minCpuPlatform,omitempty"`
+
+	// NICType indicates the type of the primary network interface.
+	// +optional
+	// +kubebuilder:validation:Enum=VIRTIO_NET;GVNIC;IDPF
+	NICType *capg.NICType `json:"nicType,omitempty"`
 }
 
 // GCPMachinePoolStatus defines the observed state of GCPMachinePool.
