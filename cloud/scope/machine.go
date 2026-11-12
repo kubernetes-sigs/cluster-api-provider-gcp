@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strings"
 
+	k8scloud "github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
@@ -417,6 +418,26 @@ func instanceReservationAffinitySpec(affinity *infrav1.ReservationAffinity) *com
 		Key:                    string(affinity.Key),
 		Values:                 affinity.Values,
 	}
+}
+
+// instanceResourcePolicyNames extracts, from a set or urls, the names of the policies
+func instanceResourcePolicyNames(urls []string) ([]string, error) {
+	if len(urls) == 0 {
+		return nil, nil
+	}
+
+	var result []string
+	for _, url := range urls {
+		parsed, err := k8scloud.ParseResourceURL(url)
+		if err != nil {
+			return nil, err
+		}
+		if parsed.Key == nil {
+			return nil, errors.New("parsed resoucePolicy name was nil")
+		}
+		result = append(result, parsed.Key.Name)
+	}
+	return result, nil
 }
 
 // instanceGuestAcceleratorsSpec returns a slice of Guest Accelerator Config specs.

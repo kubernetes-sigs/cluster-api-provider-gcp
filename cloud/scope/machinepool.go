@@ -22,6 +22,7 @@ import (
 	"path"
 	"strings"
 
+	k8scloud "github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
@@ -251,9 +252,19 @@ func limitStringLength(s string, maxLength int) string {
 func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compute.InstanceTemplate, error) {
 	log := log.FromContext(ctx)
 
+	err := checkResourcePolicies(m.GCPMachinePool.Spec.ResourcePolicies, m.Region(), m.ClusterGetter.Project())
+	if err != nil {
+		return nil, err
+	}
+
 	bootstrapData, err := m.getBootstrapData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving bootstrap data for instanceTemplate: %w", err)
+	}
+
+	resourcePolicies, err := instanceResourcePolicyNames(m.GCPMachinePool.Spec.ResourcePolicies)
+	if err != nil {
+		return nil, fmt.Errorf("converting policy URLs to resource names: %w", err)
 	}
 
 	instance := &compute.InstanceProperties{
@@ -277,6 +288,7 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 		Scheduling: &compute.Scheduling{
 			Preemptible: m.GCPMachinePool.Spec.Preemptible,
 		},
+		ResourcePolicies: resourcePolicies,
 	}
 
 	if m.GCPMachinePool.Spec.ProvisioningModel != nil {
@@ -498,4 +510,22 @@ func ValueOf[V any](v *V) V {
 	}
 	var zero V
 	return zero
+}
+
+// checkResourcePolicies ensures that policies are conformant with what the MachinePool requires
+// e.g. in the correct region.
+func checkResourcePolicies(policies []string, region string, project string) error {
+	for _, policy := range policies {
+		resource, err := k8scloud.ParseResourceURL(policy)
+		if err != nil {
+			return fmt.Errorf("failed to parse resource policy %q: %w", policy, err)
+		}
+		if ptr.Deref(resource.Key, meta.Key{}).Region != region {
+			return fmt.Errorf("resource policy %q must be in region %q", policy, region)
+		}
+		if resource.ProjectID != "" && resource.ProjectID != project {
+			return fmt.Errorf("resource policy %q must be in project %q (instance templates reference policies by name)", policy, project)
+		}
+	}
+	return nil
 }

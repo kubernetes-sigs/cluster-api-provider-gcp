@@ -18,8 +18,13 @@ limitations under the License.
 package webhook
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
+	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
+	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -59,5 +64,30 @@ func ValidateNonNegative[T int | int32 | int64](path *field.Path, value *T) *fie
 		return field.Invalid(path, value, "must be non-negative")
 	}
 
+	return nil
+}
+
+// ValidateResourcePolicies ensures that policies are valid, in the correct region and have correct project names.
+// Also ensures they are named in line with RFC1035
+func ValidateResourcePolicies(policies []string) error {
+	for i, policy := range policies {
+		resource, err := cloud.ParseResourceURL(policy)
+		if err != nil {
+			return fmt.Errorf("resourcePolicies[%d] %q: invalid Compute Engine resource path", i, policy)
+		}
+		if resource.Key == nil || resource.Resource != "resourcePolicies" {
+			return fmt.Errorf("resourcePolicies[%d] %q: must reference a resource policy", i, policy)
+		}
+		if resource.Key.Type() != meta.Regional || !resource.Key.Valid() {
+			return fmt.Errorf("resourcePolicies[%d] %q: must reference a policy in a valid region", i, policy)
+		}
+		if resource.ProjectID == "" && !strings.HasPrefix(policy, "regions/") {
+			return fmt.Errorf("resourcePolicies[%d] %q: project must not be empty", i, policy)
+		}
+		// Compute policy names follow RFC1035, including its 63-character limit.
+		if errors := validation.IsDNS1035Label(resource.Key.Name); len(errors) > 0 {
+			return fmt.Errorf("resourcePolicies[%d] %q: %s", i, policy, strings.Join(errors, "; "))
+		}
+	}
 	return nil
 }

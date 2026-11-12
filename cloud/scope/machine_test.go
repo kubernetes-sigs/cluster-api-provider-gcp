@@ -216,3 +216,55 @@ func TestInstanceReservationAffinitySpec(t *testing.T) {
 		})
 	}
 }
+
+func Test_instanceResourcePolicyNames(t *testing.T) {
+	tests := []struct {
+		name    string
+		urls    []string
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "empty",
+			urls: []string{},
+		},
+		{
+			name: "full URL",
+			urls: []string{
+				"https://www.googleapis.com/compute/v1/projects/my-project/regions/us-central1/resourcePolicies/spread",
+			},
+			want: []string{
+				"spread",
+			},
+		},
+		{
+			name: "partial URL",
+			urls: []string{
+				"regions/us-central1/resourcePolicies/spread",
+			},
+			want: []string{
+				"spread",
+			},
+		},
+		{
+			name: "with project",
+			urls: []string{
+				"projects/my-project/regions/us-central1/resourcePolicies/spread",
+			},
+			want: []string{
+				"spread",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			got, err := instanceResourcePolicyNames(tt.urls)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("instanceResourcePolicyNames() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			g.Expect(got).To(Equal(tt.want), "instanceResourcePolicyNames() got = %v, want %v", got, tt.want)
+		})
+	}
+}
