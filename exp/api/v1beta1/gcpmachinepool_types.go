@@ -160,6 +160,10 @@ type GCPMachinePoolSpec struct {
 	// attached to the instance.
 	// +optional
 	GuestAccelerators []capg.Accelerator `json:"guestAccelerators,omitempty"`
+
+	// ReservationAffinity indicates the reservation that this instance has affinity for.
+	// +optional
+	ReservationAffinity *capg.ReservationAffinity `json:"reservationAffinity,omitempty"`
 }
 
 // GCPMachinePoolStatus defines the observed state of GCPMachinePool.

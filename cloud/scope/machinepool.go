@@ -347,6 +347,7 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 	if len(instance.GuestAccelerators) > 0 {
 		instance.Scheduling.OnHostMaintenance = onHostMaintenanceTerminate
 	}
+	instance.ReservationAffinity = instanceReservationAffinitySpec(m.GCPMachinePool.Spec.ReservationAffinity)
 
 	instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
 		Key:   metadataKeyUserData,
