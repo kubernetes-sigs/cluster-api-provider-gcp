@@ -74,3 +74,22 @@ This is creation-time configuration. To change the policy, create a new machine
 template and roll out replacement machines; editing an existing `GCPMachine`
 spec is not supported. Omitting `resourcePolicies` preserves the existing
 behavior of creating an instance without an explicitly configured policy.
+
+### GCPMachinePools
+
+`resourcePolicies` can also be set on `GCPMachinePool`s as in the example below
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachinePool
+metadata:
+  name: pool-with-placement
+spec:
+  instanceType: n2-standard-2
+  resourcePolicies:
+    - regions/us-central1/resourcePolicies/my-spread-policy
+```
+
+The policies' project must match the cluster because the underlying instance template only takes names not URLs.
+It's also worth noting that any changes to resourcePolicies after creation will only reach new instances as CAPG
+does not replace existing VMs.
