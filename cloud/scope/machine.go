@@ -532,6 +532,7 @@ func (m *MachineScope) InstanceSpec(_ context.Context, log logr.Logger) *compute
 		instance.Scheduling.OnHostMaintenance = onHostMaintenanceTerminate
 	}
 	instance.ReservationAffinity = instanceReservationAffinitySpec(m.GCPMachine.Spec.ReservationAffinity)
+	instance.MinCpuPlatform = ptr.Deref(m.GCPMachine.Spec.MinCPUPlatform, "")
 
 	return instance
 }
