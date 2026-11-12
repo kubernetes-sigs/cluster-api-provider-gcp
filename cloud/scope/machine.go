@@ -406,6 +406,18 @@ func InstanceAdditionalMetadataSpec(spec []infrav1.MetadataItem) *compute.Metada
 	return metadata
 }
 
+// instanceReservationAffinitySpec converts our internal definition of affinity to the library definition
+func instanceReservationAffinitySpec(affinity *infrav1.ReservationAffinity) *compute.ReservationAffinity {
+	if affinity == nil {
+		return nil
+	}
+	return &compute.ReservationAffinity{
+		ConsumeReservationType: string(affinity.ConsumeReservationType),
+		Key:                    string(affinity.Key),
+		Values:                 affinity.Values,
+	}
+}
+
 // instanceGuestAcceleratorsSpec returns a slice of Guest Accelerator Config specs.
 func instanceGuestAcceleratorsSpec(guestAccelerators []infrav1.Accelerator) []*compute.AcceleratorConfig {
 	if len(guestAccelerators) == 0 {
@@ -520,18 +532,7 @@ func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compu
 	if len(instance.GuestAccelerators) > 0 {
 		instance.Scheduling.OnHostMaintenance = onHostMaintenanceTerminate
 	}
-
-	if m.GCPMachine.Spec.ReservationAffinity != nil {
-		instance.ReservationAffinity = &compute.ReservationAffinity{
-			ConsumeReservationType: string(m.GCPMachine.Spec.ReservationAffinity.GetConsumeReservationType()),
-		}
-		if m.GCPMachine.Spec.ReservationAffinity.Key != nil {
-			instance.ReservationAffinity.Key = m.GCPMachine.Spec.ReservationAffinity.GetKey()
-		}
-		if len(m.GCPMachine.Spec.ReservationAffinity.Values) > 0 {
-			instance.ReservationAffinity.Values = m.GCPMachine.Spec.ReservationAffinity.GetValues()
-		}
-	}
+	instance.ReservationAffinity = instanceReservationAffinitySpec(m.GCPMachine.Spec.ReservationAffinity)
 
 	return instance
 }

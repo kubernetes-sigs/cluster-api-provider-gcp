@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"google.golang.org/api/compute/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -158,4 +159,60 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 		g.Expect(result[0].IpCidrRange).To(Equal("10.100.0.0/24"))
 		g.Expect(result[0].SubnetworkRangeName).To(Equal(""))
 	})
+}
+
+func TestInstanceReservationAffinitySpec(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  *infrav1.ReservationAffinity
+		wanted *compute.ReservationAffinity
+	}{
+		{
+			name:   "nil for nil",
+			input:  nil,
+			wanted: nil,
+		},
+		{
+			name: "ANY_RESERVATION",
+			input: &infrav1.ReservationAffinity{
+				ConsumeReservationType: infrav1.ReservationConsumeTypeAnyReservation,
+			},
+			wanted: &compute.ReservationAffinity{
+				ConsumeReservationType: "ANY_RESERVATION",
+			},
+		},
+		{
+			name: "NO_RESERVATION",
+			input: &infrav1.ReservationAffinity{
+				ConsumeReservationType: infrav1.ReservationConsumeTypeNoReservation,
+			},
+			wanted: &compute.ReservationAffinity{
+				ConsumeReservationType: "NO_RESERVATION",
+			},
+		},
+		{
+			name: "SPECIFIC_RESERVATION",
+			input: &infrav1.ReservationAffinity{
+				ConsumeReservationType: infrav1.ReservationConsumeTypeSpecificReservation,
+				Key:                    infrav1.ReservationKeyReservationName,
+				Values: []string{
+					"my-reservation", "my-other-reservation",
+				},
+			},
+			wanted: &compute.ReservationAffinity{
+				ConsumeReservationType: "SPECIFIC_RESERVATION",
+				Key:                    "compute.googleapis.com/reservation-name",
+				Values: []string{
+					"my-reservation", "my-other-reservation",
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewWithT(t)
+			got := instanceReservationAffinitySpec(test.input)
+			g.Expect(got).To(Equal(test.wanted))
+		})
+	}
 }
