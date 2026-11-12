@@ -393,6 +393,11 @@ type GCPMachineSpec struct {
 	// Changing this field requires replacing the machine.
 	// +optional
 	ReservationAffinity *ReservationAffinity `json:"reservationAffinity,omitempty"`
+
+	// MinCPUPlatform indicates the minimum Compute Engine CPU platform name, e.g. "Intel Haswell".
+	// Changing this field requires replacing the machine.
+	// +optional
+	MinCPUPlatform *string `json:"minCpuPlatform,omitempty"`
 }
 
 // Accelerator is a specification of the type and number of accelerator

@@ -348,6 +348,7 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 		instance.Scheduling.OnHostMaintenance = onHostMaintenanceTerminate
 	}
 	instance.ReservationAffinity = instanceReservationAffinitySpec(m.GCPMachinePool.Spec.ReservationAffinity)
+	instance.MinCpuPlatform = ptr.Deref(m.GCPMachinePool.Spec.MinCPUPlatform, "")
 
 	instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
 		Key:   metadataKeyUserData,

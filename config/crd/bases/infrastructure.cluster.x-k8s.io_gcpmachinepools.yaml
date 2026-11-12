@@ -271,6 +271,10 @@ spec:
                 - Enabled
                 - Disabled
                 type: string
+              minCpuPlatform:
+                description: MinCPUPlatform indicates the minimum Compute Engine CPU
+                  platform name, e.g. "Intel Haswell".
+                type: string
               onHostMaintenance:
                 description: |-
                   OnHostMaintenance determines the behavior when a maintenance event occurs that might cause the instance to reboot.
@@ -304,9 +308,8 @@ spec:
                   Set this to true if you don't have a NAT instances or Cloud Nat setup.
                 type: boolean
               reservationAffinity:
-                description: |-
-                  ReservationAffinity indicates the reservation that this instance has affinity for.
-                  Changing this field requires replacing the machine
+                description: ReservationAffinity indicates the reservation that this
+                  instance has affinity for.
                 properties:
                   consumeReservationType:
                     description: ConsumeReservationType decides how reservations should

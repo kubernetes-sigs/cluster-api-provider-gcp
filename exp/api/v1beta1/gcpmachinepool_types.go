@@ -164,6 +164,10 @@ type GCPMachinePoolSpec struct {
 	// ReservationAffinity indicates the reservation that this instance has affinity for.
 	// +optional
 	ReservationAffinity *capg.ReservationAffinity `json:"reservationAffinity,omitempty"`
+
+	// MinCPUPlatform indicates the minimum Compute Engine CPU platform name, e.g. "Intel Haswell".
+	// +optional
+	MinCPUPlatform *string `json:"minCpuPlatform,omitempty"`
 }
 
 // GCPMachinePoolStatus defines the observed state of GCPMachinePool.
