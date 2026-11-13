@@ -29,6 +29,23 @@ import (
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
 
+// noDiffControlPlaneEndpointsConfig is the "authorized networks disabled" config an existing
+// cluster needs so that a nil spec.MasterAuthorizedNetworksConfig doesn't itself trigger a diff
+// (see the "no panic when existing cluster has nil ControlPlaneEndpointsConfig" case below) -
+// shared by test cases below that want to isolate a diff in one specific field.
+func noDiffControlPlaneEndpointsConfig(globalAccess bool) *containerpb.ControlPlaneEndpointsConfig {
+	return &containerpb.ControlPlaneEndpointsConfig{
+		IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+			GlobalAccess: &globalAccess,
+			AuthorizedNetworksConfig: &containerpb.MasterAuthorizedNetworksConfig{
+				Enabled:                     false,
+				CidrBlocks:                  []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{},
+				GcpPublicCidrsAccessEnabled: ptr.To(false),
+			},
+		},
+	}
+}
+
 func newTestService(controlPlane *infrav1exp.GCPManagedControlPlane) *Service {
 	s := new(scope.ManagedControlPlaneScope)
 	s.GCPManagedControlPlane = controlPlane
@@ -597,6 +614,288 @@ func TestCheckDiffAndPrepareUpdate(t *testing.T) {
 					t.Errorf("expected DesiredDnsConfig CLOUD_DNS, got %v", req.GetUpdate().GetDesiredDnsConfig().GetClusterDns())
 				}
 			},
+		},
+		{
+			name: "update needed when master global access differs",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterNetwork: &infrav1exp.ClusterNetwork{
+							PrivateCluster: &infrav1exp.PrivateCluster{ControlPlaneGlobalAccess: true},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
+					IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+						GlobalAccess: new(false),
+					},
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				if !req.GetUpdate().GetDesiredControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetGlobalAccess() {
+					t.Error("expected DesiredControlPlaneEndpointsConfig.IpEndpointsConfig.GlobalAccess to be true")
+				}
+			},
+		},
+		{
+			name: "no diff needed when master global access is the same",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterNetwork: &infrav1exp.ClusterNetwork{
+							PrivateCluster: &infrav1exp.PrivateCluster{ControlPlaneGlobalAccess: true},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig(true),
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "diff found when only master global access is different",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterNetwork: &infrav1exp.ClusterNetwork{
+							PrivateCluster: &infrav1exp.PrivateCluster{ControlPlaneGlobalAccess: false},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig(true),
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				globalAccess := req.GetUpdate().GetDesiredControlPlaneEndpointsConfig().GetIpEndpointsConfig().GlobalAccess
+				if globalAccess == nil {
+					t.Fatal("expected global access to be set")
+				}
+				if *globalAccess {
+					t.Error("expected global access to be false")
+				}
+			},
+		},
+		{
+			name: "no diff when PrivateCluster is nil",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName:    "test-cluster",
+						Project:        "test-project",
+						Location:       "us-central1",
+						ClusterNetwork: &infrav1exp.ClusterNetwork{},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig(true),
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "diff when both PrivateCluster fields are set",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						MasterAuthorizedNetworksConfig: &infrav1exp.MasterAuthorizedNetworksConfig{
+							CidrBlocks: []*infrav1exp.MasterAuthorizedNetworksConfigCidrBlock{
+								{
+									DisplayName: "name",
+									CidrBlock:   "192.168.0.1/16",
+								},
+							},
+						},
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterNetwork: &infrav1exp.ClusterNetwork{
+							PrivateCluster: &infrav1exp.PrivateCluster{
+								ControlPlaneGlobalAccess: true,
+							},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig{
+					IpEndpointsConfig: &containerpb.ControlPlaneEndpointsConfig_IPEndpointsConfig{
+						AuthorizedNetworksConfig: &containerpb.MasterAuthorizedNetworksConfig{
+							Enabled: false,
+							CidrBlocks: []*containerpb.MasterAuthorizedNetworksConfig_CidrBlock{
+								{
+									CidrBlock: "10.0.0.1/16",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				ipEndpointsConfig := req.GetUpdate().GetDesiredControlPlaneEndpointsConfig().GetIpEndpointsConfig()
+				cidrBlocks := ipEndpointsConfig.GetAuthorizedNetworksConfig().GetCidrBlocks()
+				if ipEndpointsConfig.GetGlobalAccess() != true {
+					t.Fatalf("Expected GlobalAccess to be true, but was false")
+				}
+				if len(cidrBlocks) != 1 {
+					t.Fatalf("Expected 1 CIDR block but got %d", len(cidrBlocks))
+				}
+				if cidrBlocks[0].GetCidrBlock() != "192.168.0.1/16" {
+					t.Errorf("Expected CidrBlocks to be 192.168.0.1/16, but was %v", ipEndpointsConfig.GetAuthorizedNetworksConfig().GetCidrBlocks()[0].GetCidrBlock())
+				}
+			},
+		},
+		{
+			name: "update needed when workload identity pool differs",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterSecurity: &infrav1exp.ClusterSecurity{
+							WorkloadIdentityConfig: &infrav1exp.WorkloadIdentityConfig{WorkloadPool: "new-pool.svc.id.goog"},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				WorkloadIdentityConfig: &containerpb.WorkloadIdentityConfig{WorkloadPool: "old-pool.svc.id.goog"},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				if got := req.GetUpdate().GetDesiredWorkloadIdentityConfig().GetWorkloadPool(); got != "new-pool.svc.id.goog" {
+					t.Errorf("expected workload pool %q, got %q", "new-pool.svc.id.goog", got)
+				}
+			},
+		},
+		{
+			name: "no update needed when workload identity pool is the same",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterSecurity: &infrav1exp.ClusterSecurity{
+							WorkloadIdentityConfig: &infrav1exp.WorkloadIdentityConfig{WorkloadPool: "new-pool.svc.id.goog"},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig(false),
+				WorkloadIdentityConfig:      &containerpb.WorkloadIdentityConfig{WorkloadPool: "new-pool.svc.id.goog"},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "empty pool means disable",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterSecurity: &infrav1exp.ClusterSecurity{
+							WorkloadIdentityConfig: &infrav1exp.WorkloadIdentityConfig{WorkloadPool: ""},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig(false),
+				WorkloadIdentityConfig:      &containerpb.WorkloadIdentityConfig{WorkloadPool: "pool.svc.id.goog"},
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				if got := req.GetUpdate().GetDesiredWorkloadIdentityConfig().GetWorkloadPool(); got != "" {
+					t.Errorf("expected empty workload pool, got '%s'", got)
+				}
+			},
+		},
+		{
+			name: "no diff when ClusterSecurity set but WorkloadIdentityConfig is nil",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName:     "test-cluster",
+						Project:         "test-project",
+						Location:        "us-central1",
+						ClusterSecurity: &infrav1exp.ClusterSecurity{},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig(false),
+				WorkloadIdentityConfig:      &containerpb.WorkloadIdentityConfig{WorkloadPool: "pool.svc.id.goog"},
+			},
+			wantNeedUpdate: false,
+		},
+		{
+			name: "globalAccess and Workload Pool differ in the same request",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+						ClusterNetwork: &infrav1exp.ClusterNetwork{
+							PrivateCluster: &infrav1exp.PrivateCluster{ControlPlaneGlobalAccess: true},
+						},
+						ClusterSecurity: &infrav1exp.ClusterSecurity{
+							WorkloadIdentityConfig: &infrav1exp.WorkloadIdentityConfig{WorkloadPool: "new-pool.svc.id.goog"},
+						},
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				WorkloadIdentityConfig:      &containerpb.WorkloadIdentityConfig{WorkloadPool: "old-pool.svc.id.goog"},
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig(false),
+			},
+			wantNeedUpdate: true,
+			validateUpdateFunc: func(t *testing.T, req *containerpb.UpdateClusterRequest) {
+				t.Helper()
+				if got := req.GetUpdate().GetDesiredWorkloadIdentityConfig().GetWorkloadPool(); got != "new-pool.svc.id.goog" {
+					t.Errorf("expected new-pool.svc.id.goog workload pool, got '%s'", got)
+				}
+				if got := req.GetUpdate().GetDesiredControlPlaneEndpointsConfig().GetIpEndpointsConfig().GetGlobalAccess(); !got {
+					t.Error("expected globalAccess to be enabled, but was not")
+				}
+			},
+		},
+		{
+			name: "no diff when cluster security is unset, regardless of what GKE actually has",
+			controlPlane: &infrav1exp.GCPManagedControlPlane{
+				Spec: infrav1exp.GCPManagedControlPlaneSpec{
+					GCPManagedControlPlaneClassSpec: infrav1exp.GCPManagedControlPlaneClassSpec{
+						ClusterName: "test-cluster",
+						Project:     "test-project",
+						Location:    "us-central1",
+					},
+				},
+			},
+			existingCluster: &containerpb.Cluster{
+				WorkloadIdentityConfig:      &containerpb.WorkloadIdentityConfig{WorkloadPool: "some-pool.svc.id.goog"},
+				ControlPlaneEndpointsConfig: noDiffControlPlaneEndpointsConfig(false),
+			},
+			wantNeedUpdate: false,
 		},
 	}
 

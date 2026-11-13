@@ -23,7 +23,15 @@ spec:
 ...
 ```
 
-**Note:** This must be set on cluster creation if using the CustomResource and is not reconciled afterwards
+Later changes to this value will be reconciled by CAPG, changes to this value are non-disruptive, though changes can
+take ~10 minutes to apply. Changing this **does not** recreate nodes.
+
+### Notes
+* The value of `workloadPool` must be of the form `<project>.svc.id.goog`, otherwise it will be rejected by GKE.
+* You can enable and disable this feature as required, however you cannot disable it if Node Pools are set
+  to `GKE_METADATA` mode. GKE will reject this update if you try.
+* If `workloadIdentityConfig` is unset CAPG expresses no opinion about the value of `workloadPool` it may well be set,
+  or it may not be. The GKE API is authoritative at that point.
 
 ## Enabling on Node Pools
 
@@ -45,8 +53,12 @@ spec:
 The above example would also work with the `GCPManagedMachinePoolTemplate` CustomResource with appropriate changes.
 
 **Note:** When this is enabled on a nodepool it will take effect immediately, potentially causing workload disruption
-if your workloads rely on being able to use the service account that the node uses. See
-[Google's Documentation](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/workload-identity) for more
+if your workloads rely on being able to use the service account that the node uses.
+
+In addition, nodes are recreated to implement this change so there may be some workload disruption as pods are migrated
+to new nodes during this process.
+
+See [Google's Documentation](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/workload-identity) for more
 details.
 
 ## Valid Values
@@ -58,3 +70,6 @@ The two valid values for `workloadMetadataMode` are `GKE_METADATA` & `GCE_METADA
 If `workloadMetadataMode` is unset it simply means CAPG does not manage that field and so it could take either
 value or be unset on the cluster itself. The only way to ensure a value is to choose from one of the two valid ones.
 
+## Troubleshooting
+In the vast majority of cases of troubleshooting the above, you should look in controller logs. In many cases
+you will see the results of the GKE API calls and that will aid troubleshooting.
