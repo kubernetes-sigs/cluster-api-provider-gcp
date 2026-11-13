@@ -23,9 +23,11 @@ import (
 	"sigs.k8s.io/cluster-api-provider-gcp/util/location"
 
 	container "cloud.google.com/go/container/apiv1"
+	gkehub "cloud.google.com/go/gkehub/apiv1beta1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	infrav1exp "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -45,6 +47,7 @@ type ManagedControlPlaneScopeParams struct {
 	TokenClient            *TokenClient
 	ManagedClusterClient   *container.ClusterManagerClient
 	TagBindingsClient      *resourcemanager.TagBindingsClient
+	GkeHubMembershipClient *gkehub.GkeHubMembershipClient
 	Client                 client.Client
 	Cluster                *clusterv1.Cluster
 	GCPManagedCluster      *infrav1exp.GCPManagedCluster
@@ -100,6 +103,14 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		return nil, errors.Wrap(err, "failed to resolve location")
 	}
 
+	if params.GkeHubMembershipClient == nil {
+		gkeHubMembershipClient, err := newGkeHubMembershipClient(ctx, params.GCPManagedCluster.Spec.CredentialsRef, params.Client, params.GCPManagedCluster.Spec.ServiceEndpoints)
+		if err != nil {
+			return nil, errors.Errorf("failed to create gke hub membership client: %v", err)
+		}
+		params.GkeHubMembershipClient = gkeHubMembershipClient
+	}
+
 	helper, err := v1beta1patch.NewHelper(params.GCPManagedControlPlane, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
@@ -113,6 +124,7 @@ func NewManagedControlPlaneScope(ctx context.Context, params ManagedControlPlane
 		mcClient:               params.ManagedClusterClient,
 		tagBindingsClient:      params.TagBindingsClient,
 		tokenClient:            *params.TokenClient,
+		gkeHubMembershipClient: params.GkeHubMembershipClient,
 		patchHelper:            helper,
 		ResolvedLocation:       *resolvedLocation,
 	}, nil
@@ -130,6 +142,7 @@ type ManagedControlPlaneScope struct {
 	tagBindingsClient      *resourcemanager.TagBindingsClient
 	tokenClient            TokenClient
 	ResolvedLocation       location.ResolvedLocation
+	gkeHubMembershipClient *gkehub.GkeHubMembershipClient
 
 	AllMachinePools        []clusterv1.MachinePool
 	AllManagedMachinePools []infrav1exp.GCPManagedMachinePool
@@ -159,6 +172,7 @@ func (s *ManagedControlPlaneScope) PatchObject(ctx context.Context) error {
 func (s *ManagedControlPlaneScope) Close(ctx context.Context) error {
 	s.mcClient.Close()
 	s.tagBindingsClient.Close()
+	s.gkeHubMembershipClient.Close()
 	return s.PatchObject(ctx)
 }
 
@@ -191,6 +205,11 @@ func (s *ManagedControlPlaneScope) TagBindingsClient() *resourcemanager.TagBindi
 // for the GCP identity configured for this control plane.
 func (s *ManagedControlPlaneScope) TokenClient() TokenClient {
 	return s.tokenClient
+}
+
+// GkeHubMembershipClient returns a client used to interact with GKE Hub Fleet memberships.
+func (s *ManagedControlPlaneScope) GkeHubMembershipClient() *gkehub.GkeHubMembershipClient {
+	return s.gkeHubMembershipClient
 }
 
 // GetAllNodePools gets all node pools for the control plane.
@@ -264,6 +283,13 @@ func (s *ManagedControlPlaneScope) ClusterFullName() string {
 // ClusterName returns the name of the cluster.
 func (s *ManagedControlPlaneScope) ClusterName() string {
 	return s.GCPManagedControlPlane.Spec.ClusterName
+}
+
+// FleetProject returns the project the cluster's fleet Membership should be
+// registered into, defaulting to the cluster's own project if Fleet.Project is unset.
+func (s *ManagedControlPlaneScope) FleetProject() string {
+	spec := s.GCPManagedControlPlane.Spec
+	return ptr.Deref(ptr.Deref(spec.Fleet, infrav1exp.Fleet{}).Project, spec.Project)
 }
 
 // SetEndpoint sets the Endpoint of GCPManagedControlPlane.

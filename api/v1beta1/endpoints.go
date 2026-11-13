@@ -46,4 +46,11 @@ type ServiceEndpoints struct {
 	// +kubebuilder:validation:Pattern=`^https://`
 	// +optional
 	ResourceManagerServiceEndpoint string `json:"resourceManager,omitempty"`
+
+	// GkeHubServiceEndpoint is the custom endpoint url for the GKE Hub (Fleet) Service
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Format=uri
+	// +kubebuilder:validation:Pattern=`^https://`
+	// +optional
+	GkeHubServiceEndpoint string `json:"gkeHub,omitempty"`
 }
