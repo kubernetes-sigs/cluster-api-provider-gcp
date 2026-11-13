@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: observability
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: normal
+      file:
+        path: /data/traces.jsonl
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug, file]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: otel-collector}
+  template:
+    metadata:
+      labels: {app: otel-collector}
+    spec:
+      containers:
+      - name: collector
+        image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.162.0
+        args: ["--config=/conf/config.yaml"]
+        ports:
+        - {name: otlp-grpc, containerPort: 4317}
+        - {name: otlp-http, containerPort: 4318}
+        volumeMounts:
+        - {name: conf, mountPath: /conf}
+        - {name: data, mountPath: /data}
+      - name: log-collector
+        image: registry.k8s.io/e2e-test-images/busybox:1.36.1-1
+        command: ["sh", "-c", "touch /data/traces.jsonl; tail -F /data/traces.jsonl"]
+        volumeMounts:
+          - {name: data, mountPath: /data}
+      volumes:
+      - name: conf
+        configMap: {name: otel-collector-config}
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: observability
+spec:
+  selector: {app: otel-collector}
+  ports:
+  - {name: otlp-grpc, port: 4317, targetPort: 4317}
+  - {name: otlp-http, port: 4318, targetPort: 4318}
