@@ -33,7 +33,7 @@ export GOPROXY
 export GO111MODULE=on
 
 # Go version
-GOLANG_VERSION := 1.26.10
+GOLANG_VERSION := 1.26.11
 GOLANG_DIRECTIVE_VERSION ?= 1.26.0
 
 # Kubebuilder
@@ -43,7 +43,7 @@ export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?=60s
 export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=60s
 
 # Keep the standalone cert manager pinned here; it is not a dependency of either Go module.
-CERT_MANAGER_VER := v1.16.3
+CERT_MANAGER_VER := v1.21.3
 # Keep the standalone go-apidiff pinned here; it is not a dependency of either Go module.
 GO_APIDIFF_VER := v0.8.3
 # Keep the standalone yq pinned here; it is not a dependency of either Go module.
