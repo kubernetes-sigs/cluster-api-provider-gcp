@@ -17,7 +17,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/crypto v0.58.0
-	golang.org/x/mod v0.41.0
+	golang.org/x/mod v0.42.0
 	google.golang.org/api v0.299.0
 	google.golang.org/grpc v1.84.0
 	k8s.io/api v0.36.5
