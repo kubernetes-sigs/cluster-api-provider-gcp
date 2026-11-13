@@ -33,7 +33,7 @@ export GOPROXY
 export GO111MODULE=on
 
 # Go version
-GOLANG_VERSION := 1.26.10
+GOLANG_VERSION := 1.26.11
 GOLANG_DIRECTIVE_VERSION ?= 1.26.0
 
 # Kubebuilder
