@@ -71,6 +71,18 @@ const (
 	IPForwardingDisabled IPForwarding = "Disabled"
 )
 
+// NICType represents the kind of Network Interface for the GCP machine.
+type NICType string
+
+const (
+	// NICTypeVirtioNet uses the legacy VirtIO-Net ethernet driver.
+	NICTypeVirtioNet NICType = "VIRTIO_NET"
+	// NICTypeGVNIC uses the modern Google Virtual NIC driver
+	NICTypeGVNIC NICType = "GVNIC"
+	// NICTypeIDPF uses the Infrastructure Data Plane Function driver
+	NICTypeIDPF NICType = "IDPF"
+)
+
 // SecureBootPolicy represents the secure boot configuration for the GCP machine.
 type SecureBootPolicy string
 
@@ -388,6 +400,21 @@ type GCPMachineSpec struct {
 	// attached to the instance.
 	// +optional
 	GuestAccelerators []Accelerator `json:"guestAccelerators,omitempty"`
+
+	// ReservationAffinity indicates the reservation that this instance has affinity for.
+	// Changing this field requires replacing the machine.
+	// +optional
+	ReservationAffinity *ReservationAffinity `json:"reservationAffinity,omitempty"`
+
+	// MinCPUPlatform indicates the minimum Compute Engine CPU platform name, e.g. "Intel Haswell".
+	// Changing this field requires replacing the machine.
+	// +optional
+	MinCPUPlatform *string `json:"minCpuPlatform,omitempty"`
+
+	// NICType indicates the type of the primary network interface. Changing this field requires replacing the machine.
+	// +optional
+	// +kubebuilder:validation:Enum=VIRTIO_NET;GVNIC;IDPF
+	NICType *NICType `json:"nicType,omitempty"`
 }
 
 // Accelerator is a specification of the type and number of accelerator

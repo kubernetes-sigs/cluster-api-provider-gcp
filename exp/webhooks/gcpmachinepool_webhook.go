@@ -20,6 +20,7 @@ import (
 	"context"
 
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
+	webhookutils "sigs.k8s.io/cluster-api-provider-gcp/util/webhook"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -38,24 +39,26 @@ func (r *GCPMachinePool) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // GCPMachinePool implements a validating webhook for GCPMachinePool.
 type GCPMachinePool struct{}
 
-//+kubebuilder:webhook:verbs=update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinepool,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepools,versions=v1beta1,name=validation.gcpmachinepool.infrastructure.cluster.x-k8s.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:verbs=create;update,path=/validate-infrastructure-cluster-x-k8s-io-v1beta1-gcpmachinepool,mutating=false,failurePolicy=fail,sideEffects=None,groups=infrastructure.cluster.x-k8s.io,resources=gcpmachinepools,versions=v1beta1,name=validation.gcpmachinepool.infrastructure.cluster.x-k8s.io,admissionReviewVersions=v1
 
 var _ admission.Validator[*expinfrav1.GCPMachinePool] = &GCPMachinePool{}
 
 func (*GCPMachinePool) ValidateCreate(_ context.Context, r *expinfrav1.GCPMachinePool) (admission.Warnings, error) {
 	gcpMachinePoolLog.Info("Validating GCPMachinePool create", "name", r.Name)
+	if err := webhookutils.ValidateReservationAffinity(r.Spec.ReservationAffinity); err != nil {
+		return nil, err
+	}
 
-	// Add custom validation logic upon creation if needed.
-
-	return nil, nil
+	return nil, webhookutils.ValidateResourcePolicies(r.Spec.ResourcePolicies)
 }
 
 func (*GCPMachinePool) ValidateUpdate(_ context.Context, _, r *expinfrav1.GCPMachinePool) (admission.Warnings, error) {
 	gcpMachinePoolLog.Info("Validating GCPMachinePool update", "name", r.Name)
+	if err := webhookutils.ValidateReservationAffinity(r.Spec.ReservationAffinity); err != nil {
+		return nil, err
+	}
 
-	// Add custom validation logic upon update if needed.
-
-	return nil, nil
+	return nil, webhookutils.ValidateResourcePolicies(r.Spec.ResourcePolicies)
 }
 
 func (*GCPMachinePool) ValidateDelete(_ context.Context, r *expinfrav1.GCPMachinePool) (admission.Warnings, error) {

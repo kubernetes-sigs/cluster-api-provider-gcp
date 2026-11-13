@@ -271,6 +271,17 @@ spec:
                 - Enabled
                 - Disabled
                 type: string
+              minCpuPlatform:
+                description: MinCPUPlatform indicates the minimum Compute Engine CPU
+                  platform name, e.g. "Intel Haswell".
+                type: string
+              nicType:
+                description: NICType indicates the type of the primary network interface.
+                enum:
+                - VIRTIO_NET
+                - GVNIC
+                - IDPF
+                type: string
               onHostMaintenance:
                 description: |-
                   OnHostMaintenance determines the behavior when a maintenance event occurs that might cause the instance to reboot.
@@ -303,6 +314,46 @@ spec:
                   PublicIP specifies whether the instance should get a public IP.
                   Set this to true if you don't have a NAT instances or Cloud Nat setup.
                 type: boolean
+              reservationAffinity:
+                description: ReservationAffinity indicates the reservation that this
+                  instance has affinity for.
+                properties:
+                  consumeReservationType:
+                    description: ConsumeReservationType decides how reservations should
+                      be consumed if they exist
+                    enum:
+                    - NO_RESERVATION
+                    - ANY_RESERVATION
+                    - SPECIFIC_RESERVATION
+                    - ANY_RESERVATION_THEN_FAIL
+                    type: string
+                  key:
+                    description: |-
+                      Key dictates the key that should be used to match the reservation, required only for SPECIFIC_RESERVATION.
+                      Can only take the value "compute.googleapis.com/reservation-name"
+                    enum:
+                    - compute.googleapis.com/reservation-name
+                    type: string
+                  values:
+                    description: Values are the names of the reservations to match
+                      against, required only for SPECIFIC_RESERVATION
+                    items:
+                      type: string
+                    type: array
+                required:
+                - consumeReservationType
+                type: object
+                x-kubernetes-validations:
+                - message: if using SPECIFIC_RESERVATION, key and values must also
+                    be specified
+                  rule: '!(self.consumeReservationType == ''SPECIFIC_RESERVATION'')
+                    || (has(self.key) && self.key.size() > 0 && has(self.values) &&
+                    self.values.size() > 0 && self.values.all(e, e.size() > 0))'
+                - message: setting key and values is not valid without using the SPECIFIC_RESERVATION
+                    type
+                  rule: (self.consumeReservationType == 'SPECIFIC_RESERVATION') ||
+                    (!has(self.key) && (!has(self.values) || self.values.size() ==
+                    0))
               resourceManagerTags:
                 description: |-
                   ResourceManagerTags is an optional set of tags to apply to GCP resources managed
@@ -350,6 +401,17 @@ spec:
                   - value
                   type: object
                 type: array
+              resourcePolicies:
+                description: |-
+                  ResourcePolicies are full or partial URLs of existing regional resource policies
+                  to attach when creating the instance. For example:
+                  projects/my-project/regions/us-central1/resourcePolicies/my-placement-policy.
+                  Policies must be in the same region as the instances and the same project as the cluster.
+                  CAPG does not create or delete these policies.
+                items:
+                  type: string
+                type: array
+                x-kubernetes-list-type: set
               rootDeviceSize:
                 description: |-
                   RootDeviceSize is the size of the root volume in GB.
