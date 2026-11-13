@@ -12,6 +12,7 @@
     - [Node Pool Scaling](./managed/node-pool-scaling.md)
     - [Enabling](./managed/enabling.md)
     - [Disabling](./managed/disabling.md)
+    - [Maintenance Policy](./managed/maintenance-policy.md)
     - [Network Configuration](./managed/network-config.md)
     - [Reservation Affinity](./managed/reservation-affinity.md)
     - [Workload Identity](./managed/workload-identity.md)

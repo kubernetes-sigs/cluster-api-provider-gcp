@@ -87,6 +87,10 @@ type GCPManagedControlPlaneClassSpec struct {
 	// MonitoringConfig represents configuration of the monitoring feature of the GKE cluster.
 	// +optional
 	MonitoringConfig *MonitoringConfig `json:"monitoringConfig,omitempty"`
+
+	// MaintenancePolicy represents configuration options for the GKE cluster maintenance policy.
+	// +optional
+	MaintenancePolicy *MaintenancePolicy `json:"maintenancePolicy,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.
