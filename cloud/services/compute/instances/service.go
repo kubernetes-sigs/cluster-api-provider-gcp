@@ -24,6 +24,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	"github.com/go-logr/logr"
 	"google.golang.org/api/compute/v1"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 )
@@ -44,6 +45,8 @@ type instancegroupsInterface interface {
 type Scope interface {
 	cloud.Machine
 	InstanceSpec(ctx context.Context, log logr.Logger) *compute.Instance
+	InstanceTagger() cloud.InstanceTagger
+	ResourceManagerTags() infrav1.ResourceManagerTags
 }
 
 // Service implements instances reconciler.

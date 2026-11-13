@@ -84,7 +84,6 @@ type GCPMachinePoolSpec struct {
 
 	// ResourceManagerTags is an optional set of tags to apply to GCP resources managed
 	// by the GCP provider. GCP supports a maximum of 50 tags per resource.
-	// +maxItems=50
 	// +optional
 	ResourceManagerTags capg.ResourceManagerTags `json:"resourceManagerTags,omitempty"`
 
