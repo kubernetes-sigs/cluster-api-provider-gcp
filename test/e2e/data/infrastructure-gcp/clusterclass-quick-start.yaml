@@ -123,7 +123,6 @@ spec:
           controllerManager:
             extraArgs:
               cloud-provider: external
-              allocate-node-cidrs: "false"
         files:
         - content: |
             [Global]
