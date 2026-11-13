@@ -1,6 +1,7 @@
 package scope
 
 import (
+	"maps"
 	"strings"
 	"testing"
 
@@ -424,6 +425,82 @@ func Test_ManagedMachinePool_Location_Synchronicity(t *testing.T) {
 			}
 			if !strings.HasSuffix(mmps.NodePoolLocation(), test.nodePoolLocationSuffix) {
 				t.Fatalf("Expected %s but got %s", test.nodePoolLocationSuffix, mmps.NodePoolLocation())
+			}
+		})
+	}
+}
+
+func Test_AnnotateManagedMachinePool(t *testing.T) {
+	tests := []struct {
+		name           string
+		scaling        *v1beta1.NodePoolAutoScaling
+		annotations    map[string]string
+		wantAnnotation bool
+	}{
+		{
+			name:           "nil scaling, no annotation",
+			scaling:        nil,
+			wantAnnotation: false,
+		},
+		{
+			name:           "nil scaling, preset annotation, should be removed",
+			scaling:        nil,
+			annotations:    map[string]string{clusterv1.ReplicasManagedByAnnotation: "foobar"},
+			wantAnnotation: false,
+		},
+		{
+			name: "enableAutoscaling: false, preset annotation, should be removed",
+			scaling: &v1beta1.NodePoolAutoScaling{
+				EnableAutoscaling: new(false),
+			},
+			annotations:    map[string]string{clusterv1.ReplicasManagedByAnnotation: "foobar"},
+			wantAnnotation: false,
+		},
+		{
+			name:           "scaling empty object, should be present",
+			scaling:        &v1beta1.NodePoolAutoScaling{},
+			wantAnnotation: true,
+		},
+		{
+			name: "enableAutoscaling: true, with min/max, annotation should be present",
+			scaling: &v1beta1.NodePoolAutoScaling{
+				EnableAutoscaling: new(true),
+				MinCount:          new(int32(1)),
+				MaxCount:          new(int32(7)),
+			},
+			wantAnnotation: true,
+		},
+		{
+			name: "user values are overwritten on the annotation",
+			scaling: &v1beta1.NodePoolAutoScaling{
+				EnableAutoscaling: new(true),
+			},
+			annotations:    map[string]string{clusterv1.ReplicasManagedByAnnotation: "foobar"},
+			wantAnnotation: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewWithT(t)
+			mmp := createTestManagedMachinePool()
+			mp := createTestMachinePool()
+
+			if test.scaling != nil {
+				mmp.Spec.Scaling = test.scaling
+			}
+
+			mp.Annotations = maps.Clone(test.annotations)
+
+			s := ManagedMachinePoolScope{
+				GCPManagedMachinePool: mmp,
+				MachinePool:           mp,
+			}
+			s.SetReplicasManagedBy()
+			val, ok := s.MachinePool.Annotations[clusterv1.ReplicasManagedByAnnotation]
+
+			g.Expect(ok).To(Equal(test.wantAnnotation))
+			if test.wantAnnotation {
+				g.Expect(val).To(Equal(replicasManagedByValue))
 			}
 		})
 	}

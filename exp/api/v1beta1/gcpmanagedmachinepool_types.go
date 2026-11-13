@@ -203,10 +203,10 @@ type GCPManagedMachinePoolList struct {
 
 // NodePoolAutoScaling specifies scaling options.
 type NodePoolAutoScaling struct {
-	// MinCount specifies the minimum number of nodes in the node pool
+	// MinCount specifies the minimum number of nodes in the node pool across all the node pool's zones
 	// +optional
 	MinCount *int32 `json:"minCount,omitempty"`
-	// MaxCount specifies the maximum number of nodes in the node pool
+	// MaxCount specifies the maximum number of nodes in the node pool across all the node pool's zones
 	// +optional
 	MaxCount *int32 `json:"maxCount,omitempty"`
 	// Is autoscaling enabled for this node pool. If unspecified, the default value is true.

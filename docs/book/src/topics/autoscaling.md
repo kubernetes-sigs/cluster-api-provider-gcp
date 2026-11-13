@@ -1,3 +1,5 @@
+_For GKE node pools, see [Node Pool Scaling](../managed/node-pool-scaling.md)_
+
 # Autoscaling from Zero
 
 ## Overview

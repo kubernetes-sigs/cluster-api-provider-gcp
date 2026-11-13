@@ -341,7 +341,8 @@ spec:
                             || (!has(self.key) && (!has(self.values) || self.values.size()
                             == 0))
                       scaling:
-                        description: Scaling specifies scaling for the node pool
+                        description: Scaling specifies scaling for the node pool,
+                          nil indicates unmanaged
                         properties:
                           enableAutoscaling:
                             description: Is autoscaling enabled for this node pool.
@@ -355,12 +356,12 @@ spec:
                             type: string
                           maxCount:
                             description: MaxCount specifies the maximum number of
-                              nodes in the node pool
+                              nodes in the node pool across all the node pool's zones
                             format: int32
                             type: integer
                           minCount:
                             description: MinCount specifies the minimum number of
-                              nodes in the node pool
+                              nodes in the node pool across all the node pool's zones
                             format: int32
                             type: integer
                         type: object
