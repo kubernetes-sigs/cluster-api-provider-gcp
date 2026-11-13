@@ -738,7 +738,7 @@ func TestService_createOrGetAddress(t *testing.T) {
 			}
 			if tt.staticIP != "" {
 				clusterScope.GCPCluster.Spec.LoadBalancer.ExternalLoadBalancerConfig = &infrav1.ExternalLoadBalancer{
-					IPAddress: ptr.To(tt.staticIP),
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{IPAddress: ptr.To(tt.staticIP)},
 				}
 			}
 			s := New(tt.scope(clusterScope))
@@ -809,7 +809,7 @@ func TestService_createOrGetRegionalAddress(t *testing.T) {
 			}
 			if tt.staticIP != "" {
 				clusterScope.GCPCluster.Spec.LoadBalancer.ExternalLoadBalancerConfig = &infrav1.ExternalLoadBalancer{
-					IPAddress: ptr.To(tt.staticIP),
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{IPAddress: ptr.To(tt.staticIP)},
 				}
 			}
 			s := New(tt.scope(clusterScope))
@@ -903,7 +903,7 @@ func TestService_createOrGetInternalAddress(t *testing.T) {
 				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
 					LoadBalancerType: &lbTypeInternal,
 					InternalLoadBalancer: &infrav1.LoadBalancer{
-						IPAddress: ptr.To("10.0.0.10"),
+						LoadBalancerCommon: infrav1.LoadBalancerCommon{IPAddress: ptr.To("10.0.0.10")},
 					},
 				}
 				return s
@@ -927,7 +927,7 @@ func TestService_createOrGetInternalAddress(t *testing.T) {
 				s.GCPCluster.Spec.LoadBalancer = infrav1.LoadBalancerSpec{
 					LoadBalancerType: &lbTypeInternal,
 					InternalLoadBalancer: &infrav1.LoadBalancer{
-						IPAddress: ptr.To("10.0.0.10"),
+						LoadBalancerCommon: infrav1.LoadBalancerCommon{IPAddress: ptr.To("10.0.0.10")},
 					},
 				}
 

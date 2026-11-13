@@ -141,15 +141,11 @@ clusterctl init --infrastructure gcp
 While the gate is disabled:
 
 - `GCPCluster` creation is rejected if it uses `RegionalExternal`, `RegionalInternalExternal` or `externalLoadBalancerConfig`.
-- The load balancer reconciler refuses such a spec, which covers clients that bypass admission.
 - Updates and deletion are not gated. `spec.loadBalancer` is immutable, and gating updates would block metadata changes, such as finalizer removal, on clusters created while the gate was enabled. Those clusters can therefore still be deleted after the gate is disabled.
 
 ### Admission Validation
 
-The `GCPCluster` webhook validates `spec.loadBalancer` on create and update. The validation lives in the webhook package rather than in the API types, which only import the packages allowed by the project's `depguard` rules. It:
-
-- rejects unknown `loadBalancerType` values, for clients that bypass the CRD schema;
-- returns a warning when `externalLoadBalancerConfig` is set with `loadBalancerType: Internal`, since there is no external load balancer to configure.
+The `GCPCluster` webhook validates `spec.loadBalancer` on create and update. The validation lives in the webhook package rather than in the API types, which only import the packages allowed by the project's `depguard` rules. It returns a warning when `externalLoadBalancerConfig` is set with `loadBalancerType: Internal`, since there is no external load balancer to configure.
 
 ### Reconciliation
 
@@ -176,7 +172,7 @@ All components of the regional external load balancer use `meta.RegionalKey(name
   Regional Address              type EXTERNAL, optionally externalLoadBalancerConfig.ipAddress
 ```
 
-`Reconcile` dispatches on the load balancer type through small predicates: `shouldCreateGlobalExternalLoadBalancer` (`External`, `InternalExternal`), `shouldCreateInternalLoadBalancer` (`Internal`, `InternalExternal`, `RegionalInternalExternal`) and `isRegionalExternalLoadBalancer` (`RegionalExternal`, `RegionalInternalExternal`). The existing types keep their original code paths.
+`Reconcile` and `Delete` dispatch on the load balancer type: the Global External Load Balancer is handled for `External` and `InternalExternal`, `hasInternalLoadBalancer` matches `Internal`, `InternalExternal` and `RegionalInternalExternal`, and `hasRegionalExternalLoadBalancer` matches `RegionalExternal` and `RegionalInternalExternal`. The existing types keep their original code paths.
 
 `createRegionalExternalLoadBalancer` creates the components in dependency order: health check, backend service, target TCP proxy, address, then forwarding rule. It relies on these helpers in `cloud/services/compute/loadbalancers/reconcile.go`:
 
@@ -188,7 +184,7 @@ When `externalLoadBalancerConfig.ipAddress` is set, both `createOrGetAddress` (g
 
 ### Deletion
 
-Components are deleted in reverse dependency order: forwarding rule, address, target TCP proxy, backend service, health check. Each load balancer teardown runs through `runDeleteSteps`, which attempts every step even when one fails and returns the aggregated errors for retry. A transient error on one component therefore does not prevent the others from being reclaimed, and cannot leave cluster deletion permanently blocked.
+Components are deleted in reverse dependency order: forwarding rule, address, target TCP proxy, backend service, health check. Each load balancer teardown attempts every component even when one fails, and returns the aggregated errors so the reconciler retries. A transient error therefore cannot leave cluster deletion permanently blocked.
 
 ### Risks and Mitigations
 
@@ -212,7 +208,7 @@ Existing clusters are not affected: they keep their load balancer type and code 
 
 ### Test Plan
 
-- Unit tests for the dispatch predicates, `createBackends`, load balancer naming, the regional components (address, target TCP proxy, forwarding rule), the proxy-only subnet check, `runDeleteSteps` and the feature gate check in `cloud/services/compute/loadbalancers`.
+- Unit tests for `createBackends`, load balancer naming, the regional components (address, target TCP proxy, forwarding rule) and the proxy-only subnet check in `cloud/services/compute/loadbalancers`.
 - Backward compatibility tests verifying that the existing load balancer types keep their original code paths.
 - Unit tests for the load balancer validation and for the `GCPCluster` webhook, including the behavior of the feature gate on create and on update.
 - An e2e test that creates a cluster with a `RegionalExternal` load balancer (`cluster-template-ci-with-regional-external-lb.yaml`), with the feature gate enabled in the CI configuration.

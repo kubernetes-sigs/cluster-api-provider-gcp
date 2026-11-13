@@ -27,7 +27,6 @@ import (
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/gcperrors"
-	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -65,113 +64,10 @@ const (
 	subnetPurposeRegionalManagedProxy = "REGIONAL_MANAGED_PROXY"
 )
 
-func isRegionalExternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
-	return lbType == infrav1.RegionalExternal ||
-		lbType == infrav1.RegionalInternalExternal
-}
-
-// ensureRegionalProxyOnlySubnet checks that the cluster's declared subnets
-// include at least one proxy-only subnet (Purpose=REGIONAL_MANAGED_PROXY) in
-// the load balancer's region — a hard prerequisite for a Regional External
-// Proxy LB. Without it, GCP rejects the forwarding rule with an opaque error;
-// failing fast here produces an actionable message pointing at the CAPG spec.
-func (s *Service) ensureRegionalProxyOnlySubnet() error {
-	region := s.scope.Region()
-	for _, subnet := range s.scope.SubnetSpecs() {
-		if subnet.Purpose != subnetPurposeRegionalManagedProxy {
-			continue
-		}
-		// SubnetSpec.Region is optional; an empty value defers to scope.Region().
-		if subnet.Region == "" || subnet.Region == region {
-			return nil
-		}
-	}
-	return fmt.Errorf(
-		"regional external load balancer requires a proxy-only subnet with purpose %q in region %q; "+
-			"add one to spec.network.subnets (see https://cloud.google.com/load-balancing/docs/proxy-only-subnets)",
-		subnetPurposeRegionalManagedProxy, region,
-	)
-}
-
-func shouldCreateGlobalExternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
-	return lbType == infrav1.External ||
-		lbType == infrav1.InternalExternal
-}
-
-func shouldCreateInternalLoadBalancer(lbType infrav1.LoadBalancerType) bool {
-	return lbType == infrav1.Internal ||
-		lbType == infrav1.InternalExternal ||
-		lbType == infrav1.RegionalInternalExternal
-}
-
-func getInternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
-	if lbSpec.InternalLoadBalancer != nil {
-		return ptr.Deref(lbSpec.InternalLoadBalancer.Name, infrav1.InternalRoleTagValue)
-	}
-	return infrav1.InternalRoleTagValue
-}
-
-func getExternalLoadBalancerName(lbSpec infrav1.LoadBalancerSpec) string {
-	if lbSpec.ExternalLoadBalancerConfig != nil {
-		return ptr.Deref(lbSpec.ExternalLoadBalancerConfig.Name, infrav1.APIServerRoleTagValue)
-	}
-	return infrav1.APIServerRoleTagValue
-}
-
-// getLoadBalancingMode returns the appropriate balancing mode for the global
-// backend service. When an internal passthrough LB is created alongside an
-// external one (InternalExternal), they share instance groups: the internal LB
-// only supports CONNECTION, and UTILIZATION cannot be mixed with another mode.
-// See https://cloud.google.com/load-balancing/docs/backend-service#balancing-mode-lb
-func getLoadBalancingMode(lbType infrav1.LoadBalancerType) loadBalancingMode {
-	if lbType == infrav1.InternalExternal {
-		return loadBalancingModeConnection
-	}
-	return loadBalancingModeUtilization
-}
-
-// createBackends builds Backend specs for the given instance groups.
-// maxConnections is applied as-is to each Backend; pass 0 to leave the field
-// unset (required for INTERNAL passthrough backend services — GCP rejects
-// maxConnections on those).
-func createBackends(instancegroups []*compute.InstanceGroup, mode loadBalancingMode, maxConnections int64) []*compute.Backend {
-	backends := make([]*compute.Backend, 0, len(instancegroups))
-	for _, group := range instancegroups {
-		backends = append(backends, &compute.Backend{
-			BalancingMode:  string(mode),
-			Group:          group.SelfLink,
-			MaxConnections: maxConnections,
-		})
-	}
-	return backends
-}
-
-// checkRegionalLoadBalancerFeatureGate refuses to reconcile a LoadBalancerSpec
-// that uses a field guarded by the RegionalLoadBalancer feature gate while the
-// gate is disabled. The webhook enforces the same rule on create; this covers
-// clients that bypass it. Delete is intentionally not gated so that a cluster
-// created while the gate was enabled can still be torn down.
-func checkRegionalLoadBalancerFeatureGate(lbSpec infrav1.LoadBalancerSpec) error {
-	if feature.Gates.Enabled(feature.RegionalLoadBalancer) {
-		return nil
-	}
-	if lbType := ptr.Deref(lbSpec.LoadBalancerType, infrav1.External); isRegionalExternalLoadBalancer(lbType) {
-		return fmt.Errorf("load balancer type %s requires the RegionalLoadBalancer feature gate", lbType)
-	}
-	if lbSpec.ExternalLoadBalancerConfig != nil {
-		return errors.New("externalLoadBalancerConfig requires the RegionalLoadBalancer feature gate")
-	}
-	return nil
-}
-
 // Reconcile reconcile cluster control-plane loadbalancer components.
 func (s *Service) Reconcile(ctx context.Context) error {
 	log := log.FromContext(ctx)
 	log.Info("Reconciling loadbalancer resources")
-
-	if err := checkRegionalLoadBalancerFeatureGate(s.scope.LoadBalancer()); err != nil {
-		return err
-	}
 
 	// Creates instance groups used by load balancer(s)
 	instancegroups, err := s.createOrGetInstanceGroups(ctx)
@@ -182,20 +78,20 @@ func (s *Service) Reconcile(ctx context.Context) error {
 	lbSpec := s.scope.LoadBalancer()
 	lbType := ptr.Deref(lbSpec.LoadBalancerType, infrav1.External)
 	// Create a Global External Proxy Load Balancer by default
-	if shouldCreateGlobalExternalLoadBalancer(lbType) {
+	if lbType == infrav1.External || lbType == infrav1.InternalExternal {
 		if err = s.createExternalLoadBalancer(ctx, lbType, instancegroups); err != nil {
 			return err
 		}
 	}
 
 	// Create a Regional Internal Passthrough Load Balancer if configured
-	if shouldCreateInternalLoadBalancer(lbType) {
+	if hasInternalLoadBalancer(lbType) {
 		if err = s.createInternalLoadBalancer(ctx, getInternalLoadBalancerName(lbSpec), lbType, instancegroups); err != nil {
 			return err
 		}
 	}
 
-	if isRegionalExternalLoadBalancer(lbType) {
+	if hasRegionalExternalLoadBalancer(lbType) {
 		if err = s.createRegionalExternalLoadBalancer(ctx, instancegroups); err != nil {
 			return err
 		}
@@ -210,19 +106,19 @@ func (s *Service) Delete(ctx context.Context) error {
 	var allErrs []error
 	lbSpec := s.scope.LoadBalancer()
 	lbType := ptr.Deref(lbSpec.LoadBalancerType, infrav1.External)
-	if shouldCreateGlobalExternalLoadBalancer(lbType) {
+	if lbType == infrav1.External || lbType == infrav1.InternalExternal {
 		if err := s.deleteExternalLoadBalancer(ctx); err != nil {
 			allErrs = append(allErrs, err)
 		}
 	}
 
-	if shouldCreateInternalLoadBalancer(lbType) {
+	if hasInternalLoadBalancer(lbType) {
 		if err := s.deleteInternalLoadBalancer(ctx, getInternalLoadBalancerName(lbSpec)); err != nil {
 			allErrs = append(allErrs, err)
 		}
 	}
 
-	if isRegionalExternalLoadBalancer(lbType) {
+	if hasRegionalExternalLoadBalancer(lbType) {
 		if err := s.deleteRegionalExternalLoadBalancer(ctx); err != nil {
 			allErrs = append(allErrs, err)
 		}
@@ -236,45 +132,6 @@ func (s *Service) Delete(ctx context.Context) error {
 	return errors.Join(allErrs...)
 }
 
-// Component kinds used for logging and error attribution during LB teardown.
-// Kept short and stable so an operator scanning logs sees the same tokens
-// consistently across load-balancer variants.
-const (
-	kindForwardingRule = "ForwardingRule"
-	kindAddress        = "Address"
-	kindTargetTCPProxy = "TargetTCPProxy"
-	kindBackendService = "BackendService"
-	kindHealthCheck    = "HealthCheck"
-)
-
-// deleteStep represents one component delete inside a load balancer teardown.
-// It is executed by runDeleteSteps in dependency order; if the delete succeeds,
-// clear runs to zero out the scope's cached reference. A failure is recorded
-// but does not abort subsequent steps — GCP resources that no longer share a
-// dependency with the failing one can still be reclaimed on the same pass.
-type deleteStep struct {
-	kind   string
-	delete func() error
-	clear  func()
-}
-
-// runDeleteSteps runs steps in order, logging each failure and collecting errors
-// so an unrelated transient failure on one component does not permanently block
-// cleanup of another. Returns the aggregated error for the reconciler to retry.
-func runDeleteSteps(ctx context.Context, name string, steps []deleteStep) error {
-	log := log.FromContext(ctx)
-	var errs []error
-	for _, step := range steps {
-		if err := step.delete(); err != nil {
-			log.Error(err, "failed to delete load balancer component; continuing with remaining components", "kind", step.kind, "name", name)
-			errs = append(errs, fmt.Errorf("deleting %s: %w", step.kind, err))
-			continue
-		}
-		step.clear()
-	}
-	return errors.Join(errs...)
-}
-
 func (s *Service) deleteExternalLoadBalancer(ctx context.Context) error {
 	log.FromContext(ctx).Info("Deleting external loadbalancer resources")
 	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
@@ -283,26 +140,66 @@ func (s *Service) deleteExternalLoadBalancer(ctx context.Context) error {
 	// A ForwardingRule references TargetTCPProxy + Address; TargetTCPProxy references
 	// BackendService; BackendService references HealthCheck. Deleting in this order
 	// avoids "resource in use" from GCP.
-	return runDeleteSteps(ctx, name, []deleteStep{
-		{kindForwardingRule, func() error { return s.deleteForwardingRule(ctx, name) }, func() { net.APIServerForwardingRule = nil }},
-		{kindAddress, func() error { return s.deleteAddress(ctx, name) }, func() { net.APIServerAddress = nil }},
-		{kindTargetTCPProxy, func() error { return s.deleteTargetTCPProxy(ctx) }, func() { net.APIServerTargetProxy = nil }},
-		{kindBackendService, func() error { return s.deleteBackendService(ctx, name) }, func() { net.APIServerBackendService = nil }},
-		{kindHealthCheck, func() error { return s.deleteHealthCheck(ctx, name) }, func() { net.APIServerHealthCheck = nil }},
-	})
+	var errs []error
+	if err := s.deleteForwardingRule(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting ForwardingRule: %w", err))
+	} else {
+		net.APIServerForwardingRule = nil
+	}
+	if err := s.deleteAddress(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting Address: %w", err))
+	} else {
+		net.APIServerAddress = nil
+	}
+	if err := s.deleteTargetTCPProxy(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("deleting TargetTCPProxy: %w", err))
+	} else {
+		net.APIServerTargetProxy = nil
+	}
+	if err := s.deleteBackendService(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting BackendService: %w", err))
+	} else {
+		net.APIServerBackendService = nil
+	}
+	if err := s.deleteHealthCheck(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting HealthCheck: %w", err))
+	} else {
+		net.APIServerHealthCheck = nil
+	}
+	return errors.Join(errs...)
 }
 
 func (s *Service) deleteRegionalExternalLoadBalancer(ctx context.Context) error {
 	log.FromContext(ctx).Info("Deleting external regional loadbalancer resources")
 	name := getExternalLoadBalancerName(s.scope.LoadBalancer())
 	net := s.scope.Network()
-	return runDeleteSteps(ctx, name, []deleteStep{
-		{"regional " + kindForwardingRule, func() error { return s.deleteRegionalForwardingRule(ctx, name) }, func() { net.APIServerForwardingRule = nil }},
-		{"regional " + kindAddress, func() error { return s.deleteRegionalAddress(ctx, name) }, func() { net.APIServerAddress = nil }},
-		{"regional " + kindTargetTCPProxy, func() error { return s.deleteRegionalTargetTCPProxy(ctx) }, func() { net.APIServerTargetProxy = nil }},
-		{"regional " + kindBackendService, func() error { return s.deleteRegionalBackendService(ctx, name) }, func() { net.APIServerBackendService = nil }},
-		{"regional " + kindHealthCheck, func() error { return s.deleteRegionalHealthCheck(ctx, name) }, func() { net.APIServerHealthCheck = nil }},
-	})
+	var errs []error
+	if err := s.deleteRegionalForwardingRule(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting regional ForwardingRule: %w", err))
+	} else {
+		net.APIServerForwardingRule = nil
+	}
+	if err := s.deleteRegionalAddress(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting regional Address: %w", err))
+	} else {
+		net.APIServerAddress = nil
+	}
+	if err := s.deleteRegionalTargetTCPProxy(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("deleting regional TargetTCPProxy: %w", err))
+	} else {
+		net.APIServerTargetProxy = nil
+	}
+	if err := s.deleteRegionalBackendService(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting regional BackendService: %w", err))
+	} else {
+		net.APIServerBackendService = nil
+	}
+	if err := s.deleteRegionalHealthCheck(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting regional HealthCheck: %w", err))
+	} else {
+		net.APIServerHealthCheck = nil
+	}
+	return errors.Join(errs...)
 }
 
 func (s *Service) deleteInternalLoadBalancer(ctx context.Context, name string) error {
@@ -310,12 +207,28 @@ func (s *Service) deleteInternalLoadBalancer(ctx context.Context, name string) e
 	net := s.scope.Network()
 	// Passthrough (INTERNAL) LB has no TargetTCPProxy; ForwardingRule references
 	// BackendService directly.
-	return runDeleteSteps(ctx, name, []deleteStep{
-		{kindForwardingRule, func() error { return s.deleteRegionalForwardingRule(ctx, name) }, func() { net.APIInternalForwardingRule = nil }},
-		{"Internal" + kindAddress, func() error { return s.deleteInternalAddress(ctx, name) }, func() { net.APIInternalAddress = nil }},
-		{"Regional" + kindBackendService, func() error { return s.deleteRegionalBackendService(ctx, name) }, func() { net.APIInternalBackendService = nil }},
-		{"Regional" + kindHealthCheck, func() error { return s.deleteRegionalHealthCheck(ctx, name) }, func() { net.APIInternalHealthCheck = nil }},
-	})
+	var errs []error
+	if err := s.deleteRegionalForwardingRule(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting ForwardingRule: %w", err))
+	} else {
+		net.APIInternalForwardingRule = nil
+	}
+	if err := s.deleteInternalAddress(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting InternalAddress: %w", err))
+	} else {
+		net.APIInternalAddress = nil
+	}
+	if err := s.deleteRegionalBackendService(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting RegionalBackendService: %w", err))
+	} else {
+		net.APIInternalBackendService = nil
+	}
+	if err := s.deleteRegionalHealthCheck(ctx, name); err != nil {
+		errs = append(errs, fmt.Errorf("deleting RegionalHealthCheck: %w", err))
+	} else {
+		net.APIInternalHealthCheck = nil
+	}
+	return errors.Join(errs...)
 }
 
 // createExternalLoadBalancer creates the components for a Global External Proxy LoadBalancer.

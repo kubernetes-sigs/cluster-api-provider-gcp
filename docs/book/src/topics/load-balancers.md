@@ -33,7 +33,7 @@ export EXP_CAPG_REGIONAL_LOAD_BALANCER=true
 clusterctl init --infrastructure gcp
 ```
 
-When the feature flag is disabled, `GCPCluster` objects that use these settings are rejected at creation time, and the controller refuses to reconcile any that bypassed admission. Clusters created while the flag was enabled can still be deleted after it is disabled.
+When the feature flag is disabled, `GCPCluster` objects that use these settings are rejected at creation time. Clusters created while the flag was enabled keep being reconciled and can still be deleted after it is disabled.
 
 ## Proxy-only Subnet
 

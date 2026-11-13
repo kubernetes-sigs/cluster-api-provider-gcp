@@ -617,15 +617,30 @@ const (
 	InternalAccessGlobal = InternalAccess("Global")
 )
 
-// LoadBalancer specifies the configuration of a LoadBalancer.
-type LoadBalancer struct {
-	// Name is the name of the Load Balancer. If not set a default name
-	// will be used. For an Internal Load Balancer the default name is "api-internal".
-	// For a Regional External Load Balancer the default name is "api-server".
+// LoadBalancerCommon specifies common attributes between LoadBalancer and ExternalLoadBalancer.
+type LoadBalancerCommon struct {
+	// Name is the name of the Load Balancer. The load balancer resources are
+	// named "<cluster-name>-<name>". If not set, "api-internal" is used for the
+	// Internal Load Balancer and "apiserver" for the Global and Regional External
+	// Load Balancers.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Pattern=`(^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)`
 	// +optional
 	Name *string `json:"name,omitempty"`
+
+	// IPAddress is the static IP address to use for the Load Balancer.
+	// If not set, a new static IP address will be allocated.
+	// For an Internal Load Balancer, this must be a valid IP address from the
+	// Load Balancer subnet. For a Global External Load Balancer, this must be a
+	// global external address. For a Regional External Load Balancer, this must
+	// be a valid external IP address in the configured region.
+	// +optional
+	IPAddress *string `json:"ipAddress,omitempty"`
+}
+
+// LoadBalancer specifies the configuration of a LoadBalancer.
+type LoadBalancer struct {
+	LoadBalancerCommon `json:",inline"`
 
 	// Subnet is the name of the subnet to use for a regional Load Balancer.
 	// For Internal Load Balancers, a subnet is required. If not defined,
@@ -647,13 +662,6 @@ type LoadBalancer struct {
 	// +kubebuilder:default=Regional
 	// +optional
 	InternalAccess InternalAccess `json:"internalAccess,omitempty"`
-
-	// IPAddress is the static IP address to use for the Load Balancer.
-	// If not set, a new static IP address will be allocated.
-	// For Internal Load Balancers, this must be a valid IP address from the LoadBalancer Subnet.
-	// For Regional External Load Balancers, this must be a valid external IP address in the region.
-	// +optional
-	IPAddress *string `json:"ipAddress,omitempty"`
 }
 
 // ExternalLoadBalancer describes the settings that apply to the external
@@ -662,19 +670,5 @@ type LoadBalancer struct {
 // Internal-only options such as subnet or internalAccess do not leak into the
 // CRD schema for external configuration.
 type ExternalLoadBalancer struct {
-	// Name is the name of the Load Balancer. The load balancer resources are
-	// named "<cluster-name>-<name>". If not set, "apiserver" is used for both
-	// Global and Regional External Load Balancers.
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Pattern=`(^[1-9][0-9]{0,31}$)|(^[a-z][a-z0-9-]{4,28}[a-z0-9]$)`
-	// +optional
-	Name *string `json:"name,omitempty"`
-
-	// IPAddress is the static IP address to use for the external Load Balancer.
-	// If not set, a new static IP address will be allocated.
-	// For a Global External Load Balancer this must be a global external
-	// address; for a Regional External Load Balancer it must be a valid
-	// external IP address in the configured region.
-	// +optional
-	IPAddress *string `json:"ipAddress,omitempty"`
+	LoadBalancerCommon `json:",inline"`
 }

@@ -17,10 +17,12 @@ limitations under the License.
 package webhooks
 
 import (
+	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
@@ -48,7 +50,7 @@ func TestGCPCluster_ValidateCreate(t *testing.T) {
 					LoadBalancer: infrav1.LoadBalancerSpec{
 						LoadBalancerType: ptr.To(infrav1.Internal),
 						ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
-							Name: ptr.To("ignored"),
+							LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("ignored")},
 						},
 					},
 				},
@@ -96,7 +98,7 @@ func TestGCPCluster_ValidateCreate(t *testing.T) {
 					LoadBalancer: infrav1.LoadBalancerSpec{
 						LoadBalancerType: ptr.To(infrav1.External),
 						ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
-							Name: ptr.To("custom-lb"),
+							LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("custom-lb")},
 						},
 					},
 				},
@@ -332,7 +334,7 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 					LoadBalancer: infrav1.LoadBalancerSpec{
 						LoadBalancerType: ptr.To(infrav1.Internal),
 						ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
-							Name: ptr.To("ignored"),
+							LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("ignored")},
 						},
 					},
 				},
@@ -343,7 +345,7 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 					LoadBalancer: infrav1.LoadBalancerSpec{
 						LoadBalancerType: ptr.To(infrav1.Internal),
 						ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
-							Name: ptr.To("ignored"),
+							LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("ignored")},
 						},
 					},
 				},
@@ -669,7 +671,7 @@ func TestGCPCluster_ValidateUpdate_RegionalLoadBalancerGateDisabled(t *testing.T
 			LoadBalancer: infrav1.LoadBalancerSpec{
 				LoadBalancerType: ptr.To(infrav1.RegionalExternal),
 				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
-					Name: ptr.To("custom-lb"),
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("custom-lb")},
 				},
 			},
 		},
@@ -679,4 +681,89 @@ func TestGCPCluster_ValidateUpdate_RegionalLoadBalancerGateDisabled(t *testing.T
 
 	_, err := (&GCPCluster{}).ValidateUpdate(t.Context(), cluster, updated)
 	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestValidateLoadBalancerSpec(t *testing.T) {
+	tests := []struct {
+		name         string
+		spec         infrav1.LoadBalancerSpec
+		wantWarnings int
+	}{
+		{
+			name: "empty spec emits no warning",
+			spec: infrav1.LoadBalancerSpec{},
+		},
+		{
+			name: "External type emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.External),
+			},
+		},
+		{
+			name: "RegionalExternal type emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.RegionalExternal),
+			},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with Internal LB emits warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.Internal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("ignored")},
+				},
+			},
+			wantWarnings: 1,
+		},
+		{
+			name: "ExternalLoadBalancerConfig with External LB emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.External),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("api-lb")},
+				},
+			},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with RegionalExternal LB emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.RegionalExternal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("api-lb")},
+				},
+			},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with InternalExternal LB emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.InternalExternal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("api-lb")},
+				},
+			},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with RegionalInternalExternal LB emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.RegionalInternalExternal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("api-lb")},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings := validateLoadBalancerSpec(&tt.spec, field.NewPath("spec", "loadBalancer"))
+			if got := len(warnings); got != tt.wantWarnings {
+				t.Fatalf("validateLoadBalancerSpec() warnings count = %d, want %d (warnings=%v)", got, tt.wantWarnings, warnings)
+			}
+			for _, w := range warnings {
+				if !strings.Contains(w, "spec.loadBalancer.externalLoadBalancerConfig") {
+					t.Errorf("warning %q missing expected field path prefix", w)
+				}
+			}
+		})
+	}
 }
