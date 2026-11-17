@@ -441,20 +441,20 @@ func (m *MachinePoolScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk 
 			additionalDisk.Interface = "NVME"
 		}
 		if disk.EncryptionKey != nil {
-			if spec.RootDiskEncryptionKey.KeyType == infrav1.CustomerManagedKey && spec.RootDiskEncryptionKey.ManagedKey != nil {
+			if disk.EncryptionKey.KeyType == infrav1.CustomerManagedKey && disk.EncryptionKey.ManagedKey != nil {
 				additionalDisk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
-					KmsKeyName: spec.RootDiskEncryptionKey.ManagedKey.KMSKeyName,
+					KmsKeyName: disk.EncryptionKey.ManagedKey.KMSKeyName,
 				}
-				if spec.RootDiskEncryptionKey.KMSKeyServiceAccount != nil {
-					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *spec.RootDiskEncryptionKey.KMSKeyServiceAccount
+				if disk.EncryptionKey.KMSKeyServiceAccount != nil {
+					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *disk.EncryptionKey.KMSKeyServiceAccount
 				}
-			} else if spec.RootDiskEncryptionKey.KeyType == infrav1.CustomerSuppliedKey && spec.RootDiskEncryptionKey.SuppliedKey != nil {
+			} else if disk.EncryptionKey.KeyType == infrav1.CustomerSuppliedKey && disk.EncryptionKey.SuppliedKey != nil {
 				additionalDisk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
-					RawKey:          string(spec.RootDiskEncryptionKey.SuppliedKey.RawKey),
-					RsaEncryptedKey: string(spec.RootDiskEncryptionKey.SuppliedKey.RSAEncryptedKey),
+					RawKey:          string(disk.EncryptionKey.SuppliedKey.RawKey),
+					RsaEncryptedKey: string(disk.EncryptionKey.SuppliedKey.RSAEncryptedKey),
 				}
-				if spec.RootDiskEncryptionKey.KMSKeyServiceAccount != nil {
-					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *spec.RootDiskEncryptionKey.KMSKeyServiceAccount
+				if disk.EncryptionKey.KMSKeyServiceAccount != nil {
+					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *disk.EncryptionKey.KMSKeyServiceAccount
 				}
 			}
 		}

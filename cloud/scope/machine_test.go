@@ -68,7 +68,7 @@ func TestMachineLocalSSDDiskType(t *testing.T) {
 	g.Expect(testMachineScope).NotTo(BeNil())
 
 	// Now make sure the local-ssd disk type is detected as SCRATCH.
-	diskSpec := instanceAdditionalDiskSpec(ctx, testGCPMachine.Spec.AdditionalDisks, testGCPMachine.Spec.RootDiskEncryptionKey, testMachineScope.Zone(), testGCPMachine.Spec.ResourceManagerTags)
+	diskSpec := instanceAdditionalDiskSpec(ctx, testGCPMachine.Spec.AdditionalDisks, testMachineScope.Zone(), testGCPMachine.Spec.ResourceManagerTags)
 	g.Expect(diskSpec).NotTo(BeEmpty())
 
 	// Get the local-ssd disk now.
@@ -157,5 +157,70 @@ func TestInstanceNetworkInterfaceAliasIPRangesSpec(t *testing.T) {
 		g.Expect(result).To(HaveLen(1))
 		g.Expect(result[0].IpCidrRange).To(Equal("10.100.0.0/24"))
 		g.Expect(result[0].SubnetworkRangeName).To(Equal(""))
+	})
+}
+
+// TestInstanceAdditionalDiskSpecEncryptionKey verifies that an additional disk is encrypted
+// with its own EncryptionKey, and that a disk encryption key set only on the additional disk
+// (with no root disk encryption key) is honoured without panicking.
+func TestInstanceAdditionalDiskSpecEncryptionKey(t *testing.T) {
+	ctx := context.Background()
+	zone := "us-central1-a"
+	deviceType := infrav1.PdStandardDiskType
+
+	managedKeyName := "projects/test/locations/region/keyRings/ring/cryptoKeys/disk-key"
+	serviceAccount := "disk@test.iam.gserviceaccount.com"
+
+	t.Run("managed key is taken from the additional disk when no root disk key is set", func(t *testing.T) {
+		g := NewWithT(t)
+		disks := []infrav1.AttachedDiskSpec{
+			{
+				DeviceType: &deviceType,
+				EncryptionKey: &infrav1.CustomerEncryptionKey{
+					KeyType:              infrav1.CustomerManagedKey,
+					KMSKeyServiceAccount: &serviceAccount,
+					ManagedKey:           &infrav1.ManagedKey{KMSKeyName: managedKeyName},
+				},
+			},
+		}
+
+		diskSpec := instanceAdditionalDiskSpec(ctx, disks, zone, nil)
+
+		g.Expect(diskSpec).To(HaveLen(1))
+		g.Expect(diskSpec[0].DiskEncryptionKey).NotTo(BeNil())
+		g.Expect(diskSpec[0].DiskEncryptionKey.KmsKeyName).To(Equal(managedKeyName))
+		g.Expect(diskSpec[0].DiskEncryptionKey.KmsKeyServiceAccount).To(Equal(serviceAccount))
+	})
+
+	t.Run("supplied key is taken from the additional disk", func(t *testing.T) {
+		g := NewWithT(t)
+		rawKey := []byte("SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0=")
+		disks := []infrav1.AttachedDiskSpec{
+			{
+				DeviceType: &deviceType,
+				EncryptionKey: &infrav1.CustomerEncryptionKey{
+					KeyType:     infrav1.CustomerSuppliedKey,
+					SuppliedKey: &infrav1.SuppliedKey{RawKey: rawKey},
+				},
+			},
+		}
+
+		diskSpec := instanceAdditionalDiskSpec(ctx, disks, zone, nil)
+
+		g.Expect(diskSpec).To(HaveLen(1))
+		g.Expect(diskSpec[0].DiskEncryptionKey).NotTo(BeNil())
+		g.Expect(diskSpec[0].DiskEncryptionKey.RawKey).To(Equal(string(rawKey)))
+	})
+
+	t.Run("an additional disk without an encryption key is left unencrypted", func(t *testing.T) {
+		g := NewWithT(t)
+		disks := []infrav1.AttachedDiskSpec{
+			{DeviceType: &deviceType},
+		}
+
+		diskSpec := instanceAdditionalDiskSpec(ctx, disks, zone, nil)
+
+		g.Expect(diskSpec).To(HaveLen(1))
+		g.Expect(diskSpec[0].DiskEncryptionKey).To(BeNil())
 	})
 }
