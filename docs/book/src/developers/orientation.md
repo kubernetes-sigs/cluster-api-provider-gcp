@@ -1,4 +1,33 @@
-# Jobs
+# Repository Orientation
+
+### Dev manifest files
+
+Part of running cluster-api-provider-gcp is generating manifests to run.
+Generating dev manifests allows you to test dev images instead of the default
+releases.
+
+### Dev images
+
+#### Container registry
+
+Any public container registry can be leveraged for storing cluster-api-provider-gcp container images.
+
+### Modules and Dependencies
+
+This repository uses [Go Modules](https://github.com/golang/go/wiki/Modules) to track vendor dependencies.
+
+To pin a new dependency:
+
+- Run `go get <repository>@<version>`
+- (Optional) Add a replace statement in `go.mod`
+
+Makefile targets and scripts are offered to work with go modules:
+
+- `make verify-modules` checks whether go modules are out of date.
+- `make modules` runs `go mod tidy` to ensure proper vendoring.
+- `hack/ensure-go.sh` checks that the Go version and environment variables are properly set.
+
+## Jobs
 
 This document provides an overview of our jobs running via Prow and Github actions.
 

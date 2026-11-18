@@ -12,6 +12,8 @@ no-section-label = true
 [output.html.redirect]
 "/agenda.html" = "https://docs.google.com/document/d/11ccg-nkzCq-Yd9mnUG7DVsTrkQVEHaynNE3VcMa3z7Y"
 "/agenda/2024.html" = "https://docs.google.com/document/d/11ccg-nkzCq-Yd9mnUG7DVsTrkQVEHaynNE3VcMa3z7Y"
+"/developers/development.html" = "/developers/index.html"
+"/developers/jobs.html" = "/developers/orientation.html"
 
 [preprocessor.tabulate]
 command = "mdbook-tabulate"

@@ -7,7 +7,7 @@
 
 ## Development
 
-- [Development Guide](./book/src/developers/development.md)
+- [Development Guide](./book/src/developers/index.md)
 - [Releasing](./book/src/developers/releasing.md)
 
 ## Testing 
