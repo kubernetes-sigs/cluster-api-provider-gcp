@@ -44,7 +44,7 @@ number instead. Make sure to choose a port that is not being used by another pro
 
 If a previous attempt left behind a `kind-registry` container or a `capg` KinD cluster, you can run
 `docker rm -f kind-registry` and `make kind-reset` to get back to a blank slate before trying again (`make kind-reset`
-also deletes `capg-e2e` and `clusterapi` clusters).
+also deletes the `capg-e2e` cluster).
 </aside>
 
 ## Checking It Works

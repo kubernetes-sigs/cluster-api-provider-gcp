@@ -59,7 +59,6 @@ That's the only line to touch for the e2e and conformance jobs.
 These name the image directly and are not derived from the pin:
 
 - `../prerequisites.md`: the `make build-gce-ubuntu-*` target and the `family:capi-ubuntu-*-k8s` filter
-- `cluster-creation.md`: the example `IMAGE_ID`
 
 Leave `../topics/autoscaling.md` alone: its `imageFamily` is a Google public image family in an unrelated example.
 

@@ -146,7 +146,7 @@ go list -m k8s.io/client-go sigs.k8s.io/kind github.com/onsi/ginkgo/v2
 
 The `k8s.io/client-go` version `v0.MINOR.PATCH` determines kubectl `v1.MINOR.PATCH` and the envtest `1.MINOR` selector. Verify the kubectl binary and a matching envtest release are available. The Ginkgo CLI follows the root `go.mod`; controller-gen, conversion-gen, and setup-envtest follow `hack/tools/go.mod`. Check that their selected versions are appropriate before regenerating files.
 
-Do NOT update the independent pins `GOLANG_VERSION`, `KUSTOMIZE_VER`, `CERT_MANAGER_VER`, or `CALICO_VERSION` as part of the k8s/CAPI bump. `GOLANGCI_LINT_VER` follows `.github/workflows/lint.yml` and is handled by the Go bump guide.
+Do NOT update the independent pins `GOLANG_VERSION`, `KUSTOMIZE_VER`, or `CALICO_VERSION` as part of the k8s/CAPI bump. `GOLANGCI_LINT_VER` follows `.github/workflows/lint.yml` and is handled by the Go bump guide.
 
 ## Step 6: Update metadata.yaml
 

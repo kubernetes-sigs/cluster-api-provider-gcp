@@ -141,7 +141,9 @@ Specifically the `IMAGE_NAME` will be of the format `...-vX-Y-Z-nightly`, theref
 `vX.Y.Z`.
 
 In addition, note that if `GCP_NETWORK_NAME` does not exist, CAPG will create it along with other networking resources.
-These resources are cleared up when the cluster is deleted.
+These resources are cleared up when the cluster is deleted. If the value `default` is used then CAPG creates no
+network or Cloud NAT, and you'll need to follow [these steps](../prerequisites.md#configure-network-and-cloud-nat) first
+to ensure the nodes can pull images correctly.
 
 #### Deploying A Self-Managed Cluster
 

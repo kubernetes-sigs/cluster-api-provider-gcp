@@ -42,8 +42,6 @@ export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= $(basename $(patsubst v%,%,$(KU
 export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?=60s
 export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=60s
 
-# Keep the standalone cert manager pinned here; it is not a dependency of either Go module.
-CERT_MANAGER_VER := v1.21.3
 # Keep the standalone go-apidiff pinned here; it is not a dependency of either Go module.
 GO_APIDIFF_VER := v0.8.3
 # Keep the standalone yq pinned here; it is not a dependency of either Go module.
@@ -528,33 +526,6 @@ CLUSTER_NAME ?= test1
 .PHONY: install-tools # populate hack/tools/bin
 install-tools: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(GINKGO) $(KIND)
 
-.PHONY: create-management-cluster
-create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KIND) $(KUBECTL)
-	## Create kind management cluster.
-	$(KIND) create cluster --name=clusterapi
-
-	# Install cert manager and wait for availability
-	./hack/install-cert-manager.sh $(CERT_MANAGER_VER)
-
-	# Deploy CAPI
-	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.7.3/cluster-api-components.yaml | $(ENVSUBST) | $(KUBECTL) apply -f -
-
-	# Deploy CAPG
-	$(KIND) load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
-	$(KUSTOMIZE) build config/default | $(ENVSUBST) | $(KUBECTL) apply -f -
-
-	# Wait for CAPI pods
-	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-system deployment -l cluster.x-k8s.io/provider=cluster-api
-	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-kubeadm-bootstrap-system deployment -l cluster.x-k8s.io/provider=bootstrap-kubeadm
-	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-kubeadm-control-plane-system deployment -l cluster.x-k8s.io/provider=control-plane-kubeadm
-
-	# Wait for CAPG pods
-	$(KUBECTL) wait --for=condition=Ready --timeout=5m -n capg-system pod -l cluster.x-k8s.io/provider=infrastructure-gcp
-
-	# required sleep for when creating management and workload cluster simultaneously
-	sleep 10
-	@echo 'Set kubectl context to the kind management cluster by running "$(KUBECTL) config set-context kind-clusterapi"'
-
 .PHONY: create-workload-cluster
 create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	# Create workload Cluster.
@@ -571,9 +542,6 @@ create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 
 	@echo 'run "$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) ..." to work with the new target cluster'
 
-.PHONY: create-cluster
-create-cluster: create-management-cluster create-workload-cluster ## Create a development Kubernetes cluster on GCP in a KIND management cluster.
-
 .PHONY: delete-workload-cluster
 delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 	@echo 'Your GCP resources will now be deleted, this can take up to 20 minutes'
@@ -583,7 +551,6 @@ delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 kind-reset: ## Destroys the kind clusters.
 	$(KIND) delete cluster --name=capg || true
 	$(KIND) delete cluster --name=capg-e2e || true
-	$(KIND) delete cluster --name=clusterapi || true
 
 ## --------------------------------------
 ## Tilt / Kind
@@ -596,10 +563,6 @@ kind-create: $(KUBECTL) ## create capg kind cluster if needed
 .PHONY: tilt-up
 tilt-up: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) kind-create ## start tilt and build kind cluster if needed
 	EXP_CLUSTER_RESOURCE_SET=true tilt up
-
-.PHONY: delete-cluster
-delete-cluster: delete-workload-cluster  ## Deletes the example kind cluster "capg"
-	kind delete cluster --name=capg
 
 ## --------------------------------------
 ## Cleanup / Verification

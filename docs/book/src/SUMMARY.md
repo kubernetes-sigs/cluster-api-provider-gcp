@@ -40,7 +40,6 @@
     - [Running CAPG Locally](./developers/running-locally.md)
     - [Adding new E2E test](./developers/e2e.md)
     - [Try unreleased changes with Nightly Builds](./developers/nightly-builds.md)
-    - [Creating a cluster](./developers/cluster-creation.md)
     - [Releasing](./developers/releasing.md)
     - [Bumping Go](./developers/bump-go.md)
     - [Bumping CAPI/Kubernetes](./developers/bump-k8s-capi.md)

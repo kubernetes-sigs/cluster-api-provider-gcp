@@ -15,6 +15,7 @@ no-section-label = true
 "/developers/development.html" = "/developers/index.html"
 "/developers/jobs.html" = "/developers/orientation.html"
 "/developers/nightlies.html" = "/developers/nightly-builds.html"
+"/developers/cluster-creation.html" = "/developers/setup-tutorial.html"
 
 [preprocessor.tabulate]
 command = "mdbook-tabulate"
