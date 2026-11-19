@@ -1,6 +1,5 @@
 # -*- mode: Python -*-
 
-envsubst_cmd = "./hack/tools/bin/envsubst"
 tools_bin = "./hack/tools/bin"
 kubectl_cmd = "./hack/tools/bin/kubectl"
 kind_cmd = "./hack/tools/bin/kind"
@@ -15,12 +14,9 @@ settings = {
     "allowed_contexts": [
         "kind-capg",
     ],
-    "deploy_cert_manager": True,
     "preload_images_for_kind": True,
     "kind_cluster_name": "capg",
-    "capi_version": "v1.14.4",
-    "cert_manager_version": "v1.21.3",
-    "kubernetes_version": "v1.36.0",
+    "capi_version": os.getenv("CAPI_VERSION"),
 }
 
 keys = ["GCP_B64ENCODED_CREDENTIALS"]
@@ -30,6 +26,12 @@ settings.update(read_json(
     "tilt-settings.json",
     default = {},
 ))
+
+if not settings.get("capi_version"):
+    fail("Cluster API Version not set. Please use `make tilt-up` or set `capi_version` in `tilt-settings.json`")
+
+if not os.getenv("CLUSTERCTL"):
+    fail("clusterctl path is not set. Please use `make tilt-up` or set the CLUSTERCTL environment variable to point at your `clusterctl` installation")
 
 if settings.get("trigger_mode") == "manual":
     trigger_mode(TRIGGER_MODE_MANUAL)
@@ -42,10 +44,20 @@ if "default_registry" in settings:
 
 # deploy CAPI
 def deploy_capi():
-    version = settings.get("capi_version")
-    capi_uri = "https://github.com/kubernetes-sigs/cluster-api/releases/download/{}/cluster-api-components.yaml".format(version)
-    cmd = "curl -sSL {} | {} | {} apply -f -".format(capi_uri, envsubst_cmd, kubectl_cmd)
-    local(cmd, quiet = True)
+    desired_version = settings.get("capi_version")
+    kind_cluster_name = settings.get("kind_cluster_name")
+    version_cmd = "{0} --context kind-{1} get providers.clusterctl.cluster.x-k8s.io -n capi-system cluster-api -o jsonpath='{{.version}}' || true".format(kubectl_cmd, kind_cluster_name)
+    detected_version = str(local(version_cmd, quiet = True)).strip()
+
+    if not detected_version:
+        init_command = "{0} init --kubeconfig-context kind-{2} --core cluster-api:{1} --bootstrap kubeadm:{1} --control-plane kubeadm:{1} --wait-providers".format(os.getenv("CLUSTERCTL"), desired_version, kind_cluster_name)
+        local(init_command, quiet = True)
+    elif desired_version == detected_version:
+        pass
+    else:
+        upgrade_command = "{0} upgrade apply --kubeconfig-context kind-{2} --core cluster-api:{1} --bootstrap kubeadm:{1} --control-plane kubeadm:{1} --wait-providers".format(os.getenv("CLUSTERCTL"), desired_version, kind_cluster_name)
+        local(upgrade_command, quiet = True)
+
     if settings.get("extra_args"):
         extra_args = settings.get("extra_args")
         if extra_args.get("core"):
@@ -203,11 +215,6 @@ def waitforsystem():
 validate_auth()
 
 include_user_tilt_files()
-
-load("ext://cert_manager", "deploy_cert_manager")
-
-if settings.get("deploy_cert_manager"):
-    deploy_cert_manager()
 
 deploy_capi()
 

@@ -61,19 +61,6 @@ containerdConfigPatches:
     endpoint = ["http://${reg_host}:5000"]
 nodes:
 - role: control-plane
-  kubeadmConfigPatches:
-  - |
-    kind: InitConfiguration
-    nodeRegistration:
-      kubeletExtraArgs:
-        node-labels: "ingress-ready=true"
-  extraPortMappings:
-  - containerPort: 80
-    hostPort: 8080
-    protocol: TCP
-  - containerPort: 443
-    hostPort: 8443
-    protocol: TCP
 EOF
 
 for node in $("${KIND}" get nodes --name "${KIND_CLUSTER_NAME}"); do
@@ -93,10 +80,4 @@ if [ "${kind_network}" != "bridge" ]; then
   fi
 fi
 
-# add ingress
-"${KUBECTL}" apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
 "${KUBECTL}" wait node "${KIND_CLUSTER_NAME}-control-plane" --for=condition=ready --timeout=90s
-"${KUBECTL}" wait --namespace ingress-nginx \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller \
-  --timeout=120s

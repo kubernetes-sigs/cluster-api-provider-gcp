@@ -137,7 +137,7 @@ go mod tidy
 
 ## Step 5: Verify derived tool versions
 
-Do not manually edit `KUBEBUILDER_ENVTEST_KUBERNETES_VERSION`, `CONTROLLER_GEN_VER`, `CONVERSION_GEN_VER`, `KIND_VER`, `KUBECTL_VER`, or `SETUP_ENVTEST_VER` in the Makefile. They follow the root or tools module:
+Do not manually edit `KUBEBUILDER_ENVTEST_KUBERNETES_VERSION`, `CONTROLLER_GEN_VER`, `CONVERSION_GEN_VER`, `KIND_VER`, `KUBECTL_VER`, `CAPI_VER`, or `SETUP_ENVTEST_VER` in the Makefile. They follow the root or tools module:
 
 ```bash
 go list -m k8s.io/client-go sigs.k8s.io/kind github.com/onsi/ginkgo/v2

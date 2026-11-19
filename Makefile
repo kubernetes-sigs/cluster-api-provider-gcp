@@ -103,6 +103,8 @@ KIND_VER := $(call get_go_version,sigs.k8s.io/kind)
 KIND_BIN := kind
 KIND := $(TOOLS_BIN_DIR)/$(KIND_BIN)-$(KIND_VER)
 
+CAPI_VER := $(call get_go_version,sigs.k8s.io/cluster-api)
+
 GINKGO_VER := $(call get_go_version,github.com/onsi/ginkgo/v2)
 GINKGO_BIN := ginkgo
 GINKGO := $(TOOLS_BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
@@ -522,6 +524,8 @@ promote-images: $(KPROMO)
 ## --------------------------------------
 
 CLUSTER_NAME ?= test1
+MANAGEMENT_CLUSTER_NAME = capg
+MANAGEMENT_CLUSTER_CONTEXT_NAME = kind-${MANAGEMENT_CLUSTER_NAME}
 
 .PHONY: install-tools # populate hack/tools/bin
 install-tools: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(GINKGO) $(KIND)
@@ -529,13 +533,13 @@ install-tools: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(GINKGO) $(KIND)
 .PHONY: create-workload-cluster
 create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	# Create workload Cluster.
-	$(KUSTOMIZE) build templates | $(ENVSUBST) | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build templates | $(ENVSUBST) | $(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} apply -f -
 
 	# Wait for the kubeconfig to become available.
-	${TIMEOUT} 5m bash -c "while ! $(KUBECTL) get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
+	${TIMEOUT} 5m bash -c "while ! $(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
 	# Get kubeconfig and store it locally.
-	$(KUBECTL) get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > $(CAPG_WORKER_CLUSTER_KUBECONFIG)
-	${TIMEOUT} 15m bash -c "while ! kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep master; do sleep 1; done"
+	$(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > $(CAPG_WORKER_CLUSTER_KUBECONFIG)
+	${TIMEOUT} 15m bash -c "while ! $(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep control-plane; do sleep 1; done"
 
 	# Deploy calico
 	$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://raw.githubusercontent.com/projectcalico/calico/$(CALICO_VERSION)/manifests/calico.yaml
@@ -545,7 +549,7 @@ create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 .PHONY: delete-workload-cluster
 delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 	@echo 'Your GCP resources will now be deleted, this can take up to 20 minutes'
-	$(KUBECTL) delete cluster $(CLUSTER_NAME)
+	$(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} delete cluster $(CLUSTER_NAME)
 
 .PHONY: kind-reset
 kind-reset: ## Destroys the kind clusters.
@@ -561,8 +565,8 @@ kind-create: $(KUBECTL) ## create capg kind cluster if needed
 	./scripts/kind-with-registry.sh
 
 .PHONY: tilt-up
-tilt-up: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) kind-create ## start tilt and build kind cluster if needed
-	EXP_CLUSTER_RESOURCE_SET=true tilt up
+tilt-up: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(CLUSTERCTL) kind-create ## start tilt and build kind cluster if needed
+	EXP_CLUSTER_RESOURCE_SET=true CAPI_VERSION=$(CAPI_VER) CLUSTERCTL=$(CLUSTERCTL) tilt up
 
 ## --------------------------------------
 ## Cleanup / Verification
