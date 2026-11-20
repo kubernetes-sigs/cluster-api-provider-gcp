@@ -14,6 +14,7 @@ no-section-label = true
 "/agenda/2024.html" = "https://docs.google.com/document/d/11ccg-nkzCq-Yd9mnUG7DVsTrkQVEHaynNE3VcMa3z7Y"
 "/developers/development.html" = "/developers/index.html"
 "/developers/jobs.html" = "/developers/orientation.html"
+"/developers/nightlies.html" = "/developers/nightly-builds.html"
 
 [preprocessor.tabulate]
 command = "mdbook-tabulate"

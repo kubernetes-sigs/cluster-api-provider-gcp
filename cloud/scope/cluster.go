@@ -156,7 +156,7 @@ func (s *ClusterScope) NetworkName() string {
 	return ptr.Deref(s.GCPCluster.Spec.Network.Name, defaultNetworkName)
 }
 
-// NetworkMtu returns the Network MTU of 1440 which is the default, otherwise returns back what is being set.
+// NetworkMtu returns the Network MTU of 1460 which is the default, otherwise returns back what is being set.
 // Mtu: Maximum Transmission Unit in bytes. The minimum value for this field is
 // 1300 and the maximum value is 8896. The suggested value is 1500, which is
 // the default MTU used on the Internet, or 8896 if you want to use Jumbo

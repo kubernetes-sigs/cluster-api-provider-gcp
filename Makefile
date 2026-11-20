@@ -508,7 +508,7 @@ release-staging-nightly:
 
 .PHONY: upload-staging-artifacts
 upload-staging-artifacts: ## Upload release artifacts to the staging bucket
-	# Example manifest location: https://storage.googleapis.com/k8s-staging-cluster-api-aws/components/nightly_main_20240425/infrastructure-components.yaml
+	# Example manifest location: https://storage.googleapis.com/k8s-staging-cluster-api-gcp/components/nightly_main_20261118/infrastructure-components.yaml
 	# Please note that these files are deleted after a certain period, at the time of this writing 60 days after file creation.
 	gsutil cp $(RELEASE_DIR)/* gs://$(BUCKET)/components/$(RELEASE_ALIAS_TAG)
 

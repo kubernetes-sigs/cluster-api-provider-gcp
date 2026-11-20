@@ -1,6 +1,6 @@
 # Bumping Kubernetes and Cluster API
 
-This document describes how to bump the Kubernetes and Cluster API (CAPI) versions across the project. It is primarily intended to be consumed by an AI coding agent (e.g. via `/bump-k8s-capi 1.35 1.13`), but the steps can also be followed manually.
+This document describes how to bump the Kubernetes and Cluster API (CAPI) versions across the project. It is primarily intended to be consumed by an AI coding agent (the Claude skill can be found [here](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/.claude/skills/bump-k8s-capi/SKILL.md) and used via `/bump-k8s-capi <K8S_VERSION> <CAPI_VERSION>`), but the steps can also be followed manually.
 
 The two arguments are the target **Kubernetes minor version** (e.g. `1.35`) and the target **CAPI minor version** (e.g. `1.13`).
 

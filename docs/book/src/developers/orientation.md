@@ -1,18 +1,10 @@
 # Repository Orientation
 
-### Dev manifest files
+The CAPG repository contains a number of sub-folders which allow us to organise different pieces of code and documentation
+into different areas. We largely follow Go conventions around project layout so it should be easy to navigate if you're
+familiar with Go projects.
 
-Part of running cluster-api-provider-gcp is generating manifests to run.
-Generating dev manifests allows you to test dev images instead of the default
-releases.
-
-### Dev images
-
-#### Container registry
-
-Any public container registry can be leveraged for storing cluster-api-provider-gcp container images.
-
-### Modules and Dependencies
+## Modules and Dependencies
 
 This repository uses [Go Modules](https://github.com/golang/go/wiki/Modules) to track vendor dependencies.
 
@@ -27,91 +19,47 @@ Makefile targets and scripts are offered to work with go modules:
 - `make modules` runs `go mod tidy` to ensure proper vendoring.
 - `hack/ensure-go.sh` checks that the Go version and environment variables are properly set.
 
-## Jobs
+## CI Jobs
 
-This document provides an overview of our jobs running via Prow and Github actions.
+Our CI configuration is split between jobs that run in Prow, and are configured in
+[kubernetes/test-infra](https://github.com/kubernetes/test-infra/tree/master/config/jobs/kubernetes-sigs/cluster-api-provider-gcp), and GitHub Actions which are configured in the
+[`.github` directory](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/tree/main/.github/workflows).
 
-## Builds and tests running on the default branch
+### Pull Request Checks
 
-<aside class="note">
+To see these tests in one place you can look at [Testgrid](https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp).
 
-<h1> Note </h1>
+#### Presubmits - Prow
 
-To see which test jobs execute which e2e tests, you can click on the links which lead to the respective test overviews in testgrid.
+In the table below … refers to `cluster-api-provider-gcp`.
 
-</aside>
+| Job | When | Runs | What it does |
+|---|---|---|---|
+| `pull-…-test` | always, required | `scripts/ci-test.sh` | `make test-junit`: unit and envtest integration tests, junit report |
+| `pull-…-build` | always, required | `scripts/ci-build.sh` | `make binaries`: compiles the manager |
+| `pull-…-make` | always, required | `runner.sh scripts/ci-make.sh` | `make docker-build`: builds the controller image (docker-in-docker) |
+| `pull-…-verify` | always, required | `runner.sh make verify` | generated files, modules, conversions, boilerplate, shellcheck, Tiltfile, go directive, doctoc |
+| `pull-…-e2e-test` | always, required | `ci-e2e.sh --flavor=unmanaged`, `GINKGO_FOCUS="Workload cluster creation"` | self-managed workload clusters on real GCP (Boskos project) |
+| `pull-…-e2e-test-gke` | always, required | `ci-e2e.sh --flavor=gke`, `GINKGO_FOCUS="GKE workload cluster"` | managed (GKE) workload clusters |
+| `pull-…-apidiff` | always, optional | `runner.sh scripts/ci-apidiff.sh` | `make apidiff` against `PULL_BASE_SHA` |
+| `pull-…-conformance` | manual | `ci-conformance.sh` | Kubernetes conformance on a workload cluster |
+| `pull-…-conformance-ci-artifacts` | manual | `ci-conformance.sh`, `E2E_ARGS=-kubetest.use-ci-artifacts` | same, with Kubernetes CI artifacts |
+| `pull-…-capi-e2e` | manual | `ci-e2e.sh --flavor=unmanaged`, focus "Cluster API E2E tests", skip `[K8s-Upgrade]` and API Version Upgrade | upstream CAPI e2e suite |
+| `pull-…-e2e-workload-upgrade` | manual | `ci-e2e.sh --flavor=upgrade`, focus `[K8s-Upgrade]` | Kubernetes upgrade of a workload cluster |
+| `pull-…-coverage` | manual | `ci-test-coverage.sh` plus gopherage | coverage report|
 
-### Legend
+To run any of the manual jobs comment `/test <full job name>` on a PR.
 
-    🟢 REQUIRED - Jobs that have to run successfully to get the PR merged.
+#### Presubmits - GitHub Actions
 
-### Presubmits
-
-   Prow Presubmits:
-
--  🟢[pull-cluster-api-provider-gcp-test] `./scripts/ci-test.sh`
--  🟢[pull-cluster-api-provider-gcp-build] `../scripts/ci-build.sh`
--  🟢[pull-cluster-api-provider-gcp-make] `runner.sh` `./scripts/ci-make.sh`
--  🟢[pull-cluster-api-provider-gcp-e2e-test]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-e2e.sh`
-- [pull-cluster-api-provider-gcp-conformance-ci-artifacts]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-conformance.sh --use-ci-artifacts`
-- [pull-cluster-api-provider-gcp-conformance]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-conformance.sh`
-- [pull-cluster-api-provider-gcp-capi-e2e]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" GINKGO_FOCUS="Cluster API E2E tests" ./scripts/ci-e2e.sh`
-- [pull-cluster-api-provider-gcp-test-release-0-4] `./scripts/ci-test.sh`
-- [pull-cluster-api-provider-gcp-build-release-0-4] `./scripts/ci-build.sh`
-- [pull-cluster-api-provider-gcp-make-release-0-4] `runner.sh` `./scripts/ci-make.sh`
-- [pull-cluster-api-provider-gcp-e2e-test-release-0-4]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-e2e.sh`
-- [pull-cluster-api-provider-gcp-make-conformance-release-0-4]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-conformance.sh --use-ci-artifacts`
-
-  
-
-  Github Presubmits Workflows:
-
-- Markdown-link-check `find . -name \*.md | xargs -I{} markdown-link-check -c .markdownlinkcheck.json {}`
--  🟢Lint-check `make lint`
-
-### Postsubmits
-
-  Github Postsubmit Workflows:
-
-- Code-coverage-check `make test-cover`
+| Workflow | Trigger | Does |
+|---|---|---|
+| Lint (`lint.yml`) | every PR | golangci-lint |
+| Codespell | every PR | spelling over the tree, `.codespellignore` |
+| Link-check | PRs touching `docs/**`; push to `main` touching `docs/**` | `markdown-link-check` with `.markdownlinkcheck.json` |
+| PR approve GH Workflows | `pull_request_target` on PRs labelled `ok-to-test` | approves the pending Actions runs for them |
 
 ### Periodics
 
-   Prow Periodics:
-
-- [periodic-cluster-api-provider-gcp-build] `runner.sh` `./scripts/ci-build.sh`
-- [periodic-cluster-api-provider-gcp-test] `runner.sh` `./scripts/ci-test.sh`
-- [periodic-cluster-api-provider-gcp-make-conformance-v1alpha4]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-conformance.sh`
-- [periodic-cluster-api-provider-gcp-make-conformance-v1alpha4-k8s-ci-artifacts]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-conformance.sh --use-ci-artifacts`
-- [periodic-cluster-api-provider-gcp-conformance-v1alpha4]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-conformance.sh`
-- [periodic-cluster-api-provider-gcp-conformance-v1alpha4-k8s-ci-artifacts]
-  `"BOSKOS_HOST"="boskos.test-pods.svc.cluster.local" ./scripts/ci-conformance.sh --use-ci-artifacts`
-
-<!-- links -->
-[pull-cluster-api-provider-gcp-test]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-test
-[pull-cluster-api-provider-gcp-build]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-build
-[pull-cluster-api-provider-gcp-make]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-make
-[pull-cluster-api-provider-gcp-e2e-test]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-e2e-test
-[pull-cluster-api-provider-gcp-conformance-ci-artifacts]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-conformance-ci-artifacts
-[pull-cluster-api-provider-gcp-conformance]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-conformance
-[pull-cluster-api-provider-gcp-capi-e2e]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-capi-e2e-test
-[pull-cluster-api-provider-gcp-test-release-0-4]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-test-release-0-4
-[pull-cluster-api-provider-gcp-build-release-0-4]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-build-release-0-4
-[pull-cluster-api-provider-gcp-make-release-0-4]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-make-release-0-4
-[pull-cluster-api-provider-gcp-e2e-test-release-0-4]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-e2e-test-release-0-4
-[pull-cluster-api-provider-gcp-make-conformance-release-0-4]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#pr-conformance-release-0-4
-[periodic-cluster-api-provider-gcp-build]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#periodic-cluster-api-provider-gcp-build
-[periodic-cluster-api-provider-gcp-test]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#periodic-cluster-api-provider-gcp-test
-[periodic-cluster-api-provider-gcp-make-conformance-v1alpha4]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#capg-conformance-v1alpha4
-[periodic-cluster-api-provider-gcp-make-conformance-v1alpha4-k8s-ci-artifacts]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#capg-conformance-v1alpha4-k8s-master
-[periodic-cluster-api-provider-gcp-conformance-v1alpha4]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#capg-conformance-v1alpha4-release-0-4
-[periodic-cluster-api-provider-gcp-conformance-v1alpha4-k8s-ci-artifacts]: https://testgrid.k8s.io/sig-cluster-lifecycle-cluster-api-provider-gcp#capg-conformance-v1alpha4-release-0-4-ci-artifacts
+Some CAPG jobs run periodically, specifically we run `build`, `test` and `conformance` checks every 12h on our `main`
+branch and any actively maintained release branches.
