@@ -18,7 +18,9 @@
 # test/e2e/config/gcp-ci.yaml from the single KUBERNETES_MINOR pinned
 # there, instead of each one being a separately hand-maintained literal
 # that can independently go stale. It is meant to be sourced, not executed
-# directly. Required input: GCP_PROJECT and GCP_REGION must be set in the
+# directly. Various helper functions are located in hack/lib/versions.sh
+#
+# Required input: GCP_PROJECT and GCP_REGION must be set in the
 # caller's env. Which variables get resolved depends on E2E_FLAVOR
 # (all|gke|unmanaged|upgrade, set via scripts/ci-e2e.sh's --flavor arg;
 # defaults to "all").
@@ -28,55 +30,9 @@ REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 if [ -z "${GCP_PROJECT:-}" ]; then echo "ERROR: GCP_PROJECT is not set" >&2; return 1; fi
 if [ -z "${GCP_REGION:-}" ]; then echo "ERROR: GCP_REGION is not set" >&2; return 1; fi
 
-minor=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.KUBERNETES_MINOR' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml") || return 1
-
-CAPG_UBUNTU_VERSION=$("${REPO_ROOT}/hack/tools/bin/yq" -e '.variables.CAPG_UBUNTU_VERSION' "${REPO_ROOT}/test/e2e/config/gcp-ci.yaml") || return 1
-export CAPG_UBUNTU_VERSION
-
-# get_tag_list grabs a list of tags from a Git repo and prints them
-get_tag_list() {
-  local repo=$1
-
-  local tags
-  tags=$(git ls-remote --tags --refs "$repo") || return 1
-  if [ -z "$tags" ]; then
-    echo "ERROR: Tag list from $repo was empty" >&2
-    return 1
-  fi
-  echo "$tags"
-}
-
-# k8s_tags_for_minor prints kubernetes/kubernetes release tags for a given
-# minor (e.g. "1.35"), newest first.
-k8s_tags_for_minor() {
-  local m=$1 escaped filtered
-  escaped=${m//./\\.}
-  filtered=$(get_tag_list "https://github.com/kubernetes/kubernetes" | awk -F/ '{print $3}' | grep -E "^v${escaped}\.[0-9]+$" | sort -rV)
-  if [ -z "$filtered" ]; then
-    echo "ERROR: After filtering to $m no versions remain" >&2
-    return 1
-  fi
-  echo "$filtered"
-}
-
-# find_verified_version prints the first candidate (from stdin, newest
-# first) for which the given verification command succeeds, or fails if
-# none do.
-find_verified_version() {
-  local verify_cmd=$1 candidate
-  while read -r candidate; do
-    if "${verify_cmd}" "${candidate}"; then
-      printf '%s\n' "${candidate}"
-      return 0
-    fi
-  done
-  return 1
-}
-
-verify_nightly_image() {
-  gcloud compute images describe "cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${1//./-}-nightly" \
-    --project=k8s-staging-cluster-api-gcp >/dev/null
-}
+# shellcheck source=hack/lib/versions.sh
+source "${REPO_ROOT}/hack/lib/versions.sh"
+load_ci_pins || return 1
 
 verify_ccm_image() {
   docker manifest inspect "gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null
@@ -90,29 +46,8 @@ verify_kindest_node() {
   docker manifest inspect "kindest/node:${1}" >/dev/null
 }
 
-# resolve_version_for_minor finds the latest release of the given minor
-# that's actually usable (per verify_cmd), and dies with a specific,
-# actionable message if none is -- these are all cases where the missing
-# piece lives in some other repo (image-builder, cloud-provider-gcp,
-# kindest/node) that nothing here can create, so the fix is "go add it
-# there", not a bug in this script.
-resolve_version_for_minor() {
-  local minor=$1 verify_cmd=$2 not_found_msg=$3 resolved
-  if ! resolved=$(k8s_tags_for_minor "${minor}" | find_verified_version "${verify_cmd}"); then
-    echo "ERROR: ${not_found_msg}" >&2
-    return 1
-  fi
-  printf '%s\n' "${resolved}"
-}
-
 resolve_unmanaged_version() {
-  local resolved
-  resolved=$(resolve_version_for_minor "${minor}" verify_nightly_image \
-    "no nightly image published for minor ${minor} -- add config at kubernetes-sigs/image-builder/images/capi/packer/gce/ci/nightly") || return 1
-  KUBERNETES_VERSION="${resolved}"
-  IMAGE_ID="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${resolved//./-}-nightly"
-  export KUBERNETES_VERSION IMAGE_ID
-
+  resolve_node_image || return 1
   resolve_ccm_version || return 1
 }
 
@@ -177,8 +112,8 @@ resolve_upgrade_versions() {
 
   KUBERNETES_VERSION_UPGRADE_TO="${to_v}"
   KUBERNETES_VERSION_UPGRADE_FROM="${from_v}"
-  KUBERNETES_IMAGE_UPGRADE_TO="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${to_v//./-}-nightly"
-  KUBERNETES_IMAGE_UPGRADE_FROM="projects/k8s-staging-cluster-api-gcp/global/images/cluster-api-ubuntu-${CAPG_UBUNTU_VERSION}-${from_v//./-}-nightly"
+  KUBERNETES_IMAGE_UPGRADE_TO=$(build_nightly_image_id "$to_v")
+  KUBERNETES_IMAGE_UPGRADE_FROM=$(build_nightly_image_id "$from_v")
   export KUBERNETES_VERSION_UPGRADE_TO KUBERNETES_VERSION_UPGRADE_FROM
   export KUBERNETES_IMAGE_UPGRADE_TO KUBERNETES_IMAGE_UPGRADE_FROM
 

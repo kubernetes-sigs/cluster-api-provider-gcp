@@ -526,6 +526,7 @@ promote-images: $(KPROMO)
 CLUSTER_NAME ?= test1
 MANAGEMENT_CLUSTER_NAME = capg
 MANAGEMENT_CLUSTER_CONTEXT_NAME = kind-${MANAGEMENT_CLUSTER_NAME}
+KUBE_CONTEXT ?= $(MANAGEMENT_CLUSTER_CONTEXT_NAME)
 
 .PHONY: install-tools # populate hack/tools/bin
 install-tools: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(GINKGO) $(KIND)
@@ -550,6 +551,14 @@ create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 	@echo 'Your GCP resources will now be deleted, this can take up to 20 minutes'
 	$(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} delete cluster $(CLUSTER_NAME)
+
+.PHONY: resolve-node-image
+resolve-node-image: $(YQ) ## Print the Kubernetes version and node image to use for a local workload cluster
+	@./hack/resolve-node-image.sh
+
+.PHONY: apply-nightly
+apply-nightly: $(ENVSUBST) $(KUBECTL) ## Apply a CAPG nightly build to the local management cluster (NIGHTLY=nightly_main_YYYYMMDD, default latest)
+	@KUBE_CONTEXT=$(KUBE_CONTEXT) ./hack/apply-nightly.sh
 
 .PHONY: kind-reset
 kind-reset: ## Destroys the kind clusters.

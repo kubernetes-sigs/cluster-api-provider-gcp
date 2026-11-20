@@ -102,18 +102,14 @@ Cluster.
 In order to deploy a self-managed workload cluster you will need to pull a node image (this is not the same as the
 Docker Image that runs CAPG but is a VM image that bootstraps your Kubernetes nodes).
 
-To do this, first look in our
-[CI configuration](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/test/e2e/config/gcp-ci.yaml)
-for the current tested Ubuntu version. Then list available images with the following `gcloud` command (note you'll need
-to be logged into an account to do this, but you don't need to be given special access to this project):
+To do this you can run the Make command below:
 
 ```shell
-gcloud compute images list --project k8s-staging-cluster-api-gcp --no-standard-images \
-  --filter="name~cluster-api-ubuntu-<UBUNTU_VERSION>-.*-nightly" --format="value(name)"
+make resolve-node-image
 ```
 
-This will list all available versions of the image, pick the one that corresponds to the Kubernetes version you want to
-run.
+This command will print out the KUBERNETES_VERSION and IMAGE_ID to use in the commands below. This command requires
+`gcloud auth login` to be run beforehand, and can take an optional `KUBERNETES_MINOR` parameter if required.
 
 <aside class="note">
 
@@ -132,14 +128,12 @@ export GCP_NETWORK_NAME=<GCP_NETWORK_NAME or default>
 export GCP_NODE_MACHINE_TYPE=n1-standard-2
 export GCP_PROJECT="<GCP_PROJECT>"
 export GCP_REGION="<GCP_REGION>"
-export IMAGE_ID=projects/k8s-staging-cluster-api-gcp/global/images/<IMAGE_NAME>
+export IMAGE_ID="<IMAGE_ID>"
 export KUBERNETES_VERSION="<KUBERNETES_VERSION>"
 export WORKER_MACHINE_COUNT=1
 ```
 
-`IMAGE_NAME` should be taken from the previous step and `KUBERNETES_VERSION` needs to match the one in the image name.
-Specifically the `IMAGE_NAME` will be of the format `...-vX-Y-Z-nightly`, therefore the Kubernetes version should be
-`vX.Y.Z`.
+As stated above `IMAGE_ID` and `KUBERNETES_VERSION` should be taken from the output generated above.
 
 In addition, note that if `GCP_NETWORK_NAME` does not exist, CAPG will create it along with other networking resources.
 These resources are cleared up when the cluster is deleted. If the value `default` is used then CAPG creates no
