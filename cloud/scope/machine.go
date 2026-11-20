@@ -34,7 +34,6 @@ import (
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud/providerid"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"
@@ -135,6 +134,11 @@ func (m *MachineScope) Name() string {
 // Namespace returns the namespace name.
 func (m *MachineScope) Namespace() string {
 	return m.GCPMachine.Namespace
+}
+
+// InstanceTagger returns the object to use to tag instances
+func (m *MachineScope) InstanceTagger() cloud.InstanceTagger {
+	return m.ClusterGetter.InstanceTagger()
 }
 
 // ControlPlaneGroupName returns the control-plane instance group name.
@@ -240,7 +244,7 @@ func (m *MachineScope) SetAddresses(addressList []corev1.NodeAddress) {
 // ANCHOR: MachineInstanceSpec
 
 // InstanceImageSpec returns compute instance image attched-disk spec.
-func (m *MachineScope) InstanceImageSpec(ctx context.Context) *compute.AttachedDisk {
+func (m *MachineScope) InstanceImageSpec() *compute.AttachedDisk {
 	version := m.Machine.Spec.Version
 	image := "capi-ubuntu-1804-k8s-" + strings.ReplaceAll(semver.MajorMinor(version), ".", "-")
 	sourceImage := path.Join("projects", m.ClusterGetter.Project(), "global", "images", "family", image)
@@ -259,11 +263,10 @@ func (m *MachineScope) InstanceImageSpec(ctx context.Context) *compute.AttachedD
 		AutoDelete: true,
 		Boot:       true,
 		InitializeParams: &compute.AttachedDiskInitializeParams{
-			DiskSizeGb:          m.GCPMachine.Spec.RootDeviceSize,
-			DiskType:            path.Join("zones", m.Zone(), "diskTypes", string(diskType)),
-			ResourceManagerTags: shared.ResourceTagConvert(ctx, m.GCPMachine.Spec.ResourceManagerTags),
-			SourceImage:         sourceImage,
-			Labels:              m.ClusterGetter.AdditionalLabels().AddLabels(m.GCPMachine.Spec.AdditionalLabels),
+			DiskSizeGb:  m.GCPMachine.Spec.RootDeviceSize,
+			DiskType:    path.Join("zones", m.Zone(), "diskTypes", string(diskType)),
+			SourceImage: sourceImage,
+			Labels:      m.ClusterGetter.AdditionalLabels().AddLabels(m.GCPMachine.Spec.AdditionalLabels),
 		},
 	}
 
@@ -290,15 +293,14 @@ func (m *MachineScope) InstanceImageSpec(ctx context.Context) *compute.AttachedD
 }
 
 // instanceAdditionalDiskSpec returns compute instance additional attched-disk spec.
-func instanceAdditionalDiskSpec(ctx context.Context, spec []infrav1.AttachedDiskSpec, rootDiskEncryptionKey *infrav1.CustomerEncryptionKey, zone string, resourceManagerTags infrav1.ResourceManagerTags) []*compute.AttachedDisk {
+func instanceAdditionalDiskSpec(spec []infrav1.AttachedDiskSpec, rootDiskEncryptionKey *infrav1.CustomerEncryptionKey, zone string) []*compute.AttachedDisk {
 	additionalDisks := make([]*compute.AttachedDisk, 0, len(spec))
 	for _, disk := range spec {
 		additionalDisk := &compute.AttachedDisk{
 			AutoDelete: true,
 			InitializeParams: &compute.AttachedDiskInitializeParams{
-				DiskSizeGb:          ptr.Deref(disk.Size, 30),
-				DiskType:            path.Join("zones", zone, "diskTypes", string(*disk.DeviceType)),
-				ResourceManagerTags: shared.ResourceTagConvert(ctx, resourceManagerTags),
+				DiskSizeGb: ptr.Deref(disk.Size, 30),
+				DiskType:   path.Join("zones", zone, "diskTypes", string(*disk.DeviceType)),
 			},
 		}
 		if strings.HasSuffix(additionalDisk.InitializeParams.DiskType, string(infrav1.LocalSsdDiskType)) {
@@ -423,7 +425,7 @@ func instanceGuestAcceleratorsSpec(guestAccelerators []infrav1.Accelerator) []*c
 }
 
 // InstanceSpec returns instance spec.
-func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compute.Instance {
+func (m *MachineScope) InstanceSpec(_ context.Context, log logr.Logger) *compute.Instance {
 	instance := &compute.Instance{
 		Name:             m.Name(),
 		Zone:             m.Zone(),
@@ -435,9 +437,6 @@ func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compu
 				fmt.Sprintf("%s-%s", m.ClusterGetter.Name(), m.Role()),
 				m.ClusterGetter.Name(),
 			),
-		},
-		Params: &compute.InstanceParams{
-			ResourceManagerTags: shared.ResourceTagConvert(ctx, m.ResourceManagerTags()),
 		},
 		Labels: infrav1.Build(infrav1.BuildParams{
 			ClusterName: m.ClusterGetter.Name(),
@@ -510,8 +509,8 @@ func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compu
 		}
 	}
 
-	instance.Disks = append(instance.Disks, m.InstanceImageSpec(ctx))
-	instance.Disks = append(instance.Disks, instanceAdditionalDiskSpec(ctx, m.GCPMachine.Spec.AdditionalDisks, m.GCPMachine.Spec.RootDiskEncryptionKey, m.Zone(), m.ResourceManagerTags())...)
+	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
+	instance.Disks = append(instance.Disks, instanceAdditionalDiskSpec(m.GCPMachine.Spec.AdditionalDisks, m.GCPMachine.Spec.RootDiskEncryptionKey, m.Zone())...)
 
 	instance.Metadata = InstanceAdditionalMetadataSpec(m.GCPMachine.Spec.AdditionalMetadata)
 	instance.ServiceAccounts = append(instance.ServiceAccounts, instanceServiceAccountsSpec(m.GCPMachine.Spec.ServiceAccount))

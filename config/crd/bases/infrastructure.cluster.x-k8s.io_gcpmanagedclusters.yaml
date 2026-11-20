@@ -604,7 +604,12 @@ spec:
                   - parentID
                   - value
                   type: object
+                maxItems: 50
                 type: array
+                x-kubernetes-list-map-keys:
+                - parentID
+                - key
+                x-kubernetes-list-type: map
               serviceEndpoints:
                 description: |-
                   ServiceEndpoints contains the custom GCP Service Endpoint urls for each applicable service.

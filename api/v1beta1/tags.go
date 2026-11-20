@@ -16,7 +16,15 @@ limitations under the License.
 
 package v1beta1
 
-// ResourceManagerTags is an slice of ResourceManagerTag structs.
+import (
+	"fmt"
+)
+
+// ResourceManagerTags is a slice of ResourceManagerTag structs.
+// +listType=map
+// +listMapKey=parentID
+// +listMapKey=key
+// +kubebuilder:validation:MaxItems=50
 type ResourceManagerTags []ResourceManagerTag
 
 // ResourceManagerTagsMap defines a map of key value pairs as expected by compute.InstanceParams.ResourceManagerTags.
@@ -56,6 +64,10 @@ type ResourceManagerTag struct {
 	// +kubebuilder:validation:MaxLength=63
 	// +kubebuilder:validation:Pattern=`^[a-zA-Z0-9]([0-9A-Za-z_.@%=+:,*#&()\[\]{}\-\s]{0,61}[a-zA-Z0-9])?$`
 	Value string `json:"value"`
+}
+
+func (rmt *ResourceManagerTag) String() string {
+	return fmt.Sprintf("%s/%s/%s", rmt.ParentID, rmt.Key, rmt.Value)
 }
 
 // Merge merges resource manager tags in receiver and other.
