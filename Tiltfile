@@ -98,6 +98,18 @@ def append_arg_for_container_in_deployment(yaml_stream, name, namespace, contain
                 if contains_image_name in container.get("image"):
                     container.get("args").extend(args)
 
+def setup_container_for_debug(yaml_stream, name, namespace):
+    for item in yaml_stream:
+        if item["kind"] == "Deployment" and item.get("metadata").get("name") == name and item.get("metadata").get("namespace") == namespace:
+            containers = item.get("spec").get("template").get("spec").get("containers")
+            for container in containers:
+                if "manager" == container.get("name"):
+                    for i, arg in enumerate(container.get("args")):
+                        if arg == "--leader-elect":
+                            container.get("args")[i] = "--leader-elect=false"
+                    container.pop("livenessProbe", None)
+                    container.pop("readinessProbe", None)
+
 def fixup_yaml_empty_arrays(yaml_str):
     yaml_str = yaml_str.replace("conditions: null", "conditions: []")
     return yaml_str.replace("storedVersions: null", "storedVersions: []")
@@ -116,22 +128,32 @@ RUN go install github.com/go-delve/delve/cmd/dlv@v1.26.3
 # Support live reloading with Tilt
 RUN wget --output-document /restart.sh --quiet https://raw.githubusercontent.com/tilt-dev/rerun-process-wrapper/master/restart.sh  && \
     wget --output-document /start.sh --quiet https://raw.githubusercontent.com/tilt-dev/rerun-process-wrapper/master/start.sh && \
-    chmod +x /start.sh && chmod +x /restart.sh && chmod +x /go/bin/dlv && \
-    touch /process.txt && chmod 0777 /process.txt `# pre-create PID file to allow even non-root users to run the image`
+    chmod +x /start.sh && chmod +x /restart.sh && chmod +x /go/bin/dlv
 """
+
+manager_folder = "/app"
+manager_location = "{}/manager".format(manager_folder)
+manager_container_security_context = read_yaml_stream("config/manager/manager.yaml")[0]["spec"]["template"]["spec"]["containers"][0]["securityContext"]
+uid = manager_container_security_context["runAsUser"]
+gid = manager_container_security_context["runAsGroup"]
 
 tilt_dockerfile_header = """
 FROM golang:1.26.11 as tilt
 WORKDIR /
-COPY --from=tilt-helper /process.txt .
 COPY --from=tilt-helper /start.sh .
 COPY --from=tilt-helper /restart.sh .
 COPY --from=tilt-helper /go/bin/dlv .
-COPY manager .
-"""
+RUN install -d -o {1} -g {2} {0}
+WORKDIR {0}
+COPY manager {0}
+""".format(manager_folder, uid, gid)
 
 # Build CAPG and add feature gates
 def capg():
+    # Get debug settings
+    debug = settings.get("debug", {}).get("gcp", {})
+    debug_port = int(debug.get("port", 0))
+
     # Apply the kustomized yaml for this provider
     substitutions = settings.get("kustomize_substitutions", {})
     os.environ.update(substitutions)
@@ -140,18 +162,25 @@ def capg():
     yaml = str(kustomizesub("./config/default"))
 
     # add extra_args if they are defined
-    if settings.get("extra_args"):
-        gcp_extra_args = settings.get("extra_args").get("gcp")
+    if settings.get("extra_args") or debug_port != 0:
+        yaml_dict = decode_yaml_stream(yaml)
+        gcp_extra_args = settings.get("extra_args", {}).get("gcp")
         if gcp_extra_args:
-            yaml_dict = decode_yaml_stream(yaml)
             append_arg_for_container_in_deployment(yaml_dict, "capg-controller-manager", "capg-system", "cluster-api-gcp-controller", gcp_extra_args)
-            yaml = str(encode_yaml_stream(yaml_dict))
-            yaml = fixup_yaml_empty_arrays(yaml)
+        if debug_port != 0:
+            setup_container_for_debug(yaml_dict, "capg-controller-manager", "capg-system")
+        yaml = str(encode_yaml_stream(yaml_dict))
+        yaml = fixup_yaml_empty_arrays(yaml)
 
     # Set up a local_resource build of the provider's manager binary.
+    arch = str(local("go env GOARCH", quiet = True)).strip()
+    cmd = 'mkdir -p .tiltbuild;CGO_ENABLED=0 GOOS=linux GOARCH={} go build -ldflags \'-extldflags "-static"\''.format(arch)
+    if debug_port != 0:
+        cmd += " -gcflags 'all=-N -l'"
+    cmd += " -o .tiltbuild/manager"
     local_resource(
         "manager",
-        cmd = 'mkdir -p .tiltbuild;CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags \'-extldflags "-static"\' -o .tiltbuild/manager',
+        cmd = cmd,
         deps = ["api", "cloud", "config", "controllers", "exp", "feature", "pkg", "go.mod", "go.sum", "main.go"],
     )
 
@@ -160,10 +189,12 @@ def capg():
         tilt_dockerfile_header,
     ])
 
-    entrypoint = ["sh", "/start.sh", "/manager"]
-    extra_args = settings.get("extra_args")
-    if extra_args:
-        entrypoint.extend(extra_args)
+    entrypoint = ["sh", "/start.sh", manager_location]
+    if debug_port != 0:
+        entrypoint = ["sh", "/start.sh", "/dlv", "--accept-multiclient", "--api-version=2", "--headless=true", "exec", "--listen=:30000"]
+        if debug.get("continue", True):
+            entrypoint += ["--continue"]
+        entrypoint += ["--", manager_location]
 
     # Set up an image build for the provider. The live update configuration syncs the output from the local_resource
     # build into the container.
@@ -175,13 +206,15 @@ def capg():
         entrypoint = entrypoint,
         only = "manager",
         live_update = [
-            sync(".tiltbuild/manager", "/manager"),
+            sync(".tiltbuild/manager", manager_location),
             run("sh /restart.sh"),
         ],
         ignore = ["templates"],
     )
 
     k8s_yaml(blob(yaml))
+    if debug_port != 0:
+        k8s_resource("capg-controller-manager", port_forwards = [port_forward(debug_port, 30000)])
 
 def base64_encode(to_encode):
     encode_blob = local("echo '{}' | tr -d '\n' | base64 - | tr -d '\n'".format(to_encode), quiet = True)

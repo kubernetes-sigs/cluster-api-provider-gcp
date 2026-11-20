@@ -19,7 +19,7 @@ From the root of the CAPG repository, run the following to generate a `tilt-sett
 service account credentials:
 
 ```shell
-$ cat <<EOF > tilt-settings.json
+cat <<EOF > tilt-settings.json
 {
   "kustomize_substitutions": {
       "GCP_B64ENCODED_CREDENTIALS": "$(cat PATH_FOR_GCP_CREDENTIALS_JSON | base64 -w0)"

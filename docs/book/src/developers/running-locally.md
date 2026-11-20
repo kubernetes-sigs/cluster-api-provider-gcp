@@ -26,37 +26,37 @@ make kind-reset
 
 ## Debugging
 
-If you would like to debug CAPG you can run the provider with [delve](https://github.com/go-delve/delve), a Go debugger tool. This will then allow you
-to attach to delve and troubleshoot the processes.
+If you would like to debug CAPG you can run the provider with [delve](https://github.com/go-delve/delve), a Go debugger
+tool. This will then allow you to attach to delve and troubleshoot the processes.
 
-To do this you need to use the debug configuration in tilt-settings.json. Full details of the options can be seen [here](https://cluster-api.sigs.k8s.io/developer/tilt.html).
+To do this you need to use the debug configuration in tilt-settings.json. `port` can be used to set the host port Tilt
+forwards to the internal container port 30000 and `continue` starts the running process immediately rather than pausing
+it at startup. In addition, if debugging is enabled then leader election and liveness/readiness probes are turned off
+so they don't interfere with the process of debugging.
 
 An example tilt-settings.json:
 
 ```shell
+cat <<EOF > tilt-settings.json
 {
-  "default_registry": "gcr.io/your-project-name-her",
-  "provider_repos": ["../cluster-api-provider-gcp"],
-  "enable_providers": ["gcp", "kubeadm-bootstrap", "kubeadm-control-plane"],
   "debug": {
     "gcp": {
       "continue": true,
-      "port": 30000,
-      "profiler_port": 40000,
-      "metrics_port": 40001
+      "port": 30000
     }
   },
   "kustomize_substitutions": {
       "GCP_B64ENCODED_CREDENTIALS": "$(cat PATH_FOR_GCP_CREDENTIALS_JSON | base64 -w0)"
   }
 }
+EOF
 ```
 
 If you use these settings when running Tilt you can connect to `delve` and debug the problem at hand
 
 For vscode, you can use a launch configuration like this:
 
-```shell
+```json
 {
   "version": "0.2.0",
   "configurations": [
@@ -78,10 +78,11 @@ For vscode, you can use a launch configuration like this:
 
 Create a new configuration and add it to the "Debug" menu. To configure debugging in GoLand/IntelliJ follow [these instructions](https://www.jetbrains.com/help/go/attach-to-running-go-processes-with-debugger.html#step-3-create-the-remote-run-debug-configuration-on-the-client-computer).
 
-Alternatively, you may use delve straight from the CLI by executing a command like this:
+Alternatively, you may use delve straight from the CLI (installable via
+`go install github.com/go-delve/delve/cmd/dlv@latest`) by executing a command like this:
 
 ```shell
-delve -a tcp://localhost:30000
+dlv connect localhost:30000
 ```
 
 Note that installing latest can cause mismatches with the version that runs inside the pod. To make sure it's the same
