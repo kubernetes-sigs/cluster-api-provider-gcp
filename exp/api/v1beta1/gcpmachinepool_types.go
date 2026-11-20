@@ -160,6 +160,28 @@ type GCPMachinePoolSpec struct {
 	// attached to the instance.
 	// +optional
 	GuestAccelerators []capg.Accelerator `json:"guestAccelerators,omitempty"`
+
+	// ReservationAffinity indicates the reservation that this instance has affinity for.
+	// +optional
+	ReservationAffinity *capg.ReservationAffinity `json:"reservationAffinity,omitempty"`
+
+	// MinCPUPlatform indicates the minimum Compute Engine CPU platform name, e.g. "Intel Haswell".
+	// +optional
+	MinCPUPlatform *string `json:"minCpuPlatform,omitempty"`
+
+	// NICType indicates the type of the primary network interface.
+	// +optional
+	// +kubebuilder:validation:Enum=VIRTIO_NET;GVNIC;IDPF
+	NICType *capg.NICType `json:"nicType,omitempty"`
+
+	// ResourcePolicies are full or partial URLs of existing regional resource policies
+	// to attach when creating the instance. For example:
+	// projects/my-project/regions/us-central1/resourcePolicies/my-placement-policy.
+	// Policies must be in the same region as the instances and the same project as the cluster.
+	// CAPG does not create or delete these policies.
+	// +optional
+	// +listType=set
+	ResourcePolicies []string `json:"resourcePolicies,omitempty"`
 }
 
 // GCPMachinePoolStatus defines the observed state of GCPMachinePool.

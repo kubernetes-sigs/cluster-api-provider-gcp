@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strings"
 
+	k8scloud "github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
@@ -337,7 +338,7 @@ func instanceAdditionalDiskSpec(ctx context.Context, spec []infrav1.AttachedDisk
 }
 
 // InstanceNetworkInterfaceSpec returns compute network interface spec.
-func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, subnet *string, aliasIPRanges []infrav1.AliasIPRange) *compute.NetworkInterface {
+func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, subnet *string, aliasIPRanges []infrav1.AliasIPRange, nicType *infrav1.NICType) *compute.NetworkInterface {
 	networkInterface := &compute.NetworkInterface{
 		Network: path.Join("projects", cluster.NetworkProject(), "global", "networks", cluster.NetworkName()),
 	}
@@ -356,6 +357,7 @@ func InstanceNetworkInterfaceSpec(cluster cloud.ClusterGetter, publicIP *bool, s
 	}
 
 	networkInterface.AliasIpRanges = InstanceNetworkInterfaceAliasIPRangesSpec(aliasIPRanges)
+	networkInterface.NicType = string(ptr.Deref(nicType, ""))
 
 	return networkInterface
 }
@@ -404,6 +406,38 @@ func InstanceAdditionalMetadataSpec(spec []infrav1.MetadataItem) *compute.Metada
 	}
 
 	return metadata
+}
+
+// instanceReservationAffinitySpec converts our internal definition of affinity to the library definition
+func instanceReservationAffinitySpec(affinity *infrav1.ReservationAffinity) *compute.ReservationAffinity {
+	if affinity == nil {
+		return nil
+	}
+	return &compute.ReservationAffinity{
+		ConsumeReservationType: string(affinity.ConsumeReservationType),
+		Key:                    string(affinity.Key),
+		Values:                 affinity.Values,
+	}
+}
+
+// instanceResourcePolicyNames extracts, from a set or urls, the names of the policies
+func instanceResourcePolicyNames(urls []string) ([]string, error) {
+	if len(urls) == 0 {
+		return nil, nil
+	}
+
+	var result []string
+	for _, url := range urls {
+		parsed, err := k8scloud.ParseResourceURL(url)
+		if err != nil {
+			return nil, err
+		}
+		if parsed.Key == nil {
+			return nil, errors.New("parsed resoucePolicy name was nil")
+		}
+		result = append(result, parsed.Key.Name)
+	}
+	return result, nil
 }
 
 // instanceGuestAcceleratorsSpec returns a slice of Guest Accelerator Config specs.
@@ -515,11 +549,13 @@ func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compu
 
 	instance.Metadata = InstanceAdditionalMetadataSpec(m.GCPMachine.Spec.AdditionalMetadata)
 	instance.ServiceAccounts = append(instance.ServiceAccounts, instanceServiceAccountsSpec(m.GCPMachine.Spec.ServiceAccount))
-	instance.NetworkInterfaces = append(instance.NetworkInterfaces, InstanceNetworkInterfaceSpec(m.ClusterGetter, m.GCPMachine.Spec.PublicIP, m.GCPMachine.Spec.Subnet, m.GCPMachine.Spec.AliasIPRanges))
+	instance.NetworkInterfaces = append(instance.NetworkInterfaces, InstanceNetworkInterfaceSpec(m.ClusterGetter, m.GCPMachine.Spec.PublicIP, m.GCPMachine.Spec.Subnet, m.GCPMachine.Spec.AliasIPRanges, m.GCPMachine.Spec.NICType))
 	instance.GuestAccelerators = instanceGuestAcceleratorsSpec(m.GCPMachine.Spec.GuestAccelerators)
 	if len(instance.GuestAccelerators) > 0 {
 		instance.Scheduling.OnHostMaintenance = onHostMaintenanceTerminate
 	}
+	instance.ReservationAffinity = instanceReservationAffinitySpec(m.GCPMachine.Spec.ReservationAffinity)
+	instance.MinCpuPlatform = ptr.Deref(m.GCPMachine.Spec.MinCPUPlatform, "")
 
 	return instance
 }

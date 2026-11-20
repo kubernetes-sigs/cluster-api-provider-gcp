@@ -55,7 +55,10 @@ func (*GCPMachineTemplate) ValidateCreate(_ context.Context, r *infrav1.GCPMachi
 	if err := validateConfidentialCompute(r.Spec.Template.Spec); err != nil {
 		return nil, err
 	}
-	return nil, validateResourcePolicies(r.Spec.Template.Spec.ResourcePolicies)
+	if err := webhookutils.ValidateReservationAffinity(r.Spec.Template.Spec.ReservationAffinity); err != nil {
+		return nil, err
+	}
+	return nil, webhookutils.ValidateResourcePolicies(r.Spec.Template.Spec.ResourcePolicies)
 }
 
 func (*GCPMachineTemplate) ValidateUpdate(_ context.Context, oldObj, r *infrav1.GCPMachineTemplate) (admission.Warnings, error) {
