@@ -190,6 +190,10 @@ derives automatically at CI time via `hack/resolve-e2e-versions.sh` — don't
 add a hand-pinned fallback to any of them; that would just recreate the
 staleness problem this whole scheme exists to avoid.
 
+The only exception to this is `CCM_VERSION` which has to take a default so
+that the manifest is functional for users, bumping this is explained in 
+Step 9.
+
 Optionally, run `hack/resolve-e2e-versions.sh` locally first (needs
 `gcloud`/`docker`/`git` access; `E2E_FLAVOR=all GCP_PROJECT=... GCP_REGION=...`)
 to catch a missing nightly image, CCM tag, or kindest/node image before
@@ -197,11 +201,21 @@ pushing, rather than waiting on a full CI run to find out.
 
 ## Step 9: Update CCM manifest
 
-`test/e2e/data/ccm/gce-cloud-controller-manager.yaml` already references
-`${CCM_VERSION}` with no default — nothing to change here either, for the
-same reason as Step 8.
+`templates/addons/gce-cloud-controller-manager.yaml` has `${CCM_VERSION:=<default_version>}`, this default
+version should be replaced with the latest promoted tag that matches the K8S_MINOR from Step 8. For example,
+KUBERNETES_MINOR=1.36 would map to a CCM_VERSION that starts with `v36`. Use
+`docker manifest inspect registry.k8s.io/cloud-provider-gcp/cloud-controller-manager:<tag>` to check it exists.
 
-## Step 10: Regenerate CRDs
+## Step 10: Refresh Documentation Examples
+
+In `docs/book/src/self-managed/provision.md`, `docs/book/src/clusterclass/provision.md` and 
+`docs/book/src/prerequisites.md` update the `KUBERNETES_VERSION=` lines to the same version that the E2E tests resolve.
+The same should be true of `CCM_VERSION=` in `docs/book/src/self-managed/provision.md`.
+
+To check this use `grep -rnE 'KUBERNETES_VERSION=1\.[0-9]+' docs/book/src` to check nothing is left on the old minor, 
+including any examples in the prose.
+
+## Step 11: Regenerate CRDs & Templates
 
 Changes to the derived controller-gen or conversion-gen versions may update generated files:
 
@@ -210,7 +224,10 @@ make generate
 make manifests
 ```
 
-## Step 11: Build and verify
+Note that `make generate` also updates templates and will fail if the default CCM_VERSION doesn't match
+KUBERNETES_MINOR.
+
+## Step 12: Build and verify
 
 ```bash
 go build ./...
@@ -218,7 +235,7 @@ go build ./...
 
 If `go build` fails with API changes (e.g. breaking changes in controller-runtime or CAPI), fix the Go source files to match the new API using the migration guide from Step 2.
 
-## Step 12: Fix lint issues
+## Step 13: Fix lint issues
 
 ```bash
 make lint
@@ -226,17 +243,17 @@ make lint
 
 If lint reports deprecation warnings (e.g. `SA1019` for deprecated interfaces or types), fix what can be fixed (migrate to new APIs) and add `.golangci.yml` exclusions for deprecations that cannot be resolved yet (e.g. upstream CAPI types still using the deprecated form).
 
-## Step 13: Run tests
+## Step 14: Run tests
 
 ```bash
 make test
 ```
 
-## Step 14: Branch and commit
+## Step 15: Branch and commit
 
 Create a branch named `bump-k8s-MINOR-capi-MINOR` (e.g. `bump-k8s-135-capi-113`) and commit the changes as two separate commits:
 
-1. The version bump itself:
+1. The version bump itself, this should include regenerated templates:
    ```
    chore(bump): bump k8s to K8S_MINOR, CAPI to CAPI_VERSION
    ```
