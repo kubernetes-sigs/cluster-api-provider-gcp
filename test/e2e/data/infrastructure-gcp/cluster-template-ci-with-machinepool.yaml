@@ -52,7 +52,6 @@ spec:
       controllerManager:
         extraArgs:
           cloud-provider: external
-          allocate-node-cidrs: "false"
       kubernetesVersion: "${KUBERNETES_VERSION}"
     files:
     - content: |
@@ -80,6 +79,10 @@ spec:
     spec:
       instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
       image: "${IMAGE_ID}"
+      publicIP: true
+      additionalMetadata:
+      - key: "ssh-keys"
+        value: "${GCP_SSH_KEY}"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachinePool

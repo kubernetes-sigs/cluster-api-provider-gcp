@@ -339,27 +339,20 @@ var _ = Describe("Workload cluster creation", func() {
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
 			}, result)
+			poolKey := client.ObjectKey{Namespace: namespace.Name, Name: fmt.Sprintf("%s-md-0", clusterName)}
+			verifyMachinePoolConditions(ctx, bootstrapClusterProxy.GetClient(), poolKey, e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes")...)
 
 			By("Scaling worker node to 3")
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
-				ClusterProxy: bootstrapClusterProxy,
-				ConfigCluster: clusterctl.ConfigClusterInput{
-					LogFolder:                clusterctlLogFolder,
-					ClusterctlConfigPath:     clusterctlConfigPath,
-					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
-					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
-					Flavor:                   "ci-with-machinepool",
-					Namespace:                namespace.Name,
-					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: ptr.To[int64](1),
-					WorkerMachineCount:       ptr.To[int64](3),
+			framework.ScaleMachinePoolAndWait(
+				ctx, framework.ScaleMachinePoolAndWaitInput{
+					ClusterProxy:              bootstrapClusterProxy,
+					Cluster:                   result.Cluster,
+					Replicas:                  3,
+					MachinePools:              result.MachinePools,
+					WaitForMachinePoolToScale: e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
 				},
-				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
-				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
-				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
-				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
-			}, result)
+			)
+			verifyMachinePoolConditions(ctx, bootstrapClusterProxy.GetClient(), poolKey, e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes")...)
 		})
 	})
 
