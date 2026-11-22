@@ -91,13 +91,17 @@ const (
 
 	// MIGReadyCondition reports on current status of the managed instance group. Ready indicates the group is provisioned.
 	MIGReadyCondition clusterv1.ConditionType = "ManagedInstanceGroupReady"
+	// MIGReadyReason used to report a MIG as ready.
+	MIGReadyReason = "ManagedInstanceGroupReady"
 	// MIGProvisionFailedReason used for failures during managed instance group provisioning.
 	MIGProvisionFailedReason = "ManagedInstanceGroupProvisionFailed"
 	// MIGDeletionInProgress MIG is in a deletion in progress state.
 	MIGDeletionInProgress = "ManagedInstanceGroupDeletionInProgress"
 
-	// InstanceTemplateReadyCondition represents the status of an AWSMachinePool's associated Launch Template.
+	// InstanceTemplateReadyCondition represents the status of a GCPMachinePool's associated InstanceTemplate.
 	InstanceTemplateReadyCondition clusterv1.ConditionType = "InstanceTemplateReady"
+	// InstanceTemplateReadyReason used to report the InstanceTemplate has become ready.
+	InstanceTemplateReadyReason = "InstanceTemplateReady"
 	// InstanceTemplateReconcileFailedReason used for failures during Launch Template reconciliation.
 	InstanceTemplateReconcileFailedReason = "InstanceTemplateReconcileFailed"
 )
