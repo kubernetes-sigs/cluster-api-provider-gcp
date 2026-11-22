@@ -582,7 +582,7 @@ kind-create: $(KUBECTL) ## create capg kind cluster if needed
 
 .PHONY: tilt-up
 tilt-up: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(CLUSTERCTL) kind-create ## start tilt and build kind cluster if needed
-	EXP_CLUSTER_RESOURCE_SET=true CAPI_VERSION=$(CAPI_VER) CLUSTERCTL=$(CLUSTERCTL) tilt up
+	CAPI_VERSION=$(CAPI_VER) CLUSTERCTL=$(CLUSTERCTL) tilt up
 
 ## --------------------------------------
 ## Cleanup / Verification
