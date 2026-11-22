@@ -42,7 +42,7 @@ mkdir -p "${ARTIFACTS}/logs/"
 export GCP_REGION=${GCP_REGION:-"us-east4"}
 export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
-GCP_B64ENCODED_CREDENTIALS=$(base64 -w0 "$GOOGLE_APPLICATION_CREDENTIALS")
+GCP_B64ENCODED_CREDENTIALS=$(base64 < "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
 export GCP_B64ENCODED_CREDENTIALS
 # This narrows what the version resolver resolves so that GKE versions etc. don't leak into the conformance suite
 export E2E_FLAVOR="${E2E_FLAVOR:-unmanaged}"
@@ -193,13 +193,20 @@ EOF
     init_networks
   fi
 
-  make test-conformance
-  test_status="${?}"
+  # Capture the status rather than letting errexit abort here, so that a failing
+  # suite still releases the GCP project below instead of leaking it until the
+  # Boskos lease expires.
+  test_status=0
+  make test-conformance || test_status="${?}"
   echo TESTSTATUS
   echo "${test_status}"
 
-  # If Boskos is being used then release the GCP project back to Boskos.
-  [ -z "${BOSKOS_HOST:-}" ] || hack/checkin_account.py >> "$ARTIFACTS"/logs/boskos.log 2>&1
+  # If Boskos is being used then release the GCP project back to Boskos. A
+  # failure here must not mask the suite's result: the lease expires on its own.
+  if [[ -n "${BOSKOS_HOST:-}" ]]; then
+    hack/checkin_account.py >> "${ARTIFACTS}/logs/boskos.log" 2>&1 ||
+      echo "WARNING: failed to release the GCP project to Boskos, see ${ARTIFACTS}/logs/boskos.log" >&2
+  fi
 }
 
 main "$@"
