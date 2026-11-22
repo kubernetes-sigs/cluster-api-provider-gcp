@@ -42,20 +42,11 @@ Policy](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/AI
 2. Fork the desired repo, develop and test your code changes.
     - There are Makefile targets available to help with running our automated tests including
       - `make lint` - Run our Code Linters
-      - `make test` - See below
+      - `make test` - Executes the project's unit and integration tests. These tests need no Kubernetes cluster or GCP
+        access.
       - `make verify` - Run a variety of static checks over code and non-code files
       - `make generate` - Ensure that generated files are up to date with their sources
-    - `make test` executes the project's unit and integration tests. These tests need no Kubernetes cluster or GCP
-      access. Some of them (the `envtest` suites) start a local API server and `etcd`, whose binaries `make test`
-      downloads on first use.
-    - We have standardized on a number of frameworks for testing, so when adding new tests:
-      - Unit Tests: These are plain `go test` tests with `gomega` accessed via `NewWithT(t)`. This is in preference to
-        `testify`, which will cause linting to fail if used.
-        - When using `g := NewWithT(t)` you should always use the 'nearest' `t`, rather than anything global. Definitely
-          do not use the package-level `Expect`.
-      - Tests that require `envtest`: These are written with Ginkgo and are often useful for testing CRD and CEL
-        validation
-      - End-To-End Tests: These are written with Ginkgo.
+      - For more information about the various tests CAPG has see our [Testing](https://cluster-api-gcp.sigs.k8s.io/developers/e2e.html) page.
 3. Submit a pull request.
    1. All PRs must be labeled with one of the following kinds
       - `/kind feature` for PRs related to adding new features/tests

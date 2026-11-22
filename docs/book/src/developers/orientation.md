@@ -33,20 +33,20 @@ To see these tests in one place you can look at [Testgrid](https://testgrid.k8s.
 
 In the table below … refers to `cluster-api-provider-gcp`.
 
-| Job | When | Runs | What it does |
-|---|---|---|---|
-| `pull-…-test` | always, required | `scripts/ci-test.sh` | `make test-junit`: unit and envtest integration tests, junit report |
-| `pull-…-build` | always, required | `scripts/ci-build.sh` | `make binaries`: compiles the manager |
-| `pull-…-make` | always, required | `runner.sh scripts/ci-make.sh` | `make docker-build`: builds the controller image (docker-in-docker) |
-| `pull-…-verify` | always, required | `runner.sh make verify` | generated files, modules, conversions, boilerplate, shellcheck, Tiltfile, go directive, doctoc |
-| `pull-…-e2e-test` | always, required | `ci-e2e.sh --flavor=unmanaged`, `GINKGO_FOCUS="Workload cluster creation"` | self-managed workload clusters on real GCP (Boskos project) |
-| `pull-…-e2e-test-gke` | always, required | `ci-e2e.sh --flavor=gke`, `GINKGO_FOCUS="GKE workload cluster"` | managed (GKE) workload clusters |
-| `pull-…-apidiff` | always, optional | `runner.sh scripts/ci-apidiff.sh` | `make apidiff` against `PULL_BASE_SHA` |
-| `pull-…-conformance` | manual | `ci-conformance.sh` | Kubernetes conformance on a workload cluster |
-| `pull-…-conformance-ci-artifacts` | manual | `ci-conformance.sh`, `E2E_ARGS=-kubetest.use-ci-artifacts` | same, with Kubernetes CI artifacts |
-| `pull-…-capi-e2e` | manual | `ci-e2e.sh --flavor=unmanaged`, focus "Cluster API E2E tests", skip `[K8s-Upgrade]` and API Version Upgrade | upstream CAPI e2e suite |
-| `pull-…-e2e-workload-upgrade` | manual | `ci-e2e.sh --flavor=upgrade`, focus `[K8s-Upgrade]` | Kubernetes upgrade of a workload cluster |
-| `pull-…-coverage` | manual | `ci-test-coverage.sh` plus gopherage | coverage report|
+| Job | When | Runs | What it does | More Information  |
+|---|---|---|---|---|
+| `pull-…-test` | always, required | `scripts/ci-test.sh` | `make test-junit`: unit and envtest integration tests, junit report | * [Unit Tests](./testing.md#unit-tests)<br/> * [Integration Tests](./testing.md#integration-tests)<br/> * [JUnit Report](./testing.md#test-coverage--reporting) |
+| `pull-…-build` | always, required | `scripts/ci-build.sh` | `make binaries`: compiles the manager |   |
+| `pull-…-make` | always, required | `runner.sh scripts/ci-make.sh` | `make docker-build`: builds the controller image (docker-in-docker) |   |
+| `pull-…-verify` | always, required | `runner.sh make verify` | generated files, modules, conversions, boilerplate, shellcheck, Tiltfile, go directive, doctoc |   |
+| `pull-…-e2e-test` | always, required | `ci-e2e.sh --flavor=unmanaged`, `GINKGO_FOCUS="Workload cluster creation"` | self-managed workload clusters on real GCP (Boskos project) | * [E2E Tests](./testing.md#end-to-end-tests)  |
+| `pull-…-e2e-test-gke` | always, required | `ci-e2e.sh --flavor=gke`, `GINKGO_FOCUS="GKE workload cluster"` | managed (GKE) workload clusters | * [E2E Tests](./testing.md#end-to-end-tests)    |
+| `pull-…-apidiff` | always, optional | `runner.sh scripts/ci-apidiff.sh` | `make apidiff` against `PULL_BASE_SHA` |   |
+| `pull-…-conformance` | manual | `ci-conformance.sh` | Kubernetes conformance on a workload cluster | * [Conformance Tests](./testing.md#conformance-tests)  |
+| `pull-…-conformance-ci-artifacts` | manual | `ci-conformance.sh`, `E2E_ARGS=-kubetest.use-ci-artifacts` | same, with Kubernetes CI artifacts | * [Conformance Tests](./testing.md#conformance-tests)  |
+| `pull-…-capi-e2e` | manual | `ci-e2e.sh --flavor=unmanaged`, focus "Cluster API E2E tests", skip `[K8s-Upgrade]` and API Version Upgrade | upstream CAPI e2e suite | * [E2E Tests](./testing.md#end-to-end-tests)  |
+| `pull-…-e2e-workload-upgrade` | manual | `ci-e2e.sh --flavor=upgrade`, focus `[K8s-Upgrade]` | Kubernetes upgrade of a workload cluster | * [E2E Tests](./testing.md#end-to-end-tests)  |
+| `pull-…-coverage` | manual | `ci-test-coverage.sh` plus gopherage | coverage report| * [Coverage](./testing.md#test-coverage--reporting)  |
 
 To run any of the manual jobs comment `/test <full job name>` on a PR.
 

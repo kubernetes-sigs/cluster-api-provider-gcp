@@ -14,6 +14,6 @@ Need help running and debugging CAPG locally? Look at our [Running CAPG Locally]
 
 Want to understand how the repo, and its CI checks work and fit together? Head to our [Repository Orientation](./orientation.md).
 
-Do you need help with our end-to-end tests? We have our [E2E Test](./e2e.md) pages.
+Do you need help with testing? We have our [Testing CAPG](./testing.md) page.
 
 Want to pull nightly images so you can test the very latest code? Follow the guide in our [Nightly Builds](./nightly-builds.md) page.
