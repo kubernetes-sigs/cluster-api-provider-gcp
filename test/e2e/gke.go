@@ -138,6 +138,13 @@ func ApplyManagedClusterTemplateAndWait(ctx context.Context, input ApplyManagedC
 	By("Verifying the machine pools replica counters")
 	verifyMachinePoolsReplicaCounters(ctx, input.ClusterProxy.GetClient(), result.MachinePools, input.WaitForMachinePools...)
 
+	By("Verifying cluster is available")
+	framework.VerifyClusterAvailable(ctx, framework.VerifyClusterAvailableInput{
+		Getter:    input.ClusterProxy.GetClient(),
+		Name:      result.Cluster.Name,
+		Namespace: result.Cluster.Namespace,
+	})
+
 	if input.PostMachinesProvisioned != nil {
 		By("Calling PostMachinesProvisioned")
 		input.PostMachinesProvisioned()

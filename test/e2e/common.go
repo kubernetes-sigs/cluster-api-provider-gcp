@@ -29,6 +29,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/test/framework"
+	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/cluster-api/util"
 )
 
@@ -60,6 +61,22 @@ func createSecret(ctx context.Context, name, namespace string, data map[string][
 	}
 
 	return clusterProxy.GetClient().Create(ctx, secret)
+}
+
+func applyAndVerifyCluster(ctx context.Context, input clusterctl.ApplyClusterTemplateAndWaitInput, result *clusterctl.ApplyClusterTemplateAndWaitResult) {
+	clusterctl.ApplyClusterTemplateAndWait(ctx, input, result)
+	By("Check that the cluster's available condition is set to True")
+	framework.VerifyClusterAvailable(ctx, framework.VerifyClusterAvailableInput{
+		Getter:    input.ClusterProxy.GetClient(),
+		Name:      result.Cluster.Name,
+		Namespace: result.Cluster.Namespace,
+	})
+	By("Check that all the machines in the cluster report Ready:True")
+	framework.VerifyMachinesReady(ctx, framework.VerifyMachinesReadyInput{
+		Lister:    input.ClusterProxy.GetClient(),
+		Name:      result.Cluster.Name,
+		Namespace: result.Cluster.Namespace,
+	})
 }
 
 type cleanupInput struct {

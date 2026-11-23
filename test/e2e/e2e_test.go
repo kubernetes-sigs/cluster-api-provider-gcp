@@ -115,7 +115,7 @@ var _ = Describe("Workload cluster creation", func() {
 			})
 
 			By("Initializes with 1 worker node")
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+			applyAndVerifyCluster(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                clusterctlLogFolder,
@@ -326,7 +326,7 @@ var _ = Describe("Workload cluster creation", func() {
 			Expect(region).NotTo(BeEmpty())
 			policyPath := createSpreadPolicy(ctx, project, region, clusterName+"-spread", skipCleanup)
 			By("Creating a high available cluster")
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+			applyAndVerifyCluster(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                clusterctlLogFolder,
@@ -378,7 +378,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 			By("Initializes with 1 worker node")
 
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+			applyAndVerifyCluster(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                clusterctlLogFolder,
@@ -403,7 +403,7 @@ var _ = Describe("Workload cluster creation", func() {
 		It("Should create a cluster with 1 control-plane and 1 worker node with an external and an internal load balancer", func() {
 			clusterName := fmt.Sprintf("%s-internal-lb", clusterNamePrefix)
 			By("Creating a cluster with an internal load balancer and an external load balancer")
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+			applyAndVerifyCluster(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                clusterctlLogFolder,
@@ -433,7 +433,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 			clusterName := fmt.Sprintf("%s-internal-lb", clusterNamePrefix)
 			By("Creating a cluster with internal load balancer")
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+			applyAndVerifyCluster(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                clusterctlLogFolder,
@@ -463,7 +463,7 @@ var _ = Describe("Workload cluster creation", func() {
 
 			clusterName := fmt.Sprintf("%s-internal-lb", clusterNamePrefix)
 			By("Creating a cluster with internal load balancer from GKE bootstrap cluster")
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+			applyAndVerifyCluster(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                clusterctlLogFolder,
@@ -488,7 +488,7 @@ var _ = Describe("Workload cluster creation", func() {
 		It("Should create a cluster class and then a cluster based on it", func() {
 			clusterName := fmt.Sprintf("%s-topology", clusterNamePrefix)
 			By("Creating a cluster from a topology")
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+			applyAndVerifyCluster(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                clusterctlLogFolder,
@@ -513,7 +513,7 @@ var _ = Describe("Workload cluster creation", func() {
 		It("Should create a cluster with the firewall rules provided", func() {
 			clusterName := fmt.Sprintf("%s-firewall-rules", clusterNamePrefix)
 			By("Creating a cluster with firewall rules provided")
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+			applyAndVerifyCluster(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
 				ClusterProxy: bootstrapClusterProxy,
 				ConfigCluster: clusterctl.ConfigClusterInput{
 					LogFolder:                clusterctlLogFolder,
