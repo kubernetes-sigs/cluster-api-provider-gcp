@@ -875,7 +875,7 @@ func convertToSdkSecretSyncConfig(config *infrav1exp.SecretSyncConfig) *containe
 	return sdkConfig
 }
 
-func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) { //nolint:gocyclo // to be decomposed, see #1850
 	log.V(4).Info("Checking diff and preparing update.")
 
 	needUpdate := false
