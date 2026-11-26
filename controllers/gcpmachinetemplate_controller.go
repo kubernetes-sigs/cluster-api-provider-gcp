@@ -198,7 +198,7 @@ func (r *GCPMachineTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, errors.Wrap(err, "failed to create cluster scope")
 	}
 	defer func() {
-		if err := clusterScope.Close(ctx); err != nil && reterr == nil {
+		if err := clusterScope.CloseClients(); err != nil && reterr == nil {
 			reterr = err
 		}
 	}()

@@ -31,7 +31,6 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
-	"sigs.k8s.io/cluster-api-provider-gcp/cloud/services/shared"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/pkg/gcp"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -108,6 +107,11 @@ func (m *MachinePoolScope) Name() string {
 // Namespace returns the namespace name.
 func (m *MachinePoolScope) Namespace() string {
 	return m.GCPMachinePool.Namespace
+}
+
+// InstanceTagger returns the object to use to tag instances
+func (m *MachinePoolScope) InstanceTagger() cloud.InstanceTagger {
+	return m.ClusterGetter.InstanceTagger()
 }
 
 // ClusterName returns the cluster name.
@@ -265,7 +269,6 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 				m.ClusterGetter.Name(),
 			),
 		},
-		ResourceManagerTags: shared.ResourceTagConvert(ctx, m.ResourceManagerTags()),
 		Labels: infrav1.Build(infrav1.BuildParams{
 			ClusterName: m.ClusterGetter.Name(),
 			Lifecycle:   infrav1.ResourceLifecycleOwned,
@@ -338,7 +341,7 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 		}
 	}
 
-	instance.Disks = append(instance.Disks, m.InstanceImageSpec(ctx))
+	instance.Disks = append(instance.Disks, m.InstanceImageSpec())
 	instance.Disks = append(instance.Disks, m.InstanceAdditionalDiskSpec()...)
 	instance.Metadata = InstanceAdditionalMetadataSpec(m.GCPMachinePool.Spec.AdditionalMetadata)
 	instance.ServiceAccounts = append(instance.ServiceAccounts, instanceServiceAccountsSpec(m.GCPMachinePool.Spec.ServiceAccount))
@@ -362,7 +365,7 @@ func (m *MachinePoolScope) InstanceTemplateResource(ctx context.Context) (*compu
 }
 
 // InstanceImageSpec returns compute instance image attched-disk spec.
-func (m *MachinePoolScope) InstanceImageSpec(ctx context.Context) *compute.AttachedDisk {
+func (m *MachinePoolScope) InstanceImageSpec() *compute.AttachedDisk {
 	spec := m.GCPMachinePool.Spec
 
 	version := m.MachinePool.Spec.Template.Spec.Version
@@ -384,11 +387,10 @@ func (m *MachinePoolScope) InstanceImageSpec(ctx context.Context) *compute.Attac
 		AutoDelete: true,
 		Boot:       true,
 		InitializeParams: &compute.AttachedDiskInitializeParams{
-			DiskSizeGb:          spec.RootDeviceSize,
-			DiskType:            string(diskType),
-			ResourceManagerTags: shared.ResourceTagConvert(ctx, spec.ResourceManagerTags),
-			SourceImage:         sourceImage,
-			Labels:              m.ClusterGetter.AdditionalLabels().AddLabels(spec.AdditionalLabels),
+			DiskSizeGb:  spec.RootDeviceSize,
+			DiskType:    string(diskType),
+			SourceImage: sourceImage,
+			Labels:      m.ClusterGetter.AdditionalLabels().AddLabels(spec.AdditionalLabels),
 		},
 	}
 
@@ -425,9 +427,8 @@ func (m *MachinePoolScope) InstanceAdditionalDiskSpec() []*compute.AttachedDisk 
 		additionalDisk := &compute.AttachedDisk{
 			AutoDelete: true,
 			InitializeParams: &compute.AttachedDiskInitializeParams{
-				DiskSizeGb:          ptr.Deref(disk.Size, 30),
-				DiskType:            diskType,
-				ResourceManagerTags: shared.ResourceTagConvert(context.TODO(), spec.ResourceManagerTags),
+				DiskSizeGb: ptr.Deref(disk.Size, 30),
+				DiskType:   diskType,
 			},
 		}
 		if strings.HasSuffix(additionalDisk.InitializeParams.DiskType, string(infrav1.LocalSsdDiskType)) {

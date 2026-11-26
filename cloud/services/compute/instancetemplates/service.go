@@ -24,6 +24,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/filter"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud/meta"
 	compute "google.golang.org/api/compute/v1"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-gcp/cloud"
 )
 
@@ -46,6 +47,12 @@ type Scope interface {
 
 	// BaseInstanceTemplateResourceName returns the base instanceTemplate selfLink
 	BaseInstanceTemplateResourceName() (*meta.Key, error)
+
+	// InstanceTagger returns the object to use to tag InstanceTemplate
+	InstanceTagger() cloud.InstanceTagger
+
+	// ResourceManagerTags returns the merge set of tags to apply to an InstanceTemplate
+	ResourceManagerTags() infrav1.ResourceManagerTags
 }
 
 // Service implements managed instance groups reconciler.
