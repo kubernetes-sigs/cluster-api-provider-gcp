@@ -290,7 +290,7 @@ func (m *MachineScope) InstanceImageSpec(ctx context.Context) *compute.AttachedD
 }
 
 // instanceAdditionalDiskSpec returns compute instance additional attched-disk spec.
-func instanceAdditionalDiskSpec(ctx context.Context, spec []infrav1.AttachedDiskSpec, rootDiskEncryptionKey *infrav1.CustomerEncryptionKey, zone string, resourceManagerTags infrav1.ResourceManagerTags) []*compute.AttachedDisk {
+func instanceAdditionalDiskSpec(ctx context.Context, spec []infrav1.AttachedDiskSpec, zone string, resourceManagerTags infrav1.ResourceManagerTags) []*compute.AttachedDisk {
 	additionalDisks := make([]*compute.AttachedDisk, 0, len(spec))
 	for _, disk := range spec {
 		additionalDisk := &compute.AttachedDisk{
@@ -312,20 +312,20 @@ func instanceAdditionalDiskSpec(ctx context.Context, spec []infrav1.AttachedDisk
 			additionalDisk.Interface = "NVME"
 		}
 		if disk.EncryptionKey != nil {
-			if rootDiskEncryptionKey.KeyType == infrav1.CustomerManagedKey && rootDiskEncryptionKey.ManagedKey != nil {
+			if disk.EncryptionKey.KeyType == infrav1.CustomerManagedKey && disk.EncryptionKey.ManagedKey != nil {
 				additionalDisk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
-					KmsKeyName: rootDiskEncryptionKey.ManagedKey.KMSKeyName,
+					KmsKeyName: disk.EncryptionKey.ManagedKey.KMSKeyName,
 				}
-				if rootDiskEncryptionKey.KMSKeyServiceAccount != nil {
-					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *rootDiskEncryptionKey.KMSKeyServiceAccount
+				if disk.EncryptionKey.KMSKeyServiceAccount != nil {
+					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *disk.EncryptionKey.KMSKeyServiceAccount
 				}
-			} else if rootDiskEncryptionKey.KeyType == infrav1.CustomerSuppliedKey && rootDiskEncryptionKey.SuppliedKey != nil {
+			} else if disk.EncryptionKey.KeyType == infrav1.CustomerSuppliedKey && disk.EncryptionKey.SuppliedKey != nil {
 				additionalDisk.DiskEncryptionKey = &compute.CustomerEncryptionKey{
-					RawKey:          string(rootDiskEncryptionKey.SuppliedKey.RawKey),
-					RsaEncryptedKey: string(rootDiskEncryptionKey.SuppliedKey.RSAEncryptedKey),
+					RawKey:          string(disk.EncryptionKey.SuppliedKey.RawKey),
+					RsaEncryptedKey: string(disk.EncryptionKey.SuppliedKey.RSAEncryptedKey),
 				}
-				if rootDiskEncryptionKey.KMSKeyServiceAccount != nil {
-					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *rootDiskEncryptionKey.KMSKeyServiceAccount
+				if disk.EncryptionKey.KMSKeyServiceAccount != nil {
+					additionalDisk.DiskEncryptionKey.KmsKeyServiceAccount = *disk.EncryptionKey.KMSKeyServiceAccount
 				}
 			}
 		}
@@ -511,7 +511,7 @@ func (m *MachineScope) InstanceSpec(ctx context.Context, log logr.Logger) *compu
 	}
 
 	instance.Disks = append(instance.Disks, m.InstanceImageSpec(ctx))
-	instance.Disks = append(instance.Disks, instanceAdditionalDiskSpec(ctx, m.GCPMachine.Spec.AdditionalDisks, m.GCPMachine.Spec.RootDiskEncryptionKey, m.Zone(), m.ResourceManagerTags())...)
+	instance.Disks = append(instance.Disks, instanceAdditionalDiskSpec(ctx, m.GCPMachine.Spec.AdditionalDisks, m.Zone(), m.ResourceManagerTags())...)
 
 	instance.Metadata = InstanceAdditionalMetadataSpec(m.GCPMachine.Spec.AdditionalMetadata)
 	instance.ServiceAccounts = append(instance.ServiceAccounts, instanceServiceAccountsSpec(m.GCPMachine.Spec.ServiceAccount))
