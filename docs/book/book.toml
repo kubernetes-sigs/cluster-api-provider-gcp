@@ -10,8 +10,8 @@ git-repository-url = "https://sigs.k8s.io/cluster-api-provider-gcp"
 no-section-label = true
 
 [output.html.redirect]
-"/agenda.html" = "/agenda/2024.html"
-"/agenda/2024.html" = "https://docs.google.com/document/d/1l8B947Je79ZJX7zmKnJyMcOMIWjNidvp5FMTnPAY72I/"
+"/agenda.html" = "https://docs.google.com/document/d/11ccg-nkzCq-Yd9mnUG7DVsTrkQVEHaynNE3VcMa3z7Y"
+"/agenda/2024.html" = "https://docs.google.com/document/d/11ccg-nkzCq-Yd9mnUG7DVsTrkQVEHaynNE3VcMa3z7Y"
 
 [preprocessor.tabulate]
 command = "mdbook-tabulate"
