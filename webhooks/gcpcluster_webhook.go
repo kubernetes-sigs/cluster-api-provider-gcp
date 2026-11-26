@@ -111,6 +111,35 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster)
 		)
 	}
 
+	if !reflect.DeepEqual(c.Spec.Network.Name, old.Spec.Network.Name) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Network", "Name"),
+				c.Spec.Network.Name, "field is immutable"),
+		)
+	}
+
+	if err := validateAutoCreateSubnetworks(old.Spec.Network.AutoCreateSubnetworks, c.Spec.Network.AutoCreateSubnetworks,
+		field.NewPath("spec", "Network", "AutoCreateSubnetworks")); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	allErrs = append(allErrs, validateSubnetsUpdate(old.Spec.Network.Subnets, c.Spec.Network.Subnets,
+		field.NewPath("spec", "Network", "Subnets"))...)
+
+	if !reflect.DeepEqual(c.Spec.Network.HostProject, old.Spec.Network.HostProject) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Network", "HostProject"),
+				c.Spec.Network.HostProject, "field is immutable"),
+		)
+	}
+
+	if !reflect.DeepEqual(c.Spec.Network.LoadBalancerBackendPort, old.Spec.Network.LoadBalancerBackendPort) {
+		allErrs = append(allErrs,
+			field.Invalid(field.NewPath("spec", "Network", "LoadBalancerBackendPort"),
+				c.Spec.Network.LoadBalancerBackendPort, "field is immutable"),
+		)
+	}
+
 	if c.Spec.Network.Mtu < int64(1300) {
 		allErrs = append(allErrs,
 			field.Invalid(field.NewPath("spec", "Network", "Mtu"),
@@ -125,7 +154,92 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster)
 		)
 	}
 
-	for i, firewallRule := range c.Spec.Network.Firewall.FirewallRules {
+	allErrs = append(allErrs, validateFirewallRulePortProtocols(c.Spec.Network.Firewall.FirewallRules)...)
+
+	// Rules that were admitted before this validation existed are grandfathered in: a
+	// cluster whose stored rules cannot be told apart stays updatable as long as the
+	// rules are left alone, so an unrelated change is not rejected over a field it does
+	// not touch. Modifying the rules at all opts the whole list back into validation.
+	if !reflect.DeepEqual(c.Spec.Network.Firewall.FirewallRules, old.Spec.Network.Firewall.FirewallRules) {
+		rulesPath := field.NewPath("spec", "Network", "Firewall", "FirewallRules")
+		allErrs = append(allErrs, firewallutil.ValidateRules(c.Spec.Network.Firewall.FirewallRules, rulesPath)...)
+		allErrs = append(allErrs, firewallutil.ValidateRuleUpdates(old.Spec.Network.Firewall.FirewallRules,
+			c.Spec.Network.Firewall.FirewallRules, rulesPath)...)
+	}
+
+	if len(allErrs) == 0 {
+		return nil, nil
+	}
+
+	return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
+}
+
+func (*GCPCluster) ValidateDelete(_ context.Context, _ *infrav1.GCPCluster) (admission.Warnings, error) {
+	return nil, nil
+}
+
+func validateAutoCreateSubnetworks(oldAuto, newAuto *bool, fldPath *field.Path) *field.Error {
+	oldVal := true
+	if oldAuto != nil {
+		oldVal = *oldAuto
+	}
+	newVal := true
+	if newAuto != nil {
+		newVal = *newAuto
+	}
+	if !oldVal && newVal {
+		return field.Invalid(fldPath, newAuto, "cannot be changed from false to true")
+	}
+	return nil
+}
+
+func validateSubnetsUpdate(oldSubnets, newSubnets infrav1.Subnets, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	oldSubnetsByName := make(map[string]infrav1.SubnetSpec)
+	oldSubnetsByCidr := make(map[string]infrav1.SubnetSpec)
+	for _, oldSubnet := range oldSubnets {
+		if oldSubnet.Name != "" {
+			oldSubnetsByName[oldSubnet.Name] = oldSubnet
+		}
+		if oldSubnet.CidrBlock != "" {
+			oldSubnetsByCidr[oldSubnet.CidrBlock] = oldSubnet
+		}
+	}
+
+	for i, newSubnet := range newSubnets {
+		if oldSubnet, ok := oldSubnetsByName[newSubnet.Name]; ok {
+			if newSubnet.CidrBlock != oldSubnet.CidrBlock {
+				allErrs = append(allErrs,
+					field.Invalid(fldPath.Index(i).Child("CidrBlock"),
+						newSubnet.CidrBlock, "field is immutable"),
+				)
+			}
+			if newSubnet.Region != oldSubnet.Region {
+				allErrs = append(allErrs,
+					field.Invalid(fldPath.Index(i).Child("Region"),
+						newSubnet.Region, "field is immutable"),
+				)
+			}
+		}
+
+		if oldSubnet, ok := oldSubnetsByCidr[newSubnet.CidrBlock]; ok {
+			if oldSubnet.Name != newSubnet.Name {
+				allErrs = append(allErrs,
+					field.Invalid(fldPath.Index(i).Child("Name"),
+						newSubnet.Name, "field is immutable"),
+				)
+			}
+		}
+	}
+
+	return allErrs
+}
+
+func validateFirewallRulePortProtocols(rules []infrav1.FirewallRule) field.ErrorList {
+	var allErrs field.ErrorList
+
+	for i, firewallRule := range rules {
 		for j, allowRule := range firewallRule.Allowed {
 			if allowRule.IPProtocol != infrav1.FirewallProtocolTCP && allowRule.IPProtocol != infrav1.FirewallProtocolUDP &&
 				len(allowRule.Ports) > 0 {
@@ -152,24 +266,5 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster)
 		}
 	}
 
-	// Rules that were admitted before this validation existed are grandfathered in: a
-	// cluster whose stored rules cannot be told apart stays updatable as long as the
-	// rules are left alone, so an unrelated change is not rejected over a field it does
-	// not touch. Modifying the rules at all opts the whole list back into validation.
-	if !reflect.DeepEqual(c.Spec.Network.Firewall.FirewallRules, old.Spec.Network.Firewall.FirewallRules) {
-		rulesPath := field.NewPath("spec", "Network", "Firewall", "FirewallRules")
-		allErrs = append(allErrs, firewallutil.ValidateRules(c.Spec.Network.Firewall.FirewallRules, rulesPath)...)
-		allErrs = append(allErrs, firewallutil.ValidateRuleUpdates(old.Spec.Network.Firewall.FirewallRules,
-			c.Spec.Network.Firewall.FirewallRules, rulesPath)...)
-	}
-
-	if len(allErrs) == 0 {
-		return nil, nil
-	}
-
-	return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
-}
-
-func (*GCPCluster) ValidateDelete(_ context.Context, _ *infrav1.GCPCluster) (admission.Warnings, error) {
-	return nil, nil
+	return allErrs
 }
