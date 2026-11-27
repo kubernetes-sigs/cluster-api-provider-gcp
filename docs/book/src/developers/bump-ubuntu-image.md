@@ -1,6 +1,6 @@
 # Bumping the Ubuntu Image
 
-This document describes how to bump the Ubuntu version of the VM images used by the e2e and conformance jobs. It is primarily intended to be consumed by an AI coding agent (e.g. via `/bump-ubuntu-image 2404`), but the steps can also be followed manually.
+This document describes how to bump the Ubuntu version of the VM images used by the e2e and conformance jobs. It is primarily intended to be consumed by an AI coding agent (the Claude skill can be found [here](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/.claude/skills/bump-ubuntu-image/SKILL.md) and used via `/bump-ubuntu-image <VERSION>`), but the steps can also be followed manually.
 
 ## Convention
 
@@ -59,7 +59,6 @@ That's the only line to touch for the e2e and conformance jobs.
 These name the image directly and are not derived from the pin:
 
 - `../prerequisites.md`: the `make build-gce-ubuntu-*` target and the `family:capi-ubuntu-*-k8s` filter
-- `cluster-creation.md`: the example `IMAGE_ID`
 
 Leave `../topics/autoscaling.md` alone: its `imageFamily` is a Google public image family in an unrelated example.
 

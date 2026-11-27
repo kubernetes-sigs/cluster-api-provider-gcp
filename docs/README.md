@@ -2,13 +2,10 @@
 
 ## Quick Start
 
-- [Getting Started](./book/src/topics/prerequisites.md)
+- [Getting Started](./book/src/quick-start.md)
 - [Cluster API Quick Start](https://cluster-api.sigs.k8s.io/user/quick-start.html)
 
 ## Development
 
-- [Development Guide](./book/src/developers/development.md)
+- [Development Guide](./book/src/developers/index.md)
 - [Releasing](./book/src/developers/releasing.md)
-
-## Testing 
-- [Conformance](./book/src/topics/conformance.md)

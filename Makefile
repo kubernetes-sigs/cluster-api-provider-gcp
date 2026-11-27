@@ -42,8 +42,6 @@ export KUBEBUILDER_ENVTEST_KUBERNETES_VERSION ?= $(basename $(patsubst v%,%,$(KU
 export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?=60s
 export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?=60s
 
-# Keep the standalone cert manager pinned here; it is not a dependency of either Go module.
-CERT_MANAGER_VER := v1.21.3
 # Keep the standalone go-apidiff pinned here; it is not a dependency of either Go module.
 GO_APIDIFF_VER := v0.8.3
 # Keep the standalone yq pinned here; it is not a dependency of either Go module.
@@ -104,6 +102,8 @@ GOLANGCI_LINT_VER = $(shell $(YQ) '.jobs.golangci.steps[] | select(.name == "gol
 KIND_VER := $(call get_go_version,sigs.k8s.io/kind)
 KIND_BIN := kind
 KIND := $(TOOLS_BIN_DIR)/$(KIND_BIN)-$(KIND_VER)
+
+CAPI_VER := $(call get_go_version,sigs.k8s.io/cluster-api)
 
 GINKGO_VER := $(call get_go_version,github.com/onsi/ginkgo/v2)
 GINKGO_BIN := ginkgo
@@ -508,7 +508,7 @@ release-staging-nightly:
 
 .PHONY: upload-staging-artifacts
 upload-staging-artifacts: ## Upload release artifacts to the staging bucket
-	# Example manifest location: https://storage.googleapis.com/k8s-staging-cluster-api-aws/components/nightly_main_20240425/infrastructure-components.yaml
+	# Example manifest location: https://storage.googleapis.com/k8s-staging-cluster-api-gcp/components/nightly_main_20261118/infrastructure-components.yaml
 	# Please note that these files are deleted after a certain period, at the time of this writing 60 days after file creation.
 	gsutil cp $(RELEASE_DIR)/* gs://$(BUCKET)/components/$(RELEASE_ALIAS_TAG)
 
@@ -524,66 +524,46 @@ promote-images: $(KPROMO)
 ## --------------------------------------
 
 CLUSTER_NAME ?= test1
+MANAGEMENT_CLUSTER_NAME = capg
+MANAGEMENT_CLUSTER_CONTEXT_NAME = kind-${MANAGEMENT_CLUSTER_NAME}
+KUBE_CONTEXT ?= $(MANAGEMENT_CLUSTER_CONTEXT_NAME)
 
 .PHONY: install-tools # populate hack/tools/bin
 install-tools: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(GINKGO) $(KIND)
 
-.PHONY: create-management-cluster
-create-management-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KIND) $(KUBECTL)
-	## Create kind management cluster.
-	$(KIND) create cluster --name=clusterapi
-
-	# Install cert manager and wait for availability
-	./hack/install-cert-manager.sh $(CERT_MANAGER_VER)
-
-	# Deploy CAPI
-	curl --retry $(CURL_RETRIES) -sSL https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.7.3/cluster-api-components.yaml | $(ENVSUBST) | $(KUBECTL) apply -f -
-
-	# Deploy CAPG
-	$(KIND) load docker-image $(CONTROLLER_IMG)-$(ARCH):$(TAG) --name=clusterapi
-	$(KUSTOMIZE) build config/default | $(ENVSUBST) | $(KUBECTL) apply -f -
-
-	# Wait for CAPI pods
-	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-system deployment -l cluster.x-k8s.io/provider=cluster-api
-	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-kubeadm-bootstrap-system deployment -l cluster.x-k8s.io/provider=bootstrap-kubeadm
-	$(KUBECTL) wait --for=condition=Available --timeout=5m -n capi-kubeadm-control-plane-system deployment -l cluster.x-k8s.io/provider=control-plane-kubeadm
-
-	# Wait for CAPG pods
-	$(KUBECTL) wait --for=condition=Ready --timeout=5m -n capg-system pod -l cluster.x-k8s.io/provider=infrastructure-gcp
-
-	# required sleep for when creating management and workload cluster simultaneously
-	sleep 10
-	@echo 'Set kubectl context to the kind management cluster by running "$(KUBECTL) config set-context kind-clusterapi"'
-
 .PHONY: create-workload-cluster
 create-workload-cluster: $(KUSTOMIZE) $(ENVSUBST) $(KUBECTL)
 	# Create workload Cluster.
-	$(KUSTOMIZE) build templates | $(ENVSUBST) | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build templates | $(ENVSUBST) | $(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} apply -f -
 
 	# Wait for the kubeconfig to become available.
-	${TIMEOUT} 5m bash -c "while ! $(KUBECTL) get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
+	${TIMEOUT} 5m bash -c "while ! $(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} get secrets | grep $(CLUSTER_NAME)-kubeconfig; do sleep 1; done"
 	# Get kubeconfig and store it locally.
-	$(KUBECTL) get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > $(CAPG_WORKER_CLUSTER_KUBECONFIG)
-	${TIMEOUT} 15m bash -c "while ! kubectl --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep master; do sleep 1; done"
+	$(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} get secrets $(CLUSTER_NAME)-kubeconfig -o json | jq -r .data.value | base64 --decode > $(CAPG_WORKER_CLUSTER_KUBECONFIG)
+	${TIMEOUT} 15m bash -c "while ! $(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) get nodes | grep control-plane; do sleep 1; done"
 
 	# Deploy calico
 	$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) apply -f https://raw.githubusercontent.com/projectcalico/calico/$(CALICO_VERSION)/manifests/calico.yaml
 
 	@echo 'run "$(KUBECTL) --kubeconfig=$(CAPG_WORKER_CLUSTER_KUBECONFIG) ..." to work with the new target cluster'
 
-.PHONY: create-cluster
-create-cluster: create-management-cluster create-workload-cluster ## Create a development Kubernetes cluster on GCP in a KIND management cluster.
-
 .PHONY: delete-workload-cluster
 delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 	@echo 'Your GCP resources will now be deleted, this can take up to 20 minutes'
-	$(KUBECTL) delete cluster $(CLUSTER_NAME)
+	$(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} delete cluster $(CLUSTER_NAME)
+
+.PHONY: resolve-node-image
+resolve-node-image: $(YQ) ## Print the Kubernetes version and node image to use for a local workload cluster
+	@./hack/resolve-node-image.sh
+
+.PHONY: apply-nightly
+apply-nightly: $(ENVSUBST) $(KUBECTL) ## Apply a CAPG nightly build to the local management cluster (NIGHTLY=nightly_main_YYYYMMDD, default latest)
+	@KUBE_CONTEXT=$(KUBE_CONTEXT) ./hack/apply-nightly.sh
 
 .PHONY: kind-reset
 kind-reset: ## Destroys the kind clusters.
 	$(KIND) delete cluster --name=capg || true
 	$(KIND) delete cluster --name=capg-e2e || true
-	$(KIND) delete cluster --name=clusterapi || true
 
 ## --------------------------------------
 ## Tilt / Kind
@@ -594,12 +574,8 @@ kind-create: $(KUBECTL) ## create capg kind cluster if needed
 	./scripts/kind-with-registry.sh
 
 .PHONY: tilt-up
-tilt-up: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) kind-create ## start tilt and build kind cluster if needed
-	EXP_CLUSTER_RESOURCE_SET=true tilt up
-
-.PHONY: delete-cluster
-delete-cluster: delete-workload-cluster  ## Deletes the example kind cluster "capg"
-	kind delete cluster --name=capg
+tilt-up: $(ENVSUBST) $(KUSTOMIZE) $(KUBECTL) $(CLUSTERCTL) kind-create ## start tilt and build kind cluster if needed
+	EXP_CLUSTER_RESOURCE_SET=true CAPI_VERSION=$(CAPI_VER) CLUSTERCTL=$(CLUSTERCTL) tilt up
 
 ## --------------------------------------
 ## Cleanup / Verification

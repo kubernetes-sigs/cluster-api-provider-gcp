@@ -173,7 +173,6 @@ Example versions:
 
 ### Minor/Major Releases
 
-1. Follow the communications process for [pre-releases](#pre-releases)
 1. An announcement email is sent to `sig-cluster-lifecycle@kubernetes.io` with the subject `[ANNOUNCE] cluster-api-provider-gcp <version> has been released`
 
 [release-announcement]: #communication

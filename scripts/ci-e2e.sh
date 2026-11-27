@@ -47,7 +47,7 @@ export GCP_REGION=${GCP_REGION:-"us-east4"}
 export GCP_ZONE=${GCP_ZONE:-"${GCP_REGION}-a"}
 export TEST_NAME=${CLUSTER_NAME:-"capg-${RANDOM}"}
 export GCP_NETWORK_NAME=${GCP_NETWORK_NAME:-"${TEST_NAME}-mynetwork"}
-GCP_B64ENCODED_CREDENTIALS=$(base64 "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
+GCP_B64ENCODED_CREDENTIALS=$(base64 < "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\n')
 export GCP_B64ENCODED_CREDENTIALS
 # KUBERNETES_VERSION/IMAGE_ID (and, for other flavors, KUBERNETES_VERSION_GKE/
 # CCM_VERSION/etc.) are resolved in main(), after gcloud auth -- see

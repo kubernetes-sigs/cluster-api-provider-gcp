@@ -1,6 +1,6 @@
 # Bumping Kubernetes and Cluster API
 
-This document describes how to bump the Kubernetes and Cluster API (CAPI) versions across the project. It is primarily intended to be consumed by an AI coding agent (e.g. via `/bump-k8s-capi 1.35 1.13`), but the steps can also be followed manually.
+This document describes how to bump the Kubernetes and Cluster API (CAPI) versions across the project. It is primarily intended to be consumed by an AI coding agent (the Claude skill can be found [here](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/.claude/skills/bump-k8s-capi/SKILL.md) and used via `/bump-k8s-capi <K8S_VERSION> <CAPI_VERSION>`), but the steps can also be followed manually.
 
 The two arguments are the target **Kubernetes minor version** (e.g. `1.35`) and the target **CAPI minor version** (e.g. `1.13`).
 
@@ -137,7 +137,7 @@ go mod tidy
 
 ## Step 5: Verify derived tool versions
 
-Do not manually edit `KUBEBUILDER_ENVTEST_KUBERNETES_VERSION`, `CONTROLLER_GEN_VER`, `CONVERSION_GEN_VER`, `KIND_VER`, `KUBECTL_VER`, or `SETUP_ENVTEST_VER` in the Makefile. They follow the root or tools module:
+Do not manually edit `KUBEBUILDER_ENVTEST_KUBERNETES_VERSION`, `CONTROLLER_GEN_VER`, `CONVERSION_GEN_VER`, `KIND_VER`, `KUBECTL_VER`, `CAPI_VER`, or `SETUP_ENVTEST_VER` in the Makefile. They follow the root or tools module:
 
 ```bash
 go list -m k8s.io/client-go sigs.k8s.io/kind github.com/onsi/ginkgo/v2
@@ -146,7 +146,7 @@ go list -m k8s.io/client-go sigs.k8s.io/kind github.com/onsi/ginkgo/v2
 
 The `k8s.io/client-go` version `v0.MINOR.PATCH` determines kubectl `v1.MINOR.PATCH` and the envtest `1.MINOR` selector. Verify the kubectl binary and a matching envtest release are available. The Ginkgo CLI follows the root `go.mod`; controller-gen, conversion-gen, and setup-envtest follow `hack/tools/go.mod`. Check that their selected versions are appropriate before regenerating files.
 
-Do NOT update the independent pins `GOLANG_VERSION`, `KUSTOMIZE_VER`, `CERT_MANAGER_VER`, or `CALICO_VERSION` as part of the k8s/CAPI bump. `GOLANGCI_LINT_VER` follows `.github/workflows/lint.yml` and is handled by the Go bump guide.
+Do NOT update the independent pins `GOLANG_VERSION`, `KUSTOMIZE_VER`, or `CALICO_VERSION` as part of the k8s/CAPI bump. `GOLANGCI_LINT_VER` follows `.github/workflows/lint.yml` and is handled by the Go bump guide.
 
 ## Step 6: Update metadata.yaml
 

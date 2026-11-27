@@ -1,6 +1,6 @@
 # Bumping Go
 
-This document describes how to bump the Go version across the project. It is primarily intended to be consumed by an AI coding agent (e.g. via `/bump-go 1.26`), but the steps can also be followed manually.
+This document describes how to bump the Go version across the project. It is primarily intended to be consumed by an AI coding agent (the Claude skill can be found [here](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/.claude/skills/bump-go/SKILL.md) and used via `/bump-go <VERSION>`), but the steps can also be followed manually.
 
 ## Convention
 

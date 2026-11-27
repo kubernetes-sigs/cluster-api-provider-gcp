@@ -1,6 +1,5 @@
 # -*- mode: Python -*-
 
-envsubst_cmd = "./hack/tools/bin/envsubst"
 tools_bin = "./hack/tools/bin"
 kubectl_cmd = "./hack/tools/bin/kubectl"
 kind_cmd = "./hack/tools/bin/kind"
@@ -15,12 +14,9 @@ settings = {
     "allowed_contexts": [
         "kind-capg",
     ],
-    "deploy_cert_manager": True,
     "preload_images_for_kind": True,
     "kind_cluster_name": "capg",
-    "capi_version": "v1.14.4",
-    "cert_manager_version": "v1.21.3",
-    "kubernetes_version": "v1.36.0",
+    "capi_version": os.getenv("CAPI_VERSION"),
 }
 
 keys = ["GCP_B64ENCODED_CREDENTIALS"]
@@ -30,6 +26,12 @@ settings.update(read_json(
     "tilt-settings.json",
     default = {},
 ))
+
+if not settings.get("capi_version"):
+    fail("Cluster API Version not set. Please use `make tilt-up` or set `capi_version` in `tilt-settings.json`")
+
+if not os.getenv("CLUSTERCTL"):
+    fail("clusterctl path is not set. Please use `make tilt-up` or set the CLUSTERCTL environment variable to point at your `clusterctl` installation")
 
 if settings.get("trigger_mode") == "manual":
     trigger_mode(TRIGGER_MODE_MANUAL)
@@ -42,10 +44,20 @@ if "default_registry" in settings:
 
 # deploy CAPI
 def deploy_capi():
-    version = settings.get("capi_version")
-    capi_uri = "https://github.com/kubernetes-sigs/cluster-api/releases/download/{}/cluster-api-components.yaml".format(version)
-    cmd = "curl -sSL {} | {} | {} apply -f -".format(capi_uri, envsubst_cmd, kubectl_cmd)
-    local(cmd, quiet = True)
+    desired_version = settings.get("capi_version")
+    kind_cluster_name = settings.get("kind_cluster_name")
+    version_cmd = "{0} --context kind-{1} get providers.clusterctl.cluster.x-k8s.io -n capi-system cluster-api -o jsonpath='{{.version}}' || true".format(kubectl_cmd, kind_cluster_name)
+    detected_version = str(local(version_cmd, quiet = True)).strip()
+
+    if not detected_version:
+        init_command = "{0} init --kubeconfig-context kind-{2} --core cluster-api:{1} --bootstrap kubeadm:{1} --control-plane kubeadm:{1} --wait-providers".format(os.getenv("CLUSTERCTL"), desired_version, kind_cluster_name)
+        local(init_command, quiet = True)
+    elif desired_version == detected_version:
+        pass
+    else:
+        upgrade_command = "{0} upgrade apply --kubeconfig-context kind-{2} --core cluster-api:{1} --bootstrap kubeadm:{1} --control-plane kubeadm:{1} --wait-providers".format(os.getenv("CLUSTERCTL"), desired_version, kind_cluster_name)
+        local(upgrade_command, quiet = True)
+
     if settings.get("extra_args"):
         extra_args = settings.get("extra_args")
         if extra_args.get("core"):
@@ -86,6 +98,18 @@ def append_arg_for_container_in_deployment(yaml_stream, name, namespace, contain
                 if contains_image_name in container.get("image"):
                     container.get("args").extend(args)
 
+def setup_container_for_debug(yaml_stream, name, namespace):
+    for item in yaml_stream:
+        if item["kind"] == "Deployment" and item.get("metadata").get("name") == name and item.get("metadata").get("namespace") == namespace:
+            containers = item.get("spec").get("template").get("spec").get("containers")
+            for container in containers:
+                if "manager" == container.get("name"):
+                    for i, arg in enumerate(container.get("args")):
+                        if arg == "--leader-elect":
+                            container.get("args")[i] = "--leader-elect=false"
+                    container.pop("livenessProbe", None)
+                    container.pop("readinessProbe", None)
+
 def fixup_yaml_empty_arrays(yaml_str):
     yaml_str = yaml_str.replace("conditions: null", "conditions: []")
     return yaml_str.replace("storedVersions: null", "storedVersions: []")
@@ -104,22 +128,32 @@ RUN go install github.com/go-delve/delve/cmd/dlv@v1.26.3
 # Support live reloading with Tilt
 RUN wget --output-document /restart.sh --quiet https://raw.githubusercontent.com/tilt-dev/rerun-process-wrapper/master/restart.sh  && \
     wget --output-document /start.sh --quiet https://raw.githubusercontent.com/tilt-dev/rerun-process-wrapper/master/start.sh && \
-    chmod +x /start.sh && chmod +x /restart.sh && chmod +x /go/bin/dlv && \
-    touch /process.txt && chmod 0777 /process.txt `# pre-create PID file to allow even non-root users to run the image`
+    chmod +x /start.sh && chmod +x /restart.sh && chmod +x /go/bin/dlv
 """
+
+manager_folder = "/app"
+manager_location = "{}/manager".format(manager_folder)
+manager_container_security_context = read_yaml_stream("config/manager/manager.yaml")[0]["spec"]["template"]["spec"]["containers"][0]["securityContext"]
+uid = manager_container_security_context["runAsUser"]
+gid = manager_container_security_context["runAsGroup"]
 
 tilt_dockerfile_header = """
 FROM golang:1.26.11 as tilt
 WORKDIR /
-COPY --from=tilt-helper /process.txt .
 COPY --from=tilt-helper /start.sh .
 COPY --from=tilt-helper /restart.sh .
 COPY --from=tilt-helper /go/bin/dlv .
-COPY manager .
-"""
+RUN install -d -o {1} -g {2} {0}
+WORKDIR {0}
+COPY manager {0}
+""".format(manager_folder, uid, gid)
 
 # Build CAPG and add feature gates
 def capg():
+    # Get debug settings
+    debug = settings.get("debug", {}).get("gcp", {})
+    debug_port = int(debug.get("port", 0))
+
     # Apply the kustomized yaml for this provider
     substitutions = settings.get("kustomize_substitutions", {})
     os.environ.update(substitutions)
@@ -128,18 +162,25 @@ def capg():
     yaml = str(kustomizesub("./config/default"))
 
     # add extra_args if they are defined
-    if settings.get("extra_args"):
-        gcp_extra_args = settings.get("extra_args").get("gcp")
+    if settings.get("extra_args") or debug_port != 0:
+        yaml_dict = decode_yaml_stream(yaml)
+        gcp_extra_args = settings.get("extra_args", {}).get("gcp")
         if gcp_extra_args:
-            yaml_dict = decode_yaml_stream(yaml)
             append_arg_for_container_in_deployment(yaml_dict, "capg-controller-manager", "capg-system", "cluster-api-gcp-controller", gcp_extra_args)
-            yaml = str(encode_yaml_stream(yaml_dict))
-            yaml = fixup_yaml_empty_arrays(yaml)
+        if debug_port != 0:
+            setup_container_for_debug(yaml_dict, "capg-controller-manager", "capg-system")
+        yaml = str(encode_yaml_stream(yaml_dict))
+        yaml = fixup_yaml_empty_arrays(yaml)
 
     # Set up a local_resource build of the provider's manager binary.
+    arch = str(local("go env GOARCH", quiet = True)).strip()
+    cmd = 'mkdir -p .tiltbuild;CGO_ENABLED=0 GOOS=linux GOARCH={} go build -ldflags \'-extldflags "-static"\''.format(arch)
+    if debug_port != 0:
+        cmd += " -gcflags 'all=-N -l'"
+    cmd += " -o .tiltbuild/manager"
     local_resource(
         "manager",
-        cmd = 'mkdir -p .tiltbuild;CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags \'-extldflags "-static"\' -o .tiltbuild/manager',
+        cmd = cmd,
         deps = ["api", "cloud", "config", "controllers", "exp", "feature", "pkg", "go.mod", "go.sum", "main.go"],
     )
 
@@ -148,10 +189,12 @@ def capg():
         tilt_dockerfile_header,
     ])
 
-    entrypoint = ["sh", "/start.sh", "/manager"]
-    extra_args = settings.get("extra_args")
-    if extra_args:
-        entrypoint.extend(extra_args)
+    entrypoint = ["sh", "/start.sh", manager_location]
+    if debug_port != 0:
+        entrypoint = ["sh", "/start.sh", "/dlv", "--accept-multiclient", "--api-version=2", "--headless=true", "exec", "--listen=:30000"]
+        if debug.get("continue", True):
+            entrypoint += ["--continue"]
+        entrypoint += ["--", manager_location]
 
     # Set up an image build for the provider. The live update configuration syncs the output from the local_resource
     # build into the container.
@@ -163,13 +206,15 @@ def capg():
         entrypoint = entrypoint,
         only = "manager",
         live_update = [
-            sync(".tiltbuild/manager", "/manager"),
+            sync(".tiltbuild/manager", manager_location),
             run("sh /restart.sh"),
         ],
         ignore = ["templates"],
     )
 
     k8s_yaml(blob(yaml))
+    if debug_port != 0:
+        k8s_resource("capg-controller-manager", port_forwards = [port_forward(debug_port, 30000)])
 
 def base64_encode(to_encode):
     encode_blob = local("echo '{}' | tr -d '\n' | base64 - | tr -d '\n'".format(to_encode), quiet = True)
@@ -203,11 +248,6 @@ def waitforsystem():
 validate_auth()
 
 include_user_tilt_files()
-
-load("ext://cert_manager", "deploy_cert_manager")
-
-if settings.get("deploy_cert_manager"):
-    deploy_cert_manager()
 
 deploy_capi()
 
