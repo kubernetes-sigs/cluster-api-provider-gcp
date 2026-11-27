@@ -20,9 +20,53 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 )
+
+func TestGCPManagedClusterValidatingWebhookCreateLoadBalancerWarning(t *testing.T) {
+	tests := []struct {
+		name         string
+		loadBalancer infrav1.LoadBalancerSpec
+		wantWarning  bool
+	}{
+		{
+			name:         "no warning when loadBalancer is unset",
+			loadBalancer: infrav1.LoadBalancerSpec{},
+			wantWarning:  false,
+		},
+		{
+			name: "warning when loadBalancer is set",
+			loadBalancer: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.RegionalExternal),
+			},
+			wantWarning: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			mc := &expinfrav1.GCPManagedCluster{
+				Spec: expinfrav1.GCPManagedClusterSpec{
+					Project:      "project",
+					Region:       "us-west1",
+					LoadBalancer: tc.loadBalancer,
+				},
+			}
+			warn, err := (&GCPManagedCluster{}).ValidateCreate(t.Context(), mc)
+
+			g.Expect(err).ToNot(HaveOccurred())
+			if tc.wantWarning {
+				g.Expect(warn).To(ConsistOf(ContainSubstring("spec.loadBalancer")))
+			} else {
+				g.Expect(warn).To(BeEmpty())
+			}
+		})
+	}
+}
 
 func TestGCPManagedClusterValidatingWebhookUpdate(t *testing.T) {
 	tests := []struct {

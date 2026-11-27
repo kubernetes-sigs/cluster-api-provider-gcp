@@ -73,6 +73,12 @@ type targettcpproxiesInterface interface {
 	Delete(ctx context.Context, key *meta.Key, options ...k8scloud.Option) error
 }
 
+type regionaltargettcpproxiesInterface interface {
+	Get(ctx context.Context, key *meta.Key, options ...k8scloud.Option) (*compute.TargetTcpProxy, error)
+	Insert(ctx context.Context, key *meta.Key, obj *compute.TargetTcpProxy, options ...k8scloud.Option) error
+	Delete(ctx context.Context, key *meta.Key, options ...k8scloud.Option) error
+}
+
 type subnetsInterface interface {
 	Get(ctx context.Context, key *meta.Key, options ...k8scloud.Option) (*compute.Subnetwork, error)
 }
@@ -91,18 +97,20 @@ type Scope interface {
 
 // Service implements loadbalancers reconciler.
 type Service struct {
-	scope                   Scope
-	addresses               addressesInterface
-	internaladdresses       addressesInterface
-	backendservices         backendservicesInterface
-	regionalbackendservices backendservicesInterface
-	forwardingrules         forwardingrulesInterface
-	regionalforwardingrules regionalforwardingrulesInterface
-	healthchecks            healthchecksInterface
-	regionalhealthchecks    healthchecksInterface
-	instancegroups          instancegroupsInterface
-	targettcpproxies        targettcpproxiesInterface
-	subnets                 subnetsInterface
+	scope                    Scope
+	addresses                addressesInterface
+	internaladdresses        addressesInterface
+	regionaladdresses        addressesInterface
+	backendservices          backendservicesInterface
+	regionalbackendservices  backendservicesInterface
+	forwardingrules          forwardingrulesInterface
+	regionalforwardingrules  regionalforwardingrulesInterface
+	healthchecks             healthchecksInterface
+	regionalhealthchecks     healthchecksInterface
+	instancegroups           instancegroupsInterface
+	targettcpproxies         targettcpproxiesInterface
+	regionaltargettcpproxies regionaltargettcpproxiesInterface
+	subnets                  subnetsInterface
 }
 
 var _ cloud.Reconciler = &Service{}
@@ -115,17 +123,19 @@ func New(scope Scope) *Service {
 	}
 
 	return &Service{
-		scope:                   scope,
-		addresses:               scope.Cloud().GlobalAddresses(),
-		internaladdresses:       scope.Cloud().Addresses(),
-		backendservices:         scope.Cloud().BackendServices(),
-		regionalbackendservices: scope.Cloud().RegionBackendServices(),
-		forwardingrules:         scope.Cloud().GlobalForwardingRules(),
-		regionalforwardingrules: scope.Cloud().ForwardingRules(),
-		healthchecks:            scope.Cloud().HealthChecks(),
-		regionalhealthchecks:    scope.Cloud().RegionHealthChecks(),
-		instancegroups:          scope.Cloud().InstanceGroups(),
-		targettcpproxies:        scope.Cloud().TargetTcpProxies(),
-		subnets:                 cloudScope.Subnetworks(),
+		scope:                    scope,
+		addresses:                scope.Cloud().GlobalAddresses(),
+		regionaladdresses:        scope.Cloud().Addresses(),
+		internaladdresses:        scope.Cloud().Addresses(),
+		backendservices:          scope.Cloud().BackendServices(),
+		regionalbackendservices:  scope.Cloud().RegionBackendServices(),
+		forwardingrules:          scope.Cloud().GlobalForwardingRules(),
+		regionalforwardingrules:  scope.Cloud().ForwardingRules(),
+		healthchecks:             scope.Cloud().HealthChecks(),
+		regionalhealthchecks:     scope.Cloud().RegionHealthChecks(),
+		instancegroups:           scope.Cloud().InstanceGroups(),
+		targettcpproxies:         scope.Cloud().TargetTcpProxies(),
+		regionaltargettcpproxies: scope.Cloud().RegionTargetTcpProxies(),
+		subnets:                  cloudScope.Subnetworks(),
 	}
 }

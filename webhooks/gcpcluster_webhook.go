@@ -24,6 +24,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	firewallutil "sigs.k8s.io/cluster-api-provider-gcp/util/firewall"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -46,6 +47,46 @@ func (c *GCPCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // GCPCluster implements a validating and defaulting webhook for GCPCluster.
 type GCPCluster struct{}
+
+// validateLoadBalancerSpec returns admission warnings for LoadBalancerSpec
+// configuration that is silently ignored by the reconciler.
+func validateLoadBalancerSpec(lb *infrav1.LoadBalancerSpec, fldPath *field.Path) admission.Warnings {
+	var warnings admission.Warnings
+
+	if lb.ExternalLoadBalancerConfig != nil && lb.LoadBalancerType != nil && *lb.LoadBalancerType == infrav1.Internal {
+		warnings = append(warnings,
+			fldPath.Child("externalLoadBalancerConfig").String()+
+				" is set but LoadBalancerType is Internal, which has no external component; the field will be ignored")
+	}
+
+	return warnings
+}
+
+// validateRegionalLoadBalancerFeatureGate rejects the LoadBalancerSpec fields
+// guarded by the RegionalLoadBalancer feature gate when the gate is disabled.
+// It only runs on create: LoadBalancer is immutable, and rejecting updates of
+// a cluster created while the gate was enabled would block metadata changes
+// such as finalizer removal on deletion.
+func validateRegionalLoadBalancerFeatureGate(lb *infrav1.LoadBalancerSpec, fldPath *field.Path) field.ErrorList {
+	if feature.Gates.Enabled(feature.RegionalLoadBalancer) {
+		return nil
+	}
+
+	var allErrs field.ErrorList
+
+	if lb.LoadBalancerType != nil {
+		if lbType := *lb.LoadBalancerType; lbType == infrav1.RegionalExternal || lbType == infrav1.RegionalInternalExternal {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("loadBalancerType"),
+				fmt.Sprintf("%s can be set only if the RegionalLoadBalancer feature flag is enabled", lbType)))
+		}
+	}
+	if lb.ExternalLoadBalancerConfig != nil {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("externalLoadBalancerConfig"),
+			"can be set only if the RegionalLoadBalancer feature flag is enabled"))
+	}
+
+	return allErrs
+}
 
 var (
 	_ admission.Validator[*infrav1.GCPCluster] = &GCPCluster{}
@@ -72,15 +113,21 @@ func (*GCPCluster) ValidateCreate(_ context.Context, c *infrav1.GCPCluster) (adm
 
 	allErrs := firewallutil.ValidateRules(c.Spec.Network.Firewall.FirewallRules,
 		field.NewPath("spec", "Network", "Firewall", "FirewallRules"))
+
+	fldPath := field.NewPath("spec", "loadBalancer")
+	warnings := validateLoadBalancerSpec(&c.Spec.LoadBalancer, fldPath)
+	allErrs = append(allErrs, validateRegionalLoadBalancerFeatureGate(&c.Spec.LoadBalancer, fldPath)...)
 	if len(allErrs) == 0 {
-		return nil, nil
+		return warnings, nil
 	}
 
-	return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
+	return warnings, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
 func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster) (admission.Warnings, error) {
 	clusterlog.Info("validate update", "name", c.Name)
+
+	warnings := validateLoadBalancerSpec(&c.Spec.LoadBalancer, field.NewPath("spec", "loadBalancer"))
 	var allErrs field.ErrorList
 
 	if !reflect.DeepEqual(c.Spec.Project, old.Spec.Project) {
@@ -164,10 +211,10 @@ func (*GCPCluster) ValidateUpdate(_ context.Context, old, c *infrav1.GCPCluster)
 	}
 
 	if len(allErrs) == 0 {
-		return nil, nil
+		return warnings, nil
 	}
 
-	return nil, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
+	return warnings, apierrors.NewInvalid(infrav1.GroupVersion.WithKind("GCPCluster").GroupKind(), c.Name, allErrs)
 }
 
 func (*GCPCluster) ValidateDelete(_ context.Context, _ *infrav1.GCPCluster) (admission.Warnings, error) {

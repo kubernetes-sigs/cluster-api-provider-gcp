@@ -17,23 +17,134 @@ limitations under the License.
 package webhooks
 
 import (
+	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	"k8s.io/utils/ptr"
 	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
+	"sigs.k8s.io/cluster-api-provider-gcp/feature"
 	firewallutil "sigs.k8s.io/cluster-api-provider-gcp/util/firewall"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
+
+func TestGCPCluster_ValidateCreate(t *testing.T) {
+	tests := []struct {
+		name                        string
+		cluster                     *infrav1.GCPCluster
+		regionalLoadBalancerEnabled bool
+		wantErr                     bool
+		wantWarning                 bool
+	}{
+		{
+			name:    "empty spec passes",
+			cluster: &infrav1.GCPCluster{},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with Internal LB emits warning",
+			cluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					LoadBalancer: infrav1.LoadBalancerSpec{
+						LoadBalancerType: ptr.To(infrav1.Internal),
+						ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+							LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("ignored")},
+						},
+					},
+				},
+			},
+			regionalLoadBalancerEnabled: true,
+			wantWarning:                 true,
+		},
+		{
+			name: "RegionalExternal is accepted when the RegionalLoadBalancer gate is enabled",
+			cluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					LoadBalancer: infrav1.LoadBalancerSpec{
+						LoadBalancerType: ptr.To(infrav1.RegionalExternal),
+					},
+				},
+			},
+			regionalLoadBalancerEnabled: true,
+		},
+		{
+			name: "RegionalExternal is rejected when the RegionalLoadBalancer gate is disabled",
+			cluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					LoadBalancer: infrav1.LoadBalancerSpec{
+						LoadBalancerType: ptr.To(infrav1.RegionalExternal),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "RegionalInternalExternal is rejected when the RegionalLoadBalancer gate is disabled",
+			cluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					LoadBalancer: infrav1.LoadBalancerSpec{
+						LoadBalancerType: ptr.To(infrav1.RegionalInternalExternal),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "ExternalLoadBalancerConfig is rejected when the RegionalLoadBalancer gate is disabled",
+			cluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					LoadBalancer: infrav1.LoadBalancerSpec{
+						LoadBalancerType: ptr.To(infrav1.External),
+						ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+							LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("custom-lb")},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "existing load balancer types are accepted when the RegionalLoadBalancer gate is disabled",
+			cluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					LoadBalancer: infrav1.LoadBalancerSpec{
+						LoadBalancerType: ptr.To(infrav1.InternalExternal),
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			featuregatetesting.SetFeatureGateDuringTest(t, feature.Gates, feature.RegionalLoadBalancer, tt.regionalLoadBalancerEnabled)
+			warn, err := (&GCPCluster{}).ValidateCreate(t.Context(), tt.cluster)
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			if tt.wantWarning {
+				g.Expect(warn).NotTo(BeEmpty())
+			} else {
+				g.Expect(warn).To(BeEmpty())
+			}
+		})
+	}
+}
 
 func TestGCPCluster_ValidateUpdate(t *testing.T) {
 	g := NewWithT(t)
 
 	tests := []struct {
-		name       string
-		newCluster *infrav1.GCPCluster
-		oldCluster *infrav1.GCPCluster
-		wantErr    bool
+		name        string
+		newCluster  *infrav1.GCPCluster
+		oldCluster  *infrav1.GCPCluster
+		wantErr     bool
+		wantWarning bool
 	}{
 		{
 			name: "GCPCluster with MTU field is within the limits of more than 1300 and less than 8896",
@@ -215,6 +326,32 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "ExternalLoadBalancerConfig with Internal LB emits warning on update",
+			newCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{Mtu: int64(1500)},
+					LoadBalancer: infrav1.LoadBalancerSpec{
+						LoadBalancerType: ptr.To(infrav1.Internal),
+						ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+							LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("ignored")},
+						},
+					},
+				},
+			},
+			oldCluster: &infrav1.GCPCluster{
+				Spec: infrav1.GCPClusterSpec{
+					Network: infrav1.NetworkSpec{Mtu: int64(1500)},
+					LoadBalancer: infrav1.LoadBalancerSpec{
+						LoadBalancerType: ptr.To(infrav1.Internal),
+						ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+							LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("ignored")},
+						},
+					},
+				},
+			},
+			wantWarning: true,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -225,7 +362,11 @@ func TestGCPCluster_ValidateUpdate(t *testing.T) {
 			} else {
 				g.Expect(err).NotTo(HaveOccurred())
 			}
-			g.Expect(warn).To(BeNil())
+			if test.wantWarning {
+				g.Expect(warn).NotTo(BeEmpty())
+			} else {
+				g.Expect(warn).To(BeEmpty())
+			}
 		})
 	}
 }
@@ -512,6 +653,117 @@ func TestGCPCluster_ValidateUpdateRatchetsDuplicateFirewallRules(t *testing.T) {
 			}
 
 			g.Expect(err).NotTo(HaveOccurred())
+		})
+	}
+}
+
+// TestGCPCluster_ValidateUpdate_RegionalLoadBalancerGateDisabled guards against
+// blocking clusters created while the RegionalLoadBalancer gate was enabled:
+// once the gate is disabled, updates that leave the load balancer untouched
+// (e.g. metadata or finalizer changes) must still be accepted.
+func TestGCPCluster_ValidateUpdate_RegionalLoadBalancerGateDisabled(t *testing.T) {
+	g := NewWithT(t)
+	featuregatetesting.SetFeatureGateDuringTest(t, feature.Gates, feature.RegionalLoadBalancer, false)
+
+	cluster := &infrav1.GCPCluster{
+		Spec: infrav1.GCPClusterSpec{
+			Network: infrav1.NetworkSpec{Mtu: int64(1500)},
+			LoadBalancer: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.RegionalExternal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("custom-lb")},
+				},
+			},
+		},
+	}
+	updated := cluster.DeepCopy()
+	updated.Finalizers = []string{"gcpcluster.infrastructure.cluster.x-k8s.io"}
+
+	_, err := (&GCPCluster{}).ValidateUpdate(t.Context(), cluster, updated)
+	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestValidateLoadBalancerSpec(t *testing.T) {
+	tests := []struct {
+		name         string
+		spec         infrav1.LoadBalancerSpec
+		wantWarnings int
+	}{
+		{
+			name: "empty spec emits no warning",
+			spec: infrav1.LoadBalancerSpec{},
+		},
+		{
+			name: "External type emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.External),
+			},
+		},
+		{
+			name: "RegionalExternal type emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.RegionalExternal),
+			},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with Internal LB emits warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.Internal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("ignored")},
+				},
+			},
+			wantWarnings: 1,
+		},
+		{
+			name: "ExternalLoadBalancerConfig with External LB emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.External),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("api-lb")},
+				},
+			},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with RegionalExternal LB emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.RegionalExternal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("api-lb")},
+				},
+			},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with InternalExternal LB emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.InternalExternal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("api-lb")},
+				},
+			},
+		},
+		{
+			name: "ExternalLoadBalancerConfig with RegionalInternalExternal LB emits no warning",
+			spec: infrav1.LoadBalancerSpec{
+				LoadBalancerType: ptr.To(infrav1.RegionalInternalExternal),
+				ExternalLoadBalancerConfig: &infrav1.ExternalLoadBalancer{
+					LoadBalancerCommon: infrav1.LoadBalancerCommon{Name: ptr.To("api-lb")},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings := validateLoadBalancerSpec(&tt.spec, field.NewPath("spec", "loadBalancer"))
+			if got := len(warnings); got != tt.wantWarnings {
+				t.Fatalf("validateLoadBalancerSpec() warnings count = %d, want %d (warnings=%v)", got, tt.wantWarnings, warnings)
+			}
+			for _, w := range warnings {
+				if !strings.Contains(w, "spec.loadBalancer.externalLoadBalancerConfig") {
+					t.Errorf("warning %q missing expected field path prefix", w)
+				}
+			}
 		})
 	}
 }

@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	infrav1 "sigs.k8s.io/cluster-api-provider-gcp/api/v1beta1"
 	expinfrav1 "sigs.k8s.io/cluster-api-provider-gcp/exp/api/v1beta1"
 	firewallutil "sigs.k8s.io/cluster-api-provider-gcp/util/firewall"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -132,7 +133,19 @@ func (w *GCPManagedCluster) validate(r *expinfrav1.GCPManagedCluster) (admission
 		}
 	}
 
-	return nil, kerrors.NewAggregate(errs)
+	return w.validateLoadBalancer(r), kerrors.NewAggregate(errs)
+}
+
+// validateLoadBalancer warns when spec.loadBalancer is set: GKE provisions the
+// control plane endpoint itself, so the field is ignored for managed clusters.
+func (*GCPManagedCluster) validateLoadBalancer(r *expinfrav1.GCPManagedCluster) admission.Warnings {
+	if cmp.Equal(r.Spec.LoadBalancer, infrav1.LoadBalancerSpec{}) {
+		return nil
+	}
+
+	return admission.Warnings{
+		field.NewPath("spec", "loadBalancer").String() + " is set but is ignored for GCPManagedCluster: GKE manages the control plane endpoint",
+	}
 }
 
 func (*GCPManagedCluster) validateFirewallRules(r *expinfrav1.GCPManagedCluster) error {
