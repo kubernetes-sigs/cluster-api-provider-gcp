@@ -101,6 +101,11 @@ type GCPManagedControlPlaneClassSpec struct {
 	// only if `enabled: false` is set.
 	// +optional
 	SecretSyncConfig *SecretSyncConfig `json:"secretSyncConfig,omitempty"`
+
+	// EnableVerticalPodAutoscaling indicates whether to enable Vertical Pod Autoscaling for this
+	// GKE cluster.
+	// +optional
+	EnableVerticalPodAutoscaling *bool `json:"enableVerticalPodAutoscaling,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.

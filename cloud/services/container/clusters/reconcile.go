@@ -580,6 +580,12 @@ func (s *Service) createCluster(ctx context.Context, log *logr.Logger) error {
 	cluster.SecretManagerConfig = convertToSdkSecretManagerConfig(s.scope.GCPManagedControlPlane.Spec.SecretManagerConfig)
 	cluster.SecretSyncConfig = convertToSdkSecretSyncConfig(s.scope.GCPManagedControlPlane.Spec.SecretSyncConfig)
 
+	if evpa := s.scope.GCPManagedControlPlane.Spec.EnableVerticalPodAutoscaling; evpa != nil {
+		cluster.VerticalPodAutoscaling = &containerpb.VerticalPodAutoscaling{
+			Enabled: *evpa,
+		}
+	}
+
 	createClusterRequest := &containerpb.CreateClusterRequest{
 		Cluster: cluster,
 		Parent:  s.scope.ClusterLocation(),
@@ -856,7 +862,7 @@ func convertToSdkSecretSyncConfig(config *infrav1exp.SecretSyncConfig) *containe
 	return sdkConfig
 }
 
-func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) {
+func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster, log *logr.Logger) (bool, *containerpb.UpdateClusterRequest) { //nolint:gocyclo // to be decomposed, see #1850
 	log.V(4).Info("Checking diff and preparing update.")
 
 	needUpdate := false
@@ -996,6 +1002,31 @@ func (s *Service) checkDiffAndPrepareUpdate(existingCluster *containerpb.Cluster
 			clusterUpdate.DesiredSecretSyncConfig = desiredSecretSyncConfig
 			log.V(2).Info("Secret Sync config update required",
 				"current", existingSecretSyncConfig, "desired", desiredSecretSyncConfig)
+		}
+	}
+
+	// BinaryAuthorization
+	desiredBinaryAuthorizationMode := convertToSdkBinaryAuthorizationEvaluationMode(s.scope.GCPManagedControlPlane.Spec.BinaryAuthorization)
+	if desiredBinaryAuthorizationMode != existingCluster.GetBinaryAuthorization().GetEvaluationMode() {
+		needUpdate = true
+		clusterUpdate.DesiredBinaryAuthorization = &containerpb.BinaryAuthorization{
+			EvaluationMode: desiredBinaryAuthorizationMode,
+		}
+		log.V(2).Info("BinaryAuthorization update required",
+			"current", existingCluster.GetBinaryAuthorization().GetEvaluationMode(),
+			"desired", desiredBinaryAuthorizationMode)
+	}
+
+	// VerticalPodAutoscaling
+	if evpa := s.scope.GCPManagedControlPlane.Spec.EnableVerticalPodAutoscaling; evpa != nil {
+		if *evpa != existingCluster.GetVerticalPodAutoscaling().GetEnabled() {
+			needUpdate = true
+			clusterUpdate.DesiredVerticalPodAutoscaling = &containerpb.VerticalPodAutoscaling{
+				Enabled: *evpa,
+			}
+			log.V(2).Info("VerticalPodAutoscaling update required",
+				"current", existingCluster.GetVerticalPodAutoscaling().GetEnabled(),
+				"desired", *evpa)
 		}
 	}
 
