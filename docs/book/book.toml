@@ -18,6 +18,10 @@ no-section-label = true
 "/developers/cluster-creation.html" = "/developers/setup-tutorial.html"
 "/developers/e2e.html" = "/developers/testing.html"
 "/topics/conformance.html" = "/developers/testing.html"
+"/developers/bump-go.html" = "https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/runbooks/bump-go.md"
+"/developers/bump-k8s-capi.html" = "https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/runbooks/bump-k8s-capi.md"
+"/developers/bump-ubuntu-image.html" = "https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/runbooks/bump-ubuntu-image.md"
+"/developers/releasing.html" = "https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/docs/runbooks/releasing.md"
 
 [preprocessor.tabulate]
 command = "mdbook-tabulate"

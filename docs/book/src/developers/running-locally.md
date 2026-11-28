@@ -24,6 +24,8 @@ To tear down the KinD cluster, just run:
 make kind-reset
 ```
 
+This will leave the `kind-registry` container running and can clear your current `kubectl` context.
+
 ## Debugging
 
 If you would like to debug CAPG you can run the provider with [delve](https://github.com/go-delve/delve), a Go debugger
@@ -149,7 +151,12 @@ make create-workload-cluster
 ```
 
 This will apply the self-managed template, wait for a KubeConfig to be available and then install Calico as a
-[CNI](../self-managed/cni.md). If you'd like to test a different CNI then that will be a manual installation.
+[CNI](../self-managed/cni.md). If you'd like to test a different CNI then that will be a manual installation. While the
+`make` target is running it might print `No resources found in default namespace.` for the first few minutes, this
+is expected.
+
+The Kubeconfig for the created cluster ends up in `/tmp/kubeconfig` (and can be overridden by setting
+`CAPG_WORKER_CLUSTER_KUBECONFIG`).
 
 To later delete the cluster:
 

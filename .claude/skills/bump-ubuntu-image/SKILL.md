@@ -12,4 +12,5 @@ allowed-tools: Bash(git *) Bash(grep *) Bash(rg *) Bash(gh *) Bash(gcloud *) Bas
 
 Target Ubuntu version: **$ARGUMENTS**
 
-Follow the instructions in [docs/book/src/developers/bump-ubuntu-image.md](../../../docs/book/src/developers/bump-ubuntu-image.md) exactly, using `$ARGUMENTS` as the target Ubuntu version.
+Follow the instructions in the [Bumping Ubuntu Version Runbook](../../../docs/runbooks/bump-ubuntu-image.md) exactly, 
+using `$ARGUMENTS` as the target Ubuntu version.

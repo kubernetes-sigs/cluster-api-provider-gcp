@@ -40,8 +40,4 @@
     - [Running CAPG Locally](./developers/running-locally.md)
     - [Testing CAPG](./developers/testing.md)
     - [Try unreleased changes with Nightly Builds](./developers/nightly-builds.md)
-    - [Releasing](./developers/releasing.md)
-    - [Bumping Go](./developers/bump-go.md)
-    - [Bumping CAPI/Kubernetes](./developers/bump-k8s-capi.md)
-    - [Bumping Ubuntu Image](./developers/bump-ubuntu-image.md)
 - [Roadmap](./roadmap.md)

@@ -46,7 +46,7 @@ Policy](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/AI
         access.
       - `make verify` - Run a variety of static checks over code and non-code files
       - `make generate` - Ensure that generated files are up to date with their sources
-      - For more information about the various tests CAPG has see our [Testing](https://cluster-api-gcp.sigs.k8s.io/developers/e2e.html) page.
+      - For more information about the various tests CAPG has see our [Testing](https://cluster-api-gcp.sigs.k8s.io/developers/testing.html) page.
 3. Submit a pull request.
    1. All PRs must be labeled with one of the following kinds
       - `/kind feature` for PRs related to adding new features/tests
@@ -62,8 +62,8 @@ Policy](https://github.com/kubernetes-sigs/cluster-api-provider-gcp/blob/main/AI
    2. If the PR requires additional action from users switching to a new release, include the string "action required"
       in the PR release-notes.
    3. All behavior changes must be covered by tests. Always use the smallest test layer possible, especially as E2E
-      tests create billable GCP resources, see our [E2E
-      documentation](https://cluster-api-gcp.sigs.k8s.io/developers/e2e.html) for more details.
+      tests create billable GCP resources, see our
+      [E2E documentation](https://cluster-api-gcp.sigs.k8s.io/developers/testing.html) for more details.
    4. All new features should come with user documentation.
 4. Once the PR has been reviewed and is ready to be merged, commits should be
    [squashed](https://github.com/kubernetes/community/blob/master/contributors/guide/github-workflow.md#squash-commits).
