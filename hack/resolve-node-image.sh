@@ -41,7 +41,10 @@ fi
 
 resolve_node_image
 
+resolve_flatcar_version
+
 echo "KUBERNETES_VERSION=${KUBERNETES_VERSION}"
 echo "IMAGE_ID=${IMAGE_ID}"
+echo "FLATCAR_IMAGE_ID=${FLATCAR_IMAGE_ID}"
 
 exit 0

@@ -1,0 +1,555 @@
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: "${CLUSTER_NAME}"
+  labels:
+    ccm: "${CLUSTER_NAME}-crs-ccm"
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: GCPCluster
+    name: "${CLUSTER_NAME}"
+  controlPlaneRef:
+    kind: KubeadmControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    name: "${CLUSTER_NAME}-control-plane"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPCluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  project: "${GCP_PROJECT}"
+  region: "${GCP_REGION}"
+  network:
+    name: "${GCP_NETWORK_NAME}"
+---
+kind: KubeadmControlPlane
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  machineTemplate:
+    infrastructureRef:
+      kind: GCPMachineTemplate
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      name: "${CLUSTER_NAME}-control-plane"
+  kubeadmConfigSpec:
+    files:
+      - content: |
+          [Global]
+
+          project-id = "${GCP_PROJECT}"
+          network-name = "${GCP_NETWORK_NAME}"
+          multizone = true
+        owner: root:root
+        path: /etc/kubernetes/cloud.config
+        permissions: "0744"
+    format: ignition
+    ignition:
+      containerLinuxConfig:
+        additionalConfig: |
+          storage:
+            links:
+              - path: /etc/extensions/kubernetes.raw
+                hard: false
+                target: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+            files:
+              - path: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+                contents:
+                  remote:
+                    url: https://extensions.flatcar.org/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+          systemd:
+            units:
+              - name: update-engine.service
+                # Set this to 'false' if you want to enable Flatcar auto-update
+                mask: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
+              - name: locksmithd.service
+                # NOTE: To coordinate the node reboot in this context, we recommend to use Kured.
+                mask: true
+              - name: coreos-metadata-sshkeys@.service
+                enabled: true
+              - name: kubeadm.service
+                enabled: true
+                dropins:
+                  - name: 10-flatcar.conf
+                    contents: |
+                      [Unit]
+                      Requires=containerd.service coreos-metadata.service
+                      After=containerd.service coreos-metadata.service
+                      [Service]
+                      EnvironmentFile=/run/metadata/flatcar
+    initConfiguration:
+      nodeRegistration:
+        name: $${COREOS_GCE_HOSTNAME}
+        kubeletExtraArgs:
+          cloud-provider: external
+    clusterConfiguration:
+      apiServer:
+        timeoutForControlPlane: 20m
+      controllerManager:
+        extraArgs:
+          cloud-provider: external
+          allocate-node-cidrs: "false"
+    joinConfiguration:
+      nodeRegistration:
+        name: $${COREOS_GCE_HOSTNAME}
+        kubeletExtraArgs:
+          cloud-provider: external
+    preKubeadmCommands:
+      - export COREOS_GCE_HOSTNAME=$${COREOS_GCE_HOSTNAME%%.*}
+      - envsubst < /etc/kubeadm.yml > /etc/kubeadm.yml.tmp
+      - mv /etc/kubeadm.yml.tmp /etc/kubeadm.yml
+  version: "${KUBERNETES_VERSION}"
+---
+kind: GCPMachineTemplate
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
+      image: "${IMAGE_ID}"
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  clusterName: "${CLUSTER_NAME}"
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+  template:
+    spec:
+      clusterName: "${CLUSTER_NAME}"
+      version: "${KUBERNETES_VERSION}"
+      bootstrap:
+        configRef:
+          name: "${CLUSTER_NAME}-md-0"
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+      infrastructureRef:
+        name: "${CLUSTER_NAME}-md-0"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: GCPMachineTemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_NODE_MACHINE_TYPE}"
+      image: "${IMAGE_ID}"
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      files: []
+      format: ignition
+      ignition:
+        containerLinuxConfig:
+          additionalConfig: |
+            storage:
+              links:
+                - path: /etc/extensions/kubernetes.raw
+                  hard: false
+                  target: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+              files:
+                - path: /opt/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+                  contents:
+                    remote:
+                      url: https://extensions.flatcar.org/extensions/kubernetes/kubernetes-${KUBERNETES_VERSION}-x86-64.raw
+            systemd:
+              units:
+                - name: update-engine.service
+                  # Set this to 'false' if you want to enable Flatcar auto-update
+                  mask: ${FLATCAR_DISABLE_AUTO_UPDATE:=true}
+                - name: locksmithd.service
+                  # NOTE: To coordinate the node reboot in this context, we recommend to use Kured.
+                  mask: true
+                - name: coreos-metadata-sshkeys@.service
+                  enabled: true
+                - name: kubeadm.service
+                  enabled: true
+                  dropins:
+                    - name: 10-flatcar.conf
+                      contents: |
+                        [Unit]
+                        Requires=containerd.service coreos-metadata.service
+                        After=containerd.service coreos-metadata.service
+                        [Service]
+                        EnvironmentFile=/run/metadata/flatcar
+      joinConfiguration:
+        nodeRegistration:
+          name: $${COREOS_GCE_HOSTNAME}
+          kubeletExtraArgs:
+            cloud-provider: external
+      preKubeadmCommands:
+        - export COREOS_GCE_HOSTNAME=$${COREOS_GCE_HOSTNAME%%.*}
+        - envsubst < /etc/kubeadm.yml > /etc/kubeadm.yml.tmp
+        - mv /etc/kubeadm.yml.tmp /etc/kubeadm.yml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "${CLUSTER_NAME}-crs-ccm"
+data:
+  cloud-controller-manager.yaml: |
+    apiVersion: apps/v1
+    kind: DaemonSet
+    metadata:
+      name: cloud-controller-manager
+      namespace: kube-system
+      labels:
+        component: cloud-controller-manager
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    spec:
+      selector:
+        matchLabels:
+          component: cloud-controller-manager
+      updateStrategy:
+        type: RollingUpdate
+      template:
+        metadata:
+          labels:
+            tier: control-plane
+            component: cloud-controller-manager
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+          tolerations:
+          - key: node.cloudprovider.kubernetes.io/uninitialized
+            value: "true"
+            effect: NoSchedule
+          - key: node.kubernetes.io/not-ready
+            effect: NoSchedule
+          - key: node-role.kubernetes.io/master
+            effect: NoSchedule
+          - key: node-role.kubernetes.io/control-plane
+            effect: NoSchedule
+          serviceAccountName: cloud-controller-manager
+          containers:
+          - name: cloud-controller-manager
+            image: registry.k8s.io/cloud-provider-gcp/cloud-controller-manager:${CCM_VERSION:=v36.4.9}
+            imagePullPolicy: IfNotPresent
+            command:
+            - /cloud-controller-manager
+            - --cluster-cidr=${POD_CIDR:=192.168.0.0/16}
+            - --cloud-provider=gce
+            - --leader-elect=true
+            - --use-service-account-credentials
+            - --allocate-node-cidrs=true
+            - --configure-cloud-routes=false
+            - --cidr-allocator-type=CloudAllocator
+            - --cloud-config=/etc/kubernetes/cloud.config
+            livenessProbe:
+              failureThreshold: 3
+              httpGet:
+                host: 127.0.0.1
+                path: /healthz
+                port: 10258
+                scheme: HTTPS
+              initialDelaySeconds: 15
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 15
+            resources:
+              requests:
+                cpu: "200m"
+            volumeMounts:
+            - mountPath: /etc/kubernetes/cloud.config
+              name: cloudconfig
+              readOnly: true
+          hostNetwork: true
+          priorityClassName: system-cluster-critical
+          volumes:
+          - hostPath:
+              path: /etc/kubernetes/cloud.config
+              type: FileOrCreate
+            name: cloudconfig
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: cloud-controller-manager
+      namespace: kube-system
+      labels:
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: cloud-controller-manager:apiserver-authentication-reader
+      namespace: kube-system
+      labels:
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: extension-apiserver-authentication-reader
+    subjects:
+    - apiGroup: ""
+      kind: ServiceAccount
+      name: cloud-controller-manager
+      namespace: kube-system
+    ---
+    # https://github.com/kubernetes/cloud-provider-gcp/blob/master/deploy/cloud-node-controller-role.yaml
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: system:cloud-controller-manager
+      labels:
+        addonmanager.kubernetes.io/mode: Reconcile
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    rules:
+    - apiGroups:
+      - ""
+      - events.k8s.io
+      resources:
+      - events
+      verbs:
+      - create
+      - patch
+      - update
+    - apiGroups:
+      - coordination.k8s.io
+      resources:
+      - leases
+      verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+    - apiGroups:
+      - coordination.k8s.io
+      resourceNames:
+      - cloud-controller-manager
+      resources:
+      - leases
+      verbs:
+      - get
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      - serviceaccounts
+      - services
+      verbs:
+      - create
+      - get
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - nodes
+      verbs:
+      - get
+      - update
+      - patch # until #393 lands
+    - apiGroups:
+      - ""
+      resources:
+      - namespaces
+      verbs:
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/status
+      - services/status
+      verbs:
+      - patch
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - secrets
+      verbs:
+      - create
+      - delete
+      - get
+      - update
+    - apiGroups:
+      - "authentication.k8s.io"
+      resources:
+      - tokenreviews
+      verbs:
+      - create
+    - apiGroups:
+      - "*"
+      resources:
+      - "*"
+      verbs:
+      - list
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - serviceaccounts/token
+      verbs:
+      - create
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: system::leader-locking-cloud-controller-manager
+      namespace: kube-system
+      labels:
+        addonmanager.kubernetes.io/mode: Reconcile
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    rules:
+    - apiGroups:
+      - ""
+      resources:
+      - configmaps
+      verbs:
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - configmaps
+      resourceNames:
+      - cloud-controller-manager
+      verbs:
+      - get
+      - update
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: system:controller:cloud-node-controller
+      labels:
+        addonmanager.kubernetes.io/mode: Reconcile
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    rules:
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+      - patch
+      - update
+    - apiGroups:
+      - ""
+      resources:
+      - nodes
+      verbs:
+      - get
+      - list
+      - update
+      - delete
+      - patch
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/status
+      verbs:
+      - get
+      - list
+      - update
+      - delete
+      - patch
+
+    - apiGroups:
+      - ""
+      resources:
+      - pods
+      verbs:
+      - list
+      - delete
+    - apiGroups:
+      - ""
+      resources:
+      - pods/status
+      verbs:
+      - list
+      - delete
+    ---
+
+    # https://github.com/kubernetes/cloud-provider-gcp/blob/master/deploy/cloud-node-controller-binding.yaml
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: system::leader-locking-cloud-controller-manager
+      namespace: kube-system
+      labels:
+        addonmanager.kubernetes.io/mode: Reconcile
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: system::leader-locking-cloud-controller-manager
+    subjects:
+    - kind: ServiceAccount
+      name: cloud-controller-manager
+      namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: system:cloud-controller-manager
+      labels:
+        addonmanager.kubernetes.io/mode: Reconcile
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:cloud-controller-manager
+    subjects:
+    - kind: ServiceAccount
+      apiGroup: ""
+      name: cloud-controller-manager
+      namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: system:controller:cloud-node-controller
+      labels:
+        addonmanager.kubernetes.io/mode: Reconcile
+        addon.kops.k8s.io/name: gcp-cloud-controller.addons.k8s.io
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:controller:cloud-node-controller
+    subjects:
+    - kind: ServiceAccount
+      name: cloud-node-controller
+      namespace: kube-system
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: "${CLUSTER_NAME}-crs-ccm"
+spec:
+  strategy: ApplyOnce
+  clusterSelector:
+    matchLabels:
+      ccm: "${CLUSTER_NAME}-crs-ccm"
+  resources:
+    - name: "${CLUSTER_NAME}-crs-ccm"
+      kind: ConfigMap

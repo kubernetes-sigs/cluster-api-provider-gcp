@@ -347,7 +347,7 @@ lint-full: $(YQ) ## Run slower linters to detect possible issues
 ## Generate
 ## --------------------------------------
 
-CCM_TEMPLATES := templates/cluster-template.yaml templates/cluster-template-topology.yaml
+CCM_TEMPLATES := templates/cluster-template.yaml templates/cluster-template-topology.yaml templates/cluster-template-flatcar.yaml
 
 .PHONY: modules
 modules: ## Runs go mod to ensure proper vendoring.
@@ -560,7 +560,7 @@ delete-workload-cluster: ## Deletes the example workload Kubernetes cluster
 	$(KUBECTL) --context ${MANAGEMENT_CLUSTER_CONTEXT_NAME} delete cluster $(CLUSTER_NAME)
 
 .PHONY: resolve-node-image
-resolve-node-image: $(YQ) ## Print the Kubernetes version and node image to use for a local workload cluster
+resolve-node-image: $(YQ) ## Print the Kubernetes version and node images (Ubuntu and Flatcar) to use for a local workload cluster
 	@./hack/resolve-node-image.sh
 
 .PHONY: apply-nightly

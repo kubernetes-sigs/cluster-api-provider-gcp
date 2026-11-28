@@ -108,8 +108,9 @@ To do this you can run the Make command below:
 make resolve-node-image
 ```
 
-This command will print out the KUBERNETES_VERSION and IMAGE_ID to use in the commands below. This command requires
-`gcloud auth login` to be run beforehand, and can take an optional `KUBERNETES_MINOR` parameter if required.
+This command will print out the KUBERNETES_VERSION, IMAGE_ID & FLATCAR_IMAGE_ID to use in the commands below. This
+command requires `gcloud auth login` to be run beforehand, and can take an optional `KUBERNETES_MINOR` parameter if
+required.
 
 <aside class="note">
 
@@ -156,6 +157,17 @@ To later delete the cluster:
 ```shell
 make delete-workload-cluster
 ```
+
+#### Flatcar
+
+It's possible to run the Self-Managed cluster with Flatcar images instead of the custom Ubuntu-based images that
+CAPG uses (for limitations Kubernetes Versions see [here](../self-managed/flatcar.md#kubernetes-versions)). To do this:
+
+1. Set `IMAGE_ID` above to the value of `FLATCAR_IMAGE_ID` printed by `make resolve-node-image`
+2. Export `EXP_KUBEADM_BOOTSTRAP_FORMAT_IGNITION=true` before `make tilt-up` (make sure to restart Tilt if it's already
+  running)
+3. Apply the template with `./hack/tools/bin/envsubst < templates/cluster-template-flatcar.yaml | ./hack/tools/bin/kubectl --context kind-capg apply -f -`
+4. [Install a CNI](../self-managed/cni.md)
 
 ### Managed (GKE) Clusters
 
