@@ -69,7 +69,7 @@ spec:
         multizone = true
       owner: root:root
       path: /etc/kubernetes/cloud.config
-      permissions: "0744"
+      permissions: "0644"
     joinConfiguration:
       nodeRegistration:
         name: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
