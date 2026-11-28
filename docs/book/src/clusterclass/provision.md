@@ -65,7 +65,7 @@ Now that the class is available to be referenced by cluster objects, let's confi
 ```sh
 export CLUSTER_NAME=sample-cluster
 export CLUSTER_CLASS_NAME=sample-cc
-export KUBERNETES_VERSION=1.36.5
+export KUBERNETES_VERSION=v1.36.5
 export CONTROL_PLANE_MACHINE_COUNT=1
 export WORKER_MACHINE_COUNT=1
 export GCP_REGION=us-east4

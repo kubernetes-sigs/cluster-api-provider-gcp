@@ -34,6 +34,8 @@ To build a KinD cluster and start Tilt, just run:
 make tilt-up
 ```
 
+Be aware this will set your current-context to `kind-capg`.
+
 <aside class="note">
 
 On macOS port 5000 (the default port for the KinD registry) is often taken by AirPlay Receiver, so you might

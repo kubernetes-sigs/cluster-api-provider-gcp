@@ -212,7 +212,7 @@ In `docs/book/src/self-managed/provision.md`, `docs/book/src/clusterclass/provis
 `docs/book/src/prerequisites.md` update the `KUBERNETES_VERSION=` lines to the same version that the E2E tests resolve.
 The same should be true of `CCM_VERSION=` in `docs/book/src/self-managed/provision.md`.
 
-To check this use `grep -rnE 'KUBERNETES_VERSION=1\.[0-9]+' docs/book/src` to check nothing is left on the old minor,
+To check this use `grep -rnE 'KUBERNETES_VERSION=v?1\.[0-9]+' docs/book/src` to check nothing is left on the old minor,
 including any examples in the prose.
 
 ## Step 11: Regenerate CRDs & Templates
