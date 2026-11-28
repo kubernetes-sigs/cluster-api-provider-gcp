@@ -24,6 +24,7 @@ import (
 	computerest "cloud.google.com/go/compute/apiv1"
 	"cloud.google.com/go/compute/apiv1/computepb"
 	container "cloud.google.com/go/container/apiv1"
+	gkehub "cloud.google.com/go/gkehub/apiv1beta1"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/GoogleCloudPlatform/k8s-cloud-provider/pkg/cloud"
 	"github.com/googleapis/gax-go/v2"
@@ -254,6 +255,24 @@ func newGKETagManager(credentialsRef *infrav1.ObjectReference, crClient client.C
 
 		return bindingsClient, nil
 	})
+}
+
+func newGkeHubMembershipClient(ctx context.Context, credentialsRef *infrav1.ObjectReference, crClient client.Client, endpoints *infrav1.ServiceEndpoints) (*gkehub.GkeHubMembershipClient, error) {
+	opts, err := defaultClientOptions(ctx, credentialsRef, crClient)
+	if err != nil {
+		return nil, fmt.Errorf("getting default gcp client options: %w", err)
+	}
+
+	if endpoints != nil && endpoints.GkeHubServiceEndpoint != "" {
+		opts = append(opts, option.WithEndpoint(endpoints.GkeHubServiceEndpoint))
+	}
+
+	gkeHubMembershipClient, err := gkehub.NewGkeHubMembershipClient(ctx, opts...)
+	if err != nil {
+		return nil, errors.Errorf("failed to create gke hub membership client: %v", err)
+	}
+
+	return gkeHubMembershipClient, nil
 }
 
 // NewResolver this builds a location.Resolver with real GCP clients so that we can resolve locations
