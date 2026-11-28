@@ -53,6 +53,32 @@ spec:
                     description: GCPManagedControlPlaneTemplateResourceSpec specifies
                       an GCP managed control plane template resource.
                     properties:
+                      addonsConfig:
+                        additionalProperties:
+                          description: AddonSettings is one add-on's configuration.
+                          properties:
+                            enabled:
+                              description: Enabled turns the add-on on or off.
+                              type: boolean
+                            options:
+                              additionalProperties:
+                                type: boolean
+                              description: |-
+                                Options are the settings an add-on exposes beyond being switched on — the Ray operator's log and
+                                metric collection, for instance. Most add-ons have none. An add-on's options are documented
+                                alongside the add-on itself, and an option that doesn't belong to the add-on it is set on, or that
+                                is set while the add-on is disabled, is rejected by the validating webhook.
+                              type: object
+                          required:
+                          - enabled
+                          type: object
+                        description: |-
+                          AddonsConfig configures GKE's add-ons, keyed by add-on name — see AddonsConfig's own doc for what
+                          each entry holds, and the addons subpackage for the add-ons recognized, their options, and what
+                          GKE requires before each can be enabled. Any add-on left out of the map keeps GKE's own default
+                          in place. Cannot be set when enableAutopilot = true, since Autopilot clusters manage add-ons
+                          themselves.
+                        type: object
                       binaryAuthorization:
                         description: |-
                           BinaryAuthorization represents the mode of operation of Binary Authorization for the GKE cluster.
