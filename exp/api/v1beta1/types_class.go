@@ -101,6 +101,10 @@ type GCPManagedControlPlaneClassSpec struct {
 	// only if `enabled: false` is set.
 	// +optional
 	SecretSyncConfig *SecretSyncConfig `json:"secretSyncConfig,omitempty"`
+
+	// MaintenancePolicy represents configuration options for the GKE cluster maintenance policy.
+	// +optional
+	MaintenancePolicy *MaintenancePolicy `json:"maintenancePolicy,omitempty"`
 }
 
 // GCPManagedMachinePoolClassSpec defines the GCPManagedMachinePool properties that may be shared across several GCP managed machinepools.
