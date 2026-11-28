@@ -66,7 +66,7 @@ spec:
           multizone = true
         owner: root:root
         path: /etc/kubernetes/cloud.config
-        permissions: "0744"
+        permissions: "0644"
   version: "${KUBERNETES_VERSION}"
 ---
 kind: GCPMachineTemplate

@@ -139,7 +139,7 @@ spec:
               multizone = true
             owner: root:root
             path: /etc/kubernetes/cloud.config
-            permissions: "0744"
+            permissions: "0644"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
