@@ -12,4 +12,6 @@ allowed-tools: Bash(go *) Bash(git *) Bash(grep *) Bash(find *) Bash(gh *) Bash(
 
 Target versions: **$ARGUMENTS**
 
-Follow the instructions in [docs/book/src/developers/bump-k8s-capi.md](../../../docs/book/src/developers/bump-k8s-capi.md) exactly, using `$ARGUMENTS` as the target Kubernetes and CAPI minor versions.
+Follow the instructions in the 
+[Bumping Kubernetes \& Cluster API Version Runbook](../../../docs/runbooks/bump-k8s-capi.md) exactly, using `$ARGUMENTS` 
+as the target Kubernetes and CAPI minor versions.

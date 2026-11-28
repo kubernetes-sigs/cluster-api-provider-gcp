@@ -12,4 +12,5 @@ allowed-tools: Bash(go *) Bash(git *) Bash(grep *) Bash(find *) Bash(docker *) B
 
 Target Go minor version: **$ARGUMENTS**
 
-Follow the instructions in [docs/book/src/developers/bump-go.md](../../../docs/book/src/developers/bump-go.md) exactly, using `$ARGUMENTS` as the target Go minor version.
+Follow the instructions in the [Bumping Go Version Runbook](../../../docs/runbooks/bump-go.md) exactly, using 
+`$ARGUMENTS` as the target Go minor version.
