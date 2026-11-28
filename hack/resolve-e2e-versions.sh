@@ -35,7 +35,7 @@ source "${REPO_ROOT}/hack/lib/versions.sh"
 load_ci_pins || return 1
 
 verify_ccm_image() {
-  docker manifest inspect "gcr.io/k8s-staging-cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null
+  docker manifest inspect "registry.k8s.io/cloud-provider-gcp/cloud-controller-manager:${1}" >/dev/null
 }
 
 verify_cluster_autoscaler_image() {
