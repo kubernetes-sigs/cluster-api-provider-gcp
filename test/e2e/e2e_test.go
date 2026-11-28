@@ -316,6 +316,46 @@ var _ = Describe("Workload cluster creation", func() {
 		})
 	})
 
+	Context("Creating a single control-plane cluster with MachinePool", func() {
+		It("Should create a cluster with 1 worker node and can be scaled", func() {
+			clusterName := fmt.Sprintf("%s-single", clusterNamePrefix)
+			By("Initializes with 1 worker node")
+			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+				ClusterProxy: bootstrapClusterProxy,
+				ConfigCluster: clusterctl.ConfigClusterInput{
+					LogFolder:                clusterctlLogFolder,
+					ClusterctlConfigPath:     clusterctlConfigPath,
+					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+					Flavor:                   "ci-with-machinepool",
+					Namespace:                namespace.Name,
+					ClusterName:              clusterName,
+					KubernetesVersion:        e2eConfig.MustGetVariable(KubernetesVersion),
+					ControlPlaneMachineCount: ptr.To[int64](1),
+					WorkerMachineCount:       ptr.To[int64](1),
+				},
+				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+				WaitForMachinePools:          e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
+			}, result)
+			poolKey := client.ObjectKey{Namespace: namespace.Name, Name: fmt.Sprintf("%s-md-0", clusterName)}
+			verifyMachinePoolConditions(ctx, bootstrapClusterProxy.GetClient(), poolKey, e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes")...)
+
+			By("Scaling worker node to 3")
+			framework.ScaleMachinePoolAndWait(
+				ctx, framework.ScaleMachinePoolAndWaitInput{
+					ClusterProxy:              bootstrapClusterProxy,
+					Cluster:                   result.Cluster,
+					Replicas:                  3,
+					MachinePools:              result.MachinePools,
+					WaitForMachinePoolToScale: e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes"),
+				},
+			)
+			verifyMachinePoolConditions(ctx, bootstrapClusterProxy.GetClient(), poolKey, e2eConfig.GetIntervals(specName, "wait-machine-pool-nodes")...)
+		})
+	})
+
 	Context("Creating a highly available control-plane cluster", func() {
 		It("Should create a cluster with 3 control-plane and 2 worker nodes", func() {
 			clusterName := fmt.Sprintf("%s-ha", clusterNamePrefix)

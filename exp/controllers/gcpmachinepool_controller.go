@@ -228,6 +228,7 @@ func (r *GCPMachinePoolReconciler) reconcile(ctx context.Context, machinePoolSco
 	conditions.Set(machinePoolScope.GCPMachinePool, metav1.Condition{
 		Type:   string(expinfrav1.InstanceTemplateReadyCondition),
 		Status: metav1.ConditionTrue,
+		Reason: expinfrav1.InstanceTemplateReadyReason,
 	})
 
 	igm, err := instancegroupmanagers.New(machinePoolScope).Reconcile(ctx, instanceTemplateKey)
@@ -247,6 +248,7 @@ func (r *GCPMachinePoolReconciler) reconcile(ctx context.Context, machinePoolSco
 	conditions.Set(machinePoolScope.GCPMachinePool, metav1.Condition{
 		Type:   string(expinfrav1.MIGReadyCondition),
 		Status: metav1.ConditionTrue,
+		Reason: expinfrav1.MIGReadyReason,
 	})
 
 	igmInstances, err := instancegroupmanagers.New(machinePoolScope).ListInstances(ctx, igm)

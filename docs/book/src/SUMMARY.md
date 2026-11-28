@@ -7,6 +7,7 @@
     - [Provisioning a Cluster](./self-managed/provision.md)
     - [Cloud Controller Manager (CCM)](./self-managed/ccm.md)
     - [Container Network Interface (CNI)](./self-managed/cni.md)
+    - [Machine Pools](./self-managed/machine-pools.md)
 - [Managed clusters - GKE](./managed/index.md)
     - [Provisioning a Cluster](./managed/provision.md)
     - [Cluster Upgrades](./managed/upgrades.md)

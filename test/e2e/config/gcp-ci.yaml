@@ -77,6 +77,7 @@ providers:
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/clusterclass-gke-cc.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/withclusterclass/cluster-template-ci-gke-topology.yaml"
       - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-firewall-rules.yaml"
+      - sourcePath: "${PWD}/test/e2e/data/infrastructure-gcp/cluster-template-ci-with-machinepool.yaml"
 
 variables:
   # Hand-Edited Version Inputs
@@ -100,7 +101,6 @@ variables:
   COREDNS_VERSION_UPGRADE_TO: "${COREDNS_VERSION_UPGRADE_TO}"
   ETCD_VERSION_UPGRADE_TO: "${ETCD_VERSION_UPGRADE_TO}"
   EXP_CAPG_GKE: "true"
-  EXP_CLUSTER_RESOURCE_SET: "true"
   EXP_MACHINE_POOL: "true"
   GCP_CONTROL_PLANE_MACHINE_TYPE: n1-standard-2
   GCP_NODE_MACHINE_TYPE: n1-standard-2
